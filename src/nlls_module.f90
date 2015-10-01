@@ -5,12 +5,14 @@ module nlls_module
   implicit none
 
   integer, parameter :: wp = kind(1.0d0)
+  integer, parameter :: long = selected_int_kind(8)
   real (kind = wp), parameter :: tenm5 = 1.0e-5
   real (kind = wp), parameter :: tenm8 = 1.0e-8
   real (kind = wp), parameter :: epsmch = epsilon(1.0_wp)
   real (kind = wp), parameter :: hundred = 100.0
   real (kind = wp), parameter :: ten = 10.0
   real (kind = wp), parameter :: point9 = 0.9
+  real (kind = wp), parameter :: zero = 0.0
   real (kind = wp), parameter :: one = 1.0
   real (kind = wp), parameter :: two = 2.0
   real (kind = wp), parameter :: half = 0.5
