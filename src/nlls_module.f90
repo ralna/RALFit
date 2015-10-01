@@ -359,7 +359,13 @@ contains
     TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
-     RETURN
+    
+    
+    
+
+    RETURN
+
+
 
 !  End of subroutine RAL_NLLS
 
@@ -378,6 +384,10 @@ contains
        INTEGER ( int32 ), INTENT( OUT ) :: status
        REAL ( real64 ), INTENT( OUT ) :: f
        REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+
+
+
+! end of subroutine eval_F
        
      END SUBROUTINE eval_F
 
@@ -392,6 +402,8 @@ contains
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
        REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
+
+! end of subroutine eval_J
 
      END SUBROUTINE eval_J
 
