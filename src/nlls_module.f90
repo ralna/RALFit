@@ -359,14 +359,37 @@ contains
     TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
-    
-    if ( options%print_level >= 3 ) then
-       write( option%out , 2000 ) '* running RAL_NLLS *'
-    end if
+!  Interface blocks (e.g.)
 
+    INTERFACE
+       SUBROUTINE eval_F( status, X, f )
+         USE ISO_FORTRAN_ENV
+         
+         INTEGER ( int32 ), INTENT( OUT ) :: status
+         REAL ( real64 ), INTENT( OUT ) :: f
+         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+         
+       END SUBROUTINE eval_F
+    END INTERFACE
+
+    INTERFACE
+       SUBROUTINE eval_J( status, X, J )
+         USE ISO_FORTRAN_ENV
+
+         INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+         INTEGER ( int32 ), INTENT( OUT ) :: status
+         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+         REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
+       END SUBROUTINE eval_J
+    END INTERFACE
     
+    if ( options%print_level >= 3 )  write( options%out , 2000 ) 
 
     RETURN
+
+! Non-executable statements
+
+2000 FORMAT(/,'* Running RAL_NLLS *')
 
 
 
