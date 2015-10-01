@@ -1,6 +1,6 @@
 program driver
 
-use nlss_module
+use nlls_module
 
 write(*,*) 'RAL NLLS driver'
 
