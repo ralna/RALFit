@@ -26,7 +26,10 @@ allocate( Work_real(len_work_real) )
 
 allocate( X(n) )
 
-X = 2.0_wp
+X(1) =  3.0 
+X(2) = -1.0
+X(3) =  0.0
+X(4) =  1.0
 
 options%print_level = 3
 
