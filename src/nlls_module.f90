@@ -498,7 +498,7 @@ contains
        
        call dgels(trans, n, m, nrhs, J, lda, temp, ldb, work, lwork, status)
 
-       d_gn = temp(1:n)
+       d_gn = -temp(1:n)
               
      END SUBROUTINE solve_LLS
      
