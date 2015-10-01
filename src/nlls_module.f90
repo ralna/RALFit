@@ -127,6 +127,10 @@ module nlls_module
 !  recommended
 
      INTEGER :: mi28_rsize = 10
+
+!  which linear least squares solver should we use?
+     
+     INTEGER :: lls_solver
         
 !   overall convergence tolerances. The iteration will terminate when the
 !     norm of the gradient of the objective function is smaller than 
@@ -383,19 +387,133 @@ contains
        END SUBROUTINE eval_J
     END INTERFACE
     
+    integer :: jstatus=0, fstatus=0, slls_status, fb_status
+    integer :: i
+    real(wp), DIMENSION(m,n) :: J, Jnew
+    real(wp), DIMENSION(m) :: f, fnew
+    real(wp), DIMENSION(n) :: g, d_sd, d_gn, d, ghat, Xnew
+    real(wp) :: alpha, beta, Delta, rho
+    
+
     if ( options%print_level >= 3 )  write( options%out , 2000 ) 
+
+
+    Delta = options%initial_radius
+    
+    call eval_J(jstatus, X, J)
+    if (jstatus > 0) write( options%out, 2010) jstatus
+    call eval_F(fstatus, X, f)
+    if (fstatus > 0) write( options%out, 2020) fstatus
+
+    g = - matmul(transpose(J),f);
+
+    main_loop: do i = 1,options%maxit
+       
+       alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
+       
+       d_sd = alpha * g;
+       call solve_LLS(J,f,options%lls_solver,d_gn,slls_status)
+       
+       if (norm2(d_gn) <= Delta) then
+          d = d_gn
+       else if (norm2( alpha * d_sd ) >= Delta) then
+          d = (Delta / norm2(d_sd) ) * d_sd
+       else
+          ghat = d_gn - alpha * d_sd
+          call findbeta(d_sd,ghat,alpha,beta,fb_status)
+          d = alpha * d_sd + beta * ghat
+       end if
+
+       ! Test convergence
+       if (norm2(d) <= options%stop_g_relative * norm2(X)) then
+          if (options%print_level > 0 ) write(options%out,2030) i
+          return
+       else
+          Xnew = X + d;
+          call eval_J(jstatus, Xnew, Jnew)
+          if (jstatus > 0) write( options%out, 2010) jstatus
+          call eval_F(fstatus, Xnew, fnew)
+          if (fstatus > 0) write( options%out, 2020) fstatus
+
+          rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
+                ( norm2(f)**2 - norm2(f - matmul(J,d))**2)
+
+          if (rho > 0) then
+             X = Xnew;
+             J = Jnew;
+             f = fnew;
+             g = - matmul(transpose(J),f);
+          end if
+          
+          ! todo :: finer-grained changes (successful, too_successful...)
+          if (rho > options%eta_very_successful) then
+             Delta = max(Delta, 3.0 * norm2(d) )
+          else
+             Delta = Delta / 2.0
+          end if
+
+       end if
+
+    end do main_loop
+
+    if (options%print_level > 0 ) write(options%out,2040) 
 
     RETURN
 
 ! Non-executable statements
 
 2000 FORMAT(/,'* Running RAL_NLLS *')
-
-
-
+2010 FORMAT('Error code from eval_J, status = ',I6)
+2020 FORMAT('Error code from eval_J, status = ',I6)
+2030 FORMAT('RAL_NLLS converged at iteration ',I6)
+2040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 !  End of subroutine RAL_NLLS
 
      END SUBROUTINE RAL_NLLS
+
+     SUBROUTINE solve_LLS(J,f,method,d_gn,status)
+       
+!  -----------------------------------------------------------------
+!  solve_LLS, a subroutine to solve a linear least squares problem
+!  -----------------------------------------------------------------
+
+       REAL(wp), DIMENSION(:,:), INTENT(IN) :: J
+       REAL(wp), DIMENSION(:), INTENT(IN) :: f
+       INTEGER, INTENT(IN) :: method
+       REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
+       INTEGER, INTENT(OUT) :: status
+
+       d_gn = 2.0_wp
+       
+     END SUBROUTINE solve_LLS
+     
+     SUBROUTINE findbeta(d_sd,ghat,alpha,beta,status)
+
+!  -----------------------------------------------------------------
+!  findbeta, a subroutine to find the optimal beta such that 
+!   || d || = Delta
+!  -----------------------------------------------------------------
+
+     real(wp), dimension(:), intent(in) :: d_sd, ghat
+     real(wp), intent(in) :: alpha
+     real(wp), intent(out) :: beta
+     integer, intent(out) :: status
+     
+     real(wp) :: a, b, c, discriminant
+
+     a = norm2(ghat)**2
+     b = 2.0 * alpha * dot_product( ghat, d_sd)
+     c = ( alpha * norm2( d_sd ) )**2 - 1
+     
+     discriminant = b**2 - 4 * a * c
+     if ( discriminant < 0) then
+        status = 1
+        return
+     else
+        beta = (-b + sqrt(discriminant)) / (2.0 * a)
+     end if
+
+     END SUBROUTINE findbeta
 
      
      SUBROUTINE eval_F( status, X, f )

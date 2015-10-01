@@ -26,6 +26,8 @@ allocate( Work_real(len_work_real) )
 
 allocate( X(n) )
 
+X = 1.0_wp
+
 options%print_level = 3
 
 call ral_nlls(n, m, X, Work_int, len_work_int, & 
@@ -34,3 +36,5 @@ call ral_nlls(n, m, X, Work_int, len_work_int, &
               status, options )
 
 end program driver
+
+
