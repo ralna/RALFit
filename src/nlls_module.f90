@@ -353,8 +353,12 @@ contains
 
     USE ISO_FORTRAN_ENV
     INTEGER( int32 ), INTENT( IN ) :: n, m, len_work_int, len_work_real
-    REAL( real64 ), DIMENSION( n ), INTENT( INOUT ) :: X
-    INTEGER( int32 ), INTENT( OUT ) :: status
+    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
+    INTEGER( int32), INTENT( IN ) :: Work_int(len_work_int)
+    REAL( wp ), INTENT( IN ) :: Work_real(len_work_real)
+!    INTEGER( int32 ), INTENT( OUT ) :: status
+    TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
+    TYPE( NLLS_control_type ), INTENT( IN ) :: options
      
 !  Interface blocks (e.g.)
 
@@ -378,7 +382,6 @@ contains
           !      USE GALAHAD_NLPT_double, ONLY: NLPT_userdata_type
           INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
           INTEGER ( int32 ), INTENT( OUT ) :: status
-          REAL ( real64 ), INTENT( OUT ) :: f
           REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
           !      TYPE ( NLPT_userdata_type ), INTENT( INOUT ) :: userdata
         END SUBROUTINE eval_J
