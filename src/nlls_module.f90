@@ -412,7 +412,7 @@ contains
        alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
        
        d_sd = alpha * g;
-       call solve_LLS(J,f,options%lls_solver,d_gn,slls_status)
+       call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
        
        if (norm2(d_gn) <= Delta) then
           d = d_gn
@@ -471,20 +471,35 @@ contains
 
      END SUBROUTINE RAL_NLLS
 
-     SUBROUTINE solve_LLS(J,f,method,d_gn,status)
+     SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
        
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
 !  -----------------------------------------------------------------
 
-       REAL(wp), DIMENSION(:,:), INTENT(IN) :: J
+       REAL(wp), DIMENSION(:,:), INTENT(INOUT) :: J
        REAL(wp), DIMENSION(:), INTENT(IN) :: f
-       INTEGER, INTENT(IN) :: method
+       INTEGER, INTENT(IN) :: method, n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
        INTEGER, INTENT(OUT) :: status
 
-       d_gn = 2.0_wp
+       character(1) :: trans = 'N'
+       integer :: nrhs = 1, lwork, lda, ldb
+       real(wp), allocatable :: temp(:), work(:)
        
+       integer :: i
+
+       lda = n
+       ldb = max(m,n)
+       allocate(temp(max(m,n)))
+       temp(1:n) = f(1:n)
+       lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
+       allocate(work(lwork))
+       
+       call dgels(trans, n, m, nrhs, J, lda, temp, ldb, work, lwork, status)
+
+       d_gn = temp(1:n)
+              
      END SUBROUTINE solve_LLS
      
      SUBROUTINE findbeta(d_sd,ghat,alpha,beta,status)

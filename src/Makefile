@@ -24,6 +24,8 @@ F77 = $(FC)
 # What to build
 all: driver
 
+DLAPACK = $(LAPACKDIR)/dgels.f
+
 #DDEPS = 
 
 #COMMON90 =
@@ -41,7 +43,7 @@ driver: driver.o nlls_module.o # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 BLASDIR=$(TOPDIR)/blas
-LAPACKDIR=$(TOPDIR)/lapac
+LAPACKDIR=$(TOPDIR)/lapack
 
 # These two rules tell us how to compile module files from source files
 %.o: %.f90
