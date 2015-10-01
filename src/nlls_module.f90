@@ -356,36 +356,8 @@ contains
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
     INTEGER( int32), INTENT( IN ) :: Work_int(len_work_int)
     REAL( wp ), INTENT( IN ) :: Work_real(len_work_real)
-!    INTEGER( int32 ), INTENT( OUT ) :: status
     TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
-     
-!  Interface blocks (e.g.)
-
-    INTERFACE
-!      SUBROUTINE eval_F( status, X, userdata, f )
-       SUBROUTINE eval_F( status, X, f )
-         USE ISO_FORTRAN_ENV
-         !      USE GALAHAD_NLPT_double, ONLY: NLPT_userdata_type
-         INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-         INTEGER ( int32 ), INTENT( OUT ) :: status
-         REAL ( real64 ), INTENT( OUT ) :: f
-         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-         !      TYPE ( NLPT_userdata_type ), INTENT( INOUT ) :: userdata
-       END SUBROUTINE eval_F
-    END INTERFACE
-
-     INTERFACE
-!      SUBROUTINE eval_J( status, X, userdata, J )
-        SUBROUTINE eval_J( status, X, J )
-          USE ISO_FORTRAN_ENV
-          !      USE GALAHAD_NLPT_double, ONLY: NLPT_userdata_type
-          INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-          INTEGER ( int32 ), INTENT( OUT ) :: status
-          REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
-          !      TYPE ( NLPT_userdata_type ), INTENT( INOUT ) :: userdata
-        END SUBROUTINE eval_J
-     END INTERFACE
 
      RETURN
 
@@ -393,5 +365,34 @@ contains
 
      END SUBROUTINE RAL_NLLS
 
+     
+     SUBROUTINE eval_F( status, X, f )
+
+!  -------------------------------------------------------------------
+!  eval_F, a subroutine for evaluating the function f at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER ( int32 ), INTENT( OUT ) :: status
+       REAL ( real64 ), INTENT( OUT ) :: f
+       REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+       
+     END SUBROUTINE eval_F
+
+     SUBROUTINE eval_J( status, X, J )
+
+!  -------------------------------------------------------------------
+!  eval_J, a subroutine for evaluating the Jacobian J at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER ( int32 ), INTENT( OUT ) :: status
+       REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
+
+     END SUBROUTINE eval_J
 
 end module nlls_module
