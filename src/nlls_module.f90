@@ -360,7 +360,10 @@ contains
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
     
-    
+    if ( options%print_level >= 3 ) then
+       write( option%out , 2000 ) '* running RAL_NLLS *'
+    end if
+
     
 
     RETURN
@@ -402,6 +405,7 @@ contains
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
        REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
+       REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
 
 ! end of subroutine eval_J
 
