@@ -366,7 +366,7 @@ contains
          USE ISO_FORTRAN_ENV
          
          INTEGER ( int32 ), INTENT( OUT ) :: status
-         REAL ( real64 ), INTENT( OUT ) :: f
+         REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
          REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
          
        END SUBROUTINE eval_F
@@ -379,7 +379,7 @@ contains
          INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
          INTEGER ( int32 ), INTENT( OUT ) :: status
          REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-         REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
+         REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
        END SUBROUTINE eval_J
     END INTERFACE
     
@@ -408,11 +408,15 @@ contains
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
-       REAL ( real64 ), INTENT( OUT ) :: f
-       REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+       REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
+       REAL ( real64 ), DIMENSION( : ),INTENT( IN )  :: X
 
-
-
+! let's use Powell's function for now....
+       f(1) = X(1) + 10.0 * X(2)
+       f(2) = sqrt(5.0) * (X(3) - X(4))
+       f(3) = ( X(2) - 2.0 * X(3) )**2
+       f(4) = sqrt(10.0) * ( X(1) - X(4) )**2
+       
 ! end of subroutine eval_F
        
      END SUBROUTINE eval_F
@@ -427,10 +431,23 @@ contains
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
-       REAL ( real64 ), DIMENSION( : , : ),INTENT( IN ) :: J
+       REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
        REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
 
 ! end of subroutine eval_J
+
+       ! initialize to zeros...
+       J(1:4,1:4) = 0.0
+       
+       ! enter non-zeros values
+       J(1,1) = 1.0
+       J(1,2) = 10.0
+       J(2,3) = sqrt(5.0)
+       J(2,4) = -sqrt(5.0)
+       J(3,2) = 2.0 * (X(2) - 2.0 * X(3))
+       J(3,3) = -4.0 * (X(2) - 2.0 * X(3)) 
+       J(4,1) = sqrt(10.0) * 2.0 * (X(1) - X(4))
+       J(4,4) = - sqrt(10.0) * 2.0 * (X(1) - X(4))
 
      END SUBROUTINE eval_J
 
