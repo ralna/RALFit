@@ -137,7 +137,7 @@ module nlls_module
 !       MAX( %stop_g_absolute, %stop_g_relative * norm of the initial gradient
 !     or if the step is less than %stop_s
 
-!$$     REAL ( KIND = wp ) :: stop_g_absolute = tenm5
+     REAL ( KIND = wp ) :: stop_g_absolute = tenm5
      REAL ( KIND = wp ) :: stop_g_relative = tenm8
 !$$     REAL ( KIND = wp ) :: stop_s = epsmch
 
@@ -407,25 +407,32 @@ contains
 
     g = - matmul(transpose(J),f);
 
-    main_loop: do i = 1,options%maxit
+    main_loop: do i = 1,2!options%maxit
        
        alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
        
        d_sd = alpha * g;
        call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
        
+       write(*,*) '|| d_sd || = ', norm2(d_sd)
+       write(*,*) '|| d_gn || = ', norm2(d_gn)
+
        if (norm2(d_gn) <= Delta) then
           d = d_gn
        else if (norm2( alpha * d_sd ) >= Delta) then
           d = (Delta / norm2(d_sd) ) * d_sd
        else
           ghat = d_gn - alpha * d_sd
-          call findbeta(d_sd,ghat,alpha,beta,fb_status)
+          call findbeta(d_sd,ghat,alpha,Delta,beta,fb_status)
           d = alpha * d_sd + beta * ghat
        end if
 
+       write(*,*) 'norm2(x) = ', norm2(X)
+       write(*,*) 'norm2(d) = ', norm2(d)
+
        ! Test convergence
-       if (norm2(d) <= options%stop_g_relative * norm2(X)) then
+       if (norm2(d) <= & !options%stop_g_absolute + & 
+                       options%stop_g_relative * norm2(X)) then
           if (options%print_level > 0 ) write(options%out,3020) i
           return
        else
@@ -507,13 +514,25 @@ contains
        lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
        allocate(work(lwork))
        
+       write(*,*) 'J = '
+       do i = 1,m
+          write(*,*) J(i,:)
+       end do
+       write(*,*) 'temp in = '
+       do i = 1,n
+          write(*,*)temp(i)
+       end do
        call dgels(trans, n, m, nrhs, J, lda, temp, ldb, work, lwork, status)
+       write(*,*) 'temp out = '
+       do i = 1,n
+          write(*,*)temp(i)
+       end do
 
        d_gn = -temp(1:n)
               
      END SUBROUTINE solve_LLS
      
-     SUBROUTINE findbeta(d_sd,ghat,alpha,beta,status)
+     SUBROUTINE findbeta(d_sd,ghat,alpha,Delta,beta,status)
 
 !  -----------------------------------------------------------------
 !  findbeta, a subroutine to find the optimal beta such that 
@@ -521,7 +540,7 @@ contains
 !  -----------------------------------------------------------------
 
      real(wp), dimension(:), intent(in) :: d_sd, ghat
-     real(wp), intent(in) :: alpha
+     real(wp), intent(in) :: alpha, Delta
      real(wp), intent(out) :: beta
      integer, intent(out) :: status
      
@@ -529,7 +548,7 @@ contains
 
      a = norm2(ghat)**2
      b = 2.0 * alpha * dot_product( ghat, d_sd)
-     c = ( alpha * norm2( d_sd ) )**2 - 1
+     c = ( alpha * norm2( d_sd ) )**2 - Delta
      
      discriminant = b**2 - 4 * a * c
      if ( discriminant < 0) then
