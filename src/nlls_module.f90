@@ -234,105 +234,105 @@ module nlls_module
      
 !  the status of the last attempted allocation/deallocation
 
-     INTEGER :: alloc_status = 0
+!$$     INTEGER :: alloc_status = 0
 
 !  the name of the array for which an allocation/deallocation error ocurred
 
-     CHARACTER ( LEN = 80 ) :: bad_alloc = REPEAT( ' ', 80 )
+!$$     CHARACTER ( LEN = 80 ) :: bad_alloc = REPEAT( ' ', 80 )
 
 !  the total number of iterations performed
      
-     INTEGER :: iter = 0
+!$$     INTEGER :: iter = 0
        
 !  the total number of CG iterations performed
 
-     INTEGER :: cg_iter = 0
+!$$     INTEGER :: cg_iter = 0
 
 !  the total number of evaluations of the objection function
 
-     INTEGER :: f_eval = 0
+!$$     INTEGER :: f_eval = 0
 
 !  the total number of evaluations of the gradient of the objection function
 
-     INTEGER :: g_eval = 0
+!$$     INTEGER :: g_eval = 0
 
 !  the total number of evaluations of the Hessian of the objection function
      
-     INTEGER :: h_eval = 0
+!$$     INTEGER :: h_eval = 0
 
 !  the maximum number of factorizations in a sub-problem solve
 
-     INTEGER :: factorization_max = 0
+!$$     INTEGER :: factorization_max = 0
 
 !  the return status from the factorization
 
-     INTEGER :: factorization_status = 0
+!$$     INTEGER :: factorization_status = 0
 
 !   the maximum number of entries in the factors
 
-     INTEGER ( KIND = long ) :: max_entries_factors = 0
+!$$     INTEGER ( KIND = long ) :: max_entries_factors = 0
 
 !  the total integer workspace required for the factorization
 
-     INTEGER :: factorization_integer = - 1
+!$$     INTEGER :: factorization_integer = - 1
 
 !  the total real workspace required for the factorization
 
-     INTEGER :: factorization_real = - 1
+!$$     INTEGER :: factorization_real = - 1
 
 !  the average number of factorizations per sub-problem solve
 
-     REAL ( KIND = wp ) :: factorization_average = zero
+!$$     REAL ( KIND = wp ) :: factorization_average = zero
 
 !  the value of the objective function at the best estimate of the solution 
 !   determined by NLLS_solve
 
-     REAL ( KIND = wp ) :: obj = HUGE( one )
+!$$     REAL ( KIND = wp ) :: obj = HUGE( one )
 
 !  the norm of the gradient of the objective function at the best estimate 
 !   of the solution determined by NLLS_solve
 
-     REAL ( KIND = wp ) :: norm_g = HUGE( one )
+!$$     REAL ( KIND = wp ) :: norm_g = HUGE( one )
 
 !  the total CPU time spent in the package
 
-     REAL :: cpu_total = 0.0
+!$$     REAL :: cpu_total = 0.0
        
 !  the CPU time spent preprocessing the problem
 
-     REAL :: cpu_preprocess = 0.0
+!$$     REAL :: cpu_preprocess = 0.0
 
 !  the CPU time spent analysing the required matrices prior to factorization
 
-     REAL :: cpu_analyse = 0.0
+!$$     REAL :: cpu_analyse = 0.0
 
 !  the CPU time spent factorizing the required matrices
      
-     REAL :: cpu_factorize = 0.0
+!$$     REAL :: cpu_factorize = 0.0
        
 !  the CPU time spent computing the search direction
 
-     REAL :: cpu_solve = 0.0
+!$$     REAL :: cpu_solve = 0.0
 
 !  the total clock time spent in the package
 
-     REAL ( KIND = wp ) :: clock_total = 0.0
+!$$     REAL ( KIND = wp ) :: clock_total = 0.0
        
 !  the clock time spent preprocessing the problem
 
-     REAL ( KIND = wp ) :: clock_preprocess = 0.0
+!$$     REAL ( KIND = wp ) :: clock_preprocess = 0.0
        
 !  the clock time spent analysing the required matrices prior to factorization
 
-     REAL ( KIND = wp ) :: clock_analyse = 0.0
+!$$     REAL ( KIND = wp ) :: clock_analyse = 0.0
        
 !  the clock time spent factorizing the required matrices
 
-     REAL ( KIND = wp ) :: clock_factorize = 0.0
+!$$     REAL ( KIND = wp ) :: clock_factorize = 0.0
      
 !  the clock time spent computing the search direction
 
-     REAL ( KIND = wp ) :: clock_solve = 0.0
+!$$     REAL ( KIND = wp ) :: clock_solve = 0.0
 
   END TYPE NLLS_inform_type
 
@@ -471,7 +471,7 @@ contains
 1020 FORMAT('Error code from eval_J, status = ',I6)
 1030 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
-! print leve > 1
+! print level > 1
 
 ! print level > 2
 3000 FORMAT(/,'* Running RAL_NLLS *')
