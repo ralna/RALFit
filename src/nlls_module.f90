@@ -137,8 +137,8 @@ module nlls_module
 !       MAX( %stop_g_absolute, %stop_g_relative * norm of the initial gradient
 !     or if the step is less than %stop_s
 
-     REAL ( KIND = wp ) :: stop_g_absolute = tenm5
-!$$     REAL ( KIND = wp ) :: stop_g_relative = tenm8
+!$$     REAL ( KIND = wp ) :: stop_g_absolute = tenm5
+     REAL ( KIND = wp ) :: stop_g_relative = tenm8
 !$$     REAL ( KIND = wp ) :: stop_s = epsmch
 
 !   try to pick a good initial trust-region radius using %advanced_start
