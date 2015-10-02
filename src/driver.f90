@@ -14,9 +14,9 @@ write(*,*) '==============='
 write(*,*) ' '
 
 
-n = 4
+n = 2
 
-m = 4
+m = 67
 
 len_work_int = n
 allocate( Work_int(len_work_int) )
@@ -26,10 +26,8 @@ allocate( Work_real(len_work_real) )
 
 allocate( X(n) )
 
-X(1) =  3.0 
-X(2) = -1.0
-X(3) =  0.0
-X(4) =  1.0
+X(1) = 1.0 
+X(2) = 2.0
 
 options%print_level = 3
 
