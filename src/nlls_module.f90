@@ -395,15 +395,15 @@ contains
     real(wp) :: alpha, beta, Delta, rho
     
 
-    if ( options%print_level >= 3 )  write( options%out , 2000 ) 
+    if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
 
     Delta = options%initial_radius
     
     call eval_J(jstatus, X, J)
-    if (jstatus > 0) write( options%out, 2010) jstatus
+    if (jstatus > 0) write( options%out, 1010) jstatus
     call eval_F(fstatus, X, f)
-    if (fstatus > 0) write( options%out, 2020) fstatus
+    if (fstatus > 0) write( options%out, 1020) fstatus
 
     g = - matmul(transpose(J),f);
 
@@ -426,14 +426,14 @@ contains
 
        ! Test convergence
        if (norm2(d) <= options%stop_g_relative * norm2(X)) then
-          if (options%print_level > 0 ) write(options%out,2030) i
+          if (options%print_level > 0 ) write(options%out,3020) i
           return
        else
           Xnew = X + d;
           call eval_J(jstatus, Xnew, Jnew)
-          if (jstatus > 0) write( options%out, 2010) jstatus
+          if (jstatus > 0) write( options%out, 1010) jstatus
           call eval_F(fstatus, Xnew, fnew)
-          if (fstatus > 0) write( options%out, 2020) fstatus
+          if (fstatus > 0) write( options%out, 1020) fstatus
 
           rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
                 ( norm2(f)**2 - norm2(f - matmul(J,d))**2)
@@ -443,6 +443,9 @@ contains
              J = Jnew;
              f = fnew;
              g = - matmul(transpose(J),f);
+             
+             if (options%print_level >=3) write(options%out,3010) 0.5 * norm2(f)**2
+             
           end if
           
           ! todo :: finer-grained changes (successful, too_successful...)
@@ -456,17 +459,25 @@ contains
 
     end do main_loop
 
-    if (options%print_level > 0 ) write(options%out,2040) 
+    if (options%print_level > 0 ) write(options%out,1030) 
 
     RETURN
 
 ! Non-executable statements
 
-2000 FORMAT(/,'* Running RAL_NLLS *')
-2010 FORMAT('Error code from eval_J, status = ',I6)
-2020 FORMAT('Error code from eval_J, status = ',I6)
-2030 FORMAT('RAL_NLLS converged at iteration ',I6)
-2040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+! print level > 0
+
+1010 FORMAT('Error code from eval_J, status = ',I6)
+1020 FORMAT('Error code from eval_J, status = ',I6)
+1030 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+
+! print leve > 1
+
+! print level > 2
+3000 FORMAT(/,'* Running RAL_NLLS *')
+3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
+3020 FORMAT('RAL_NLLS converged at iteration ',I6)
+
 !  End of subroutine RAL_NLLS
 
      END SUBROUTINE RAL_NLLS
