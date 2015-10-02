@@ -6,3 +6,5 @@
 30/09/2015
  Plan out structure of RAL_NLLS (nimg/tr)
 
+01/10/2015
+ Generate a basic functioning least-squares solver (tr)
