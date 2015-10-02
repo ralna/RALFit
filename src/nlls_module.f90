@@ -507,26 +507,14 @@ contains
        
        integer :: i
 
-       lda = n
+       lda = m
        ldb = max(m,n)
        allocate(temp(max(m,n)))
-       temp(1:n) = f(1:n)
+       temp(1:m) = f(1:m)
        lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
        allocate(work(lwork))
        
-       write(*,*) 'J = '
-       do i = 1,m
-          write(*,*) J(i,:)
-       end do
-       write(*,*) 'temp in = '
-       do i = 1,n
-          write(*,*)temp(i)
-       end do
-       call dgels(trans, n, m, nrhs, J, lda, temp, ldb, work, lwork, status)
-       write(*,*) 'temp out = '
-       do i = 1,n
-          write(*,*)temp(i)
-       end do
+       call dgels(trans, m, n, nrhs, J, lda, temp, ldb, work, lwork, status)
 
        d_gn = -temp(1:n)
               
