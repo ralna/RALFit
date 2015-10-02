@@ -23,7 +23,7 @@ module nlls_module
      
 !   error and warning diagnostics occur on stream error 
      
-     INTEGER :: error = 6
+!$$     INTEGER :: error = 6
 
 !   general output occurs on stream out
 
@@ -37,15 +37,15 @@ module nlls_module
 
 !   any printing will start on this iteration
 
-     INTEGER :: start_print = - 1
+!$$     INTEGER :: start_print = - 1
 
 !   any printing will stop on this iteration
 
-     INTEGER :: stop_print = - 1
+!$$     INTEGER :: stop_print = - 1
 
 !   the number of iterations between printing
 
-     INTEGER :: print_gap = 1
+!$$     INTEGER :: print_gap = 1
 
 !   the maximum number of iterations performed
 
@@ -53,13 +53,13 @@ module nlls_module
 
 !   removal of the file alive_file from unit alive_unit terminates execution
 
-     INTEGER :: alive_unit = 40
-     CHARACTER ( LEN = 30 ) :: alive_file = 'ALIVE.d'
+!$$     INTEGER :: alive_unit = 40
+!$$     CHARACTER ( LEN = 30 ) :: alive_file = 'ALIVE.d'
 
 !   non-monotone <= 0 monotone strategy used, anything else non-monotone
 !     strategy with this history length used
 
-     INTEGER :: non_monotone = 1
+!$$     INTEGER :: non_monotone = 1
 
 !   specify the model used. Possible values are
 !
@@ -71,7 +71,7 @@ module nlls_module
 !      5  secant second-order (limited-memory BFGS, with %lbfgs_vectors history)
 !      6  secant second-order (limited-memory SR1, with %lbfgs_vectors history)
 
-     INTEGER :: model = 2
+!$$     INTEGER :: model = 2
 
 !   specify the norm used. The norm is defined via ||v||^2 = v^T P v,
 !    and will define the preconditioner used for iterative methods.
@@ -91,31 +91,31 @@ module nlls_module
 !      8  incomplete factorization of Hessian, Munskgaard (*not yet *)
 !      9  expanding band of Hessian (*not yet implemented*)
 
-     INTEGER :: norm = 1
+!$$     INTEGER :: norm = 1
 
 !   specify the semi-bandwidth of the band matrix P if required
 
-     INTEGER :: semi_bandwidth = 5
+!$$     INTEGER :: semi_bandwidth = 5
 
 !   number of vectors used by the L-BFGS matrix P if required
 
-     INTEGER :: lbfgs_vectors = 10
+!$$     INTEGER :: lbfgs_vectors = 10
 
 !   number of vectors used by the sparsity-based secant Hessian if required
 
-     INTEGER :: max_dxg = 100
+!$$     INTEGER :: max_dxg = 100
 
 !   number of vectors used by the Lin-More' incomplete factorization 
 !    matrix P if required
 
-     INTEGER :: icfs_vectors = 10
+!$$     INTEGER :: icfs_vectors = 10
 
 !  the maximum number of fill entries within each column of the incomplete 
 !  factor L computed by HSL_MI28. In general, increasing mi28_lsize improves
 !  the quality of the preconditioner but increases the time to compute
 !  and then apply the preconditioner. Values less than 0 are treated as 0
 
-     INTEGER :: mi28_lsize = 10
+!$$     INTEGER :: mi28_lsize = 10
 
 !  the maximum number of entries within each column of the strictly lower 
 !  triangular matrix R used in the computation of the preconditioner by 
@@ -126,7 +126,7 @@ module nlls_module
 !  using mi28_rsize = 0, and choosing mi28_rsize >= mi28_lsize is generally 
 !  recommended
 
-     INTEGER :: mi28_rsize = 10
+!$$     INTEGER :: mi28_rsize = 10
 
 !  which linear least squares solver should we use?
      
@@ -138,13 +138,13 @@ module nlls_module
 !     or if the step is less than %stop_s
 
      REAL ( KIND = wp ) :: stop_g_absolute = tenm5
-     REAL ( KIND = wp ) :: stop_g_relative = tenm8
-     REAL ( KIND = wp ) :: stop_s = epsmch
+!$$     REAL ( KIND = wp ) :: stop_g_relative = tenm8
+!$$     REAL ( KIND = wp ) :: stop_s = epsmch
 
 !   try to pick a good initial trust-region radius using %advanced_start
 !    iterates of a variant on the strategy of Sartenaer SISC 18(6)1990:1788-1803
      
-     INTEGER :: advanced_start = 0
+!$$     INTEGER :: advanced_start = 0
      
 !   initial value for the trust-region radius (-ve => ||g_0||)
      
@@ -152,7 +152,7 @@ module nlls_module
      
 !   maximum permitted trust-region radius
 
-     REAL ( KIND = wp ) :: maximum_radius = ten ** 8
+!$$     REAL ( KIND = wp ) :: maximum_radius = ten ** 8
 
 !   a potential iterate will only be accepted if the actual decrease
 !    f - f(x_new) is larger than %eta_successful times that predicted
@@ -160,65 +160,65 @@ module nlls_module
 !    increased if this relative decrease is greater than %eta_very_successful
 !    but smaller than %eta_too_successful
 
-     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 8 )
+!$$     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 8 )
      REAL ( KIND = wp ) :: eta_very_successful = point9
-     REAL ( KIND = wp ) :: eta_too_successful = two
+!$$     REAL ( KIND = wp ) :: eta_too_successful = two
 
 !   on very successful iterations, the trust-region radius will be increased by
 !    the factor %radius_increase, while if the iteration is unsucceful, the 
 !    radius will be decreased by a factor %radius_reduce but no more than
 !    %radius_reduce_max
 
-     REAL ( KIND = wp ) :: radius_increase = two
-     REAL ( KIND = wp ) :: radius_reduce = half
-     REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
+!$$     REAL ( KIND = wp ) :: radius_increase = two
+!$$     REAL ( KIND = wp ) :: radius_reduce = half
+!$$     REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
        
 !   the smallest value the onjective function may take before the problem
 !    is marked as unbounded
 
-     REAL ( KIND = wp ) :: obj_unbounded = - epsmch ** ( - 2 )
+!$$     REAL ( KIND = wp ) :: obj_unbounded = - epsmch ** ( - 2 )
 
 !   the maximum CPU time allowed (-ve means infinite)
      
-     REAL ( KIND = wp ) :: cpu_time_limit = - one
+!$$     REAL ( KIND = wp ) :: cpu_time_limit = - one
 
 !   the maximum elapsed clock time allowed (-ve means infinite)
 
-     REAL ( KIND = wp ) :: clock_time_limit = - one
+!$$     REAL ( KIND = wp ) :: clock_time_limit = - one
        
 !   is the Hessian matrix of second derivatives available or is access only
 !    via matrix-vector products?
 
-     LOGICAL :: hessian_available = .TRUE.
+!$$     LOGICAL :: hessian_available = .TRUE.
 
 !   use a direct (factorization) or (preconditioned) iterative method to 
 !    find the search direction
 
-     LOGICAL :: subproblem_direct = .FALSE.
+!$$     LOGICAL :: subproblem_direct = .FALSE.
 
 !   is a retrospective strategy to be used to update the trust-region radius?
 
-     LOGICAL :: retrospective_trust_region = .FALSE.
+!$$     LOGICAL :: retrospective_trust_region = .FALSE.
 
 !   should the radius be renormalized to account for a change in preconditioner?
 
-     LOGICAL :: renormalize_radius = .FALSE.
+!$$     LOGICAL :: renormalize_radius = .FALSE.
 
 !   if %space_critical true, every effort will be made to use as little
 !    space as possible. This may result in longer computation time
      
-     LOGICAL :: space_critical = .FALSE.
+!$$     LOGICAL :: space_critical = .FALSE.
        
 !   if %deallocate_error_fatal is true, any array/pointer deallocation error
 !     will terminate execution. Otherwise, computation will continue
 
-     LOGICAL :: deallocate_error_fatal = .FALSE.
+!$$     LOGICAL :: deallocate_error_fatal = .FALSE.
 
 !  all output lines will be prefixed by %prefix(2:LEN(TRIM(%prefix))-1)
 !   where %prefix contains the required string enclosed in 
 !   quotes, e.g. "string" or 'string'
 
-     CHARACTER ( LEN = 30 ) :: prefix = '""                            '
+!$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '
      
   END TYPE NLLS_control_type
 
