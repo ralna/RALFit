@@ -23,7 +23,7 @@ module nlls_module
      
 !   error and warning diagnostics occur on stream error 
      
-!$$     INTEGER :: error = 6
+     INTEGER :: error = 6
 
 !   general output occurs on stream out
 
@@ -90,6 +90,14 @@ module nlls_module
 !      7  incomplete factorization of Hessian, HSL_MI28
 !      8  incomplete factorization of Hessian, Munskgaard (*not yet *)
 !      9  expanding band of Hessian (*not yet implemented*)
+
+
+     INTEGER :: nlls_method = 1
+
+!   specify the method used to solve the nlls problem
+!      1 Powell's dogleg
+!      ...
+
 
 !$$     INTEGER :: norm = 1
 
@@ -387,12 +395,12 @@ contains
        END SUBROUTINE eval_J
     END INTERFACE
     
-    integer :: jstatus=0, fstatus=0, slls_status, fb_status
+    integer :: jstatus=0, fstatus=0
     integer :: i
     real(wp), DIMENSION(m,n) :: J, Jnew
     real(wp), DIMENSION(m) :: f, fnew
-    real(wp), DIMENSION(n) :: g, d_sd, d_gn, d, ghat, Xnew
-    real(wp) :: alpha, beta, Delta, rho, normJF0, normF0
+    real(wp), DIMENSION(n) :: d, g, Xnew
+    real(wp) :: Delta, rho, normJF0, normF0
 
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
@@ -416,21 +424,7 @@ contains
        ! Calculate the step... !
        !+++++++++++++++++++++++!
 
-       alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
-       
-       d_sd = alpha * g;
-       call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
-       
-       if (norm2(d_gn) <= Delta) then
-          d = d_gn
-       else if (norm2( alpha * d_sd ) >= Delta) then
-          d = (Delta / norm2(d_sd) ) * d_sd
-       else
-          ghat = d_gn - alpha * d_sd
-          call findbeta(d_sd,ghat,alpha,Delta,beta,fb_status)
-          d = alpha * d_sd + beta * ghat
-       end if
-
+       call calculate_step(J,f,g,n,m,Delta,d,options)
        
        !++++++++++++++++++!
        ! Accept the step? !
@@ -510,7 +504,67 @@ contains
 3060 FORMAT('||J''f||/||f|| = ',ES12.4)
 !  End of subroutine RAL_NLLS
 
-     END SUBROUTINE RAL_NLLS
+  END SUBROUTINE RAL_NLLS
+  
+  SUBROUTINE calculate_step(J,f,g,n,m,Delta,d,options)
+       
+! -------------------------------------------------------
+! calculate_step, find the next step in the optimization
+! -------------------------------------------------------
+
+     REAL(wp), intent(in) :: J(:,:), f(:), g(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     TYPE( NLLS_control_type ), INTENT( IN ) :: options
+
+     select case (options%nlls_method)
+        
+     case (1) ! Powell's dogleg
+        call dogleg(J,f,g,n,m,Delta,d,options)
+        
+     case default
+        
+        if ( options%print_level > 0 ) then
+           write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
+        end if
+
+     end select
+
+   END SUBROUTINE calculate_step
+
+
+   SUBROUTINE dogleg(J,f,g,n,m,Delta,d,options)
+! -----------------------------------------
+! dogleg, implement Powell's dogleg method
+! -----------------------------------------
+
+     REAL(wp), intent(in) :: J(:,:), f(:), g(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     TYPE( NLLS_control_type ), INTENT( IN ) :: options
+
+     real(wp) :: alpha, beta
+     real(wp) :: d_sd(n), d_gn(n), ghat(n)
+     ! todo: would it be cheaper to allocate this memory in the top loop?
+     integer :: slls_status, fb_status
+
+     alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
+       
+     d_sd = alpha * g;
+     call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
+     
+     if (norm2(d_gn) <= Delta) then
+        d = d_gn
+     else if (norm2( alpha * d_sd ) >= Delta) then
+        d = (Delta / norm2(d_sd) ) * d_sd
+     else
+        ghat = d_gn - alpha * d_sd
+        call findbeta(d_sd,ghat,alpha,Delta,beta,fb_status)
+        d = alpha * d_sd + beta * ghat
+     end if
+     
+   END SUBROUTINE dogleg
+     
 
      SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
        
