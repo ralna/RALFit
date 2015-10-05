@@ -409,6 +409,10 @@ contains
        
        if ( options%print_level >= 3 )  write( options%out , 3030 ) i
        
+       !+++++++++++++++++++++++!
+       ! Calculate the step... !
+       !+++++++++++++++++++++++!
+
        alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
        
        d_sd = alpha * g;
@@ -429,37 +433,37 @@ contains
                        options%stop_g_relative * norm2(X)) then
           if (options%print_level > 0 ) write(options%out,3020) i
           return
-       else
-          Xnew = X + d;
-          call eval_J(jstatus, Xnew, Jnew)
-          if (jstatus > 0) write( options%out, 1010) jstatus
-          call eval_F(fstatus, Xnew, fnew)
-          if (fstatus > 0) write( options%out, 1020) fstatus
-
-          rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
-                ( norm2(f)**2 - norm2(f + matmul(J,d))**2)
-
-          if (rho > 0) then
-             X = Xnew;
-             J = Jnew;
-             f = fnew;
-             g = - matmul(transpose(J),f);
-             
-             if (options%print_level >=3) write(options%out,3010) 0.5 * norm2(f)**2
-             
-          end if
-          
-          ! todo :: finer-grained changes (successful, too_successful...)
-          if (rho > 0.75) then !options%eta_very_successful) then
-             if (options%print_level >=3) write(options%out,3040)
-             Delta = max(Delta, 3.0 * norm2(d) )
-          else
-             if (options%print_level >=3) write(options%out,3050)
-             Delta = Delta / 2.0
-          end if
-
        end if
-
+       
+       Xnew = X + d;
+       call eval_J(jstatus, Xnew, Jnew)
+       if (jstatus > 0) write( options%out, 1010) jstatus
+       call eval_F(fstatus, Xnew, fnew)
+       if (fstatus > 0) write( options%out, 1020) fstatus
+       
+       rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
+            ( norm2(f)**2 - norm2(f + matmul(J,d))**2)
+       
+       if (rho > 0) then
+          X = Xnew;
+          J = Jnew;
+          f = fnew;
+          g = - matmul(transpose(J),f);
+          
+          if (options%print_level >=3) write(options%out,3010) 0.5 * norm2(f)**2
+          
+       end if
+          
+       ! todo :: finer-grained changes (successful, too_successful...)
+       if (rho > 0.75) then !options%eta_very_successful) then
+          if (options%print_level >=3) write(options%out,3040)
+          Delta = max(Delta, 3.0 * norm2(d) )
+       else
+          if (options%print_level >=3) write(options%out,3050)
+          Delta = Delta / 2.0
+       end if
+       
+ 
     end do main_loop
 
     if (options%print_level > 0 ) write(options%out,1030) 
