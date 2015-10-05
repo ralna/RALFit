@@ -392,7 +392,7 @@ contains
     real(wp), DIMENSION(m,n) :: J, Jnew
     real(wp), DIMENSION(m) :: f, fnew
     real(wp), DIMENSION(n) :: g, d_sd, d_gn, d, ghat, Xnew
-    real(wp) :: alpha, beta, Delta, rho
+    real(wp) :: alpha, beta, Delta, rho, normJF0, normF0
 
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
@@ -402,8 +402,11 @@ contains
     if (jstatus > 0) write( options%out, 1010) jstatus
     call eval_F(fstatus, X, f)
     if (fstatus > 0) write( options%out, 1020) fstatus
-
+    
+    normF0 = norm2(f)
     g = - matmul(transpose(J),f);
+    normJF0 = norm2(g)
+    
 
     main_loop: do i = 1,options%maxit
        
@@ -428,15 +431,6 @@ contains
           d = alpha * d_sd + beta * ghat
        end if
 
-       !++++++++++++++++++!
-       ! Test convergence !
-       !++++++++++++++++++!
-       
-       if (norm2(d) <= options%stop_g_absolute + &
-                       options%stop_g_relative * norm2(X)) then
-          if (options%print_level > 0 ) write(options%out,3020) i
-          return
-       end if
        
        !++++++++++++++++++!
        ! Accept the step? !
@@ -449,7 +443,7 @@ contains
        if (fstatus > 0) write( options%out, 1020) fstatus
        
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
-            ( norm2(f)**2 - norm2(f + matmul(J,d))**2)
+             ( norm2(f)**2 - norm2(f + matmul(J,d))**2)
        
        if (rho > options%eta_successful) then
           X = Xnew;
@@ -458,6 +452,22 @@ contains
           g = - matmul(transpose(J),f);
           
           if (options%print_level >=3) write(options%out,3010) 0.5 * norm2(f)**2
+          if (options%print_level >=3) write(options%out,3060) norm2(g)/norm2(f)
+
+          !++++++++++++++++++!
+          ! Test convergence !
+          !++++++++++++++++++!
+                   
+          if ( norm2(f) <= options%stop_g_absolute + &
+               options%stop_g_relative * normF0) then
+             if (options%print_level > 0 ) write(options%out,3020) i
+             return
+          end if
+          if ( (norm2(g)/norm2(f)) <= options%stop_g_absolute + &
+               options%stop_g_relative * (normJF0/normF0)) then
+             if (options%print_level > 0 ) write(options%out,3020) i
+             return
+          end if
           
        end if
           
@@ -497,7 +507,7 @@ contains
 3030 FORMAT('== Starting iteration ',i0,' ==')
 3040 FORMAT('Very successful step -- increasing Delta')
 3050 FORMAT('Successful step -- decreasing Delta')
-
+3060 FORMAT('||J''f||/||f|| = ',ES12.4)
 !  End of subroutine RAL_NLLS
 
      END SUBROUTINE RAL_NLLS
