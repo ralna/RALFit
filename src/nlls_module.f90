@@ -94,7 +94,7 @@ module nlls_module
 
      INTEGER :: nlls_method = 1
 
-!   specify the method used to solve the nlls problem
+!   specify the method used to solve the trust-region sub problem
 !      1 Powell's dogleg
 !      ...
 
@@ -546,14 +546,26 @@ contains
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
      real(wp) :: alpha, beta
-     real(wp) :: d_sd(n), d_gn(n), ghat(n)
+     real(wp) :: d_sd(n), d_(n), ghat(n)
      ! todo: would it be cheaper to allocate this memory in the top loop?
      integer :: slls_status, fb_status
 
      alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
        
      d_sd = alpha * g;
-     call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
+
+     ! Solve the linear problem...
+     select case (options%model)
+     case (1)
+        ! linear model...
+        call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
+     case default
+        if (options%print_level> 0) then
+           write(options%error,'(a)') 'Error: model not supported in dogleg'
+        end if
+        return
+     end if
+
      
      if (norm2(d_gn) <= Delta) then
         d = d_gn
