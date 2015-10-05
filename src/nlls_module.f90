@@ -393,10 +393,8 @@ contains
     real(wp), DIMENSION(m) :: f, fnew
     real(wp), DIMENSION(n) :: g, d_sd, d_gn, d, ghat, Xnew
     real(wp) :: alpha, beta, Delta, rho
-    
 
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
-
 
     Delta = options%initial_radius
     
@@ -407,16 +405,15 @@ contains
 
     g = - matmul(transpose(J),f);
 
-    main_loop: do i = 1,2!options%maxit
+    main_loop: do i = 1,options%maxit
+       
+       if ( options%print_level >= 3 )  write( options%out , 3030 ) i
        
        alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
        
        d_sd = alpha * g;
        call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
        
-       write(*,*) '|| d_sd || = ', norm2(d_sd)
-       write(*,*) '|| d_gn || = ', norm2(d_gn)
-
        if (norm2(d_gn) <= Delta) then
           d = d_gn
        else if (norm2( alpha * d_sd ) >= Delta) then
@@ -426,9 +423,6 @@ contains
           call findbeta(d_sd,ghat,alpha,Delta,beta,fb_status)
           d = alpha * d_sd + beta * ghat
        end if
-
-       write(*,*) 'norm2(x) = ', norm2(X)
-       write(*,*) 'norm2(d) = ', norm2(d)
 
        ! Test convergence
        if (norm2(d) <= & !options%stop_g_absolute + & 
@@ -443,7 +437,7 @@ contains
           if (fstatus > 0) write( options%out, 1020) fstatus
 
           rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
-                ( norm2(f)**2 - norm2(f - matmul(J,d))**2)
+                ( norm2(f)**2 - norm2(f + matmul(J,d))**2)
 
           if (rho > 0) then
              X = Xnew;
@@ -456,9 +450,11 @@ contains
           end if
           
           ! todo :: finer-grained changes (successful, too_successful...)
-          if (rho > options%eta_very_successful) then
+          if (rho > 0.75) then !options%eta_very_successful) then
+             if (options%print_level >=3) write(options%out,3040)
              Delta = max(Delta, 3.0 * norm2(d) )
           else
+             if (options%print_level >=3) write(options%out,3050)
              Delta = Delta / 2.0
           end if
 
@@ -484,6 +480,9 @@ contains
 3000 FORMAT(/,'* Running RAL_NLLS *')
 3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
 3020 FORMAT('RAL_NLLS converged at iteration ',I6)
+3030 FORMAT('== Starting iteration ',i0,' ==')
+3040 FORMAT('Very successful step -- increasing Delta')
+3050 FORMAT('Successful step -- decreasing Delta')
 
 !  End of subroutine RAL_NLLS
 
@@ -495,7 +494,7 @@ contains
 !  solve_LLS, a subroutine to solve a linear least squares problem
 !  -----------------------------------------------------------------
 
-       REAL(wp), DIMENSION(:,:), INTENT(INOUT) :: J
+       REAL(wp), DIMENSION(:,:), INTENT(IN) :: J
        REAL(wp), DIMENSION(:), INTENT(IN) :: f
        INTEGER, INTENT(IN) :: method, n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
@@ -504,7 +503,7 @@ contains
        character(1) :: trans = 'N'
        integer :: nrhs = 1, lwork, lda, ldb
        real(wp), allocatable :: temp(:), work(:)
-       
+       REAL(wp), DIMENSION(:,:), allocatable :: Jlls
        integer :: i
 
        lda = m
@@ -514,7 +513,8 @@ contains
        lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
        allocate(work(lwork))
        
-       call dgels(trans, m, n, nrhs, J, lda, temp, ldb, work, lwork, status)
+       Jlls = J
+       call dgels(trans, m, n, nrhs, Jlls, lda, temp, ldb, work, lwork, status)
 
        d_gn = -temp(1:n)
               
@@ -620,7 +620,7 @@ contains
           J(i,1) =  - x_data(i) * exp( X(1) * x_data(i) + X(2) )
           J(i,2) =  - exp( X(1) * x_data(i) + X(2) )
        end do
-
+       
 
 ! end of subroutine eval_J
 
