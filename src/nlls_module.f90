@@ -152,7 +152,7 @@ module nlls_module
      
 !   maximum permitted trust-region radius
 
-!$$     REAL ( KIND = wp ) :: maximum_radius = ten ** 8
+     REAL ( KIND = wp ) :: maximum_radius = ten ** 8
 
 !   a potential iterate will only be accepted if the actual decrease
 !    f - f(x_new) is larger than %eta_successful times that predicted
@@ -160,18 +160,18 @@ module nlls_module
 !    increased if this relative decrease is greater than %eta_very_successful
 !    but smaller than %eta_too_successful
 
-!$$     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 8 )
+     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 8 )
      REAL ( KIND = wp ) :: eta_very_successful = point9
-!$$     REAL ( KIND = wp ) :: eta_too_successful = two
+     REAL ( KIND = wp ) :: eta_too_successful = two
 
 !   on very successful iterations, the trust-region radius will be increased by
 !    the factor %radius_increase, while if the iteration is unsucceful, the 
 !    radius will be decreased by a factor %radius_reduce but no more than
 !    %radius_reduce_max
 
-!$$     REAL ( KIND = wp ) :: radius_increase = two
-!$$     REAL ( KIND = wp ) :: radius_reduce = half
-!$$     REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
+     REAL ( KIND = wp ) :: radius_increase = two
+     REAL ( KIND = wp ) :: radius_reduce = half
+     REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
        
 !   the smallest value the onjective function may take before the problem
 !    is marked as unbounded
@@ -428,13 +428,20 @@ contains
           d = alpha * d_sd + beta * ghat
        end if
 
-       ! Test convergence
-       if (norm2(d) <=  options%stop_g_absolute + &
+       !++++++++++++++++++!
+       ! Test convergence !
+       !++++++++++++++++++!
+       
+       if (norm2(d) <= options%stop_g_absolute + &
                        options%stop_g_relative * norm2(X)) then
           if (options%print_level > 0 ) write(options%out,3020) i
           return
        end if
        
+       !++++++++++++++++++!
+       ! Accept the step? !
+       !++++++++++++++++++!
+
        Xnew = X + d;
        call eval_J(jstatus, Xnew, Jnew)
        if (jstatus > 0) write( options%out, 1010) jstatus
@@ -444,7 +451,7 @@ contains
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
             ( norm2(f)**2 - norm2(f + matmul(J,d))**2)
        
-       if (rho > 0) then
+       if (rho > options%eta_successful) then
           X = Xnew;
           J = Jnew;
           f = fnew;
@@ -454,17 +461,20 @@ contains
           
        end if
           
-       ! todo :: finer-grained changes (successful, too_successful...)
-       if (rho > 0.75) then !options%eta_very_successful) then
+       !++++++++++++++++++++++!
+       ! Update the TR radius !
+       !++++++++++++++++++++++!
+
+       if ( (rho > options%eta_very_successful) &
+            .and. (rho < options%eta_too_successful) ) then
           if (options%print_level >=3) write(options%out,3040)
-          Delta = max(Delta, 3.0 * norm2(d) )
-       else
+          Delta = max(options%maximum_radius, options%radius_increase * Delta )
+       else if (rho < options%eta_successful) then
           if (options%print_level >=3) write(options%out,3050)
-          Delta = Delta / 2.0
+          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
        end if
        
- 
-    end do main_loop
+     end do main_loop
 
     if (options%print_level > 0 ) write(options%out,1030) 
 
