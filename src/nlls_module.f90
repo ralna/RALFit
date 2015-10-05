@@ -425,7 +425,7 @@ contains
        end if
 
        ! Test convergence
-       if (norm2(d) <= & !options%stop_g_absolute + & 
+       if (norm2(d) <=  options%stop_g_absolute + &
                        options%stop_g_relative * norm2(X)) then
           if (options%print_level > 0 ) write(options%out,3020) i
           return
@@ -513,7 +513,7 @@ contains
        lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
        allocate(work(lwork))
        
-       Jlls = J
+       Jlls = J ! We need to take a copy as dgels overwrites J
        call dgels(trans, m, n, nrhs, Jlls, lda, temp, ldb, work, lwork, status)
 
        d_gn = -temp(1:n)
