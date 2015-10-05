@@ -71,7 +71,7 @@ module nlls_module
 !      5  secant second-order (limited-memory BFGS, with %lbfgs_vectors history)
 !      6  secant second-order (limited-memory SR1, with %lbfgs_vectors history)
 
-!$$     INTEGER :: model = 2
+     INTEGER :: model = 1
 
 !   specify the norm used. The norm is defined via ||v||^2 = v^T P v,
 !    and will define the preconditioner used for iterative methods.
@@ -400,7 +400,7 @@ contains
     real(wp), DIMENSION(m,n) :: J, Jnew
     real(wp), DIMENSION(m) :: f, fnew
     real(wp), DIMENSION(n) :: d, g, Xnew
-    real(wp) :: Delta, rho, normJF0, normF0
+    real(wp) :: Delta, rho, normJF0, normF0, md
 
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
@@ -436,8 +436,10 @@ contains
        call eval_F(fstatus, Xnew, fnew)
        if (fstatus > 0) write( options%out, 1020) fstatus
        
+       call evaluate_model(f,J,d,md,options)
+
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
-             ( norm2(f)**2 - norm2(f + matmul(J,d))**2)
+             ( norm2(f)**2 - md)
        
        if (rho > options%eta_successful) then
           X = Xnew;
@@ -716,6 +718,38 @@ contains
 !!$       J(4,4) = - sqrt(10.0) * 2.0 * (X(1) - X(4))
 
      END SUBROUTINE eval_J
+
+     subroutine evaluate_model(f,J,d,md,options)
+! --------------------------------------------------
+! evaluate_model, evaluate the model at the point d
+! --------------------------------------------------       
+
+       real(wp), intent(in)  :: f(:), d(:), J(:,:)
+       real(wp), intent(out) :: md
+       TYPE( NLLS_control_type ), INTENT( IN ) :: options
+       
+
+       select case (options%model)
+       
+       case (1) ! first-order (no Hessian)
+          md = norm2(f + matmul(J,d))**2
+       case (2) ! second-order (exact hessian)
+          if (options%print_level > 0) then
+             write(options%error,'(a)') 'Second order methods to be implemented'
+             return
+          end if
+       case (3) ! barely second-order (identity Hessian)
+          md = norm2(f + matmul(J,d) + dot_product(d,d))**2
+       case default
+          if (options%print_level > 0) then
+             write(options%error,'(a)') 'Error: unsupported model specified'
+          end if
+          return
+          
+       end select
+
+     end subroutine evaluate_model
+
 
      subroutine generate_data_example(x_data,y_data,num_observations)
 
