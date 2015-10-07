@@ -546,7 +546,7 @@ contains
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
      real(wp) :: alpha, beta
-     real(wp) :: d_sd(n), d_(n), ghat(n)
+     real(wp) :: d_sd(n), d_gn(n), d_(n), ghat(n)
      ! todo: would it be cheaper to allocate this memory in the top loop?
      integer :: slls_status, fb_status
 
@@ -564,7 +564,7 @@ contains
            write(options%error,'(a)') 'Error: model not supported in dogleg'
         end if
         return
-     end if
+     end select
 
      
      if (norm2(d_gn) <= Delta) then
