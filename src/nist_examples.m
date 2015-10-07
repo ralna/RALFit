@@ -48,7 +48,7 @@ for i = 1:length(e) % loop over the problems
     for j = 1:length(grad{i})
         for k = 1:length(grad{i})
             hess_string = char(hess{i}(j,k));
-            hess_string = strrep(jac_string,'^','**');
+            hess_string = strrep(hess_string,'^','**');
             fprintf(fileID,'h%i(%i,%i) = %s \n',i,j,k,hess_string); 
         end
     end
