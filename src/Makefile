@@ -1,6 +1,9 @@
 #Select compiler and options from below
 ############################
 FC = gfortran
+CC = gcc -Wall -g
+C99_FLAG = -std=c99
+
 FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp -fprofile-arcs -ftest-coverage
 #FC = ifort
 #FFLAGS = -g -C -static -openmp
@@ -42,10 +45,15 @@ driver.o : nlls_module.o
 driver: driver.o nlls_module.o # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
+cdriver: cdriver.o nlls_module.o # common90.o ddeps90.o ddeps.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
 BLASDIR=$(TOPDIR)/blas
 LAPACKDIR=$(TOPDIR)/lapack
 
 # These two rules tell us how to compile module files from source files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
 %.o: %.f90
 	$(FC) $(FFLAGS) -c -o $@ $<
 %.o: %.f
