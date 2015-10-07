@@ -1,6 +1,7 @@
 program driver
 
 use nlls_module
+use example_module
 
 integer                   :: n, m, len_work_int, len_work_real, i
 real(wp), allocatable     :: X(:), Work_real(:)
@@ -12,7 +13,6 @@ write(*,*) '==============='
 write(*,*) 'RAL NLLS driver'
 write(*,*) '==============='
 write(*,*) ' '
-
 
 n = 2
 
@@ -31,6 +31,7 @@ X(2) = 2.0
 
 options%print_level = 3
 
+
 call ral_nlls(n, m, X, Work_int, len_work_int, & 
               Work_real, len_work_real,         &
               eval_F, eval_J,                   &
@@ -42,5 +43,4 @@ end do
 
 
 end program driver
-
 
