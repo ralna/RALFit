@@ -546,7 +546,7 @@ contains
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
      real(wp) :: alpha, beta
-     real(wp) :: d_sd(n), d_gn(n), d_(n), ghat(n)
+     real(wp) :: d_sd(n), d_gn(n), ghat(n)
      ! todo: would it be cheaper to allocate this memory in the top loop?
      integer :: slls_status, fb_status
 
