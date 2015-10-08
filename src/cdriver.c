@@ -18,8 +18,6 @@ int main(void) {
   printf("~  C version  ~\n");
   printf("===============\n");
 
-  /*  double *X;
-   *X = (double*) malloc( n );*/
   double X[n];
   X[0] = 1.0;
   X[1] = 2.0;
