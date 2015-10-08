@@ -399,7 +399,7 @@ contains
     integer :: jstatus=0, fstatus=0
     integer :: i
     real(wp), DIMENSION(m,n) :: J, Jnew
-    real(wp), DIMENSION(m) :: f, fnew
+     real(wp), DIMENSION(m) :: f, fnew
     real(wp), DIMENSION(n) :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
