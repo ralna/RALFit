@@ -1,6 +1,9 @@
 /* COPYRIGHT (c) 2015 Science and Technology Facilities Council (STFC)
  * All rights reserved
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef ral_nlls_h
 #define ral_nlls_h
@@ -61,4 +64,8 @@ void ral_nlls_int_func_d( const int n, const int m,
 		 struct nlls_inform_type *status,
 		 struct nlls_control_type *options);
 
+#endif
+
+#ifdef __cplusplus
+} /* extern "C" */
 #endif
