@@ -41,6 +41,17 @@ do i = 1,n
    write(*,*) X(i)
 end do
 
+X(1) = 1.0 
+X(2) = 2.0
+
+call ral_nlls_int_func(n, m, X, Work_int, len_work_int, & 
+              Work_real, len_work_real,         &
+              status, options )
+
+do i = 1,n
+   write(*,*) X(i)
+end do
+
 
 end program driver
 

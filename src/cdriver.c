@@ -10,34 +10,32 @@ int main(void) {
   const int m = 67;
   
   /* Derived types */
-  struct NLLS_control_type options;
-  struct NLLS_inform_type status;
+  struct nlls_control_type options;
+  struct nlls_inform_type status;
 
-  int len_work_int = n;
-  int *Work_int[len_work_int];
-  /*  int *Work_int;
-      %  *Work_int = (int*) malloc( len_work_int * sizeof(int) );*/
-  int len_work_real = n;
-  double *Work_real[len_work_real];
-  /*  double *Work_real;
-   *Work_real = (double*) malloc( len_work_real * sizeof(double) );*/
+  printf("===============\n");
+  printf("RAL NLLS driver\n");
+  printf("~  C version  ~\n");
+  printf("===============\n");
 
   /*  double *X;
    *X = (double*) malloc( n );*/
-  double *X[n];
-  (*X)[0] = 1.0;
-  (*X)[1] = 2.0;
+  double X[n];
+  X[0] = 1.0;
+  X[1] = 2.0;
 
-  NLLS_default_control(&options);
+  nlls_default_control(&options);
   
-  RAL_NLLS(n, m, *X, *Work_int, len_work_int, 
-	   *Work_real, len_work_real,
-	   eval_F, eval_J,
+  options.print_level = 3;
+  
+  ral_nlls_int_func(n, m, X, 
 	   &status, &options);
 
-  free(X); free(Work_int); free(Work_real);
-
-  printf("Seems to be working \n");
+  int i;
+  printf("\nX = \n");
+  for(i=0; i < n; i++) {
+    printf("  %5.4f \n",X[i]);
+  }
   
   return 0; /* success */
 }

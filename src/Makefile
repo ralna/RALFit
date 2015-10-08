@@ -38,14 +38,16 @@ DLAPACK = $(LAPACKDIR)/dgels.f
 #DDEPS90 = 
 
 
-driver.o : nlls_module.o example_module.o
-
+driver.o :  example_module.o nlls_module.o
+cdriver.o : example_module.o nlls_module.o
 #nlls_module.o : common90.o ddeps90.o ddeps.o  
 
-driver: driver.o nlls_module.o  example_module.o # common90.o ddeps90.o ddeps.o
+nlls_module.o : example_module.o
+
+driver: driver.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-cdriver: cdriver.o nlls_module.o # common90.o ddeps90.o ddeps.o
+cdriver: cdriver.o example_module.o ral_nlls_ciface.o nlls_module.o # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 BLASDIR=$(TOPDIR)/blas

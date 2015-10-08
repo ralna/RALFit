@@ -5,17 +5,18 @@
 #ifndef ral_nlls_h
 #define ral_nlls_h
 
-#ifndef NLLS_control_type
-#define NLLS_default_control NLLS_default_control_d
-#define NLLS_control_type NLLS_control_type_d
-#define NLLS_inform_type NLLS_inform_type_d
-#define RAL_NLLS RAL_NLLS_d
+#ifndef nlls_control_type
+#define nlls_default_control nlls_default_control_d
+#define nlls_control_type nlls_control_type_d
+#define nlls_inform_type nlls_inform_type_d
+/*#define ral_nlls ral_nlls_d*/
+#define ral_nlls_int_func ral_nlls_int_func_d
 #endif
 
-typedef double NLLSpkgtype_d_;
+typedef double nllspkgtype_d_;
 
 /* Derived type to hold control parameters for ral_nlls */
-struct NLLS_control_type_d {
+struct nlls_control_type_d {
   int f_arrays; /* Use 1-based indexing if true(!=0) else 0-based */
   
   int error; /* Fortran output stream for error messages */
@@ -37,21 +38,27 @@ struct NLLS_control_type_d {
   double radius_reduce_max; /* max amount to reduce the radius by */
 };
 
-struct NLLS_inform_type_d {
+struct nlls_inform_type_d {
   int status; /* flag */
 };
 
 /* Set default values of control */
-void NLLS_default_control_d( struct NLLS_control_type *options );
+void nlls_default_control_d( struct nlls_control_type *options );
 
-/* Perform the NLLS solve */
-void RAL_NLLS_d( const int n, const int m, 
-		 NLLSpkgtype_d_ X[],
+/* Perform the nlls solve */
+/* 
+   void ral_nlls_d( const int n, const int m, 
+		 nllspkgtype_d_ X[],
 		 int Work_int[], const int len_work_int,
-		 NLLSpkgtype_d_ Work_real[], const int len_work_real,
+		 nllspkgtype_d_ Work_real[], const int len_work_real,
 		 void (*eval_F)(int,double,double),
 		 void (*eval_J)(int,double,double),
-		 struct NLLS_inform_type *status,
-		 struct NLLS_control_type *options);
+		 struct nlls_inform_type *status,
+		 struct nlls_control_type *options);
+*/
+void ral_nlls_int_func_d( const int n, const int m, 
+		 nllspkgtype_d_ X[],
+		 struct nlls_inform_type *status,
+		 struct nlls_control_type *options);
 
 #endif

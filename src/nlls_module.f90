@@ -671,6 +671,42 @@ contains
        end select
 
      end subroutine evaluate_model
+     subroutine RAL_NLLS_int_func( n, m, X, status, options )
+    
+!  -----------------------------------------------------------------------------
+!  RAL_NLLS, a fortran subroutine for finding a first-order critical
+!   point (most likely, a local minimizer) of the nonlinear least-squares 
+!   objective function 1/2 ||F(x)||_2^2.
+
+!  Authors: RAL NA Group (Iain Duff, Nick Gould, Jonathan Hogg, Tyrone Rees, 
+!                         Jennifer Scott)
+!  -----------------------------------------------------------------------------
+
+!   Dummy arguments
+
+    USE ISO_FORTRAN_ENV
+    use example_module
+    INTEGER( int32 ), INTENT( IN ) :: n, m!, len_work_int, len_work_real
+    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
+!    INTEGER( int32), INTENT( IN ) :: Work_int(len_work_int)
+!    REAL( wp ), INTENT( IN ) :: Work_real(len_work_real)
+    TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
+    TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
 
+    INTEGER( int32 ) :: len_work_int, len_work_real
+    INTEGER( int32 ), allocatable :: Work_int(:)
+    REAL( wp ), allocatable :: Work_real(:)
+    
+    allocate( Work_int(len_work_int) ) 
+    allocate( Work_real(len_work_real) ) 
+    
+    call RAL_NLLS( n, m, X, Work_int, len_work_int,           &
+         Work_real, len_work_real,                            &
+         eval_F, eval_J,                                      &
+         status, options )
+  end subroutine RAL_NLLS_int_func
+    
 end module nlls_module
+
+
