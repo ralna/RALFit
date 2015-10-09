@@ -59,7 +59,7 @@ void nlls_default_control_d( struct nlls_control_type *options );
 		 struct nlls_inform_type *status,
 		 struct nlls_control_type *options);
 */
-void ral_nlls_int_func_d( const int n, const int m, 
+void ral_nlls_int_func_d( int n, int m, 
 		 nllspkgtype_d_ X[],
 		 struct nlls_inform_type *status,
 		 struct nlls_control_type *options);

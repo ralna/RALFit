@@ -189,6 +189,7 @@ subroutine ral_nlls_int_func_d(n, m, cX, &
   
   ! copy data in and associate pointers correctly
   call copy_control_in(coptions, foptions, f_arrays)
+  
   call C_F_POINTER(cX, fX, shape = (/ n /) )
 
   call f_ral_nlls_int_func( n, m, fX, &
