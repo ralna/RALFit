@@ -42,7 +42,7 @@ driver.o :  example_module.o nlls_module.o
 cdriver.o : example_module.o nlls_module.o
 #nlls_module.o : common90.o ddeps90.o ddeps.o  
 
-nlls_module.o : example_module.o
+example_module.o : nlls_module.o
 
 driver: driver.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
