@@ -4,7 +4,8 @@ module example_module
   implicit none 
 
   type, extends( params_base_type ) :: user_type
-     ! empty for now....
+     double precision, allocatable :: x_values(:)
+     double precision, allocatable :: y_values(:)
   end type user_type
 
 contains
@@ -28,19 +29,16 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
 
-!       integer, parameter :: num_observations = 67
        integer :: i
-       real( wp ) :: x_data( m ) !num_observations )
-       real( wp ) :: y_data( m ) !num_observations )
-
-       call generate_data_example(x_data,y_data,m)!num_observations)
 
 ! then, let's work this into the format we need
 ! X(1) = m, X(2) = c
-       do i = 1,m!num_observations
-          f(i) = y_data(i) - exp( X(1) * x_data(i) + X(2) )
-       end do
-       
+       select type(params)
+       type is(user_type)
+          do i = 1,m
+             f(i) = params%y_values(i) - exp( X(1) * params%x_values(i) + X(2) )
+          end do
+       end select
 
 !!$! let's use Powell's function for now....
 !!$       f(1) = X(1) + 10.0 * X(2)

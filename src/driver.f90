@@ -33,6 +33,11 @@ X(2) = 2.0
 
 options%print_level = 3
 
+! Get params for the function evaluations
+allocate(params%x_values(m))
+allocate(params%y_values(m))
+
+call generate_data_example(params%x_values,params%y_values,m)
 
 call ral_nlls(n, m, X, Work_int, len_work_int, & 
               Work_real, len_work_real,         &

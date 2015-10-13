@@ -401,31 +401,7 @@ contains
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
     class( params_base_type ) :: params
-    
-!!$!  Interface blocks (e.g.)
-!!$
-!!$    INTERFACE
-!!$       SUBROUTINE eval_F( status, X, f )
-!!$         USE ISO_FORTRAN_ENV
-!!$         
-!!$         INTEGER ( int32 ), INTENT( OUT ) :: status
-!!$         REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
-!!$         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-!!$         
-!!$       END SUBROUTINE eval_F
-!!$    END INTERFACE
-!!$
-!!$    INTERFACE
-!!$       SUBROUTINE eval_J( status, X, J )
-!!$         USE ISO_FORTRAN_ENV
-!!$
-!!$         INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-!!$         INTEGER ( int32 ), INTENT( OUT ) :: status
-!!$         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-!!$         REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
-!!$       END SUBROUTINE eval_J
-!!$    END INTERFACE
-    
+      
     integer :: jstatus=0, fstatus=0
     integer :: i
     real(wp), DIMENSION(m,n) :: J, Jnew
