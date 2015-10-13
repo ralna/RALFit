@@ -344,6 +344,31 @@ module nlls_module
 
   END TYPE NLLS_inform_type
 
+  type params_base_type
+     ! deliberately empty
+  end type params_base_type
+  
+  abstract interface
+     subroutine eval_f_type(n, x, f, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(in) :: n
+       real(wp), dimension(*), intent(in)  :: x
+       real(wp), dimension(*), intent(out) :: f
+       class(params_base_type), intent(in) :: params
+  end interface
+
+  abstract interface
+     subroutine eval_j_type(n, x, J, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(in) :: n
+       real(wp), dimension(*), intent(in)  :: x
+       real(wp), dimension(*,*), intent(out) :: J
+       class(params_base_type), intent(in) :: params
+  end interface
+
+  
 contains
 
 
@@ -368,38 +393,39 @@ contains
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
     INTEGER( int32), INTENT( IN ) :: Work_int(len_work_int)
     REAL( wp ), INTENT( IN ) :: Work_real(len_work_real)
-    external :: eval_F, eval_J
     TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
-
-!  Interface blocks (e.g.)
-
-    INTERFACE
-       SUBROUTINE eval_F( status, X, f )
-         USE ISO_FORTRAN_ENV
-         
-         INTEGER ( int32 ), INTENT( OUT ) :: status
-         REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
-         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-         
-       END SUBROUTINE eval_F
-    END INTERFACE
-
-    INTERFACE
-       SUBROUTINE eval_J( status, X, J )
-         USE ISO_FORTRAN_ENV
-
-         INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-         INTEGER ( int32 ), INTENT( OUT ) :: status
-         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-         REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
-       END SUBROUTINE eval_J
-    END INTERFACE
+    procedure( eval_f_type ) :: eval_F
+    procedure( eval_j_type ) :: eval_J
+    
+!!$!  Interface blocks (e.g.)
+!!$
+!!$    INTERFACE
+!!$       SUBROUTINE eval_F( status, X, f )
+!!$         USE ISO_FORTRAN_ENV
+!!$         
+!!$         INTEGER ( int32 ), INTENT( OUT ) :: status
+!!$         REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
+!!$         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+!!$         
+!!$       END SUBROUTINE eval_F
+!!$    END INTERFACE
+!!$
+!!$    INTERFACE
+!!$       SUBROUTINE eval_J( status, X, J )
+!!$         USE ISO_FORTRAN_ENV
+!!$
+!!$         INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+!!$         INTEGER ( int32 ), INTENT( OUT ) :: status
+!!$         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+!!$         REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
+!!$       END SUBROUTINE eval_J
+!!$    END INTERFACE
     
     integer :: jstatus=0, fstatus=0
     integer :: i
     real(wp), DIMENSION(m,n) :: J, Jnew
-     real(wp), DIMENSION(m) :: f, fnew
+    real(wp), DIMENSION(m) :: f, fnew
     real(wp), DIMENSION(n) :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
