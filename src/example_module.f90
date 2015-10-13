@@ -1,6 +1,11 @@
 module example_module
 
+!  use :: nlls_module, only :: params_base_type
   implicit none 
+
+ ! type, extends( params_base_type ) :: user_type
+     ! empty for now....
+!  end type user_type
 
 contains
   

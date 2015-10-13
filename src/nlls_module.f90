@@ -349,23 +349,25 @@ module nlls_module
   end type params_base_type
   
   abstract interface
-     subroutine eval_f_type(n, x, f, params)
-       import :: params_base_type
+     subroutine eval_f_type(status, x, f)
+!       import :: params_base_type
        implicit none
-       integer, intent(in) :: n
-       real(wp), dimension(*), intent(in)  :: x
-       real(wp), dimension(*), intent(out) :: f
-       class(params_base_type), intent(in) :: params
+       integer, intent(out) :: status
+       double precision, dimension(:), intent(in)  :: x
+       double precision, dimension(:), intent(out) :: f
+ !      class(params_base_type), intent(in) :: params
+     end subroutine eval_f_type
   end interface
 
   abstract interface
-     subroutine eval_j_type(n, x, J, params)
-       import :: params_base_type
+     subroutine eval_j_type(status, x, J)
+!       import :: params_base_type
        implicit none
-       integer, intent(in) :: n
-       real(wp), dimension(*), intent(in)  :: x
-       real(wp), dimension(*,*), intent(out) :: J
-       class(params_base_type), intent(in) :: params
+       integer, intent(out) :: status
+       double precision, dimension(:), intent(in)  :: x
+       double precision, dimension(:,:), intent(out) :: J
+!       class(params_base_type), intent(in) :: params
+     end subroutine eval_j_type
   end interface
 
   
