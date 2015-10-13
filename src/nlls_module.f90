@@ -376,9 +376,8 @@ module nlls_module
 contains
 
 
-  SUBROUTINE RAL_NLLS( n, m, X, Work_int, len_work_int,                     &
-                       Work_real, len_work_real,                            &
-                       eval_F, eval_J, params,                              &
+  SUBROUTINE RAL_NLLS( n, m, X,                   & 
+                       eval_F, eval_J, params,    &
                        status, options )
     
 !  -----------------------------------------------------------------------------
@@ -393,10 +392,8 @@ contains
 !   Dummy arguments
 
     USE ISO_FORTRAN_ENV
-    INTEGER( int32 ), INTENT( IN ) :: n, m, len_work_int, len_work_real
+    INTEGER( int32 ), INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    INTEGER( int32), INTENT( IN ) :: Work_int(len_work_int)
-    REAL( wp ), INTENT( IN ) :: Work_real(len_work_real)
     TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
