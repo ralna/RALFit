@@ -1,16 +1,16 @@
 module example_module
 
-!  use :: nlls_module, only :: params_base_type
+  use :: nlls_module, only : params_base_type
   implicit none 
 
- ! type, extends( params_base_type ) :: user_type
+  type, extends( params_base_type ) :: user_type
      ! empty for now....
-!  end type user_type
+  end type user_type
 
 contains
   
   
-SUBROUTINE eval_F( status, X, f )
+SUBROUTINE eval_F( status, n, m, X, f, params)
 
 !  -------------------------------------------------------------------
 !  eval_F, a subroutine for evaluating the function f at a point X
@@ -20,23 +20,24 @@ SUBROUTINE eval_F( status, X, f )
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
+       INTEGER ( int32 ), INTENT( IN ) :: n, m 
        REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
        REAL ( real64 ), DIMENSION( : ),INTENT( IN )  :: X
-
+       class( params_base_type ), intent(in) :: params
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
 
-       integer, parameter :: num_observations = 67
+!       integer, parameter :: num_observations = 67
        integer :: i
-       real( wp ) :: x_data( num_observations )
-       real( wp ) :: y_data( num_observations )
+       real( wp ) :: x_data( m ) !num_observations )
+       real( wp ) :: y_data( m ) !num_observations )
 
-       call generate_data_example(x_data,y_data,num_observations)
+       call generate_data_example(x_data,y_data,m)!num_observations)
 
 ! then, let's work this into the format we need
 ! X(1) = m, X(2) = c
-       do i = 1,num_observations
+       do i = 1,m!num_observations
           f(i) = y_data(i) - exp( X(1) * x_data(i) + X(2) )
        end do
        

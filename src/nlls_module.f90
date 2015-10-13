@@ -349,13 +349,14 @@ module nlls_module
   end type params_base_type
   
   abstract interface
-     subroutine eval_f_type(status, x, f)
-!       import :: params_base_type
+     subroutine eval_f_type(status, n, m, x, f, params)
+       import :: params_base_type
        implicit none
        integer, intent(out) :: status
+       integer, intent(in) :: n,m 
        double precision, dimension(:), intent(in)  :: x
        double precision, dimension(:), intent(out) :: f
- !      class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(in) :: params
      end subroutine eval_f_type
   end interface
 
@@ -376,7 +377,7 @@ contains
 
   SUBROUTINE RAL_NLLS( n, m, X, Work_int, len_work_int,                     &
                        Work_real, len_work_real,                            &
-                       eval_F, eval_J,                                      &
+                       eval_F, eval_J, params,                              &
                        status, options )
     
 !  -----------------------------------------------------------------------------
@@ -399,6 +400,7 @@ contains
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
+    class( params_base_type ) :: params
     
 !!$!  Interface blocks (e.g.)
 !!$
@@ -437,7 +439,7 @@ contains
     
     call eval_J(jstatus, X, J)
     if (jstatus > 0) write( options%out, 1010) jstatus
-    call eval_F(fstatus, X, f)
+    call eval_F(fstatus, n, m, X, f, params)
     if (fstatus > 0) write( options%out, 1020) fstatus
     
     normF0 = norm2(f)
@@ -461,7 +463,7 @@ contains
        Xnew = X + d;
        call eval_J(jstatus, Xnew, Jnew)
        if (jstatus > 0) write( options%out, 1010) jstatus
-       call eval_F(fstatus, Xnew, fnew)
+       call eval_F(fstatus, n, m, Xnew, fnew, params)
        if (fstatus > 0) write( options%out, 1020) fstatus
        
        call evaluate_model(f,J,d,md,options)
