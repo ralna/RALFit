@@ -361,13 +361,14 @@ module nlls_module
   end interface
 
   abstract interface
-     subroutine eval_j_type(status, x, J)
-!       import :: params_base_type
+     subroutine eval_j_type(status, n, m, x, J, params)
+       import :: params_base_type
        implicit none
        integer, intent(out) :: status
+       integer, intent(in) :: n,m 
        double precision, dimension(:), intent(in)  :: x
        double precision, dimension(:,:), intent(out) :: J
-!       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(in) :: params
      end subroutine eval_j_type
   end interface
 
@@ -413,7 +414,7 @@ contains
 
     Delta = options%initial_radius
     
-    call eval_J(jstatus, X, J)
+    call eval_J(jstatus, n, m, X, J, params)
     if (jstatus > 0) write( options%out, 1010) jstatus
     call eval_F(fstatus, n, m, X, f, params)
     if (fstatus > 0) write( options%out, 1020) fstatus
@@ -437,7 +438,7 @@ contains
        !++++++++++++++++++!
 
        Xnew = X + d;
-       call eval_J(jstatus, Xnew, Jnew)
+       call eval_J(jstatus, n, m, Xnew, Jnew, params)
        if (jstatus > 0) write( options%out, 1010) jstatus
        call eval_F(fstatus, n, m, Xnew, fnew, params)
        if (fstatus > 0) write( options%out, 1020) fstatus

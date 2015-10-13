@@ -40,6 +40,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
           end do
        end select
 
+       status = 0
+       
 !!$! let's use Powell's function for now....
 !!$       f(1) = X(1) + 10.0 * X(2)
 !!$       f(2) = sqrt(5.0) * (X(3) - X(4))
@@ -50,7 +52,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        
      END SUBROUTINE eval_F
 
-SUBROUTINE eval_J( status, X, J )
+SUBROUTINE eval_J( status, n, m, X, J, params)
 
 !  -------------------------------------------------------------------
 !  eval_J, a subroutine for evaluating the Jacobian J at a point X
@@ -60,27 +62,28 @@ SUBROUTINE eval_J( status, X, J )
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
+       INTEGER ( int32 ), INTENT( IN ) :: n, m 
        REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
        REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+       class( params_base_type ), intent(in) :: params
 
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
 
-       integer, parameter :: num_observations = 67
        integer :: i
-       real( wp ) :: x_data( num_observations ), y_data( num_observations )
 
-! First, let's re-generate the data....
-       call generate_data_example(x_data,y_data,num_observations)
-
-! then, let's work this into the format we need
-! X(1) = m, X(2) = c
-       do i = 1,num_observations
-          J(i,1) =  - x_data(i) * exp( X(1) * x_data(i) + X(2) )
-          J(i,2) =  - exp( X(1) * x_data(i) + X(2) )
-       end do
+       ! let's work this into the format we need
+       ! X(1) = m, X(2) = c
+       select type(params)
+       type is(user_type)
+          do i = 1,m
+             J(i,1) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
+             J(i,2) =  - exp( X(1) * params%x_values(i) + X(2) )
+          end do
+       end select
        
+       status = 0
 
 ! end of subroutine eval_J
 
