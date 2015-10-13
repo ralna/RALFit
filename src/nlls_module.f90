@@ -344,12 +344,41 @@ module nlls_module
 
   END TYPE NLLS_inform_type
 
+  type params_base_type
+     ! deliberately empty
+  end type params_base_type
+  
+  abstract interface
+     subroutine eval_f_type(status, n, m, x, f, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(:), intent(in)  :: x
+       double precision, dimension(:), intent(out) :: f
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_f_type
+  end interface
+
+  abstract interface
+     subroutine eval_j_type(status, n, m, x, J, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(:), intent(in)  :: x
+       double precision, dimension(:,:), intent(out) :: J
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_j_type
+  end interface
+
+  
 contains
 
 
   SUBROUTINE RAL_NLLS( n, m, X, Work_int, len_work_int,                     &
                        Work_real, len_work_real,                            &
-                       eval_F, eval_J,                                      &
+                       eval_F, eval_J, params,                              &
                        status, options )
     
 !  -----------------------------------------------------------------------------
@@ -368,34 +397,12 @@ contains
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
     INTEGER( int32), INTENT( IN ) :: Work_int(len_work_int)
     REAL( wp ), INTENT( IN ) :: Work_real(len_work_real)
-    external :: eval_F, eval_J
     TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
-
-!  Interface blocks (e.g.)
-
-    INTERFACE
-       SUBROUTINE eval_F( status, X, f )
-         USE ISO_FORTRAN_ENV
-         
-         INTEGER ( int32 ), INTENT( OUT ) :: status
-         REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
-         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-         
-       END SUBROUTINE eval_F
-    END INTERFACE
-
-    INTERFACE
-       SUBROUTINE eval_J( status, X, J )
-         USE ISO_FORTRAN_ENV
-
-         INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-         INTEGER ( int32 ), INTENT( OUT ) :: status
-         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-         REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
-       END SUBROUTINE eval_J
-    END INTERFACE
-    
+    procedure( eval_f_type ) :: eval_F
+    procedure( eval_j_type ) :: eval_J
+    class( params_base_type ) :: params
+      
     integer :: jstatus=0, fstatus=0
     integer :: i
     real(wp), DIMENSION(m,n) :: J, Jnew
@@ -407,9 +414,9 @@ contains
 
     Delta = options%initial_radius
     
-    call eval_J(jstatus, X, J)
+    call eval_J(jstatus, n, m, X, J, params)
     if (jstatus > 0) write( options%out, 1010) jstatus
-    call eval_F(fstatus, X, f)
+    call eval_F(fstatus, n, m, X, f, params)
     if (fstatus > 0) write( options%out, 1020) fstatus
     
     normF0 = norm2(f)
@@ -431,9 +438,9 @@ contains
        !++++++++++++++++++!
 
        Xnew = X + d;
-       call eval_J(jstatus, Xnew, Jnew)
+       call eval_J(jstatus, n, m, Xnew, Jnew, params)
        if (jstatus > 0) write( options%out, 1010) jstatus
-       call eval_F(fstatus, Xnew, fnew)
+       call eval_F(fstatus, n, m, Xnew, fnew, params)
        if (fstatus > 0) write( options%out, 1020) fstatus
        
        call evaluate_model(f,J,d,md,options)
