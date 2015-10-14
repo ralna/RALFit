@@ -5,7 +5,9 @@ module ral_nlls_ciface
        f_nlls_control_type => nlls_control_type, &
        f_nlls_inform_type  => nlls_inform_type, &
        f_ral_nlls => ral_nlls, & 
-       f_ral_nlls_int_func => ral_nlls_int_func
+       f_params_base_type => params_base_type, &
+       f_c_test_pass_f => c_test_pass_f
+!       f_ral_nlls_int_func => ral_nlls_int_func
   implicit none
 
   integer, parameter :: wp = C_DOUBLE
@@ -35,8 +37,26 @@ module ral_nlls_ciface
   type, bind(C) :: nlls_inform_type 
      integer(C_INT) :: status
   end type nlls_inform_type
+
+  abstract interface
+     subroutine c_eval_f_type(fstatus, n, m, x, f, params)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(c_int), value :: n,m
+       integer(c_int) :: fstatus
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(out) :: f
+       type(C_PTR), value :: params
+     end subroutine c_eval_f_type
+  end interface
+
+  type, extends(f_params_base_type) :: params_wrapper
+     procedure(c_eval_f_type), nopass, pointer :: f
+     type(C_PTR) :: params
+  end type params_wrapper
   
 contains
+
   
   subroutine copy_control_in(ccontrol, fcontrol, f_arrays);
 
@@ -74,6 +94,20 @@ contains
     
   end subroutine copy_info_out
 
+  subroutine c_eval_f(fstatus, n, m, x, f, fparams)
+    integer, intent(in) :: n, m 
+    integer, intent(out) :: fstatus
+    double precision, dimension(*), intent(in) :: x
+    double precision, dimension(*), intent(out) :: f  
+    class(f_params_base_type), intent(in) :: fparams
+
+    select type(fparams)
+    type is(params_wrapper)
+       call fparams%f(fstatus,n,m,x(1:n),f(1:m),fparams%params)
+    end select
+    
+  end subroutine c_eval_f
+  
 end module ral_nlls_ciface
 
 subroutine nlls_default_control_d(ccontrol) bind(C)
@@ -105,6 +139,25 @@ subroutine nlls_default_control_d(ccontrol) bind(C)
 
   
 end subroutine nlls_default_control_d
+
+subroutine c_test_pass_f_d(n,m,f,params) bind(C)
+  use ral_nlls_ciface
+  implicit none
+  
+  integer(C_INT), value :: n,m
+  type(C_FUNPTR), value :: f
+  type(C_PTR), value :: params  
+
+  type(params_wrapper) :: fparams
+  
+  call c_f_procpointer(f, fparams%f)
+  fparams%params = params
+  
+  call f_c_test_pass_f(n, m, c_eval_f,fparams)
+  
+end subroutine c_test_pass_f_d
+
+
 !!$
 !!$subroutine ral_nlls_d(n, m, cX, &
 !!$                      cWork_int,len_work_int, &
@@ -168,35 +221,34 @@ end subroutine nlls_default_control_d
 !!$  
 !!$end subroutine ral_nlls_d
 
-
-subroutine ral_nlls_int_func_d(n, m, cX, &
-     cstatus, coptions) &
-     bind(C)
-
-  use ral_nlls_ciface 
-  implicit none
-
-  integer( C_INT ), value, INTENT( IN ) :: n, m
-  type( C_PTR ), value :: cX
-  TYPE( nlls_inform_type )  :: cstatus
-  TYPE( nlls_control_type ) :: coptions
-
-  REAL( wp ), DIMENSION( : ), pointer :: fX
-  TYPE( f_nlls_inform_type ) :: fstatus
-  TYPE( f_nlls_control_type ) :: foptions
-
-  logical :: f_arrays
-  
-  ! copy data in and associate pointers correctly
-  call copy_control_in(coptions, foptions, f_arrays)
-  
-  call C_F_POINTER(cX, fX, shape = (/ n /) )
-
-  call f_ral_nlls_int_func( n, m, fX, &
-       fstatus, foptions)
-
-  ! Copy data out
-   call copy_info_out(fstatus, cstatus)
-  
-end subroutine ral_nlls_int_func_d
+!!$subroutine ral_nlls_d(n, m, cX, &
+!!$     cstatus, coptions) &
+!!$     bind(C)
+!!$
+!!$  use ral_nlls_ciface 
+!!$  implicit none
+!!$
+!!$  integer( C_INT ), value, INTENT( IN ) :: n, m
+!!$  type( C_PTR ), value :: cX
+!!$  TYPE( nlls_inform_type )  :: cstatus
+!!$  TYPE( nlls_control_type ) :: coptions
+!!$
+!!$  REAL( wp ), DIMENSION( : ), pointer :: fX
+!!$  TYPE( f_nlls_inform_type ) :: fstatus
+!!$  TYPE( f_nlls_control_type ) :: foptions
+!!$
+!!$  logical :: f_arrays
+!!$  
+!!$  ! copy data in and associate pointers correctly
+!!$  call copy_control_in(coptions, foptions, f_arrays)
+!!$  
+!!$  call C_F_POINTER(cX, fX, shape = (/ n /) )
+!!$
+!!$  call f_ral_nlls_int_func( n, m, fX, &
+!!$       fstatus, foptions)
+!!$
+!!$  ! Copy data out
+!!$   call copy_info_out(fstatus, cstatus)
+!!$  
+!!$end subroutine ral_nlls_d
 

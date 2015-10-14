@@ -14,6 +14,7 @@ extern "C" {
 #define nlls_inform_type nlls_inform_type_d
 /*#define ral_nlls ral_nlls_d*/
 #define ral_nlls_int_func ral_nlls_int_func_d
+#define c_test_pass_f c_test_pass_f_d
 #endif
 
 typedef double nllspkgtype_d_;
@@ -48,21 +49,38 @@ struct nlls_inform_type_d {
 /* Set default values of control */
 void nlls_default_control_d( struct nlls_control_type *options );
 
+/* define the eval_f_type */
+typedef void (*eval_f_type) (int fstatus, 
+			     int n, 
+			     int m,
+			     const double *x, 
+			     double *f,
+			     const void *params);
+  
+typedef void (*eval_j_type) (int fstatus, 
+			     int n, 
+			     int m,
+			     const double *x, 
+			     double *j[m],
+			     const void *params);
+  // Tests....
+void c_test_pass_f_d( const int n, const int m,
+		      eval_f_type eval_f, void *params);
+
 /* Perform the nlls solve */
-/* 
-   void ral_nlls_d( const int n, const int m, 
+
+/* void ral_nlls_d( const int n, const int m, 
 		 nllspkgtype_d_ X[],
-		 int Work_int[], const int len_work_int,
-		 nllspkgtype_d_ Work_real[], const int len_work_real,
-		 void (*eval_F)(int,double,double),
-		 void (*eval_J)(int,double,double),
+		 eval_f_type eval_f,
+		 eval_j_type eval_j,
 		 struct nlls_inform_type *status,
 		 struct nlls_control_type *options);
 */
-void ral_nlls_int_func_d( int n, int m, 
+
+/*void ral_nlls_int_func_d( int n, int m, 
 		 nllspkgtype_d_ X[],
 		 struct nlls_inform_type *status,
-		 struct nlls_control_type *options);
+		 struct nlls_control_type *options);*/
 
 #endif
 

@@ -3,8 +3,15 @@
 #include <math.h>
 #include "ral_nlls.h"
 
+/* define the usertype */
+struct usertype {
+  double y_data[67];
+  double x_data[67];
+};
+
 void generate_data_example ( double *x_data, double *y_data, const int m); // prototype
-void eval_F ( int fstatus, const double *X, double *f);
+void eval_F ( int fstatus, const int n, const int m, 
+	      const double *X, double *f, const void *params);
 void eval_J ( int jstatus, const double *X, double (*J)[2]);
 
 /* A c driver for the ral_nlls program */
@@ -17,11 +24,15 @@ int main(void) {
   /* Derived types */
   struct nlls_control_type options;
   struct nlls_inform_type status;
-
+  struct usertype params;
+  
   printf("===============\n");
   printf("RAL NLLS driver\n");
   printf("~  C version  ~\n");
   printf("===============\n");
+
+  /* Generate the data... */
+  generate_data_example(params.x_data,params.y_data,m);
 
   double X[n];
   X[0] = 1.0;
@@ -31,18 +42,18 @@ int main(void) {
   
   options.print_level = 3;
   
-  ral_nlls_int_func(n, m, X, 
-	   &status, &options);
+  /*  ral_nlls_int_func(n, m, X, 
+      &status, &options);*/
 
   int i;
   printf("\nX = \n");
   for(i=0; i < n; i++) {
     printf("  %5.4f \n",X[i]);
   }
-  
+
   double f[m];
   int fstatus = 0;
-  eval_F(fstatus,X,f);
+  eval_F(fstatus,n,m,X,f,&params);
 
   printf("\nf = \n");
   for(i=0; i < m; i++) {
@@ -57,6 +68,8 @@ int main(void) {
   for(i=0; i < m; i++) {
     printf("  [%5.4f, %5.4f ]\n",J[i][1],J[i][2]);
   }
+  
+  c_test_pass_f(n, m, eval_F, &params);
 
   return 0; /* success */
 }
@@ -70,20 +83,19 @@ int main(void) {
 */
 
 
+
 /* Do a function evaluation */
-void eval_F( int fstatus, const double *X, double *f){
+void eval_F( int fstatus, const int n, const int m, 
+	      const double *X, double *f, const void *params){
   
-  const int m = 67;
+  struct usertype *myparams = (struct usertype *) params;
+
   int i;
-  double x_data[m];
-  double y_data[m];
-
-  generate_data_example(x_data,y_data,m);
-
-  for(i=0; i<m; i++) {
-    f[i] = y_data[i] - exp( X[0] * x_data[i] + X[1] );
-  }
   
+  for(i=0; i<m; i++) {
+    f[i] = myparams->y_data[i] - exp( X[0] * myparams->x_data[i] + X[1] );
+  }
+
   fstatus = 0;
 }
 

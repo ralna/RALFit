@@ -22,8 +22,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
        INTEGER ( int32 ), INTENT( IN ) :: n, m 
-       REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
-       REAL ( real64 ), DIMENSION( : ),INTENT( IN )  :: X
+       REAL ( real64 ), DIMENSION( * ),INTENT( OUT ) :: f
+       REAL ( real64 ), DIMENSION( * ),INTENT( IN )  :: X
        class( params_base_type ), intent(in) :: params
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
