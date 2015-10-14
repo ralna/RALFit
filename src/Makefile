@@ -27,7 +27,18 @@ F77 = $(FC)
 # What to build
 all: driver
 
-DLAPACK = $(LAPACKDIR)/dgels.f
+#DBLAS = $(BLASDIR)/dgemv.f $(BLASDIR)/lsame.f $(BLASDIR)/xerbla.f \
+#	$(BLASDIR)/dgemm.f $(BLASDIR)/dtrmv.f $(BLASDIR)/dtrmm.f \
+#	$(BLASDIR)/dcopy.f $(BLASDIR)/dnrm2.f $(BLASDIR)/dger.f \
+#	$(BLASDIR)/dscal.f $(BLASDIR)/dtrsm.f
+#DLAPACK = $(LAPACKDIR)/dgels.f $(LAPACKDIR)/ilaenv.f $(LAPACKDIR)/dlaset.f \
+#	$(LAPACKDIR)/dlabad.f $(LAPACKDIR)/dlange.f $(LAPACKDIR)/dlascl.f \
+#	$(LAPACKDIR)/dgeqrf.f $(LAPACKDIR)/dormqr.f $(LAPACKDIR)/dorm2r.f \
+#	$(LAPACKDIR)/dlarft.f $(LAPACKDIR)/dlarfb.f $(LAPACKDIR)/ieeeck.f \
+#	$(LAPACKDIR)/iparmq.f $(LAPACKDIR)/dgeqr2.f $(LAPACKDIR)/dtrtrs.f \
+#	$(LAPACKDIR)/dormlq.f $(LAPACKDIR)/dgelqf.f $(LAPACKDIR)/dlassq.f \
+#	$(LAPACKDIR)/dlarf.f $(LAPACKDIR)/dlarfg.f $(LAPACKDIR)/dorml2.f \
+#	$(LAPACKDIR)/dgelq2.f $(LAPACKDIR)/dlapy2.f $(LAPACKDIR)/dlamch.f
 
 #DDEPS = 
 
@@ -38,16 +49,17 @@ DLAPACK = $(LAPACKDIR)/dgels.f
 #DDEPS90 = 
 
 
-driver.o : nlls_module.o example_module.o
+driver.o : nlls_module.o example_module.o 
 
-#nlls_module.o : common90.o ddeps90.o ddeps.o  
+#nlls_module.o : ddeps.o  
 
-driver: driver.o nlls_module.o  example_module.o # common90.o ddeps90.o ddeps.o
+driver: driver.o nlls_module.o  example_module.o #ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-cdriver: cdriver.o nlls_module.o # common90.o ddeps90.o ddeps.o
+cdriver: cdriver.o nlls_module.o #ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
+TOPDIR=.
 BLASDIR=$(TOPDIR)/blas
 LAPACKDIR=$(TOPDIR)/lapack
 

@@ -703,42 +703,33 @@ contains
 
 
      subroutine mult_J(J,n,m,x,Jx)
-       real(wp), intent(in) :: J(:), x(:)
+       real(wp), intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
-       real(wp), intent(out) :: Jx(:)
-
-       real(wp), allocatable :: Jarray(:,:)
-       integer :: ii, jj
+       real(wp), intent(out) :: Jx(*)
        
-       allocate(Jarray(m,n))
-       do ii = 1,n
-          do jj = 1,m
-             Jarray(jj,ii) = J((ii-1) * m  + jj)
-          end do
-       end do
+       real(wp) :: alpha, beta
 
-       Jx = matmul(Jarray,x)
+       Jx(1:m) = 1.0
+       alpha = 1.0
+       beta  = 0.0
+
+       call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
        
      end subroutine mult_J
 
      subroutine mult_Jt(J,n,m,x,Jtx)
-       real(wp), intent(in) :: J(:), x(:)
+       double precision, intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
-       real(wp), intent(out) :: Jtx(:)
-
-       real(wp), allocatable :: Jtarray(:,:)
-       integer :: ii, jj
+       double precision, intent(out) :: Jtx(*)
        
-       allocate(Jtarray(n,m))
+       double precision :: alpha, beta
 
-       do ii = 1,n
-          do jj = 1,m
-             Jtarray(ii,jj) = J((ii-1) * m  + jj)
-          end do
-       end do
+       Jtx(1:n) = 1.0
+       alpha = 1.0
+       beta  = 0.0
 
-       Jtx = matmul(Jtarray,x)
-       
-     end subroutine mult_Jt
+       call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
+
+      end subroutine mult_Jt
 
 end module nlls_module
