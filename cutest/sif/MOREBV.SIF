@@ -1,0 +1,154 @@
+
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          MOREBV
+
+*   Problem :
+*   *********
+
+*   The Boundary Value problem.
+*   This is the nonlinear least-squares version without fixed variables.
+
+*   Source:  problem 28 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#17 (p. 75).
+
+*   SIF input: Ph. Toint, Dec 1989 and Nick Gould, Oct 1992.
+
+*   classification SUR2-MN-V-0
+
+*   The number of variables is N.
+
+*IE N                   10             $-PARAMETER     original value
+*IE N                   50             $-PARAMETER
+*IE N                   100            $-PARAMETER
+*IE N                   500            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+ IE N                   5000           $-PARAMETER
+
+*   Define useful parameters
+
+ IE 1                   1
+ IE 2                   2
+ RE 1.0                 1.0
+ IA N-1       N         -1
+
+ IA N+1       N         1
+ RI RN+1      N+1
+ R/ H         1.0                      RN+1
+ R* H2        H                        H
+ RM HALFH2    H2        0.5D0
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ N  G1        X2        -1.0           X1        2.0
+
+ DO I         2                        N-1
+ IA I-1       I         -1
+ IA I+1       I          1
+ XN G(I)      X(I-1)    -1.0           X(I)      2.0
+ XN G(I)      X(I+1)    -1.0
+ ND
+
+ XN G(N)      X(N-1)    -1.0           X(I)      2.0
+
+BOUNDS
+
+ FR MOREBV    'DEFAULT'
+
+START POINT
+
+ DO I         1                        N
+ RI RI        I
+ R* IH        RI                       H
+ RA IH-1      IH        -1.0
+ R* TI        IH                       IH-1
+ Z  MOREBV    X(I)                     TI
+ ND
+
+
+ELEMENT TYPE
+
+ EV WCUBE     V
+ EP WCUBE     B
+
+ELEMENT USES
+
+ T  'DEFAULT' WCUBE
+
+ DO I         1                        N
+ RI REALI     I
+ R* IH        REALI                    H
+ RA IH+1      IH        1.0
+ ZV E(I)      V                        X(I)
+ ZP E(I)      B                        IH+1
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ DO I         1                        N
+ ZE G(I)      E(I)                     HALFH2
+ ND
+
+OBJECT BOUND
+
+*   Solution
+
+*LO SOLTN                0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      MOREBV
+
+TEMPORARIES
+
+ R  VPLUSB
+
+INDIVIDUALS
+
+ T  WCUBE
+ A  VPLUSB              V + B
+ F                      VPLUSB**3
+ G  V                   3.0 * VPLUSB**2
+ H  V         V         6.0 * VPLUSB
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        MOREBV
+
+INDIVIDUALS
+
+ T  L2
+
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

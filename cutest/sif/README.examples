@@ -1,0 +1,53 @@
+The following small nonlinear least-squares examples are currently available
+
+                More', Gilbow + Hilstom set
+
+ nonlinear equations                  least squares
+
+ find minimimum l_2-norm              minimize 1/2||c(x)||^2
+ residual of c(x)                          
+
+  RSNBRNE.SIF                          ROSENBR.SIF 
+  POWELLSE.SIF                         POWELLSG.SIF
+  POWELLBS.SIF                         (to do)
+  WOODSNE.SIF                          WOODS.SIF 
+  HELIXNE.SIF                          HELIX.SIF 
+  WATSONNE.SIF                         WATSON.SIF
+  BROWNALE.SIF                         BROWNAL.SIF
+  MOREBVNE.SIF                         MOREBV.SIF
+  INTEQNE.SIF                          (to do) 
+  ARGTRIG.SIF                          (to do)
+  VARDIMNE.SIF                         VARDIM.SIF
+  BROYDN3D.SIF                         (to do)
+  BROYDNBD.SIF                         (to do
+  FREURONE.SIF                         FREUROTH.SIF
+  BARDNE.SIF                           BARD.SIF  
+  KOWOSBNE.SIF                         KOWOSB.SIF
+  MEYER3NE.SIF                         MEYER3.SIF  
+  BOX3NE.SIF                           BOX3.SIF  
+  JENSMPNE.SIF                         JENSMP.SIF
+  BROWDENE.SIF                         BROWNDEN.SIF
+  OSBORNE1.SIF                         OSBORNEA.SIF
+  OSBORNE2.SIF                         OSBORNEB.SIF
+  BIGGS6NE.SIF                         BIGGS6.SIF
+  ARGAUSS.SIF                          GAUSSIAN.SIF
+  PENLT1NE.SIF                         PENALTY1.SIF
+  PENLT2NE.SIF                         PENALTY2.SIF
+  GULFNE.SIF                           GULF.SIF  
+
+                     NIST Set
+
+  BENNETT5.SIF                         BENNETT5LS.SIF
+  BOXBOD.SIF                           BOXBODLS.SIF  
+  ECKERLE4.SIF                         ECKERLE4LS.SIF
+  HAHN1.SIF                            HAHN1LS.SIF   
+  MGH09.SIF                            MGH09LS.SIF   
+  MGH10.SIF                            MGH10LS.SIF   
+  MISRA1A.SIF                          MISRA1ALS.SIF 
+  RAT42.SIF                            RAT42LS.SIF   
+  RAT43.SIF                            RAT43LS.SIF   
+  THURBER.SIF                          THURBERLS.SIF 
+
+  more to come!
+
+Nick Gould

@@ -1,0 +1,335 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          WATSON
+
+*   Problem :
+*   *********
+
+*   Watson problem in 12 variables.
+
+*   This function  is a nonlinear least squares with 31 groups.  Each
+*   group has 1 nonlinear and 1 linear elements.
+
+*   Source:  problem 20 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#128 (p. 100).
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-AN-V-0
+
+*   The number of variables can be varied, but should be smaller than
+*   31
+
+*   Number of variables
+
+ IE N                   12             $-PARAMETER
+*IE N                   31             $-PARAMETER
+
+*   Number of groups
+
+ IE M                   31
+
+*   Useful parameters
+
+ IE 1                   1
+ IE 2                   2
+ IE 29                  29
+ IE 30                  30
+ RE 1/29                0.024482759
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        29
+
+ RI RI        I
+ R* TI        RI                       1/29
+ R( LNTI      LOG                      TI
+
+ DO J         2                        N
+ RI RJ        J
+ RA RJ-1      RJ        -1.0
+ RA RJ-2      RJ        -2.0
+ R* AE        RJ-2                     LNTI
+ R( C0        EXP                      AE
+ R* C         C0                       RJ-1
+ ZN G(I)      X(J)                     C
+
+ ND
+
+ XN G(30)     X(1)      1.0
+ XN G(M)      X(2)      1.0
+
+CONSTANTS
+
+ X  WATSON    'DEFAULT' 1.0
+ X  WATSON    G(30)     0.0
+
+BOUNDS
+
+ FR WATSON    'DEFAULT'
+
+ELEMENT TYPE
+
+ EV MWSQ      V1                       V2
+ EV MWSQ      V3                       V4
+ EV MWSQ      V5                       V6
+ EV MWSQ      V7                       V8
+ EV MWSQ      V9                       V10
+ EV MWSQ      V11                      V12
+ EP MWSQ      T1                       T2
+ EP MWSQ      T3                       T4
+ EP MWSQ      T5                       T6
+ EP MWSQ      T7                       T8
+ EP MWSQ      T9                       T10
+ EP MWSQ      T11                      T12
+
+ EV MSQ       V1
+
+ELEMENT USES
+
+ DO I         1                        29
+
+ RI RI        I
+ R* TI        RI                       1/29
+ R( LNTI      LOG                      TI
+
+ XT E(I)      MWSQ
+ ZV E(I)      V1                       X1
+ ZV E(I)      V2                       X2
+ ZV E(I)      V3                       X3
+ ZV E(I)      V4                       X4
+ ZV E(I)      V5                       X5
+ ZV E(I)      V6                       X6
+ ZV E(I)      V7                       X7
+ ZV E(I)      V8                       X8
+ ZV E(I)      V9                       X9
+ ZV E(I)      V10                      X10
+ ZV E(I)      V11                      X11
+ ZV E(I)      V12                      X12
+
+ DO J         1                        N
+ IA J-1       J         -1
+ RI RJ-1      J-1
+ R* CE0       RJ-1                     LNTI
+ A( CE(J)     EXP                      CE0
+ OD J
+
+ ZP E(I)      T1                       CE1
+ ZP E(I)      T2                       CE2
+ ZP E(I)      T3                       CE3
+ ZP E(I)      T4                       CE4
+ ZP E(I)      T5                       CE5
+ ZP E(I)      T6                       CE6
+ ZP E(I)      T7                       CE7
+ ZP E(I)      T8                       CE8
+ ZP E(I)      T9                       CE9
+ ZP E(I)      T10                      CE10
+ ZP E(I)      T11                      CE11
+ ZP E(I)      T12                      CE12
+
+ ND
+
+ XT E(M)      MSQ
+ ZV E(M)      V1                       X1
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ T  'DEFAULT' L2
+
+ DO I         1                        29
+ XE G(I)      E(I)
+ ND
+
+ XE G(M)      E(M)
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO WATSON              0.0
+
+*   Solution
+
+*LO SOLTN(12)           2.27559922D-9
+*LO SOLTN(31)           1.53795068D-9
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      WATSON
+
+TEMPORARIES
+
+ R  U
+ R  TWOT1
+ R  TWOT2
+ R  TWOT3
+ R  TWOT4
+ R  TWOT5
+ R  TWOT6
+ R  TWOT7
+ R  TWOT8
+ R  TWOT9
+ R  TWOT10
+ R  TWOT11
+ R  TWOT12
+
+INDIVIDUALS
+
+*   Minus square
+
+ T  MSQ
+ F                      - V1 * V1
+ G  V1                  - V1 - V1
+ H  V1        V1        - 2.0
+
+*   Minus weighted squares
+
+ T  MWSQ
+ A  U                   T1 * V1 + T2 * V2 + T3 * V3 + T4 * V4
+ A+                     + T5 * V5 + T6 * V6 + T7 * V7 + T8 * V8
+ A+                     + T9 * V9 + T10 * V10 + T11 * V11
+ A+                     + T12 * V12
+ A  TWOT1               T1 + T1
+ A  TWOT2               T2 + T2
+ A  TWOT3               T3 + T3
+ A  TWOT4               T4 + T4
+ A  TWOT5               T5 + T5
+ A  TWOT6               T6 + T6
+ A  TWOT7               T7 + T7
+ A  TWOT8               T8 + T8
+ A  TWOT9               T9 + T9
+ A  TWOT10              T10 + T10
+ A  TWOT11              T11 + T11
+ A  TWOT12              T12 + T12
+ F                      - U * U
+ G  V1                  - TWOT1 * U
+ G  V2                  - TWOT2 * U
+ G  V3                  - TWOT3 * U
+ G  V4                  - TWOT4 * U
+ G  V5                  - TWOT5 * U
+ G  V6                  - TWOT6 * U
+ G  V7                  - TWOT7 * U
+ G  V8                  - TWOT8 * U
+ G  V9                  - TWOT9 * U
+ G  V10                 - TWOT10 * U
+ G  V11                 - TWOT11 * U
+ G  V12                 - TWOT12 * U
+ H  V1        V1        - TWOT1 * T1
+ H  V1        V2        - TWOT1 * T2
+ H  V1        V3        - TWOT1 * T3
+ H  V1        V4        - TWOT1 * T4
+ H  V1        V5        - TWOT1 * T5
+ H  V1        V6        - TWOT1 * T6
+ H  V1        V7        - TWOT1 * T7
+ H  V1        V8        - TWOT1 * T8
+ H  V1        V9        - TWOT1 * T9
+ H  V1        V10       - TWOT1 * T10
+ H  V1        V11       - TWOT1 * T11
+ H  V1        V12       - TWOT1 * T12
+ H  V2        V2        - TWOT2 * T2
+ H  V2        V3        - TWOT2 * T3
+ H  V2        V4        - TWOT2 * T4
+ H  V2        V5        - TWOT2 * T5
+ H  V2        V6        - TWOT2 * T6
+ H  V2        V7        - TWOT2 * T7
+ H  V2        V8        - TWOT2 * T8
+ H  V2        V9        - TWOT2 * T8
+ H  V2        V10       - TWOT2 * T10
+ H  V2        V11       - TWOT2 * T11
+ H  V2        V12       - TWOT2 * T12
+ H  V3        V3        - TWOT3 * T3
+ H  V3        V4        - TWOT3 * T4
+ H  V3        V5        - TWOT3 * T5
+ H  V3        V6        - TWOT3 * T6
+ H  V3        V7        - TWOT3 * T7
+ H  V3        V8        - TWOT3 * T8
+ H  V3        V9        - TWOT3 * T8
+ H  V3        V10       - TWOT3 * T10
+ H  V3        V11       - TWOT3 * T11
+ H  V3        V12       - TWOT3 * T12
+ H  V4        V4        - TWOT4 * T4
+ H  V4        V5        - TWOT4 * T5
+ H  V4        V6        - TWOT4 * T6
+ H  V4        V7        - TWOT4 * T7
+ H  V4        V8        - TWOT4 * T8
+ H  V4        V9        - TWOT4 * T8
+ H  V4        V10       - TWOT4 * T10
+ H  V4        V11       - TWOT4 * T11
+ H  V4        V12       - TWOT4 * T12
+ H  V5        V5        - TWOT5 * T5
+ H  V5        V6        - TWOT5 * T6
+ H  V5        V7        - TWOT5 * T7
+ H  V5        V8        - TWOT5 * T8
+ H  V5        V9        - TWOT5 * T8
+ H  V5        V10       - TWOT5 * T10
+ H  V5        V11       - TWOT5 * T11
+ H  V5        V12       - TWOT5 * T12
+ H  V6        V6        - TWOT6 * T6
+ H  V6        V7        - TWOT6 * T7
+ H  V6        V8        - TWOT6 * T8
+ H  V6        V9        - TWOT6 * T8
+ H  V6        V10       - TWOT6 * T10
+ H  V6        V11       - TWOT6 * T11
+ H  V6        V12       - TWOT6 * T12
+ H  V7        V7        - TWOT7 * T7
+ H  V7        V8        - TWOT7 * T8
+ H  V7        V9        - TWOT7 * T8
+ H  V7        V10       - TWOT7 * T10
+ H  V7        V11       - TWOT7 * T11
+ H  V7        V12       - TWOT7 * T12
+ H  V8        V8        - TWOT8 * T8
+ H  V8        V9        - TWOT8 * T8
+ H  V8        V10       - TWOT8 * T10
+ H  V8        V11       - TWOT8 * T11
+ H  V8        V12       - TWOT8 * T12
+ H  V9        V9        - TWOT9 * T9
+ H  V9        V10       - TWOT9 * T10
+ H  V9        V11       - TWOT9 * T11
+ H  V9        V12       - TWOT9 * T12
+ H  V10       V10       - TWOT10 * T10
+ H  V10       V11       - TWOT10 * T11
+ H  V10       V12       - TWOT10 * T12
+ H  V11       V11       - TWOT11 * T11
+ H  V11       V12       - TWOT11 * T12
+ H  V12       V12       - TWOT12 * T12
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        WATSON
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

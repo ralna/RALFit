@@ -1,0 +1,177 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          MEYER3
+
+*   Problem :
+*   *********
+*   A problem arising in the analysis of the resistance of a
+*   thermistor, as formulated by Meyer.
+
+*   This function  is a nonlinear least squares with 16 groups.  Each
+*   group has a nonlinear element.
+
+*   Source:  Problem 10 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley #29 (p. 73).
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-RN-3-0
+
+*   Number of groups
+
+ IE 16                  16
+
+*   Useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+    X1        'SCALE'   0.01
+    X2        'SCALE'   1000.0
+    X3        'SCALE'   100.0
+
+GROUPS
+
+ DO I         1                        16
+ XN G(I)
+ ND
+
+CONSTANTS
+
+    MEYER     G1        34780.0
+    MEYER     G2        28610.0
+    MEYER     G3        23650.0
+    MEYER     G4        19630.0
+    MEYER     G5        16370.0
+    MEYER     G6        13720.0
+    MEYER     G7        11540.0
+    MEYER     G8        9744.0
+    MEYER     G9        8261.0
+    MEYER     G10       7030.0
+    MEYER     G11       6005.0
+    MEYER     G12       5147.0
+    MEYER     G13       4427.0
+    MEYER     G14       3820.0
+    MEYER     G15       3307.0
+    MEYER     G16       2872.0
+
+BOUNDS
+
+ FR MEYER     'DEFAULT'
+
+START POINT
+
+    MEYER     X1        0.02
+    MEYER     X2        4000.0
+    MEYER     X3        250.0
+
+ELEMENT TYPE
+
+ EV GAUSS     V1                       V2
+ EV GAUSS     V3
+ EP GAUSS     T
+
+ELEMENT USES
+
+ DO I         1                        16
+ IM 5I        I         5
+ IA 45+5I     5I        45
+ RI TI        45+5I
+ XT E(I)      GAUSS
+ ZV E(I)      V1                       X1
+ ZV E(I)      V2                       X2
+ ZV E(I)      V3                       X3
+ ZP E(I)      T                        TI
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ DO I         1                        16
+ XT G(I)      L2
+ XE G(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO MEYER               0.0
+
+*   Solution
+
+*LO SOLTN               87.9458
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      MEYER3
+
+TEMPORARIES
+
+ R  TPV3
+ R  TPV3SQ
+ R  EXPA
+ R  V1EXPA
+ R  MG3
+ R  HT
+ R  T33
+ R  H22
+ M  EXP
+
+INDIVIDUALS
+
+*   Gaussian function
+
+ T  GAUSS
+ A  TPV3                T + V3
+ A  EXPA                EXP( V2 / TPV3 )
+ A  V1EXPA              V1 * EXPA
+ A  TPV3SQ              TPV3 * TPV3
+ A  H22                 V1EXPA / TPV3SQ
+ A  MG3                 - V2 * H22
+ A  HT                  V2 / TPV3SQ
+ A  T33                 HT + 2.0 / TPV3
+ F                      V1EXPA
+ G  V1                  EXPA
+ G  V2                  V1EXPA / TPV3
+ G  V3                  MG3
+ H  V1        V2        EXPA / TPV3
+ H  V1        V3        - HT * EXPA
+ H  V2        V2        H22
+ H  V2        V3        - H22 + MG3 / TPV3
+ H  V3        V3        - MG3 * T33
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        MEYER3
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

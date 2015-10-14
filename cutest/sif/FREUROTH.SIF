@@ -1,0 +1,159 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          FREUROTH
+
+*   Problem :
+*   *********
+
+*   The Freudentstein and Roth test problem
+
+*   Source: problem 2 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Toint#33, Buckley#24
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-AN-V-0
+
+*   N is the number of variables
+
+*IE N                   2              $-PARAMETER     original value
+*IE N                   10             $-PARAMETER
+*IE N                   50             $-PARAMETER
+*IE N                   100            $-PARAMETER
+*IE N                   500            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+ IE N                   5000           $-PARAMETER
+
+*   Number of groups sets
+
+ IA NGS       N         -1
+
+*   Define useful parameters
+
+ IE 1                   1
+ IE 2                   2
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        NGS
+ IA I+1       I         1
+ XN R(I)      X(I)      1.0            X(I+1)    -2.0
+ XN S(I)      X(I)      1.0            X(I+1)    -14.0
+ ND
+
+CONSTANTS
+
+ DO I         1                        NGS
+ IA I+1       I         1
+ X  FREUROTH  R(I)      13.0           S(I)      29.0
+ ND
+
+BOUNDS
+
+ FR FREUROTH  'DEFAULT'
+
+START POINT
+
+ X  FREUROTH  X(1)      0.5
+ X  FREUROTH  X(2)      -2.0
+
+ELEMENT TYPE
+
+ EV FRDRTH    ELV
+ EP FRDRTH    COEFF                    XCOEFF
+
+ELEMENT USES
+
+ XT 'DEFAULT' FRDRTH
+
+ DO I         1                        NGS
+ IA I+1       I         1
+ ZV A(I)      ELV                      X(I+1)
+ XP A(I)      COEFF     5.0            XCOEFF    -1.0
+ ZV B(I)      ELV                      X(I+1)
+ XP B(I)      COEFF     1.0            XCOEFF    1.0
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ DO I         1                        NGS
+ XE R(I)      A(I)
+ XE S(I)      B(I)
+ ND
+
+OBJECT BOUND
+
+ LO FREUROTH            0.0
+
+*   Solution
+
+*LO SOLTN(2)            0.0
+*LO SOLTN(2)            4.8984D+01
+*LO SOLTN(10)           1.0141D+03
+*LO SOLTN(50)           5.8810D+03
+*LO SOLTN(100)          1.1965D+04
+*LO SOLTN(500)          6.0634D+04
+*LO SOLTN(1000)         1.2147D+05
+*LO SOLTN(5000)         6.0816D+05
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      FREUROTH
+
+TEMPORARIES
+
+ R  TWOC
+ R  ELV2
+ R  XCELV
+
+INDIVIDUALS
+
+ T  FRDRTH
+ A  TWOC                COEFF + COEFF
+ A  ELV2                ELV * ELV
+ A  XCELV               XCOEFF * ELV
+ F                      ( COEFF + XCELV ) * ELV2
+ G  ELV                 TWOC * ELV + 3.0 * XCOEFF * ELV2
+ H  ELV       ELV       TWOC + 6.0 * XCELV
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        FREUROTH
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA
