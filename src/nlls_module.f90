@@ -366,8 +366,8 @@ module nlls_module
        implicit none
        integer, intent(out) :: status
        integer, intent(in) :: n,m 
-       double precision, dimension(:), intent(in)  :: x
-       double precision, dimension(:,:), intent(out) :: J
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(out) :: J
        class(params_base_type), intent(in) :: params
      end subroutine eval_j_type
   end interface
@@ -402,9 +402,9 @@ contains
       
     integer :: jstatus=0, fstatus=0
     integer :: i
-    real(wp), DIMENSION(m,n) :: J, Jnew
-    real(wp), DIMENSION(m) :: f, fnew
-    real(wp), DIMENSION(n) :: d, g, Xnew
+    real(wp), DIMENSION(m*n) :: J, Jnew
+    real(wp), DIMENSION(m)   :: f, fnew
+    real(wp), DIMENSION(n)   :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
@@ -417,7 +417,12 @@ contains
     if (fstatus > 0) write( options%out, 1020) fstatus
     
     normF0 = norm2(f)
-    g = - matmul(transpose(J),f);
+
+!    g = -J^Tf
+!    call dgemv('T',m,n,-1.0,J,m,f,1,0.0,g,1)
+!    g = - matmul(transpose(J),f)
+    call mult_Jt(J,n,m,f,g)
+    g = -g
     normJF0 = norm2(g)
     
     main_loop: do i = 1,options%maxit
@@ -440,7 +445,7 @@ contains
        call eval_F(fstatus, n, m, Xnew, fnew, params)
        if (fstatus > 0) write( options%out, 1020) fstatus
        
-       call evaluate_model(f,J,d,md,options)
+       call evaluate_model(f,J,d,md,m,n,options)
 
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
              ( norm2(f)**2 - md)
@@ -449,8 +454,12 @@ contains
           X = Xnew;
           J = Jnew;
           f = fnew;
-          g = - matmul(transpose(J),f);
-          
+!          g = - matmul(transpose(J),f);
+          ! g = -J^Tf
+!          call dgemv('T',m,n,-1.0,J,m,f,1,0.0,g,1)          
+          call mult_Jt(J,n,m,f,g)
+          g = -g
+
           if (options%print_level >=3) write(options%out,3010) 0.5 * norm2(f)**2
           if (options%print_level >=3) write(options%out,3060) norm2(g)/norm2(f)
 
@@ -518,7 +527,7 @@ contains
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-     REAL(wp), intent(in) :: J(:,:), f(:), g(:), Delta
+     REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
@@ -544,7 +553,7 @@ contains
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
 
-     REAL(wp), intent(in) :: J(:,:), f(:), g(:), Delta
+     REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
@@ -553,8 +562,13 @@ contains
      real(wp) :: d_sd(n), d_gn(n), ghat(n)
      ! todo: would it be cheaper to allocate this memory in the top loop?
      integer :: slls_status, fb_status
+     real(wp) :: Jg(m)
+     
+!     Jg = 0.0
+!     call dgemv('N',m,n,1.0,J,m,g,1,0.0,Jg,1)
+     call mult_J(J,n,m,g,Jg)
 
-     alpha = norm2(g)**2 / norm2( matmul(J,g) )**2
+     alpha = norm2(g)**2 / norm2( Jg )**2
        
      d_sd = alpha * g;
 
@@ -590,7 +604,7 @@ contains
 !  solve_LLS, a subroutine to solve a linear least squares problem
 !  -----------------------------------------------------------------
 
-       REAL(wp), DIMENSION(:,:), INTENT(IN) :: J
+       REAL(wp), DIMENSION(:), INTENT(IN) :: J
        REAL(wp), DIMENSION(:), INTENT(IN) :: f
        INTEGER, INTENT(IN) :: method, n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
@@ -600,7 +614,7 @@ contains
        integer :: nrhs = 1, lwork, lda, ldb
        real(wp), allocatable :: temp(:), work(:)
        REAL(wp), DIMENSION(:,:), allocatable :: Jlls
-       integer :: i
+       integer :: i, jit
 
        lda = m
        ldb = max(m,n)
@@ -608,8 +622,14 @@ contains
        temp(1:m) = f(1:m)
        lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
        allocate(work(lwork))
-       
-       Jlls = J ! We need to take a copy as dgels overwrites J
+       allocate(Jlls(m,n))
+
+       do i = 1,n
+          do jit = 1,m
+             Jlls(jit,i) = J((i-1) * m + jit) ! We need to take a copy as dgels overwrites J
+          end do
+       end do
+
        call dgels(trans, m, n, nrhs, Jlls, lda, temp, ldb, work, lwork, status)
 
        d_gn = -temp(1:n)
@@ -645,27 +665,32 @@ contains
      END SUBROUTINE findbeta
 
      
-     subroutine evaluate_model(f,J,d,md,options)
+     subroutine evaluate_model(f,J,d,md,m,n,options)
 ! --------------------------------------------------
 ! evaluate_model, evaluate the model at the point d
 ! --------------------------------------------------       
 
-       real(wp), intent(in)  :: f(:), d(:), J(:,:)
+       real(wp), intent(in)  :: f(:), d(:), J(:)
+       integer :: m,n
        real(wp), intent(out) :: md
        TYPE( NLLS_control_type ), INTENT( IN ) :: options
+
+       real(wp) :: Jd(m)
        
+       !Jd = J*d
+!       call dgemv('N',m,n,1.0,J,m,d,1,0.0,Jd,1)
+       call mult_J(J,n,m,d,Jd)
 
        select case (options%model)
-       
        case (1) ! first-order (no Hessian)
-          md = norm2(f + matmul(J,d))**2
+          md = norm2(f + Jd)**2
        case (2) ! second-order (exact hessian)
           if (options%print_level > 0) then
              write(options%error,'(a)') 'Second order methods to be implemented'
              return
           end if
        case (3) ! barely second-order (identity Hessian)
-          md = norm2(f + matmul(J,d) + dot_product(d,d))**2
+          md = norm2(f + Jd + dot_product(d,d))**2
        case default
           if (options%print_level > 0) then
              write(options%error,'(a)') 'Error: unsupported model specified'
@@ -743,6 +768,36 @@ contains
 !!$         status, options )
 !!$  end subroutine RAL_NLLS_int_func
     
+     subroutine mult_J(J,n,m,x,Jx)
+       real(wp), intent(in) :: J(*), x(*)
+       integer, intent(in) :: n,m
+       real(wp), intent(out) :: Jx(*)
+       
+       real(wp) :: alpha, beta
+
+       Jx(1:m) = 1.0
+       alpha = 1.0
+       beta  = 0.0
+
+       call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
+       
+     end subroutine mult_J
+
+     subroutine mult_Jt(J,n,m,x,Jtx)
+       double precision, intent(in) :: J(*), x(*)
+       integer, intent(in) :: n,m
+       double precision, intent(out) :: Jtx(*)
+       
+       double precision :: alpha, beta
+
+       Jtx(1:n) = 1.0
+       alpha = 1.0
+       beta  = 0.0
+
+       call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
+
+      end subroutine mult_Jt
+
 end module nlls_module
 
 

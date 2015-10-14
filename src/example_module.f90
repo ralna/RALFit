@@ -63,8 +63,8 @@ SUBROUTINE eval_J( status, n, m, X, J, params)
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER ( int32 ), INTENT( OUT ) :: status
        INTEGER ( int32 ), INTENT( IN ) :: n, m 
-       REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
-       REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
+       REAL ( real64 ), DIMENSION( * ),INTENT( OUT ) :: J
+       REAL ( real64 ), DIMENSION( * ),INTENT( IN ) :: X
        class( params_base_type ), intent(in) :: params
 
 ! Let's switch to an actual fitting example...
@@ -78,8 +78,8 @@ SUBROUTINE eval_J( status, n, m, X, J, params)
        select type(params)
        type is(user_type)
           do i = 1,m
-             J(i,1) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
-             J(i,2) =  - exp( X(1) * params%x_values(i) + X(2) )
+             J(i) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
+             J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
           end do
        end select
        
