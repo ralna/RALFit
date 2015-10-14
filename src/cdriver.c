@@ -12,7 +12,8 @@ struct usertype {
 void generate_data_example ( double *x_data, double *y_data, const int m); // prototype
 void eval_F ( int fstatus, const int n, const int m, 
 	      const double *X, double *f, const void *params);
-void eval_J ( int jstatus, const double *X, double (*J)[2]);
+void eval_J ( int fstatus, const int n, const int m, 
+	      const double *X, double *f, const void *params);
 
 /* A c driver for the ral_nlls program */
 int main(void) {
@@ -60,16 +61,16 @@ int main(void) {
     printf("  %5.4f \n",f[i]);
   }
 
-  double J[m][n];
+  double J[m*n];
   int jstatus = 0;
-  eval_J(jstatus,X,J);
+  eval_J(jstatus,n,m,X,J,&params);
 
   printf("\nJ = \n");
   for(i=0; i < m; i++) {
-    printf("  [%5.4f, %5.4f ]\n",J[i][1],J[i][2]);
+    printf("  [%5.4f, %5.4f ]\n",J[i],J[m + i]);
   }
   
-  c_test_pass_f(n, m, eval_F, &params);
+  c_test_pass_f(n, m, eval_F, eval_J, &params);
 
   return 0; /* success */
 }
@@ -100,21 +101,19 @@ void eval_F( int fstatus, const int n, const int m,
 }
 
 /* Evaluate the Jacobian */
-void eval_J( int fstatus, const double *X, double (*J)[2]){
+void eval_J( int jstatus, const int n, const int m, 
+	     const double *X, double *J, const void *params){
   
-  const int m = 67;
-  int i;
-  double x_data[m];
-  double y_data[m];
+  struct usertype *myparams = (struct usertype *) params;
 
-  generate_data_example(x_data,y_data,m);
+  int i;
 
   for(i=0; i<m; i++) {
-    J[i][1] = -x_data[i] * exp( X[0] * x_data[i] + X[1] );
-    J[i][2] = - exp( X[0] * x_data[i] + X[1] );
+    J[i] = -myparams->x_data[i] * exp( X[0] * myparams->x_data[i] + X[1] );
+    J[m + i] = - exp( X[0] * myparams->x_data[i] + X[1] );
   }
   
-  fstatus = 0;
+  jstatus = 0;
 }
 
 /* Generate some example data... */

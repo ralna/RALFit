@@ -702,24 +702,31 @@ contains
      end subroutine evaluate_model
      
      
-     subroutine c_test_pass_f(n,m,f,params)
+     subroutine c_test_pass_f(n,m,eval_f,eval_j,params)
        integer, intent(in) :: m, n
-       procedure(eval_f_type) :: f
+       procedure(eval_f_type) :: eval_f
+       procedure(eval_j_type) :: eval_j
        class(params_base_type) :: params
        
-       integer :: i, fstatus
-       double precision :: xval(n), fval(m)
+       integer :: i, fstatus, jstatus
+       double precision :: xval(n), fval(m), jval(n*m)
        
        xval(1) = 1.0;
        xval(2) = 2.0;
        
        print *, "X = ", xval(:)
 
-       call f(fstatus, n, m, xval, fval, params)
+       call eval_f(fstatus, n, m, xval, fval, params)
+       call eval_j(jstatus, n, m, xval, jval, params)
        
        print *, "F = "
        do i = 1,m
           print *, fval(i)
+       end do
+
+       print *, "J = "
+       do i = 1,m
+          write(*,*) '[',jval(i),'   ',jval(m + i),']'
        end do
        
      end subroutine c_test_pass_f

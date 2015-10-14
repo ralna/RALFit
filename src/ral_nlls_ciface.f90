@@ -50,11 +50,24 @@ module ral_nlls_ciface
      end subroutine c_eval_f_type
   end interface
 
+  abstract interface
+     subroutine c_eval_j_type(fstatus, n, m, x, j, params)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(c_int), value :: n,m
+       integer(c_int) :: fstatus
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(out) :: j
+       type(C_PTR), value :: params
+     end subroutine c_eval_j_type
+  end interface
+
   type, extends(f_params_base_type) :: params_wrapper
      procedure(c_eval_f_type), nopass, pointer :: f
+     procedure(c_eval_j_type), nopass, pointer :: j
      type(C_PTR) :: params
   end type params_wrapper
-  
+
 contains
 
   
@@ -107,6 +120,20 @@ contains
     end select
     
   end subroutine c_eval_f
+
+  subroutine c_eval_j(jstatus, n, m, x, j, fparams)
+    integer, intent(in) :: n, m 
+    integer, intent(out) :: jstatus
+    double precision, dimension(*), intent(in) :: x
+    double precision, dimension(*), intent(out) :: j
+    class(f_params_base_type), intent(in) :: fparams
+
+    select type(fparams)
+    type is(params_wrapper)
+       call fparams%j(jstatus,n,m,x(1:n),j(1:m),fparams%params)
+    end select
+    
+  end subroutine c_eval_j
   
 end module ral_nlls_ciface
 
@@ -140,20 +167,23 @@ subroutine nlls_default_control_d(ccontrol) bind(C)
   
 end subroutine nlls_default_control_d
 
-subroutine c_test_pass_f_d(n,m,f,params) bind(C)
+subroutine c_test_pass_f_d(n,m,f,j,params) bind(C)
   use ral_nlls_ciface
   implicit none
   
   integer(C_INT), value :: n,m
   type(C_FUNPTR), value :: f
+  type(C_FUNPTR), value :: j
   type(C_PTR), value :: params  
 
   type(params_wrapper) :: fparams
   
   call c_f_procpointer(f, fparams%f)
+  call c_f_procpointer(j, fparams%j)
   fparams%params = params
+
   
-  call f_c_test_pass_f(n, m, c_eval_f,fparams)
+  call f_c_test_pass_f(n, m, c_eval_f,c_eval_j,fparams)
   
 end subroutine c_test_pass_f_d
 

@@ -61,11 +61,12 @@ typedef void (*eval_j_type) (int fstatus,
 			     int n, 
 			     int m,
 			     const double *x, 
-			     double *j[m],
+			     double *j,
 			     const void *params);
   // Tests....
 void c_test_pass_f_d( const int n, const int m,
-		      eval_f_type eval_f, void *params);
+		      eval_f_type eval_f, eval_j_type eval_j,
+		      void *params);
 
 /* Perform the nlls solve */
 
