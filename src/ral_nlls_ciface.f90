@@ -107,30 +107,30 @@ contains
     
   end subroutine copy_info_out
 
-  subroutine c_eval_f(fstatus, n, m, x, f, fparams)
+  subroutine c_eval_f(evalfstatus, n, m, x, f, fparams)
     integer, intent(in) :: n, m 
-    integer, intent(out) :: fstatus
+    integer, intent(out) :: evalfstatus
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(out) :: f  
     class(f_params_base_type), intent(in) :: fparams
 
     select type(fparams)
     type is(params_wrapper)
-       call fparams%f(fstatus,n,m,x(1:n),f(1:m),fparams%params)
+       call fparams%f(evalfstatus,n,m,x(1:n),f(1:m),fparams%params)
     end select
     
   end subroutine c_eval_f
 
-  subroutine c_eval_j(jstatus, n, m, x, j, fparams)
+  subroutine c_eval_j(evaljstatus, n, m, x, j, fparams)
     integer, intent(in) :: n, m 
-    integer, intent(out) :: jstatus
+    integer, intent(out) :: evaljstatus
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(out) :: j
     class(f_params_base_type), intent(in) :: fparams
 
     select type(fparams)
     type is(params_wrapper)
-       call fparams%j(jstatus,n,m,x(1:n),j(1:m),fparams%params)
+       call fparams%j(evaljstatus,n,m,x(1:n),j(1:m),fparams%params)
     end select
     
   end subroutine c_eval_j
@@ -167,118 +167,44 @@ subroutine nlls_default_control_d(ccontrol) bind(C)
   
 end subroutine nlls_default_control_d
 
-subroutine c_test_pass_f_d(n,m,f,j,params) bind(C)
-  use ral_nlls_ciface
-  implicit none
-  
-  integer(C_INT), value :: n,m
-  type(C_FUNPTR), value :: f
-  type(C_FUNPTR), value :: j
-  type(C_PTR), value :: params  
+subroutine ral_nlls_d(n, m, cx, &
+                      f, j,  & 
+                      params,            &
+                      cinform, coptions) &
+                      bind(C)
 
-  type(params_wrapper) :: fparams
+  use ral_nlls_ciface 
+  implicit none
+
+  integer, INTENT( IN ), value :: n, m
+  real( wp ), dimension(*) :: cx
+  type( C_FUNPTR ), value :: f
+  type( C_FUNPTR ), value :: j
+  type( C_PTR ), value :: params
+  TYPE( nlls_inform_type )  :: cinform
+  TYPE( nlls_control_type ) :: coptions
   
+  type( params_wrapper ) :: fparams
+  TYPE( f_nlls_inform_type ) :: finform
+  TYPE( f_nlls_control_type ) :: foptions
+
+  logical :: f_arrays
+  integer :: i
+  
+  ! copy data in and associate pointers correctly
+  call copy_control_in(coptions, foptions, f_arrays)
+
   call c_f_procpointer(f, fparams%f)
   call c_f_procpointer(j, fparams%j)
   fparams%params = params
 
+  call f_ral_nlls( n, m, cx, &
+       c_eval_f, c_eval_j,   &
+       fparams,              &
+       finform, foptions)
+
+  ! Copy data out
+   call copy_info_out(finform, cinform)
   
-  call f_c_test_pass_f(n, m, c_eval_f,c_eval_j,fparams)
-  
-end subroutine c_test_pass_f_d
-
-
-!!$
-!!$subroutine ral_nlls_d(n, m, cX, &
-!!$                      cWork_int,len_work_int, &
-!!$                      cWork_real,len_work_real, &
-!!$                      ceval_F, ceval_J, & 
-!!$                      cstatus, coptions) &
-!!$                      bind(C)
-!!$
-!!$  use ral_nlls_ciface 
-!!$  implicit none
-!!$
-!!$  integer( C_INT ), INTENT( IN ) :: n, m, len_work_int, len_work_real
-!!$  type( C_PTR ), value :: cX
-!!$  type( C_PTR ), value :: cWork_int, cWork_real
-!!$  TYPE( f_nlls_inform_type )  :: cstatus
-!!$  TYPE( f_nlls_control_type ) :: coptions
-!!$  external :: ceval_F, ceval_J
-!!$
-!!$  INTERFACE
-!!$       SUBROUTINE eval_F( status, X, f )
-!!$         USE ISO_FORTRAN_ENV
-!!$         
-!!$         INTEGER ( int32 ), INTENT( OUT ) :: status
-!!$         REAL ( real64 ), DIMENSION( : ),INTENT( OUT ) :: f
-!!$         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-!!$         
-!!$       END SUBROUTINE eval_F
-!!$    END INTERFACE
-!!$
-!!$    INTERFACE
-!!$       SUBROUTINE eval_J( status, X, J )
-!!$         USE ISO_FORTRAN_ENV
-!!$
-!!$         INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-!!$         INTEGER ( int32 ), INTENT( OUT ) :: status
-!!$         REAL ( real64 ), DIMENSION( : ),INTENT( IN ) :: X
-!!$         REAL ( real64 ), DIMENSION( : , : ),INTENT( OUT ) :: J
-!!$       END SUBROUTINE eval_J
-!!$    END INTERFACE
-!!$  
-!!$
-!!$  REAL( wp ), DIMENSION( n ) :: fX
-!!$  INTEGER( C_INT ) :: fWork_int(len_work_int)
-!!$  REAL( wp )       :: fWork_real(len_work_real)
-!!$  TYPE( nlls_inform_type ) :: fstatus
-!!$  TYPE( nlls_control_type ) :: foptions
-!!$
-!!$  logical :: f_arrays
-!!$
-!!$  ! copy data in and associate pointers correctly
-!!$  call copy_control_in(coptions, foptions, f_arrays)
-!!$
-!!$  call f_ral_nlls( n, m, fX, &
-!!$       fWork_int,len_work_int, &
-!!$       fWork_real,len_work_real, &
-!!$       feval_F, feval_J, & 
-!!$       fstatus, foptions)
-!!$
-!!$  ! Copy data out
-!!$   call copy_info_out(fstatus, cstatus)
-!!$  
-!!$end subroutine ral_nlls_d
-
-!!$subroutine ral_nlls_d(n, m, cX, &
-!!$     cstatus, coptions) &
-!!$     bind(C)
-!!$
-!!$  use ral_nlls_ciface 
-!!$  implicit none
-!!$
-!!$  integer( C_INT ), value, INTENT( IN ) :: n, m
-!!$  type( C_PTR ), value :: cX
-!!$  TYPE( nlls_inform_type )  :: cstatus
-!!$  TYPE( nlls_control_type ) :: coptions
-!!$
-!!$  REAL( wp ), DIMENSION( : ), pointer :: fX
-!!$  TYPE( f_nlls_inform_type ) :: fstatus
-!!$  TYPE( f_nlls_control_type ) :: foptions
-!!$
-!!$  logical :: f_arrays
-!!$  
-!!$  ! copy data in and associate pointers correctly
-!!$  call copy_control_in(coptions, foptions, f_arrays)
-!!$  
-!!$  call C_F_POINTER(cX, fX, shape = (/ n /) )
-!!$
-!!$  call f_ral_nlls_int_func( n, m, fX, &
-!!$       fstatus, foptions)
-!!$
-!!$  ! Copy data out
-!!$   call copy_info_out(fstatus, cstatus)
-!!$  
-!!$end subroutine ral_nlls_d
+end subroutine ral_nlls_d
 

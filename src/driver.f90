@@ -47,19 +47,5 @@ do i = 1,n
    write(*,*) X(i)
 end do
 
-
-call C_test_pass_f(n,m,eval_F,params)
-
-!X(1) = 1.0 
-!X(2) = 2.0
-!
-!call ral_nlls_int_func(n, m, X, Work_int, len_work_int, & 
-!              status, options )
-!
-!do i = 1,n
-!   write(*,*) X(i)
-!end do
-
-
 end program driver
 

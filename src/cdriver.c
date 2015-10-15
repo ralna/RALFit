@@ -35,55 +35,26 @@ int main(void) {
   /* Generate the data... */
   generate_data_example(params.x_data,params.y_data,m);
 
-  double X[n];
-  X[0] = 1.0;
-  X[1] = 2.0;
+  double x[n];
+  x[0] = 1.0;
+  x[1] = 2.0;
 
   nlls_default_control(&options);
   
   options.print_level = 3;
   
-  /*  ral_nlls_int_func(n, m, X, 
-      &status, &options);*/
+  ral_nlls(n, m, x,
+	   eval_F, eval_J, &params,
+	   &status, &options);
 
   int i;
   printf("\nX = \n");
   for(i=0; i < n; i++) {
-    printf("  %5.4f \n",X[i]);
+    printf("  %5.4f \n",x[i]);
   }
-
-  double f[m];
-  int fstatus = 0;
-  eval_F(fstatus,n,m,X,f,&params);
-
-  printf("\nf = \n");
-  for(i=0; i < m; i++) {
-    printf("  %5.4f \n",f[i]);
-  }
-
-  double J[m*n];
-  int jstatus = 0;
-  eval_J(jstatus,n,m,X,J,&params);
-
-  printf("\nJ = \n");
-  for(i=0; i < m; i++) {
-    printf("  [%5.4f, %5.4f ]\n",J[i],J[m + i]);
-  }
-  
-  c_test_pass_f(n, m, eval_F, eval_J, &params);
 
   return 0; /* success */
 }
-
-/* void eval_F( int status, double **X, double **f) { 
-  int m = 67;
-  int n = 2;
-
-  *f = (int*) malloc((m)*sizeof(int));
-}
-*/
-
-
 
 /* Do a function evaluation */
 void eval_F( int fstatus, const int n, const int m, 
