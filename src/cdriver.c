@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+/*#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_multifit_nlin.h>*/
 #include "ral_nlls.h"
 
 /* define the usertype */
@@ -10,10 +15,12 @@ struct usertype {
 };
 
 void generate_data_example ( double *x_data, double *y_data, const int m); // prototype
-void eval_F ( int fstatus, const int n, const int m, 
-	      const double *X, double *f, const void *params);
-void eval_J ( int fstatus, const int n, const int m, 
-	      const double *X, double *f, const void *params);
+void eval_F  ( int fstatus, const int n, const int m, 
+	       const double *X, double *f, const void *params);
+void eval_J  ( int fstatus, const int n, const int m, 
+	       const double *X, double *f, const void *params);
+void eval_HF ( int fstatus, const int n, const int m, 
+	       const double *X, const double *f, double *hf, const void *params);
 
 /* A c driver for the ral_nlls program */
 int main(void) {
@@ -44,7 +51,7 @@ int main(void) {
   options.print_level = 3;
   
   ral_nlls(n, m, x,
-	   eval_F, eval_J, &params,
+	   eval_F, eval_J, eval_HF, &params,
 	   &status, &options);
 
   int i;
@@ -85,6 +92,22 @@ void eval_J( int jstatus, const int n, const int m,
   }
   
   jstatus = 0;
+}
+
+/* Evaluate the Hessian */
+void eval_HF( int hstatus, const int n, const int m, 
+	     const double *X, const double *f, 
+	     double *hf, const void *params){
+  
+  struct usertype *myparams = (struct usertype *) params;
+
+  int i;
+
+  for(i=0; i<n*n; i++) {
+    hf[i] = 0.0;
+  }
+  
+  hstatus = 0;
 }
 
 /* Generate some example data... */

@@ -5,9 +5,7 @@ module ral_nlls_ciface
        f_nlls_control_type => nlls_control_type, &
        f_nlls_inform_type  => nlls_inform_type, &
        f_ral_nlls => ral_nlls, & 
-       f_params_base_type => params_base_type, &
-       f_c_test_pass_f => c_test_pass_f
-!       f_ral_nlls_int_func => ral_nlls_int_func
+       f_params_base_type => params_base_type
   implicit none
 
   integer, parameter :: wp = C_DOUBLE
@@ -62,9 +60,23 @@ module ral_nlls_ciface
      end subroutine c_eval_j_type
   end interface
 
+  abstract interface
+     subroutine c_eval_hf_type(fstatus, n, m, x, f, hf, params)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(c_int), value :: n,m
+       integer(c_int) :: fstatus
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(in) :: f
+       real(c_double), dimension(*), intent(out) :: hf
+       type(C_PTR), value :: params
+     end subroutine c_eval_hf_type
+  end interface
+
   type, extends(f_params_base_type) :: params_wrapper
      procedure(c_eval_f_type), nopass, pointer :: f
      procedure(c_eval_j_type), nopass, pointer :: j
+     procedure(c_eval_hf_type), nopass, pointer :: hf
      type(C_PTR) :: params
   end type params_wrapper
 
@@ -130,10 +142,25 @@ contains
 
     select type(fparams)
     type is(params_wrapper)
-       call fparams%j(evaljstatus,n,m,x(1:n),j(1:m),fparams%params)
+       call fparams%j(evaljstatus,n,m,x(1:n),j(1:n*m),fparams%params)
     end select
     
   end subroutine c_eval_j
+
+  subroutine c_eval_hf(evalhstatus, n, m, x, f, hf, fparams)
+    integer, intent(in) :: n, m 
+    integer, intent(out) :: evalhstatus
+    double precision, dimension(*), intent(in) :: x
+    double precision, dimension(*), intent(in) :: f
+    double precision, dimension(*), intent(out) :: hf
+    class(f_params_base_type), intent(in) :: fparams
+
+    select type(fparams)
+    type is(params_wrapper)
+       call fparams%hf(evalhstatus,n,m,x(1:n),f(1:m),hf(1:n**2),fparams%params)
+    end select
+    
+  end subroutine c_eval_hf
   
 end module ral_nlls_ciface
 
@@ -167,8 +194,8 @@ subroutine nlls_default_control_d(ccontrol) bind(C)
   
 end subroutine nlls_default_control_d
 
-subroutine ral_nlls_d(n, m, cx, &
-                      f, j,  & 
+subroutine ral_nlls_d(n, m, cx,  &
+                      f, j, hf,  & 
                       params,            &
                       cinform, coptions) &
                       bind(C)
@@ -180,6 +207,7 @@ subroutine ral_nlls_d(n, m, cx, &
   real( wp ), dimension(*) :: cx
   type( C_FUNPTR ), value :: f
   type( C_FUNPTR ), value :: j
+  type( C_FUNPTR ), value :: hf
   type( C_PTR ), value :: params
   TYPE( nlls_inform_type )  :: cinform
   TYPE( nlls_control_type ) :: coptions
@@ -196,11 +224,12 @@ subroutine ral_nlls_d(n, m, cx, &
 
   call c_f_procpointer(f, fparams%f)
   call c_f_procpointer(j, fparams%j)
+  call c_f_procpointer(hf, fparams%hf)
   fparams%params = params
 
   call f_ral_nlls( n, m, cx, &
        c_eval_f, c_eval_j,   &
-       fparams,              &
+       c_eval_hf, fparams,   &
        finform, foptions)
 
   ! Copy data out
