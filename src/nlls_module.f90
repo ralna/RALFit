@@ -372,12 +372,25 @@ module nlls_module
      end subroutine eval_j_type
   end interface
 
+  abstract interface
+     subroutine eval_hf_type(status, n, m, x, f, h, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: f
+       double precision, dimension(*), intent(out) :: h
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hf_type
+  end interface
   
 contains
 
 
   SUBROUTINE RAL_NLLS( n, m, X,                   & 
-                       eval_F, eval_J, params,    &
+                       eval_F, eval_J, eval_HF,    & 
+                       params,                    &
                        status, options )
     
 !  -----------------------------------------------------------------------------
@@ -398,12 +411,14 @@ contains
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
+    procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0
+    integer :: jstatus=0, fstatus=0, hstatus=0
     integer :: i
     real(wp), DIMENSION(m*n) :: J, Jnew
     real(wp), DIMENSION(m)   :: f, fnew
+    real(wp), DIMENSION(n*n) :: hf
     real(wp), DIMENSION(n)   :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
@@ -415,7 +430,11 @@ contains
     if (jstatus > 0) write( options%out, 1010) jstatus
     call eval_F(fstatus, n, m, X, f, params)
     if (fstatus > 0) write( options%out, 1020) fstatus
-    
+    if (options%model == 2) then
+       call eval_HF(hstatus, n, m, X, f, hf, params)
+       if (hstatus > 0) write( options%out, 1020) fstatus
+    end if
+
     normF0 = norm2(f)
 
 !    g = -J^Tf
@@ -495,7 +514,7 @@ contains
        
      end do main_loop
 
-    if (options%print_level > 0 ) write(options%out,1030) 
+    if (options%print_level > 0 ) write(options%out,1040) 
 
     RETURN
 
@@ -504,8 +523,9 @@ contains
 ! print level > 0
 
 1010 FORMAT('Error code from eval_J, status = ',I6)
-1020 FORMAT('Error code from eval_J, status = ',I6)
-1030 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+1020 FORMAT('Error code from eval_F, status = ',I6)
+1030 FORMAT('Error code from eval_H, status = ',I6)
+1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
 ! print level > 1
 

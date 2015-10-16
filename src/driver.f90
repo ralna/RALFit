@@ -39,8 +39,8 @@ allocate(params%y_values(m))
 
 call generate_data_example(params%x_values,params%y_values,m)
 
-call ral_nlls(n, m, X,                 &
-              eval_F, eval_J, params,  &
+call ral_nlls(n, m, X,                         &
+              eval_F, eval_J, eval_H, params,  &
               status, options )
 
 do i = 1,n

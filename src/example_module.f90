@@ -52,7 +52,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        
      END SUBROUTINE eval_F
 
-SUBROUTINE eval_J( status, n, m, X, J, params)
+
+     SUBROUTINE eval_J( status, n, m, X, J, params)
 
 !  -------------------------------------------------------------------
 !  eval_J, a subroutine for evaluating the Jacobian J at a point X
@@ -101,6 +102,52 @@ SUBROUTINE eval_J( status, n, m, X, J, params)
 !!$       J(4,4) = - sqrt(10.0) * 2.0 * (X(1) - X(4))
 
      END SUBROUTINE eval_J
+
+
+SUBROUTINE eval_H( status, n, m, X, f, h, params)
+
+!  -------------------------------------------------------------------
+!  eval_F, a subroutine for evaluating the function f at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER ( int32 ), INTENT( OUT ) :: status
+       INTEGER ( int32 ), INTENT( IN ) :: n, m 
+       REAL ( real64 ), DIMENSION( * ),INTENT( IN )  :: f
+       REAL ( real64 ), DIMENSION(*),  INTENT( OUT ) :: h
+       REAL ( real64 ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(in) :: params
+! Let's switch to an actual fitting example...
+! min 0.5 || f(m,c)||**2, where
+! f_i(m,c) = y_i - exp( m * x_i + c )
+
+       integer :: i!,j
+
+! then, let's work this into the format we need
+! X(1) = m, X(2) = c
+       select type(params)
+       type is(user_type)
+          do i = 1,n**2
+!             do j = 1,n
+                h(i) = 0.0 ! set to zero for now: fixme!
+ !            end do
+          end do
+       end select
+
+       status = 0
+       
+!!$! let's use Powell's function for now....
+!!$       f(1) = X(1) + 10.0 * X(2)
+!!$       f(2) = sqrt(5.0) * (X(3) - X(4))
+!!$       f(3) = ( X(2) - 2.0 * X(3) )**2
+!!$       f(4) = sqrt(10.0) * ( X(1) - X(4) )**2
+       
+! end of subroutine eval_F
+       
+     END SUBROUTINE eval_H
+
 
      subroutine generate_data_example(x_data,y_data,num_observations)
        
