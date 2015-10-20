@@ -1,0 +1,196 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          LANCZOS3
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem LANCZOS3 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = b1*exp(-b2*x) + b3*exp(-b4*x) + b5*exp(-b6*x) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Lanczos, C. (1956).
+*     Applied Analysis. Englewood Cliffs, NJ:  Prentice Hall, pp. 272-280.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-6-24
+
+*   Number of data values
+
+ IE M                   24
+
+*   Number of variables
+
+ IE N                   6
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  0.00E+0
+ RE X2                  5.00E-2
+ RE X3                  1.00E-1
+ RE X4                  1.50E-1
+ RE X5                  2.00E-1
+ RE X6                  2.50E-1
+ RE X7                  3.00E-1
+ RE X8                  3.50E-1
+ RE X9                  4.00E-1
+ RE X10                 4.50E-1
+ RE X11                 5.00E-1
+ RE X12                 5.50E-1
+ RE X13                 6.00E-1
+ RE X14                 6.50E-1
+ RE X15                 7.00E-1
+ RE X16                 7.50E-1
+ RE X17                 8.00E-1
+ RE X18                 8.50E-1
+ RE X19                 9.00E-1
+ RE X20                 9.50E-1
+ RE X21                 1.00E+0
+ RE X22                 1.05E+0
+ RE X23                 1.10E+0
+ RE X24                 1.15E+0
+
+ RE Y1                  2.5134
+ RE Y2                  2.0443
+ RE Y3                  1.6684
+ RE Y4                  1.3664
+ RE Y5                  1.1232
+ RE Y6                  0.9269
+ RE Y7                  0.7679
+ RE Y8                  0.6389
+ RE Y9                  0.5338
+ RE Y10                 0.4479
+ RE Y11                 0.3776
+ RE Y12                 0.3197
+ RE Y13                 0.2720
+ RE Y14                 0.2325
+ RE Y15                 0.1997
+ RE Y16                 0.1723
+ RE Y17                 0.1493
+ RE Y18                 0.1301
+ RE Y19                 0.1138
+ RE Y20                 0.1000
+ RE Y21                 0.0883
+ RE Y22                 0.0783
+ RE Y23                 0.0698
+ RE Y24                 0.0624
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  LANCZOS3  F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR LANCZOS3  'DEFAULT'
+
+START POINT
+
+    START1    B1        1.2
+    START1    B2        0.3
+    START1    B3        5.6
+    START1    B4        5.5
+    START1    B5        6.5
+    START1    B6        7.6
+
+*  Alternative start point
+
+    START2    B1        0.5
+    START2    B2        0.7
+    START2    B3        3.6
+    START2    B4        4.2
+    START2    B5        4.0
+    START2    B6        6.3
+
+ELEMENT TYPE
+
+ EV E2        V1
+ EV E2        V2
+ EP E2        X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT EA(I)     E2
+ ZV EA(I)     V1                       B1
+ ZV EA(I)     V2                       B2
+ ZP EA(I)     X                        X(I)
+ XT EB(I)     E2
+ ZV EB(I)     V1                       B3
+ ZV EB(I)     V2                       B4
+ ZP EB(I)     X                        X(I)
+ XT EC(I)     E2
+ ZV EC(I)     V1                       B5
+ ZV EC(I)     V2                       B6
+ ZP EC(I)     X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      EA(I)
+ XE F(I)      EB(I)
+ XE F(I)      EC(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO LANCZOS3            0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      LANCZOS3
+
+TEMPORARIES
+
+ R  E
+ R  V1E
+ M  EXP
+
+INDIVIDUALS
+
+ T  E2
+ A  E                   EXP( - V2 * X )
+ A  V1E                 V1 * E
+ F                      V1E
+ G  V1                  E 
+ G  V2                  - V1E * X
+ H  V1        V2        - X * E
+ H  V2        V2        V1E * X ** 2
+
+ENDATA

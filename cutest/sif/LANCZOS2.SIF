@@ -1,0 +1,196 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          LANCZOS2
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem LANCZOS2 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = b1*exp(-b2*x) + b3*exp(-b4*x) + b5*exp(-b6*x) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Lanczos, C. (1956).
+*     Applied Analysis. Englewood Cliffs, NJ:  Prentice Hall, pp. 272-280.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-6-24
+
+*   Number of data values
+
+ IE M                   24
+
+*   Number of variables
+
+ IE N                   6
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  0.00E+0
+ RE X2                  5.00E-2
+ RE X3                  1.00E-1
+ RE X4                  1.50E-1
+ RE X5                  2.00E-1
+ RE X6                  2.50E-1
+ RE X7                  3.00E-1
+ RE X8                  3.50E-1
+ RE X9                  4.00E-1
+ RE X10                 4.50E-1
+ RE X11                 5.00E-1
+ RE X12                 5.50E-1
+ RE X13                 6.00E-1
+ RE X14                 6.50E-1
+ RE X15                 7.00E-1
+ RE X16                 7.50E-1
+ RE X17                 8.00E-1
+ RE X18                 8.50E-1
+ RE X19                 9.00E-1
+ RE X20                 9.50E-1
+ RE X21                 1.00E+0
+ RE X22                 1.05E+0
+ RE X23                 1.10E+0
+ RE X24                 1.15E+0
+
+ RE Y1                  2.51340E+0
+ RE Y2                  2.04433E+0
+ RE Y3                  1.66840E+0
+ RE Y4                  1.36642E+0
+ RE Y5                  1.12323E+0
+ RE Y6                  9.26890E-1
+ RE Y7                  7.67934E-1
+ RE Y8                  6.38878E-1
+ RE Y9                  5.33784E-1
+ RE Y10                 4.47936E-1
+ RE Y11                 3.77585E-1
+ RE Y12                 3.19739E-1
+ RE Y13                 2.72013E-1
+ RE Y14                 2.32497E-1
+ RE Y15                 1.99659E-1
+ RE Y16                 1.72270E-1
+ RE Y17                 1.49341E-1
+ RE Y18                 1.30070E-1
+ RE Y19                 1.13812E-1
+ RE Y20                 1.00042E-1
+ RE Y21                 8.83321E-2
+ RE Y22                 7.83354E-2
+ RE Y23                 6.97669E-2
+ RE Y24                 6.23931E-2
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  LANCZOS2  F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR LANCZOS2  'DEFAULT'
+
+START POINT
+
+    START1    B1        1.2
+    START1    B2        0.3
+    START1    B3        5.6
+    START1    B4        5.5
+    START1    B5        6.5
+    START1    B6        7.6
+
+*  Alternative start point
+
+    START2    B1        0.5
+    START2    B2        0.7
+    START2    B3        3.6
+    START2    B4        4.2
+    START2    B5        4.0
+    START2    B6        6.3
+
+ELEMENT TYPE
+
+ EV E2        V1
+ EV E2        V2
+ EP E2        X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT EA(I)     E2
+ ZV EA(I)     V1                       B1
+ ZV EA(I)     V2                       B2
+ ZP EA(I)     X                        X(I)
+ XT EB(I)     E2
+ ZV EB(I)     V1                       B3
+ ZV EB(I)     V2                       B4
+ ZP EB(I)     X                        X(I)
+ XT EC(I)     E2
+ ZV EC(I)     V1                       B5
+ ZV EC(I)     V2                       B6
+ ZP EC(I)     X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      EA(I)
+ XE F(I)      EB(I)
+ XE F(I)      EC(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO LANCZOS2            0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      LANCZOS2
+
+TEMPORARIES
+
+ R  E
+ R  V1E
+ M  EXP
+
+INDIVIDUALS
+
+ T  E2
+ A  E                   EXP( - V2 * X )
+ A  V1E                 V1 * E
+ F                      V1E
+ G  V1                  E 
+ G  V2                  - V1E * X
+ H  V1        V2        - X * E
+ H  V2        V2        V1E * X ** 2
+
+ENDATA
