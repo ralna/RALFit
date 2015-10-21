@@ -2,11 +2,12 @@
 * SET UP THE INITIAL DATA *
 ***************************
 
-NAME          INTEQNE
+NAME          INTEQNELS
 
 *   Problem :
 *   *********
 *   The discrete integral problem (INTEGREQ) without fized variables
+*   in least-squares form.
 
 *   Source:  Problem 29 in
 *   J.J. More', B.S. Garbow and K.E. Hillstrom,
@@ -16,7 +17,7 @@ NAME          INTEQNE
 *   SIF input: Ph. Toint, Feb 1990.
 *   Modification to remove fixed variables: Nick Gould, Oct 2015.
 
-*   classification NOR2-AN-V-V
+*   classification SUR2-AN-V-0
 
 *   N+2 is the number of discretization points .
 *   The number of free variables is N.
@@ -44,11 +45,11 @@ VARIABLES
 
 GROUPS
 
- XE G(0)      X(0)      1.0
+ XN G(0)      X(0)      1.0
  DO I         1                        N
- XE G(I)      X(I)      1.0
+ XN G(I)      X(I)      1.0
  ND
- XE G(N+1)    X(N+1)    1.0
+ XN G(N+1)    X(N+1)    1.0
 
 BOUNDS
 
@@ -84,7 +85,13 @@ ELEMENT USES
  ZP A(J)      B                        1+TJ
  ND
 
+GROUP TYPE
+
+ GV L2        GVAR
+
 GROUP USES
+
+ T  'DEFAULT' L2
 
  DO I         1                        N
  RI REALI     I
@@ -119,7 +126,7 @@ ENDATA
 * AND RANGE ROUTINES  *
 ***********************
 
-ELEMENTS      INTEQNE
+ELEMENTS      INTEQNELS
 
 *   Cube groups
 
@@ -134,5 +141,21 @@ INDIVIDUALS
  F                      VPLUSB**3
  G  V                   3.0 * VPLUSB**2
  H  V         V         6.0 * VPLUSB
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        INTEQNELS
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
 
 ENDATA

@@ -2,7 +2,7 @@
 * SET UP THE INITIAL DATA *
 ***************************
 
-NAME          BROYDN3D
+NAME          BROYDN3DLS
 
 *   Problem :
 *   *********
@@ -17,8 +17,9 @@ NAME          BROYDN3D
 
 *   See also Toint#17 and Buckley#78.
 *   SIF input: Ph. Toint, Dec 1989.
+*   Least-squares version: Nick Gould, Oct 2015.
 
-*   classification NOR2-AN-V-V
+*   classification SUR2-AN-V-0
 
 *   N is the number of variables (variable).
 
@@ -53,15 +54,15 @@ VARIABLES
 
 GROUPS
 
- XE E1        X(2)      -2.0
+ XN E1        X(2)      -2.0
 
  DO I         2                        N-1
  IA I-1       I         -1
  IA I+1       I         1
- XE E(I)      X(I-1)    -1.0           X(I+1)    -2.0
+ XN E(I)      X(I-1)    -1.0           X(I+1)    -2.0
  ND
 
- XE E(N)      X(N-1)    -1.0
+ XN E(N)      X(N-1)    -1.0
 
 CONSTANTS
 
@@ -90,7 +91,13 @@ ELEMENT USES
  ZP B(I)      K1                       KAPPA1
  ND
 
+GROUP TYPE
+
+ GV L2        GVAR
+
 GROUP USES
+
+ T  'DEFAULT' L2
 
  DO I         1                        N
  XE E(I)      B(I)
@@ -109,7 +116,7 @@ ENDATA
 * AND RANGE ROUTINES  *
 ***********************
 
-ELEMENTS      BROYDN3D
+ELEMENTS      BROYDN3DLS
 
 TEMPORARIES
 
@@ -124,5 +131,21 @@ INDIVIDUALS
  F                      TEMP2 * V1
  G  V1                  TEMP2 + TEMP1
  H  V1        V1        - K1 - K1
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        BROYDN3DLS
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
 
 ENDATA
