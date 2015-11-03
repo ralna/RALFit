@@ -898,12 +898,14 @@ contains
         integer, intent(in) :: n 
         real(wp), intent(out) :: lam, y(:)
 
+        real(wp) :: Aeig(n,n), Beig(n,n)
         integer :: itype, m
         real(wp) :: z(n,1), w(n)
         real(wp), allocatable :: work(:)
         integer :: lwork, iwork(5*n), info, ifail(n)
         real(wp) :: abstol
         real(wp) :: DLAMCH
+
 
         integer :: i 
         
@@ -913,25 +915,34 @@ contains
         itype = 1 
         ! call with lwork = -1 for a workspace query
         abstol = 2 * DLAMCH('S')
-
+        
+        Aeig(1:n,1:n) = A(1:n,1:n)
+        Beig(1:n,1:n) = B(1:n,1:n)
         write(*,*) 'abstol = ', abstol
         write(*,*) 'n = ', n
         write(*,*) 'A = '
         do i = 1,n
-           write(*,*) A(:,i)
+           write(*,*) Aeig(:,i)
         end do
+        write(*,*) 'B = '
+        do i = 1,n
+           write(*,*) Beig(:,i)
+        end do
+        allocate(work(1))
+
         write(*,*) 'get length of work...'
         call dsygvx(itype,         &
                     'V', 'I', 'U', & 
-                    n, A, n, B, n, & 
+                    n, Aeig, n, Beig, n, & 
                     0.0, 0.0, & ! used if range='V', not otherwise
-                    n-1,n, & ! range of eigenvalues needed
+                    1,n, & ! range of eigenvalues needed
                     abstol, & ! abstol (recommended setting for accuracy)
                     m, w, z, n, &
                     work, -1, iwork, &
                     ifail, info)
         write(*,*) 'done!'
         lwork = work(1)
+        deallocate(work)
         allocate(work(lwork))
         write(*,*) 'lwork = ', lwork
 
