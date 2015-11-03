@@ -32,6 +32,7 @@ X(1) = 1.0
 X(2) = 2.0
 
 options%print_level = 3
+options%nlls_method = 2
 
 ! Get params for the function evaluations
 allocate(params%x_values(m))

@@ -56,12 +56,16 @@ all: driver
 #DDEPS90 = 
 
 driver.o :  example_module.o nlls_module.o
+test.o :  example_module.o nlls_module.o
 cdriver.o : example_module.o nlls_module.o
 lm_example.o : nlls_module.o
 
 example_module.o : nlls_module.o
 
 driver: driver.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
+test: nlls_test.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 cdriver: cdriver.o example_module.o ral_nlls_ciface.o nlls_module.o # common90.o ddeps90.o ddeps.o

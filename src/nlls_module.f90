@@ -556,7 +556,8 @@ contains
         
      case (1) ! Powell's dogleg
         call dogleg(J,f,g,n,m,Delta,d,options)
-        
+     case (2) ! The AINT method
+        call AINT_TR(J,f,g,n,m,Delta,d,options)
      case default
         
         if ( options%print_level > 0 ) then
@@ -617,7 +618,77 @@ contains
      
    END SUBROUTINE dogleg
      
+   SUBROUTINE AINT_tr(J,f,g,n,m,Delta,d,options)
+     ! -----------------------------------------
+     ! AINT_tr
+     ! Solve the trust-region subproblem using 
+     ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
+     ! -----------------------------------------
 
+     REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     TYPE( NLLS_control_type ), INTENT( IN ) :: options
+        
+     REAL(wp) :: A(n,n), Jtg(n), B(n,n), p0(n), p1(n)
+     integer :: solve_status, keep_p0, i
+     real(wp) :: obj_p0, obj_p1 
+     REAL(wp) :: norm_p0, norm_p1, tau, lam
+     REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n)
+
+     keep_p0 = 0
+     tau = 1e-4
+     obj_p0 = (tau + tau)/(tau-tau) ! set a nan....is there a better way?
+
+!     A = matmult(transpose(J),J) 
+     call matmult_inner(J,n,m,A)
+        
+
+     call mult_Jt(J,n,m,g,Jtg)
+
+     ! Set B to I by hand  
+     ! todo: make this an option
+     B = 0
+     do i = 1,n
+        B(i,i) = 1.0
+     end do
+       
+     call solve_spd(A,-Jtg,p0,n,solve_status)
+     call matrix_norm(p0,B,norm_p0)
+     
+     if (norm_p0 < Delta) then
+        keep_p0 = 1;
+        obj_p0 = dot_product(Jtg,p0) + 0.5 * dot_product(p0,matmul(A,p0))
+     end if
+
+     M0(1:n,1:n) = -B
+     M0(n+1:2*n,1:n) = A
+     M0(1:n,n+1:2*n) = A
+     call outer_product(Jtg,n,gtg) ! gtg = Jtg * Jtg^T
+     M0(n+1:2*n,n+1:2*n) = -(1.0 / Delta**2) * gtg
+
+     M1 = 0.0
+     M1(n+1:2*n,1:n) = B
+     M1(1:n,n+1:2*n) = B
+     
+     call max_eig(M0,-M1,2*n,lam, y)
+     
+     if (norm2(y(1:n)) < tau) then
+        ! Hard case
+        write(*,*) 'Hard case -- not yet coded!'
+     end if
+
+     call solve_spd(A + lam*B,-Jtg,p1,n,solve_status)
+     obj_p1 = dot_product(Jtg,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
+
+     d = p1
+     if (obj_p0 < obj_p1) then
+        d = p0
+     end if
+
+
+   end SUBROUTINE AINT_tr
+   
      SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
        
 !  -----------------------------------------------------------------
@@ -751,6 +822,135 @@ contains
        call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
 
       end subroutine mult_Jt
+
+      subroutine solve_spd(A,b,x,n,info)
+        REAL(wp), intent(in) :: A(:,:), b(:)
+        REAL(wp), intent(out) :: x(:)
+        integer, intent(in) :: n
+        integer, intent(out) :: info
+
+        ! A wrapper for the lapack subroutine dposv.f
+        x(1:n) = b(1:n)
+        call dposv('U', n, 1, A, n, x, n, info)
+        
+      end subroutine solve_spd
+
+      subroutine matrix_norm(x,A,norm_A_x)
+        REAL(wp), intent(in) :: A(:,:), x(:)
+        REAL(wp), intent(out) :: norm_A_x
+
+        ! Calculates norm_A_x = ||x||_A = sqrt(x'*A*x)
+
+        norm_A_x = sqrt(dot_product(x,matmul(A,x)))
+
+      end subroutine matrix_norm
+
+      subroutine matmult_inner(J,n,m,A)
+        
+        integer, intent(in) :: n,m 
+        real(wp), intent(in) :: J(:)
+        real(wp), intent(out) :: A(n,n)
+        integer :: lengthJ
+        
+        ! A = J' * J
+        
+        lengthJ = n*m
+        
+        call dgemm('T','N',n, n, m, 1.0_wp,&
+                   J, m, J, m, & 
+                   0.0_wp, A, n)
+        
+        
+      end subroutine matmult_inner
+
+       subroutine matmult_outer(J,n,m,A)
+        
+        integer, intent(in) :: n,m 
+        real(wp), intent(in) :: J(:)
+        real(wp), intent(out) :: A(m,m)
+        integer :: lengthJ
+        
+        ! A = J * J'
+        
+        lengthJ = n*m
+        
+        call dgemm('N','T',n, n, m, 1.0_wp,&
+                   J, n, J, n, & 
+                   0.0_wp, A, m)
+        
+        
+      end subroutine matmult_outer
+      
+      subroutine outer_product(x,n,xtx)
+        
+        real(wp), intent(in) :: x(:)
+        integer, intent(in) :: n
+        real(wp), intent(out) :: xtx(:,:)
+
+        xtx(1:n,1:n) = 0.0_wp
+        call dger(n, n, 1.0_wp, x, 1, x, 1, xtx, n)
+        
+      end subroutine outer_product
+
+      subroutine max_eig(A,B,n,lam,y)
+        
+        real(wp), intent(in) :: A(:,:), B(:,:)
+        integer, intent(in) :: n 
+        real(wp), intent(out) :: lam, y(:)
+
+        integer :: itype, m
+        real(wp) :: z(n,1), w(n)
+        real(wp), allocatable :: work(:)
+        integer :: lwork, iwork(5*n), info, ifail(n)
+        real(wp) :: abstol
+        real(wp) :: DLAMCH
+
+        integer :: i 
+        
+        ! Find the max eigenvalue/vector of the generalized eigenproblem
+        !     A * y = lam * B * y
+        
+        itype = 1 
+        ! call with lwork = -1 for a workspace query
+        abstol = 2 * DLAMCH('S')
+
+        write(*,*) 'abstol = ', abstol
+        write(*,*) 'n = ', n
+        write(*,*) 'A = '
+        do i = 1,n
+           write(*,*) A(:,i)
+        end do
+        write(*,*) 'get length of work...'
+        call dsygvx(itype,         &
+                    'V', 'I', 'U', & 
+                    n, A, n, B, n, & 
+                    0.0, 0.0, & ! used if range='V', not otherwise
+                    n-1,n, & ! range of eigenvalues needed
+                    abstol, & ! abstol (recommended setting for accuracy)
+                    m, w, z, n, &
+                    work, -1, iwork, &
+                    ifail, info)
+        write(*,*) 'done!'
+        lwork = work(1)
+        allocate(work(lwork))
+        write(*,*) 'lwork = ', lwork
+
+        write(*,*) 'calculate eigs...'        
+!!$        call dsygvx(itype,         &
+!!$                    'V', 'I', 'U', & 
+!!$                    n, A, n, B, n, & 
+!!$                    0.0, 0.0, & ! used if range='V', not otherwise
+!!$                    n-1,n, & ! range of eigenvalues needed
+!!$                    2*DLAMCH('S'), & ! abstol (recommended setting for accuracy)
+!!$                    m, w, z, n, &
+!!$                    work, lwork, iwork, &
+!!$                    ifail, info)
+        write(*,*) 'done!'
+
+        y = z(1:n,1)
+        lam = w(1)
+        
+      end subroutine max_eig
 
 end module nlls_module
 
