@@ -916,47 +916,34 @@ contains
         ! call with lwork = -1 for a workspace query
         abstol = 2 * DLAMCH('S')
         
-        Aeig(1:n,1:n) = A(1:n,1:n)
-        Beig(1:n,1:n) = B(1:n,1:n)
-        write(*,*) 'abstol = ', abstol
-        write(*,*) 'n = ', n
-        write(*,*) 'A = '
-        do i = 1,n
-           write(*,*) Aeig(:,i)
-        end do
-        write(*,*) 'B = '
-        do i = 1,n
-           write(*,*) Beig(:,i)
-        end do
+        Aeig(:,:) = A(:,:)
+        Beig(:,:) = B(:,:)
+        
         allocate(work(1))
 
-        write(*,*) 'get length of work...'
+        ! get length of work...
         call dsygvx(itype,         &
                     'V', 'I', 'U', & 
                     n, Aeig, n, Beig, n, & 
                     0.0, 0.0, & ! used if range='V', not otherwise
-                    1,n, & ! range of eigenvalues needed
+                    n-1,n, & ! range of eigenvalues needed
                     abstol, & ! abstol (recommended setting for accuracy)
                     m, w, z, n, &
                     work, -1, iwork, &
                     ifail, info)
-        write(*,*) 'done!'
-        lwork = work(1)
+        lwork = int(work(1))
         deallocate(work)
         allocate(work(lwork))
-        write(*,*) 'lwork = ', lwork
 
-        write(*,*) 'calculate eigs...'        
-!!$        call dsygvx(itype,         &
-!!$                    'V', 'I', 'U', & 
-!!$                    n, A, n, B, n, & 
-!!$                    0.0, 0.0, & ! used if range='V', not otherwise
-!!$                    n-1,n, & ! range of eigenvalues needed
-!!$                    2*DLAMCH('S'), & ! abstol (recommended setting for accuracy)
-!!$                    m, w, z, n, &
-!!$                    work, lwork, iwork, &
-!!$                    ifail, info)
-        write(*,*) 'done!'
+        call dsygvx(itype,         &
+                    'V', 'I', 'U', & 
+                    n, Aeig, n, Beig, n, & 
+                    0.0_wp, 0.0_wp, & ! used if range='V', not otherwise
+                    n,n, & ! range of eigenvalues needed (smallest, largest)
+                    abstol, & ! abstol (recommended setting for accuracy)
+                    m, w, z, n, &
+                    work, lwork, iwork, &
+                    ifail, info)
 
         y = z(1:n,1)
         lam = w(1)

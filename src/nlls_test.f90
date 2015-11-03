@@ -51,7 +51,10 @@ program nlls_test
 
   call max_eig(A,B,n,alpha,x)
 
-  write(*,*) 'alpha = ', alpha
+  if ( abs( alpha - 10.0 ) > 1e-12 ) then
+     write(*,*) 'error :: max_eig test failed'
+     no_errors = no_errors + 1 
+  end if
   
 ! Report back results....
   
