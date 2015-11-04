@@ -922,19 +922,20 @@ contains
         
       end subroutine outer_product
 
-      subroutine max_eig(A,B,n,ew,ev,info)
+      subroutine max_eig(A,B,n,ew,ev,info,nullevs)
         
-        real(wp), intent(in) :: A(:,:), B(:,:)
+        real(wp), intent(inout) :: A(:,:), B(:,:)
         integer, intent(in) :: n 
         real(wp), intent(out) :: ew, ev(:)
         integer, intent(out) :: info
+        real(wp), intent(out), allocatable :: nullevs(:,:)
         
-        real(wp) :: Aeig(n,n), Beig(n,n)
+!        real(wp) :: Aeig(n,n), Beig(n,n)
         real(wp) :: alphaR(n), alphaI(n), beta(n), vr(n,n)
         real(wp), allocatable :: work(:)
-        integer :: lwork, maxindex(1)
+        integer :: lwork, maxindex(1), no_null, nullindex(n), halfn
         logical :: vecisreal(n)
-        real(wp) :: ew_array(n)
+        real(wp) :: ew_array(n), tau
 
 
         integer :: i 
@@ -943,15 +944,19 @@ contains
         !     A * y = lam * B * y
 
         info = 0
+        ! check that n is even (important for hard case -- see below)
+        if (modulo(n,2).ne.0) then
+           write(*,*) 'error : non-even sized matrix sent to max eig'
+           info = 2
+           return
+        end if
+        halfn = n/2
 
-        Aeig(:,:) = A(:,:)
-        Beig(:,:) = B(:,:)
-        
         allocate(work(1))
         ! get length of work...
         call dggev('N', & ! No left eigenvectors
                    'V', &! Yes right eigenvectors
-                   n, Aeig, n, Beig, n, &
+                   n, A, n, B, n, &
                    alphaR, alphaI, beta, & ! eigenvalue data
                    vr, n, & ! not referenced
                    vr, n, & ! right eigenvectors
@@ -963,7 +968,7 @@ contains
 
         call dggev('N', & ! No left eigenvectors
                    'V', &! Yes right eigenvectors
-                   n, Aeig, n, Beig, n, &
+                   n, A, n, B, n, &
                    alphaR, alphaI, beta, & ! eigenvalue data
                    vr, n, & ! not referenced
                    vr, n, & ! right eigenvectors
@@ -975,15 +980,30 @@ contains
         
         ew_array(:) = alphaR(:)/beta(:)
         maxindex = maxloc(ew_array,vecisreal)
-        write(*,*) 'ews are:'
-        do i = 1,n
-           write(*,*) alphaR(i)/beta(i) ,'+',alphaI(i)/beta(i) ,'i'
-        end do
+
 
         if (maxindex(1) == 0) then
            write(*,*) 'Error, all eigs are imaginary'
            info = 1 ! Eigs imaginary error
            return
+        end if
+        
+        tau = 1e-4 ! todo -- pass this through from above...
+        ! note n/2 always even -- validated by test on entry
+        if (norm2( vr(1:halfn,maxindex(1)) ) < tau) then 
+           ! hard case
+           ! let's find which ev's are null...
+           nullindex = 0
+           no_null = 0
+           do i = 1,n
+!              write(*,*) '||v(',i,')|| = ',norm2(vr(1:halfn,i))
+              if (norm2( vr(1:halfn,i)) < 1e-4 ) then
+                 no_null = no_null + 1 
+                 nullindex(no_null) = i
+              end if
+           end do
+           allocate(nullevs(halfn,no_null))
+           nullevs(:,:) = vr(halfn+1 : n,nullindex)
         end if
         
         ew = alphaR(maxindex(1))/beta(maxindex(1))
