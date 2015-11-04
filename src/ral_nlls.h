@@ -13,8 +13,6 @@ extern "C" {
 #define nlls_control_type nlls_control_type_d
 #define nlls_inform_type nlls_inform_type_d
 #define ral_nlls ral_nlls_d
-#define ral_nlls_int_func ral_nlls_int_func_d
-#define c_test_pass_f c_test_pass_f_d
 #endif
 
 typedef double nllspkgtype_d_;
@@ -64,11 +62,20 @@ typedef void (*eval_j_type) (int fstatus,
 			     nllspkgtype_d_ *j,
 			     const void *params);
 
+typedef void (*eval_hf_type) (int hstatus, 
+			      int n, 
+			      int m,
+			      const nllspkgtype_d_ *x, 
+			      const nllspkgtype_d_ *f,
+			      nllspkgtype_d_ *hf,
+			      const void *params);
+
 /* Perform the nlls solve */
 void ral_nlls_d( const int n, const int m, 
 		 nllspkgtype_d_ X[],
 		 eval_f_type eval_f,
 		 eval_j_type eval_j,
+		 eval_hf_type eval_hf,
 		 void *params, 
 		 struct nlls_inform_type *status,
 		 struct nlls_control_type *options);

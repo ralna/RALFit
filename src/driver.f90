@@ -32,6 +32,8 @@ X(1) = 1.0
 X(2) = 2.0
 
 options%print_level = 3
+options%nlls_method = 2
+!options%maxit = 2
 
 ! Get params for the function evaluations
 allocate(params%x_values(m))
@@ -39,8 +41,8 @@ allocate(params%y_values(m))
 
 call generate_data_example(params%x_values,params%y_values,m)
 
-call ral_nlls(n, m, X,                 &
-              eval_F, eval_J, params,  &
+call ral_nlls(n, m, X,                         &
+              eval_F, eval_J, eval_H, params,  &
               status, options )
 
 do i = 1,n

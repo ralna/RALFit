@@ -18,8 +18,15 @@ MKLFLAGS = -lmkl_gf_lp64 -lmkl_sequential -lmkl_core #gfortran, sequential
 #MKLFLAGS = -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core #gfortran, threaded
 #MKLFLAGS = -lmkl_intel_lp64 -lmkl_intel_thread	 -lmkl_core #ifort, threaded
 
+##  GSL...
+GSLDIR = /usr
+GSLFLAGS = -lgsl
+
 # Get the commands for the libraries:
-LIBS = -L$(MKLLOC) $(MKLFLAGS) 
+LIBS = -L$(MKLLOC) $(MKLFLAGS) $(GSLFLAGS)
+
+# C libraries
+CLIBS = -L$(GSLDIR)/lib -I$(GSLDIR)/include -lgslcblas -lgsl -lm
 
 # Compile f77 code with f90 compiler
 F77 = $(FC)
@@ -49,15 +56,23 @@ all: driver
 #DDEPS90 = 
 
 driver.o :  example_module.o nlls_module.o
+test.o :  example_module.o nlls_module.o
 cdriver.o : example_module.o nlls_module.o
+lm_example.o : nlls_module.o
 
 example_module.o : nlls_module.o
 
 driver: driver.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-cdriver: cdriver.o example_module.o ral_nlls_ciface.o nlls_module.o # common90.o ddeps90.o ddeps.o
+test: nlls_test.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
+cdriver: cdriver.o example_module.o ral_nlls_ciface.o nlls_module.o # common90.o ddeps90.o ddeps.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(CLIBS)
+lm_example: lm_example.o ral_nlls_ciface.o nlls_module.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(CLIBS)
+
 
 TOPDIR=.
 BLASDIR=$(TOPDIR)/blas

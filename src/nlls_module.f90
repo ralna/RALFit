@@ -372,12 +372,25 @@ module nlls_module
      end subroutine eval_j_type
   end interface
 
+  abstract interface
+     subroutine eval_hf_type(status, n, m, x, f, h, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: f
+       double precision, dimension(*), intent(out) :: h
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hf_type
+  end interface
   
 contains
 
 
   SUBROUTINE RAL_NLLS( n, m, X,                   & 
-                       eval_F, eval_J, params,    &
+                       eval_F, eval_J, eval_HF,    & 
+                       params,                    &
                        status, options )
     
 !  -----------------------------------------------------------------------------
@@ -398,12 +411,14 @@ contains
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
+    procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0
+    integer :: jstatus=0, fstatus=0, hstatus=0
     integer :: i
     real(wp), DIMENSION(m*n) :: J, Jnew
     real(wp), DIMENSION(m)   :: f, fnew
+    real(wp), DIMENSION(n*n) :: hf
     real(wp), DIMENSION(n)   :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
@@ -415,7 +430,11 @@ contains
     if (jstatus > 0) write( options%out, 1010) jstatus
     call eval_F(fstatus, n, m, X, f, params)
     if (fstatus > 0) write( options%out, 1020) fstatus
-    
+    if (options%model == 2) then
+       call eval_HF(hstatus, n, m, X, f, hf, params)
+       if (hstatus > 0) write( options%out, 1020) fstatus
+    end if
+
     normF0 = norm2(f)
 
 !    g = -J^Tf
@@ -495,7 +514,7 @@ contains
        
      end do main_loop
 
-    if (options%print_level > 0 ) write(options%out,1030) 
+    if (options%print_level > 0 ) write(options%out,1040) 
 
     RETURN
 
@@ -504,8 +523,9 @@ contains
 ! print level > 0
 
 1010 FORMAT('Error code from eval_J, status = ',I6)
-1020 FORMAT('Error code from eval_J, status = ',I6)
-1030 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+1020 FORMAT('Error code from eval_F, status = ',I6)
+1030 FORMAT('Error code from eval_H, status = ',I6)
+1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
 ! print level > 1
 
@@ -536,7 +556,8 @@ contains
         
      case (1) ! Powell's dogleg
         call dogleg(J,f,g,n,m,Delta,d,options)
-        
+     case (2) ! The AINT method
+        call AINT_TR(J,f,g,n,m,Delta,d,options)
      case default
         
         if ( options%print_level > 0 ) then
@@ -597,8 +618,104 @@ contains
      
    END SUBROUTINE dogleg
      
+   SUBROUTINE AINT_tr(J,f,g,n,m,Delta,d,options)
+     ! -----------------------------------------
+     ! AINT_tr
+     ! Solve the trust-region subproblem using 
+     ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
+     ! -----------------------------------------
 
-     SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
+     REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     TYPE( NLLS_control_type ), INTENT( IN ) :: options
+        
+     REAL(wp) :: A(n,n), Jtf(n), B(n,n), p0(n), p1(n)
+     integer :: solve_status, find_status
+     integer :: keep_p0, i, eig_info, size_hard(2)
+     real(wp) :: obj_p0, obj_p1
+     REAL(wp) :: norm_p0, norm_p1, tau, lam, eta
+     REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n), q(n)
+     REAL(wp), allocatable :: y_hardcase(:,:)
+
+     keep_p0 = 0
+     tau = 1e-4
+     obj_p0 = (tau + tau)/(tau-tau) ! set a nan....is there a better way?
+
+!     A = matmult(transpose(J),J) 
+     call matmult_inner(J,n,m,A)
+      
+     call mult_Jt(J,n,m,f,Jtf)
+
+     ! Set B to I by hand  
+     ! todo: make this an option
+     B = 0
+     do i = 1,n
+        B(i,i) = 1.0
+     end do
+       
+     call solve_spd(A,-Jtf,p0,n,solve_status)
+
+     call matrix_norm(p0,B,norm_p0)
+     
+     if (norm_p0 < Delta) then
+        keep_p0 = 1;
+        obj_p0 = dot_product(Jtf,p0) + 0.5 * dot_product(p0,matmul(A,p0))
+     end if
+
+     M0(1:n,1:n) = -B
+     M0(n+1:2*n,1:n) = A
+     M0(1:n,n+1:2*n) = A
+     call outer_product(Jtf,n,gtg) ! gtg = Jtg * Jtg^T
+     M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * gtg
+
+     M1 = 0.0
+     M1(n+1:2*n,1:n) = -B
+     M1(1:n,n+1:2*n) = -B
+     
+     call max_eig(M0,M1,2*n,lam, y, eig_info, y_hardcase)
+     if ( eig_info > 0 ) then
+        write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
+        write(options%error,'(a,i0)') 'LAPACK returned info = ', eig_info
+        return
+     end if
+
+     if (norm2(y(1:n)) < tau) then
+        ! Hard case
+        ! overwrite H onto M0, and the outer prod onto M1...
+        size_hard = shape(y_hardcase)
+        call matmult_outer( matmul(B,y_hardcase), size_hard(2), n, M1(1:n,1:n))
+        M0(1:n,1:n) = A(:,:) + lam*B(:,:) + M1(1:n,1:n)
+        ! solve Hq + g = 0 for q
+        call solve_spd(M0(1:n,1:n),-Jtf,q,n,solve_status)
+        
+        ! find max eta st ||q + eta v(:,1)||_B = Delta
+        call findbeta(q,y_hardcase(:,1),1.0_wp,Delta,eta,find_status)
+        if ( find_status .ne. 0 ) then
+           write(*,*) 'error: no vaild beta found...'
+           return
+        end if
+        !!!!!      ^^TODO^^    !!!!!
+        ! currently assumes B = I !!
+        !!!!       fixme!!      !!!!
+        
+        p1(:) = q(:) + eta * y_hardcase(:,1)
+        
+     else 
+        call solve_spd(A + lam*B,-Jtf,p1,n,solve_status)
+     end if
+
+     obj_p1 = dot_product(Jtf,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
+
+     d = p1
+     if (obj_p0 < obj_p1) then
+        d = p0
+     end if
+
+
+   end SUBROUTINE AINT_tr
+   
+   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
        
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
@@ -640,7 +757,7 @@ contains
 
 !  -----------------------------------------------------------------
 !  findbeta, a subroutine to find the optimal beta such that 
-!   || d || = Delta
+!   || d || = Delta, where d = alpha * d_sd + beta * ghat
 !  -----------------------------------------------------------------
 
      real(wp), dimension(:), intent(in) :: d_sd, ghat
@@ -649,10 +766,12 @@ contains
      integer, intent(out) :: status
      
      real(wp) :: a, b, c, discriminant
+     
+     status = 0
 
      a = norm2(ghat)**2
      b = 2.0 * alpha * dot_product( ghat, d_sd)
-     c = ( alpha * norm2( d_sd ) )**2 - Delta
+     c = ( alpha * norm2( d_sd ) )**2 - Delta**2
      
      discriminant = b**2 - 4 * a * c
      if ( discriminant < 0) then
@@ -731,6 +850,166 @@ contains
        call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
 
       end subroutine mult_Jt
+
+      subroutine solve_spd(A,b,x,n,info)
+        REAL(wp), intent(in) :: A(:,:), b(:)
+        REAL(wp), intent(out) :: x(:)
+        integer, intent(in) :: n
+        integer, intent(out) :: info
+
+        ! A wrapper for the lapack subroutine dposv.f
+        x(1:n) = b(1:n)
+        call dposv('U', n, 1, A, n, x, n, info)
+        
+      end subroutine solve_spd
+
+      subroutine matrix_norm(x,A,norm_A_x)
+        REAL(wp), intent(in) :: A(:,:), x(:)
+        REAL(wp), intent(out) :: norm_A_x
+
+        ! Calculates norm_A_x = ||x||_A = sqrt(x'*A*x)
+
+        norm_A_x = sqrt(dot_product(x,matmul(A,x)))
+
+      end subroutine matrix_norm
+
+      subroutine matmult_inner(J,n,m,A)
+        
+        integer, intent(in) :: n,m 
+        real(wp), intent(in) :: J(*)
+        real(wp), intent(out) :: A(n,n)
+        integer :: lengthJ
+        
+        ! A = J' * J
+        
+        lengthJ = n*m
+        
+        call dgemm('T','N',n, n, m, 1.0_wp,&
+                   J, m, J, m, & 
+                   0.0_wp, A, n)
+        
+        
+      end subroutine matmult_inner
+
+       subroutine matmult_outer(J,n,m,A)
+        
+        integer, intent(in) :: n,m 
+        real(wp), intent(in) :: J(*)
+        real(wp), intent(out) :: A(m,m)
+        integer :: lengthJ
+
+        ! Takes an m x n matrix J and forms the 
+        ! m x m matrix A given by
+        ! A = J * J'
+        
+        lengthJ = n*m
+        
+        call dgemm('N','T',m, m, n, 1.0_wp,&
+                   J, m, J, m, & 
+                   0.0_wp, A, m)
+        
+        
+      end subroutine matmult_outer
+      
+      subroutine outer_product(x,n,xtx)
+        
+        real(wp), intent(in) :: x(:)
+        integer, intent(in) :: n
+        real(wp), intent(out) :: xtx(:,:)
+
+        xtx(1:n,1:n) = 0.0_wp
+        call dger(n, n, 1.0_wp, x, 1, x, 1, xtx, n)
+        
+      end subroutine outer_product
+
+      subroutine max_eig(A,B,n,ew,ev,info,nullevs)
+        
+        real(wp), intent(inout) :: A(:,:), B(:,:)
+        integer, intent(in) :: n 
+        real(wp), intent(out) :: ew, ev(:)
+        integer, intent(out) :: info
+        real(wp), intent(out), allocatable :: nullevs(:,:)
+        
+!        real(wp) :: Aeig(n,n), Beig(n,n)
+        real(wp) :: alphaR(n), alphaI(n), beta(n), vr(n,n)
+        real(wp), allocatable :: work(:)
+        integer :: lwork, maxindex(1), no_null, nullindex(n), halfn
+        logical :: vecisreal(n)
+        real(wp) :: ew_array(n), tau
+
+
+        integer :: i 
+        
+        ! Find the max eigenvalue/vector of the generalized eigenproblem
+        !     A * y = lam * B * y
+
+        info = 0
+        ! check that n is even (important for hard case -- see below)
+        if (modulo(n,2).ne.0) then
+           write(*,*) 'error : non-even sized matrix sent to max eig'
+           info = 2
+           return
+        end if
+        halfn = n/2
+
+        allocate(work(1))
+        ! get length of work...
+        call dggev('N', & ! No left eigenvectors
+                   'V', &! Yes right eigenvectors
+                   n, A, n, B, n, &
+                   alphaR, alphaI, beta, & ! eigenvalue data
+                   vr, n, & ! not referenced
+                   vr, n, & ! right eigenvectors
+                   work, -1, info)
+
+        lwork = int(work(1))
+        deallocate(work)
+        allocate(work(lwork))
+
+        call dggev('N', & ! No left eigenvectors
+                   'V', &! Yes right eigenvectors
+                   n, A, n, B, n, &
+                   alphaR, alphaI, beta, & ! eigenvalue data
+                   vr, n, & ! not referenced
+                   vr, n, & ! right eigenvectors
+                   work, lwork, info)
+
+        ! now find the rightmost real eigenvalue
+        vecisreal = .true.
+        where ( abs(alphaI) > 1e-8 ) vecisreal = .false.
+        
+        ew_array(:) = alphaR(:)/beta(:)
+        maxindex = maxloc(ew_array,vecisreal)
+
+
+        if (maxindex(1) == 0) then
+           write(*,*) 'Error, all eigs are imaginary'
+           info = 1 ! Eigs imaginary error
+           return
+        end if
+        
+        tau = 1e-4 ! todo -- pass this through from above...
+        ! note n/2 always even -- validated by test on entry
+        if (norm2( vr(1:halfn,maxindex(1)) ) < tau) then 
+           ! hard case
+           ! let's find which ev's are null...
+           nullindex = 0
+           no_null = 0
+           do i = 1,n
+!              write(*,*) '||v(',i,')|| = ',norm2(vr(1:halfn,i))
+              if (norm2( vr(1:halfn,i)) < 1e-4 ) then
+                 no_null = no_null + 1 
+                 nullindex(no_null) = i
+              end if
+           end do
+           allocate(nullevs(halfn,no_null))
+           nullevs(:,:) = vr(halfn+1 : n,nullindex)
+        end if
+        
+        ew = alphaR(maxindex(1))/beta(maxindex(1))
+        ev(:) = vr(:,maxindex(1))
+                
+      end subroutine max_eig
 
 end module nlls_module
 

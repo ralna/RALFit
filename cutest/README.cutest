@@ -26,7 +26,7 @@ To test NLLS examples from CUTEst:
 3. Move to a directory containing SIF least-squares examples, and
    use the runcutest command to interface to ral_nlls. For example,
 
-     runcutest --package ral_nlls --architecture pc.lnx.gfo --decode RAT43.SIF
+     runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF
 
    see the man page for ral_nlls for options
 
