@@ -422,6 +422,38 @@ contains
     real(wp), DIMENSION(n)   :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
+! define types for workspace arrays.
+    
+    type :: max_eig_ws ! workspace for subroutine max_eig
+       real(wp), allocatable :: alphaR(:), alphaI(:), beta(:), vr(:,:)
+       real(wp), allocatable :: work(:), ew_array(:)
+       integer, allocatable :: nullindex(:)
+       logical, allocatable :: vecisreal(:)
+    end type max_eig_ws
+
+    type :: evaluate_model_ws ! workspace for subroutine evaluate_model
+       real(wp), allocatable :: Jd
+    end type evaluate_model_ws
+
+    type :: solve_LLS_ws ! workspace for subroutine solve_LLS
+       real(wp), allocatable :: temp(:), work(:), Jlls(:)
+    end type solve_LLS_ws
+
+    type :: AINT_tr_ws ! workspace for subroutine AINT_tr
+       type( max_eig_ws ) :: max_eig_ws
+       REAL(wp), allocatable :: A(:,:), v(:), B(:,:), p0(:), p1(:)
+       REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
+    end type AINT_tr_ws
+
+    type :: dogleg_ws ! workspace for subroutine dogleg
+       real(wp), allocatable :: d_sd(:), d_gn(:), ghat(:), Jg(:)
+    end type dogleg_ws
+
+    type :: calculate_step_ws ! workspace for subroutine calculate_step
+       type( AINT_tr_ws ) :: AINT_tr_ws
+       type( dogleg_ws ) :: dogleg_ws
+    end type calculate_step_ws
+
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
     Delta = options%initial_radius
@@ -583,13 +615,13 @@ contains
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
      real(wp) :: alpha, beta
-     real(wp) :: d_sd(n), d_gn(n), ghat(n)
-     ! todo: would it be cheaper to allocate this memory in the top loop?
      integer :: slls_status, fb_status
+
+     ! to be culled
+     real(wp) :: d_sd(n), d_gn(n), ghat(n)
      real(wp) :: Jg(m)
      
-!     Jg = 0.0
-!     call dgemv('N',m,n,1.0,J,m,g,1,0.0,Jg,1)
+     !     Jg = J * g
      call mult_J(J,n,m,g,Jg)
 
      alpha = norm2(g)**2 / norm2( Jg )**2
@@ -633,13 +665,19 @@ contains
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
         
-     REAL(wp) :: A(n,n), v(n), B(n,n), p0(n), p1(n)
      integer :: solve_status, find_status
      integer :: keep_p0, i, eig_info, size_hard(2)
      real(wp) :: obj_p0, obj_p1
      REAL(wp) :: norm_p0, norm_p1, tau, lam, eta
-     REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n), q(n)
      REAL(wp), allocatable :: y_hardcase(:,:)
+
+     ! to be culled 
+     REAL(wp) :: A(n,n), v(n), B(n,n), p0(n), p1(n)
+     REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n), q(n)
+
+     ! todo..
+     ! seems wasteful to have a copy of A and B in M0 and M1
+     ! use a pointer?
 
      keep_p0 = 0
      tau = 1e-4
@@ -736,7 +774,6 @@ contains
         d = p0
      end if
 
-
    end SUBROUTINE AINT_tr
    
    SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
@@ -753,9 +790,11 @@ contains
 
        character(1) :: trans = 'N'
        integer :: nrhs = 1, lwork, lda, ldb
-       real(wp), allocatable :: temp(:), work(:)
-       REAL(wp), DIMENSION(:,:), allocatable :: Jlls
-       integer :: i, jit
+
+       ! to be culled
+       real(wp), allocatable :: temp(:), work(:), Jlls(:)
+!       REAL(wp), DIMENSION(:,:), allocatable :: Jlls
+
 
        lda = m
        ldb = max(m,n)
@@ -814,10 +853,10 @@ contains
        real(wp), intent(out) :: md
        TYPE( NLLS_control_type ), INTENT( IN ) :: options
 
+       ! to be culled
        real(wp) :: Jd(m)
        
        !Jd = J*d
-!       call dgemv('N',m,n,1.0,J,m,d,1,0.0,Jd,1)
        call mult_J(J,n,m,d,Jd)
 
        select case (options%model)
@@ -956,18 +995,20 @@ contains
         integer, intent(out) :: info
         real(wp), intent(out), allocatable :: nullevs(:,:)
         
-!        real(wp) :: Aeig(n,n), Beig(n,n)
-        real(wp) :: alphaR(n), alphaI(n), beta(n), vr(n,n)
-        real(wp), allocatable :: work(:)
-        integer :: lwork, maxindex(1), no_null, nullindex(n), halfn
-        logical :: vecisreal(n)
-        real(wp) :: ew_array(n), tau
-
-
+        integer :: lwork, maxindex(1), no_null, halfn
+        real(wp):: tau
         integer :: i 
+
+        ! to be culled...
+        real(wp) :: alphaR(n), alphaI(n), beta(n), vr(n,n), ew_array(n)
+        real(wp), allocatable :: work(:)
+        integer :: nullindex(n)
+        logical :: vecisreal(n)
         
         ! Find the max eigenvalue/vector of the generalized eigenproblem
         !     A * y = lam * B * y
+        ! further, if ||y(1:n/2)|| \approx 0, find and return the 
+        ! eigenvectors y(n/2+1:n) associated with this
 
         info = 0
         ! check that n is even (important for hard case -- see below)
