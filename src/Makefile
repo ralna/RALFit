@@ -32,7 +32,7 @@ CLIBS = -L$(GSLDIR)/lib -I$(GSLDIR)/include -lgslcblas -lgsl -lm
 F77 = $(FC)
 
 # What to build
-all: driver
+all: driver test
 
 #DBLAS = $(BLASDIR)/dgemv.f $(BLASDIR)/lsame.f $(BLASDIR)/xerbla.f \
 #	$(BLASDIR)/dgemm.f $(BLASDIR)/dtrmv.f $(BLASDIR)/dtrmm.f \
