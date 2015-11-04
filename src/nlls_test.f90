@@ -3,19 +3,70 @@ program nlls_test
 ! Test deck for nlls_module
 
   use nlls_module 
+  use example_module
   implicit none
 
+  type( NLLS_inform_type )  :: status
+  type( NLLS_control_type ) :: options
+  type( user_type ), target :: params
   real(wp), allocatable :: x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
   real(wp), allocatable :: results(:)
   real(wp) :: alpha
-  integer :: m, n, i, no_errors, info
+  integer :: m, n, i, no_errors_helpers, no_errors_main, info
+  integer :: nlls_method
+  
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!
+!! Test the main file !!
+!!!!!!!!!!!!!!!!!!!!!!!!
+
+no_errors_main = 0
+
+n = 2
+
+m = 67
+
+do nlls_method = 1,2
+   allocate( x(n) )
+
+   X(1) = 1.0 
+   X(2) = 2.0
+   
+   options%print_level = 0
+   options%nlls_method = nlls_method
+
+   ! Get params for the function evaluations
+   allocate(params%x_values(m))
+   allocate(params%y_values(m))
+   
+   call generate_data_example(params%x_values,params%y_values,m)
+   
+   call ral_nlls(n, m, X,                         &
+        eval_F, eval_J, eval_H, params,  &
+        status, options )
+   if ( status%status .ne. 0 ) then
+      write(*,*) 'ral_nlls failed to converge:'
+      write(*,*) 'NLLS_METHOD = ', nlls_method
+      no_errors_main = no_errors_main + 1
+   end if
+   
+   deallocate(x,params%x_values,params%y_values)
+   
+end do
+
+if (no_errors_main == 0) then
+   write(*,*) '*** All (main) tests passed successfully! ***'
+else
+   write(*,*) 'There were ', no_errors_main,' errors'
+end if
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Test the helper subroutines !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-  no_errors = 0
+no_errors_helpers = 0
 
 !! mult_J
   
@@ -28,7 +79,7 @@ program nlls_test
   call mult_J(z,m,n,x,y)
   if ( norm2( y - (/16.0, 20.0 /) ) > 1e-12) then
      write(*,*) 'error :: mult_J test failed'
-     no_errors = no_errors + 1 
+     no_errors_helpers = no_errors_helpers + 1 
   end if
 
 
@@ -45,7 +96,7 @@ program nlls_test
   call mult_Jt(z,n,m,x,y)
   if ( norm2( y - (/10.0, 26.0 /) ) > 1e-12) then
      write(*,*) 'error :: mult_Jt test failed'
-     no_errors = no_errors + 1 
+     no_errors_helpers = no_errors_helpers + 1 
   end if
 
   deallocate(z, x, y)
@@ -64,7 +115,7 @@ program nlls_test
   end do
   if (norm2(results) > 1e-12) then
      write(*,*) 'error :: outer_product test failed'
-     no_errors = no_errors + 1     
+     no_errors_helpers = no_errors_helpers + 1     
   end if
   
   deallocate(x,A,B,results)
@@ -86,7 +137,7 @@ program nlls_test
 
   if ( (abs( alpha - 10.0 ) > 1e-12).or.(info .ne. 0) ) then
      write(*,*) 'error :: max_eig test failed'
-     no_errors = no_errors + 1 
+     no_errors_helpers = no_errors_helpers + 1 
   end if
   
   deallocate(A,B,x)
@@ -110,13 +161,13 @@ program nlls_test
   call max_eig(A,B,n,alpha,x,info,C)
   if (.not. allocated(C)) then ! check C returned 
      write(*,*) 'error :: hard case of max_eig test failed - C not returned'
-     no_errors = no_errors + 1 
+     no_errors_helpers = no_errors_helpers + 1 
   else
      allocate(y(2))
      y = shape(C)
      if ((y(1) .ne. 2) .and. (y(2) .ne. n)) then
         write(*,*) 'error :: hard case of max_eig test failed - wrong shape C returned'
-        no_errors = no_errors + 1 
+        no_errors_helpers = no_errors_helpers + 1 
      else
         allocate(results(n))
         do i = 1, n
@@ -127,7 +178,7 @@ program nlls_test
         end do
         if (norm2(results) > 1e-10) then
            write(*,*) 'error :: hard case of max_eig test failed - wrong vectors returned'
-           no_errors = no_errors + 1 
+           no_errors_helpers = no_errors_helpers + 1 
         end if
      end if
   end if
@@ -147,13 +198,13 @@ program nlls_test
   call max_eig(A,B,n,alpha,x,info,C)
   if (info .ne. 1) then
      write(*,*) 'error :: all complex part of max_eig test failed'
-     no_errors = no_errors + 1
+     no_errors_helpers = no_errors_helpers + 1
   end if
   
   call max_eig(A,B,n+1,alpha,x,info,C)
   if (info .ne. 2) then
      write(*,*) 'error :: even part of max_eig test failed'
-     no_errors = no_errors + 1
+     no_errors_helpers = no_errors_helpers + 1
   end if
   
   deallocate(A,B,x)
@@ -176,7 +227,7 @@ program nlls_test
   end do
   if (norm2(results) > 1e-10) then
      write(*,*) 'error :: matmult_outer test failed'
-     no_errors = no_errors + 1
+     no_errors_helpers = no_errors_helpers + 1
   end if
   
   deallocate(A,B,C,results)
@@ -198,7 +249,7 @@ program nlls_test
   end do
   if (norm2(results) > 1e-10) then
      write(*,*) 'error :: matmult_inner test failed'
-     no_errors = no_errors + 1
+     no_errors_helpers = no_errors_helpers + 1
   end if
 
   deallocate(A,B,C,results)
@@ -216,21 +267,28 @@ program nlls_test
 
   if (info .ne. 0) then
      write(*,*) 'error -- findbeta did not work: info /= 0'
-     no_errors = no_errors + 1
+     no_errors_helpers = no_errors_helpers + 1
   else if ( ( norm2( x + alpha * y ) - 10.0_wp ) > 1e-12 ) then
      write(*,*) 'error -- findbeta did not work'
      write(*,*) '|| x + beta y|| = ', norm2( (x + alpha * y)-10.0_wp)
-     no_errors = no_errors + 1
+     no_errors_helpers = no_errors_helpers + 1
   end if
   
   deallocate(x,y,z)
   
 ! Report back results....
   
-  if (no_errors == 0) then
-     write(*,*) '*** All tests passed successfully! ***'
+  if (no_errors_helpers == 0) then
+     write(*,*) '*** All (helper) tests passed successfully! ***'
   else
-     write(*,*) 'There were ', no_errors,' errors'
+     write(*,*) 'There were ', no_errors_helpers,' errors'
   end if
 
+
+ if (no_errors_helpers == 0) then
+    write(*,*) ' '
+    write(*,*) '**************************************'
+    write(*,*) '*** All tests passed successfully! ***'
+    write(*,*) '**************************************'
+  end if
 end program nlls_test
