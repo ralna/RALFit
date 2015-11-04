@@ -4,9 +4,8 @@ use nlls_module
 use example_module
 implicit none
 
-integer                   :: n, m, len_work_int, len_work_real, i
-real(wp), allocatable     :: X(:), Work_real(:)
-integer, allocatable      :: Work_int(:)
+integer                   :: n, m, i
+real(wp), allocatable     :: X(:)
 type( NLLS_inform_type )  :: status
 type( NLLS_control_type ) :: options
 type( user_type ), target :: params
@@ -19,12 +18,6 @@ write(*,*) ' '
 n = 2
 
 m = 67
-
-len_work_int = n
-allocate( Work_int(len_work_int) )
-
-len_work_real = n
-allocate( Work_real(len_work_real) ) 
 
 allocate( X(n) )
 
