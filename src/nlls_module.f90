@@ -904,6 +904,8 @@ contains
         real(wp), intent(out) :: A(n,n)
         integer :: lengthJ
         
+        ! Takes an m x n matrix J and forms the 
+        ! n x n matrix A given by
         ! A = J' * J
         
         lengthJ = n*m
@@ -940,6 +942,10 @@ contains
         real(wp), intent(in) :: x(:)
         integer, intent(in) :: n
         real(wp), intent(out) :: xtx(:,:)
+
+        ! Takes an n vector x and forms the 
+        ! n x n matrix xtx given by
+        ! xtx = x * x'
 
         xtx(1:n,1:n) = 0.0_wp
         call dger(n, n, 1.0_wp, x, 1, x, 1, xtx, n)
