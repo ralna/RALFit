@@ -633,7 +633,7 @@ contains
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
         
-     REAL(wp) :: A(n,n), Jtf(n), B(n,n), p0(n), p1(n)
+     REAL(wp) :: A(n,n), v(n), B(n,n), p0(n), p1(n)
      integer :: solve_status, find_status
      integer :: keep_p0, i, eig_info, size_hard(2)
      real(wp) :: obj_p0, obj_p1
@@ -645,10 +645,31 @@ contains
      tau = 1e-4
      obj_p0 = (tau + tau)/(tau-tau) ! set a nan....is there a better way?
 
-!     A = matmult(transpose(J),J) 
-     call matmult_inner(J,n,m,A)
-      
-     call mult_Jt(J,n,m,f,Jtf)
+     ! The code finds 
+     !  min_p   v^T p + 0.5 * p^T A p
+     !       s.t. ||p||_B \leq Delta
+     !
+     ! set A and v for the model being considered here...
+     select case (options%model)
+     case (1)
+        call matmult_inner(J,n,m,A)
+        call mult_Jt(J,n,m,f,v)
+     case (2) ! second-order (exact hessian)
+        if (options%print_level > 0) then
+           write(options%error,'(a)') 'Second order methods to be implemented'
+           return
+        end if
+     case (3) ! barely second-order (identity Hessian)
+        if (options%print_level > 0) then
+           write(options%error,'(a)') 'barely 2nd order methods to be implemented'
+           return
+        end if
+     case default
+        if (options%print_level> 0) then
+           write(options%error,'(a)') 'Error: model not yet supported AINT'
+        end if
+        return
+     end select
 
      ! Set B to I by hand  
      ! todo: make this an option
@@ -657,19 +678,19 @@ contains
         B(i,i) = 1.0
      end do
        
-     call solve_spd(A,-Jtf,p0,n,solve_status)
+     call solve_spd(A,-v,p0,n,solve_status)
 
      call matrix_norm(p0,B,norm_p0)
      
      if (norm_p0 < Delta) then
         keep_p0 = 1;
-        obj_p0 = dot_product(Jtf,p0) + 0.5 * dot_product(p0,matmul(A,p0))
+        obj_p0 = dot_product(v,p0) + 0.5 * dot_product(p0,matmul(A,p0))
      end if
 
      M0(1:n,1:n) = -B
      M0(n+1:2*n,1:n) = A
      M0(1:n,n+1:2*n) = A
-     call outer_product(Jtf,n,gtg) ! gtg = Jtg * Jtg^T
+     call outer_product(v,n,gtg) ! gtg = Jtg * Jtg^T
      M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * gtg
 
      M1 = 0.0
@@ -690,7 +711,7 @@ contains
         call matmult_outer( matmul(B,y_hardcase), size_hard(2), n, M1(1:n,1:n))
         M0(1:n,1:n) = A(:,:) + lam*B(:,:) + M1(1:n,1:n)
         ! solve Hq + g = 0 for q
-        call solve_spd(M0(1:n,1:n),-Jtf,q,n,solve_status)
+        call solve_spd(M0(1:n,1:n),-v,q,n,solve_status)
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
         call findbeta(q,y_hardcase(:,1),1.0_wp,Delta,eta,find_status)
@@ -705,10 +726,10 @@ contains
         p1(:) = q(:) + eta * y_hardcase(:,1)
         
      else 
-        call solve_spd(A + lam*B,-Jtf,p1,n,solve_status)
+        call solve_spd(A + lam*B,-v,p1,n,solve_status)
      end if
 
-     obj_p1 = dot_product(Jtf,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
+     obj_p1 = dot_product(v,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
 
      d = p1
      if (obj_p0 < obj_p1) then
