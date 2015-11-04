@@ -763,13 +763,9 @@ contains
        temp(1:m) = f(1:m)
        lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
        allocate(work(lwork))
-       allocate(Jlls(m,n))
-
-       do i = 1,n
-          do jit = 1,m
-             Jlls(jit,i) = J((i-1) * m + jit) ! We need to take a copy as dgels overwrites J
-          end do
-       end do
+       allocate(Jlls(m*n))
+       
+       Jlls(:) = J(:)
 
        call dgels(trans, m, n, nrhs, Jlls, lda, temp, ldb, work, lwork, status)
 
