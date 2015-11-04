@@ -6,10 +6,10 @@ program nlls_test
   implicit none
 
   real(wp), allocatable :: x(:),y(:),z(:)
-  real(wp), allocatable :: A(:,:), B(:,:)
+  real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
   real(wp), allocatable :: results(:)
   real(wp) :: alpha
-  integer :: m, n, i, no_errors
+  integer :: m, n, i, no_errors, info
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Test the helper subroutines !!
@@ -82,15 +82,149 @@ program nlls_test
      B(i,i) = real(i,wp)
   end do
 
-  call max_eig(A,B,n,alpha,x)
+  call max_eig(A,B,n,alpha,x,info,C)
 
-  if ( abs( alpha - 10.0 ) > 1e-12 ) then
+  if ( (abs( alpha - 10.0 ) > 1e-12).or.(info .ne. 0) ) then
      write(*,*) 'error :: max_eig test failed'
      no_errors = no_errors + 1 
   end if
   
   deallocate(A,B,x)
 
+  ! check the 'hard' case...
+  n = 4
+  allocate(x(n),A(n,n), B(n,n))
+  A = 0.0_wp
+  A(3,1) = 1.0_wp
+  A(4,1) = 2.0_wp
+  A(3,2) = 3.0_wp
+  A(4,2) = 4.0_wp
+  A(1,3) = A(3,1)
+  A(1,4) = A(4,1)
+  A(2,3) = A(3,2)
+  A(2,4) = A(2,4)
+  B = A
+  A(1,1) = 1.0_wp
+  A(2,2) = 1.0_wp
+ 
+  call max_eig(A,B,n,alpha,x,info,C)
+  if (.not. allocated(C)) then ! check C returned 
+     write(*,*) 'error :: hard case of max_eig test failed - C not returned'
+     no_errors = no_errors + 1 
+  else
+     allocate(y(2))
+     y = shape(C)
+     if ((y(1) .ne. 2) .and. (y(2) .ne. n)) then
+        write(*,*) 'error :: hard case of max_eig test failed - wrong shape C returned'
+        no_errors = no_errors + 1 
+     else
+        allocate(results(n))
+        do i = 1, n
+           results(n) = norm2(                                     &
+                               matmul( A(3:4,3:4),C(:,i) )         &
+                               - alpha * matmul(B(3:4,3:4),C(:,i)) & 
+                               )
+        end do
+        if (norm2(results) > 1e-10) then
+           write(*,*) 'error :: hard case of max_eig test failed - wrong vectors returned'
+           no_errors = no_errors + 1 
+        end if
+     end if
+  end if
+  
+  deallocate(A,B,C,x,y,results)
+  
+  ! check the error return
+  n = 2
+  allocate(x(n), A(n,n), B(n,n))
+  A = 0.0_wp
+  B = 0.0_wp
+  A(1,2) = 1.0_wp
+  A(2,1) = -1.0_wp
+  B(1,1) = 1.0_wp
+  B(2,2) = 1.0_wp
+
+  call max_eig(A,B,n,alpha,x,info,C)
+  if (info .ne. 1) then
+     write(*,*) 'error :: all complex part of max_eig test failed'
+     no_errors = no_errors + 1
+  end if
+  
+  call max_eig(A,B,n+1,alpha,x,info,C)
+  if (info .ne. 2) then
+     write(*,*) 'error :: even part of max_eig test failed'
+     no_errors = no_errors + 1
+  end if
+  
+  deallocate(A,B,x)
+
+!! matmult_outer
+  
+  n = 2
+  m = 3
+  allocate(A(m,n),B(m,m),C(m,m),results(m))
+  A = reshape( (/1.0, 2.0, 3.0,  &
+                 2.0, 4.0, 6.0/),&
+                 shape(A))
+  call matmult_outer(A,n,m,B)
+  C = reshape( (/ 5.0, 10.0, 15.0,  &
+       10.0, 20.0, 30.0, & 
+       15.0, 30.0, 45.0 /) &
+       , shape(C))
+  do i = 1,m
+     results(i) = norm2(C(:,i) - B(:,i))
+  end do
+  if (norm2(results) > 1e-10) then
+     write(*,*) 'error :: matmult_outer test failed'
+     no_errors = no_errors + 1
+  end if
+  
+  deallocate(A,B,C,results)
+
+ !! matmult_inner
+  
+  n = 2
+  m = 3
+  allocate(A(m,n),B(n,n),C(n,n),results(n))
+  A = reshape( (/1.0, 2.0, 3.0,  &
+                 2.0, 4.0, 6.0/),&
+                 shape(A))
+  call matmult_inner(A,n,m,B)
+  C = reshape( (/ 14.0, 28.0,  &
+                  28.0, 56.0 /) &
+                  , shape(C))
+  do i = 1,n
+     results(i) = norm2(C(:,i) - B(:,i))
+  end do
+  if (norm2(results) > 1e-10) then
+     write(*,*) 'error :: matmult_inner test failed'
+     no_errors = no_errors + 1
+  end if
+
+  deallocate(A,B,C,results)
+  
+
+  ! test findbeta
+
+  n = 3
+  allocate(x(n),y(n),z(n))
+
+  x = (/ 1.0, 2.0, 3.0 /) 
+  y = (/ 2.0, 1.0, 1.0 /)
+  
+  call findbeta(x,y,1.0_wp,10.0_wp,alpha,info)
+
+  if (info .ne. 0) then
+     write(*,*) 'error -- findbeta did not work: info /= 0'
+     no_errors = no_errors + 1
+  else if ( ( norm2( x + alpha * y ) - 10.0_wp ) > 1e-12 ) then
+     write(*,*) 'error -- findbeta did not work'
+     write(*,*) '|| x + beta y|| = ', norm2( (x + alpha * y)-10.0_wp)
+     no_errors = no_errors + 1
+  end if
+  
+  deallocate(x,y,z)
+  
 ! Report back results....
   
   if (no_errors == 0) then
