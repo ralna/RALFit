@@ -894,16 +894,18 @@ contains
        subroutine matmult_outer(J,n,m,A)
         
         integer, intent(in) :: n,m 
-        real(wp), intent(in) :: J(:)
+        real(wp), intent(in) :: J(*)
         real(wp), intent(out) :: A(m,m)
         integer :: lengthJ
-        
+
+        ! Takes an m x n matrix J and forms the 
+        ! m x m matrix A given by
         ! A = J * J'
         
         lengthJ = n*m
         
-        call dgemm('N','T',n, n, m, 1.0_wp,&
-                   J, n, J, n, & 
+        call dgemm('N','T',m, m, n, 1.0_wp,&
+                   J, m, J, m, & 
                    0.0_wp, A, m)
         
         
