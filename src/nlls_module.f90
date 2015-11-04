@@ -757,7 +757,7 @@ contains
 
 !  -----------------------------------------------------------------
 !  findbeta, a subroutine to find the optimal beta such that 
-!   || d || = Delta
+!   || d || = Delta, where d = alpha * d_sd + beta * ghat
 !  -----------------------------------------------------------------
 
      real(wp), dimension(:), intent(in) :: d_sd, ghat
@@ -766,10 +766,12 @@ contains
      integer, intent(out) :: status
      
      real(wp) :: a, b, c, discriminant
+     
+     status = 0
 
      a = norm2(ghat)**2
      b = 2.0 * alpha * dot_product( ghat, d_sd)
-     c = ( alpha * norm2( d_sd ) )**2 - Delta
+     c = ( alpha * norm2( d_sd ) )**2 - Delta**2
      
      discriminant = b**2 - 4 * a * c
      if ( discriminant < 0) then
