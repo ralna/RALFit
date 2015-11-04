@@ -631,10 +631,12 @@ contains
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
         
      REAL(wp) :: A(n,n), Jtf(n), B(n,n), p0(n), p1(n)
-     integer :: solve_status, keep_p0, i, eig_info
-     real(wp) :: obj_p0, obj_p1 
-     REAL(wp) :: norm_p0, norm_p1, tau, lam
-     REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n)
+     integer :: solve_status, find_status
+     integer :: keep_p0, i, eig_info, size_hard(2)
+     real(wp) :: obj_p0, obj_p1
+     REAL(wp) :: norm_p0, norm_p1, tau, lam, eta
+     REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n), q(n)
+     REAL(wp), allocatable :: y_hardcase(:,:)
 
      keep_p0 = 0
      tau = 1e-4
@@ -644,8 +646,6 @@ contains
      call matmult_inner(J,n,m,A)
       
      call mult_Jt(J,n,m,f,Jtf)
-
-     write(*,*) 'Jtg = ', Jtf
 
      ! Set B to I by hand  
      ! todo: make this an option
@@ -669,45 +669,42 @@ contains
      call outer_product(Jtf,n,gtg) ! gtg = Jtg * Jtg^T
      M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * gtg
 
-!!$     write(*,*) 'Jtf = '
-!!$     do i = 1,n
-!!$        write(*,*) Jtf(i)
-!!$     end do
-!!$
-!!$     write(*,*) 'gtg = '
-!!$     do i = 1,n
-!!$        write(*,*) gtg(i,:)
-!!$     end do
-     
      M1 = 0.0
      M1(n+1:2*n,1:n) = -B
      M1(1:n,n+1:2*n) = -B
      
-     write(*,*) 'M0 = '
-     do i = 1,2*n
-        write(*,*) M0(i,:)
-     end do
-
-     write(*,*) 'M1 = '
-     do i = 1,2*n
-        write(*,*) M1(i,:)
-     end do
-
-
-     call max_eig(M0,M1,2*n,lam, y, eig_info)
+     call max_eig(M0,M1,2*n,lam, y, eig_info, y_hardcase)
      if ( eig_info > 0 ) then
         write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
         write(options%error,'(a,i0)') 'LAPACK returned info = ', eig_info
         return
      end if
-     write(*,*) 'lam =', lam
+
      if (norm2(y(1:n)) < tau) then
-        write(*,*) 'norm2(y(1:n)) = ', norm2(y(1:n))
         ! Hard case
-        write(*,*) 'Hard case -- not yet coded!'
+        ! overwrite H onto M0, and the outer prod onto M1...
+        size_hard = shape(y_hardcase)
+        call matmult_outer( matmul(B,y_hardcase), size_hard(2), n, M1(1:n,1:n))
+        M0(1:n,1:n) = A(:,:) + lam*B(:,:) + M1(1:n,1:n)
+        ! solve Hq + g = 0 for q
+        call solve_spd(M0(1:n,1:n),-Jtf,q,n,solve_status)
+        
+        ! find max eta st ||q + eta v(:,1)||_B = Delta
+        call findbeta(q,y_hardcase(:,1),1.0_wp,Delta,eta,find_status)
+        if ( find_status .ne. 0 ) then
+           write(*,*) 'error: no vaild beta found...'
+           return
+        end if
+        !!!!!      ^^TODO^^    !!!!!
+        ! currently assumes B = I !!
+        !!!!       fixme!!      !!!!
+        
+        p1(:) = q(:) + eta * y_hardcase(:,1)
+        
+     else 
+        call solve_spd(A + lam*B,-Jtf,p1,n,solve_status)
      end if
 
-     call solve_spd(A + lam*B,-Jtf,p1,n,solve_status)
      obj_p1 = dot_product(Jtf,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
 
      d = p1
