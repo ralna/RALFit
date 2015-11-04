@@ -876,7 +876,7 @@ contains
       subroutine matmult_inner(J,n,m,A)
         
         integer, intent(in) :: n,m 
-        real(wp), intent(in) :: J(:)
+        real(wp), intent(in) :: J(*)
         real(wp), intent(out) :: A(n,n)
         integer :: lengthJ
         
