@@ -448,9 +448,11 @@ contains
        
        if ( options%print_level >= 3 )  write( options%out , 3030 ) i
        
-       !+++++++++++++++++++++++!
-       ! Calculate the step... !
-       !+++++++++++++++++++++++!
+       !+++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the step                        !
+       !    d                                      !   
+       ! that the model thinks we should take next !
+       !+++++++++++++++++++++++++++++++++++++++++++!
 
        call calculate_step(J,f,g,n,m,Delta,d,options)
        
@@ -464,6 +466,7 @@ contains
        call eval_F(fstatus, n, m, Xnew, fnew, params)
        if (fstatus > 0) write( options%out, 1020) fstatus
        
+       ! get 'md' --> the value of the model evaluated at Xnew 
        call evaluate_model(f,J,d,md,m,n,options)
 
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
