@@ -630,8 +630,8 @@ contains
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
         
-     REAL(wp) :: A(n,n), Jtg(n), B(n,n), p0(n), p1(n)
-     integer :: solve_status, keep_p0, i
+     REAL(wp) :: A(n,n), Jtf(n), B(n,n), p0(n), p1(n)
+     integer :: solve_status, keep_p0, i, eig_info
      real(wp) :: obj_p0, obj_p1 
      REAL(wp) :: norm_p0, norm_p1, tau, lam
      REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n)
@@ -642,9 +642,10 @@ contains
 
 !     A = matmult(transpose(J),J) 
      call matmult_inner(J,n,m,A)
-        
+      
+     call mult_Jt(J,n,m,f,Jtf)
 
-     call mult_Jt(J,n,m,g,Jtg)
+     write(*,*) 'Jtg = ', Jtf
 
      ! Set B to I by hand  
      ! todo: make this an option
@@ -653,33 +654,61 @@ contains
         B(i,i) = 1.0
      end do
        
-     call solve_spd(A,-Jtg,p0,n,solve_status)
+     call solve_spd(A,-Jtf,p0,n,solve_status)
+
      call matrix_norm(p0,B,norm_p0)
      
      if (norm_p0 < Delta) then
         keep_p0 = 1;
-        obj_p0 = dot_product(Jtg,p0) + 0.5 * dot_product(p0,matmul(A,p0))
+        obj_p0 = dot_product(Jtf,p0) + 0.5 * dot_product(p0,matmul(A,p0))
      end if
 
      M0(1:n,1:n) = -B
      M0(n+1:2*n,1:n) = A
      M0(1:n,n+1:2*n) = A
-     call outer_product(Jtg,n,gtg) ! gtg = Jtg * Jtg^T
-     M0(n+1:2*n,n+1:2*n) = -(1.0 / Delta**2) * gtg
+     call outer_product(Jtf,n,gtg) ! gtg = Jtg * Jtg^T
+     M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * gtg
 
+!!$     write(*,*) 'Jtf = '
+!!$     do i = 1,n
+!!$        write(*,*) Jtf(i)
+!!$     end do
+!!$
+!!$     write(*,*) 'gtg = '
+!!$     do i = 1,n
+!!$        write(*,*) gtg(i,:)
+!!$     end do
+     
      M1 = 0.0
-     M1(n+1:2*n,1:n) = B
-     M1(1:n,n+1:2*n) = B
+     M1(n+1:2*n,1:n) = -B
+     M1(1:n,n+1:2*n) = -B
      
-     call max_eig(M0,-M1,2*n,lam, y)
-     
+     write(*,*) 'M0 = '
+     do i = 1,2*n
+        write(*,*) M0(i,:)
+     end do
+
+     write(*,*) 'M1 = '
+     do i = 1,2*n
+        write(*,*) M1(i,:)
+     end do
+
+
+     call max_eig(M0,M1,2*n,lam, y, eig_info)
+     if ( eig_info > 0 ) then
+        write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
+        write(options%error,'(a,i0)') 'LAPACK returned info = ', eig_info
+        return
+     end if
+     write(*,*) 'lam =', lam
      if (norm2(y(1:n)) < tau) then
+        write(*,*) 'norm2(y(1:n)) = ', norm2(y(1:n))
         ! Hard case
         write(*,*) 'Hard case -- not yet coded!'
      end if
 
-     call solve_spd(A + lam*B,-Jtg,p1,n,solve_status)
-     obj_p1 = dot_product(Jtg,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
+     call solve_spd(A + lam*B,-Jtf,p1,n,solve_status)
+     obj_p1 = dot_product(Jtf,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
 
      d = p1
      if (obj_p0 < obj_p1) then
@@ -689,7 +718,7 @@ contains
 
    end SUBROUTINE AINT_tr
    
-     SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
+   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
        
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
@@ -892,62 +921,73 @@ contains
         
       end subroutine outer_product
 
-      subroutine max_eig(A,B,n,lam,y)
+      subroutine max_eig(A,B,n,ew,ev,info)
         
         real(wp), intent(in) :: A(:,:), B(:,:)
         integer, intent(in) :: n 
-        real(wp), intent(out) :: lam, y(:)
-
+        real(wp), intent(out) :: ew, ev(:)
+        integer, intent(out) :: info
+        
         real(wp) :: Aeig(n,n), Beig(n,n)
-        integer :: itype, m
-        real(wp) :: z(n,1), w(n)
+        real(wp) :: alphaR(n), alphaI(n), beta(n), vr(n,n)
         real(wp), allocatable :: work(:)
-        integer :: lwork, iwork(5*n), info, ifail(n)
-        real(wp) :: abstol
-        real(wp) :: DLAMCH
+        integer :: lwork, maxindex(1)
+        logical :: vecisreal(n)
+        real(wp) :: ew_array(n)
 
 
         integer :: i 
         
         ! Find the max eigenvalue/vector of the generalized eigenproblem
         !     A * y = lam * B * y
-        
-        itype = 1 
-        ! call with lwork = -1 for a workspace query
-        abstol = 2 * DLAMCH('S')
-        
+
+        info = 0
+
         Aeig(:,:) = A(:,:)
         Beig(:,:) = B(:,:)
         
         allocate(work(1))
-
         ! get length of work...
-        call dsygvx(itype,         &
-                    'V', 'I', 'U', & 
-                    n, Aeig, n, Beig, n, & 
-                    0.0, 0.0, & ! used if range='V', not otherwise
-                    n-1,n, & ! range of eigenvalues needed
-                    abstol, & ! abstol (recommended setting for accuracy)
-                    m, w, z, n, &
-                    work, -1, iwork, &
-                    ifail, info)
+        call dggev('N', & ! No left eigenvectors
+                   'V', &! Yes right eigenvectors
+                   n, Aeig, n, Beig, n, &
+                   alphaR, alphaI, beta, & ! eigenvalue data
+                   vr, n, & ! not referenced
+                   vr, n, & ! right eigenvectors
+                   work, -1, info)
+
         lwork = int(work(1))
         deallocate(work)
         allocate(work(lwork))
 
-        call dsygvx(itype,         &
-                    'V', 'I', 'U', & 
-                    n, Aeig, n, Beig, n, & 
-                    0.0_wp, 0.0_wp, & ! used if range='V', not otherwise
-                    n,n, & ! range of eigenvalues needed (smallest, largest)
-                    abstol, & ! abstol (recommended setting for accuracy)
-                    m, w, z, n, &
-                    work, lwork, iwork, &
-                    ifail, info)
+        call dggev('N', & ! No left eigenvectors
+                   'V', &! Yes right eigenvectors
+                   n, Aeig, n, Beig, n, &
+                   alphaR, alphaI, beta, & ! eigenvalue data
+                   vr, n, & ! not referenced
+                   vr, n, & ! right eigenvectors
+                   work, lwork, info)
 
-        y = z(1:n,1)
-        lam = w(1)
+        ! now find the rightmost real eigenvalue
+        vecisreal = .true.
+        where ( abs(alphaI) > 1e-8 ) vecisreal = .false.
         
+        ew_array(:) = alphaR(:)/beta(:)
+        maxindex = maxloc(ew_array,vecisreal)
+        write(*,*) 'ews are:'
+        do i = 1,n
+           write(*,*) alphaR(i)/beta(i) ,'+',alphaI(i)/beta(i) ,'i'
+        end do
+
+        if (maxindex(1) == 0) then
+           write(*,*) 'Error, all eigs are imaginary'
+           info = 1 ! Eigs imaginary error
+           return
+        end if
+        
+        ew = alphaR(maxindex(1))/beta(maxindex(1))
+        ev(:) = vr(:,maxindex(1))
+                
       end subroutine max_eig
 
 end module nlls_module
