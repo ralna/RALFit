@@ -29,7 +29,7 @@ n = 2
 m = 67
 
 do nlls_method = 1,2
-   do model = 1,3
+   do model = 0,3
       allocate( x(n) )
 
       X(1) = 1.0 
@@ -50,7 +50,16 @@ do nlls_method = 1,2
            status, options )
       if (( nlls_method == 1).and.( model > 1)) then
          if ( status%status .ne. 3 ) then
-            write(*,*) 'incorrect error return from ral_nlls'
+            write(*,*) 'incorrect error return from ral_nlls:'
+            write(*,*) 'NLLS_METHOD = ', nlls_method
+            write(*,*) 'MODEL = ', model
+            no_errors_main = no_errors_main + 1
+         end if
+      else if ( model == 0 ) then
+         if ( status%status .ne. 3 ) then
+            write(*,*) 'incorrect error return from ral_nlls:'
+            write(*,*) 'NLLS_METHOD = ', nlls_method
+            write(*,*) 'MODEL = ', model
             no_errors_main = no_errors_main + 1
          end if
       else if ( status%status .ne. 0 ) then
