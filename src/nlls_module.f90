@@ -481,8 +481,6 @@ contains
     normF0 = norm2(f)
 
 !    g = -J^Tf
-!    call dgemv('T',m,n,-1.0,J,m,f,1,0.0,g,1)
-!    g = - matmul(transpose(J),f)
     call mult_Jt(J,n,m,f,g)
     g = -g
     normJF0 = norm2(g)
@@ -519,9 +517,8 @@ contains
           X = Xnew;
           J = Jnew;
           f = fnew;
-!          g = - matmul(transpose(J),f);
+
           ! g = -J^Tf
-!          call dgemv('T',m,n,-1.0,J,m,f,1,0.0,g,1)          
           call mult_Jt(J,n,m,f,g)
           g = -g
 
