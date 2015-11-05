@@ -126,7 +126,7 @@ no_errors_helpers = 0
   m = 4
   ! make sure max_eig gets called
   options%nlls_method = 2
-  call setup_workspaces(work,2,2,options) 
+  call setup_workspaces(work,2,2,options,info) 
 
   allocate(x(n),A(n,n), B(n,n))
   A = reshape( (/1.0, 2.0, 3.0, 4.0, &
@@ -192,7 +192,7 @@ no_errors_helpers = 0
   deallocate(A,B,C,x,y,results)
   
 
-  call setup_workspaces(work2,1,1,options)  !todo: deallocation routine
+  call setup_workspaces(work2,1,1,options,info)  !todo: deallocation routine
   ! check the error return
   n = 2
   allocate(x(n), A(n,n), B(n,n))
