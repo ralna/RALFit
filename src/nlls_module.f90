@@ -490,13 +490,16 @@ contains
        
        if ( options%print_level >= 3 )  write( options%out , 3030 ) i
        
-       !+++++++++++++++++++++++++++++++++++++++++++!
-       ! Calculate the step                        !
-       !    d                                      !   
-       ! that the model thinks we should take next !
-       !+++++++++++++++++++++++++++++++++++++++++++!
+       !++++++++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the step                             !
+       !    d                                           !   
+       ! that the model thinks we should take next, and !
+       !    md                                          !
+       ! the value of the model at this step            !  
+       !++++++++++++++++++++++++++++++++++++++++++++++++!
 
-       call calculate_step(J,f,g,n,m,Delta,d,options,workspace%calculate_step_ws)
+       call calculate_step(J,f,g,n,m,Delta,d,md,options,& 
+                           workspace%calculate_step_ws)
        
        !++++++++++++++++++!
        ! Accept the step? !
@@ -511,9 +514,6 @@ contains
           call eval_HF(hfstatus, n, m, X, f, hf, params)
           if (hfstatus > 0) goto 4030
        end if
-
-       ! get 'md' --> the value of the model evaluated at Xnew 
-       call evaluate_model(f,J,d,md,m,n,options)
 
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
              ( norm2(f)**2 - md)
@@ -620,7 +620,7 @@ contains
 
   END SUBROUTINE RAL_NLLS
   
-  SUBROUTINE calculate_step(J,f,g,n,m,Delta,d,options,w)
+  SUBROUTINE calculate_step(J,f,g,n,m,Delta,d,md,options,w)
        
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -628,15 +628,15 @@ contains
 
      REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
      TYPE( calculate_step_work ) :: w
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
-        call dogleg(J,f,g,n,m,Delta,d,options,w%dogleg_ws)
+        call dogleg(J,f,g,n,m,Delta,d,md,options,w%dogleg_ws)
      case (2) ! The AINT method
-        call AINT_TR(J,f,n,m,Delta,d,options,w%AINT_tr_ws)
+        call AINT_TR(J,f,n,m,Delta,d,md,options,w%AINT_tr_ws)
      case default
         
         if ( options%print_level > 0 ) then
@@ -648,14 +648,14 @@ contains
    END SUBROUTINE calculate_step
 
 
-   SUBROUTINE dogleg(J,f,g,n,m,Delta,d,options,w)
+   SUBROUTINE dogleg(J,f,g,n,m,Delta,d,md,options,w)
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
 
      REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
      TYPE( dogleg_work ) :: w
      
@@ -691,9 +691,14 @@ contains
         d = alpha * w%d_sd + beta * w%ghat
      end if
      
+     ! get 
+     !    md
+     ! the value of the model evaluated at X + d
+     call evaluate_model(f,J,d,md,m,n,options)
+     
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,n,m,Delta,d,options,w)
+   SUBROUTINE AINT_tr(J,f,n,m,Delta,d,md,options,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
@@ -702,7 +707,7 @@ contains
 
      REAL(wp), intent(in) :: J(:), f(:), Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
      type( AINT_tr_work ) :: w
         
@@ -759,7 +764,8 @@ contains
      
      if (norm_p0 < Delta) then
         keep_p0 = 1;
-        obj_p0 = dot_product(w%v,w%p0) + 0.5 * dot_product(w%p0,matmul(w%A,w%p0))
+        ! get obj_p0 : the value of the model at p0
+        call evaluate_model(f,J,w%p0,obj_p0,m,n,options)
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -803,13 +809,17 @@ contains
      else 
         call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status)
      end if
+     
+     ! get obj_p1 : the value of the model at p1
+     call evaluate_model(f,J,w%p1,obj_p1,m,n,options)
 
-     obj_p1 = dot_product(w%v,w%p1) + 0.5 * (dot_product(w%p1,matmul(w%A,w%p1)))
-
+     ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
         d = w%p0
+        md = obj_p0
      else 
         d = w%p1
+        md = obj_p1
      end if
 
    end SUBROUTINE AINT_tr
