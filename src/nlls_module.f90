@@ -428,7 +428,7 @@ contains
 
 
   SUBROUTINE RAL_NLLS( n, m, X,                   & 
-                       eval_F, eval_J, eval_HF,    & 
+                       eval_F, eval_J, eval_HF,   & 
                        params,                    &
                        status, options )
     
@@ -570,9 +570,6 @@ contains
 
 ! print level > 0
 
-1010 FORMAT('Error code from eval_J, status = ',I6)
-1020 FORMAT('Error code from eval_F, status = ',I6)
-1030 FORMAT('Error code from eval_H, status = ',I6)
 1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
 ! print level > 1
