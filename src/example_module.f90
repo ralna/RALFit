@@ -116,24 +116,37 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
        INTEGER ( int32 ), INTENT( OUT ) :: status
        INTEGER ( int32 ), INTENT( IN ) :: n, m 
        REAL ( real64 ), DIMENSION( * ),INTENT( IN )  :: f
-       REAL ( real64 ), DIMENSION(*),  INTENT( OUT ) :: h
+       REAL ( real64 ), DIMENSION( * ),INTENT( OUT ) :: h
        REAL ( real64 ), DIMENSION( * ),INTENT( IN )  :: X
        class( params_base_type ), intent(in) :: params
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
 
-       integer :: i!,j
+       integer :: i, j, index
 
 ! then, let's work this into the format we need
 ! X(1) = m, X(2) = c
        select type(params)
        type is(user_type)
-          do i = 1,n**2
-!             do j = 1,n
-                h(i) = 0.0 ! set to zero for now: fixme!
- !            end do
+          ! evaluate 
+          ! HF = \sum_{i=1}^m F_i H_i
+          h(1:4) = 0.0
+          do i = 1, m
+             h(1) = &
+                  h(1) + f(i)* ( & 
+                  - (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) &
+                  )
+             h(2) = &
+                  h(2) + f(i)* ( &
+                  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) &
+                  )
+             h(4) = &
+                  h(4) + f(i)* ( &
+                  -  exp( X(1) * params%x_values(i) + X(2) ) &
+                  )
           end do
+          h(3) = h(2)
        end select
 
        status = 0
