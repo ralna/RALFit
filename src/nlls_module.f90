@@ -506,8 +506,9 @@ contains
        ! the value of the model at this step            !  
        !++++++++++++++++++++++++++++++++++++++++++++++++!
 
-       call calculate_step(J,f,hf,g,n,m,Delta,d,md,options,& 
+       call calculate_step(J,f,hf,g,n,m,Delta,d,md,options,status,& 
                            workspace%calculate_step_ws)
+       if (status%status .ne. 0) goto 4000
        
        !++++++++++++++++++!
        ! Accept the step? !
@@ -576,7 +577,8 @@ contains
      end do main_loop
 
     if (options%print_level > 0 ) write(options%out,1040) 
-
+    status%status = 1
+    
     RETURN
 
 ! Non-executable statements
@@ -599,46 +601,49 @@ contains
 ! error returns
 4000 continue
     ! generic end of algorithm
-    if (options%print_level >= 0) then
+    if (options%print_level > 0) then
        write(options%error,'(a)') 'Exiting RAL_NLLS'
     end if
     return
 
 4010 continue
     ! Error in eval_J
-    if (options%print_level >= 0) then
+    if (options%print_level > 0) then
        write(options%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
     end if
+    status%status = 2
     goto 4000
 
 4020 continue
     ! Error in eval_J
-    if (options%print_level >= 0) then
+    if (options%print_level > 0) then
        write(options%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
     end if
+    status%status = 2
     goto 4000
 
 4030 continue
     ! Error in eval_HF
-    if (options%print_level >= 0) then
+    if (options%print_level > 0) then
        write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
     end if
+    status%status = 2
     goto 4000
 
 4040 continue 
     ! unsupported choice of model
-    if (options%print_level >= 0) then
+    if (options%print_level > 0) then
        write(options%error,'(a,i0,a)') 'Error: the choice of options%model = ', &
-            options%model, 'is not supported'
+            options%model, ' is not supported'
     end if
+    status%status = 3
     goto 4000
 
 !  End of subroutine RAL_NLLS
 
-
   END SUBROUTINE RAL_NLLS
   
-  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,md,options,w)
+  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,md,options,status,w)
        
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -647,14 +652,15 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:), md
-     TYPE( NLLS_control_type ), INTENT( IN ) :: options
+     TYPE( NLLS_control_type ), INTENT( IN ) :: options     
+     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: status
      TYPE( calculate_step_work ) :: w
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
-        call dogleg(J,f,hf,g,n,m,Delta,d,md,options,w%dogleg_ws)
+        call dogleg(J,f,hf,g,n,m,Delta,d,md,options,status,w%dogleg_ws)
      case (2) ! The AINT method
-        call AINT_TR(J,f,hf,n,m,Delta,d,md,options,w%AINT_tr_ws)
+        call AINT_TR(J,f,hf,n,m,Delta,d,md,options,status,w%AINT_tr_ws)
      case default
         
         if ( options%print_level > 0 ) then
@@ -666,7 +672,7 @@ contains
    END SUBROUTINE calculate_step
 
 
-   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,md,options,w)
+   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,md,options,status,w)
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
@@ -675,6 +681,7 @@ contains
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
+     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: status
      TYPE( dogleg_work ) :: w
      
      real(wp) :: alpha, beta
@@ -696,6 +703,7 @@ contains
         if (options%print_level> 0) then
            write(options%error,'(a)') 'Error: model not supported in dogleg'
         end if
+        status%status = 3
         return
      end select
      
@@ -716,7 +724,7 @@ contains
      
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,md,options,w)
+   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,md,options,status,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
@@ -727,6 +735,7 @@ contains
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
+     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: status
      type( AINT_tr_work ) :: w
         
      integer :: solve_status, find_status
