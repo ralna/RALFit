@@ -242,7 +242,7 @@ module nlls_module
      
 !  the status of the last attempted allocation/deallocation
 
-!$$     INTEGER :: alloc_status = 0
+     INTEGER :: alloc_status = 0
 
 !  the name of the array for which an allocation/deallocation error ocurred
 
@@ -465,7 +465,8 @@ contains
     
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
-    call setup_workspaces(workspace,n,m,options)
+    call setup_workspaces(workspace,n,m,options,status%alloc_status)
+    if (status%alloc_status > 0) goto 4000
 
     Delta = options%initial_radius
     
@@ -475,7 +476,7 @@ contains
     if (fstatus > 0) write( options%out, 1020) fstatus
     if (options%model == 2) then
        call eval_HF(hstatus, n, m, X, f, hf, params)
-       if (hstatus > 0) write( options%out, 1020) fstatus
+       if (hstatus > 0) write( options%out, 1030) fstatus
     end if
 
     normF0 = norm2(f)
@@ -580,7 +581,15 @@ contains
 3040 FORMAT('Very successful step -- increasing Delta')
 3050 FORMAT('Successful step -- decreasing Delta')
 3060 FORMAT('||J''f||/||f|| = ',ES12.4)
+
+! error returns
+4000 continue
+    if (options%print_level >= 0) then
+       write(options%error,'(a)') 'Exiting RAL_NLLS'
+    end if
+    return
 !  End of subroutine RAL_NLLS
+
 
   END SUBROUTINE RAL_NLLS
   
@@ -1008,20 +1017,6 @@ contains
            return
         end if
         halfn = n/2
-
-!!$        allocate(work(1))
-!!$        ! get length of work...
-!!$        call dggev('N', & ! No left eigenvectors
-!!$                   'V', &! Yes right eigenvectors
-!!$                   n, A, n, B, n, &
-!!$                   alphaR, alphaI, beta, & ! eigenvalue data
-!!$                   vr, n, & ! not referenced
-!!$                   vr, n, & ! right eigenvectors
-!!$                   work, -1, info)
-!!$
-!!$        lwork = int(work(1))
-!!$        deallocate(work)
-!!$        allocate(work(lwork))
         lwork = size(w%work)
         call dggev('N', & ! No left eigenvectors
                    'V', &! Yes right eigenvectors
@@ -1068,49 +1063,91 @@ contains
                 
       end subroutine max_eig
 
-      subroutine setup_workspaces(workspace,n,m,options)
+      subroutine setup_workspaces(workspace,n,m,options,info)
         
         type( NLLS_workspace ), intent(out) :: workspace
         type( NLLS_control_type ), intent(in) :: options
         integer, intent(in) :: n,m
+        integer, intent(out) :: info
 
-        integer :: lwork,info
+        integer :: lwork, lapack_info
         real(wp), allocatable :: workquery(:)
         
+        info = 0
+        
         select case (options%nlls_method)
-           
+        
         case (1) ! use the dogleg method
-           allocate(workspace%calculate_step_ws%dogleg_ws%d_sd(n))
-           allocate(workspace%calculate_step_ws%dogleg_ws%d_gn(n))
-           allocate(workspace%calculate_step_ws%dogleg_ws%ghat(n))
-           allocate(workspace%calculate_step_ws%dogleg_ws%Jg(m))
+           allocate(workspace%calculate_step_ws%dogleg_ws%d_sd(n),stat = info)
+           if (info > 0) goto 9010
+           allocate(workspace%calculate_step_ws%dogleg_ws%d_gn(n),stat = info)
+           if (info > 0) goto 9010           
+           allocate(workspace%calculate_step_ws%dogleg_ws%ghat(n),stat = info)
+           if (info > 0) goto 9010
+           allocate(workspace%calculate_step_ws%dogleg_ws%Jg(m),stat = info)
+           if (info > 0) goto 9010
            ! now allocate space for the subroutine
            !  solve_LLS
            ! that is called by dogleg
-           allocate(workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%temp(max(m,n)))
+           allocate(&
+                workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%temp(max(m,n)),&
+                stat = info)
+           if (info > 0) goto 9020
            lwork = max(1, min(m,n) + max(min(m,n), 1)*4) 
-           allocate(workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%work(lwork))
-           allocate(workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%Jlls(n*m))
+           allocate(&
+                workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%work(lwork)&
+                ,stat = info)
+           if (info > 0) goto 9020
+           allocate(&
+                workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%Jlls(n*m)&
+                ,stat = info)
+           if (info > 0) goto 9020
         case (2) ! use the AINT method
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%A(n,n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%v(n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%B(n,n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%p0(n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%p1(n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%M0(2*n,2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%M1(2*n,2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%y(2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%gtg(n,n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%q(n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%A(n,n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%v(n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%B(n,n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%p0(n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%p1(n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%M0(2*n,2*n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%M1(2*n,2*n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%y(2*n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%gtg(n,n),stat = info)
+           if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%q(n),stat = info)
+           if (info > 0) goto 9030
            ! now allocate space for the subroutine
            !  max_eig
            ! that is called by AINT_tr
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%alphaR(2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%alphaI(2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%beta(2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%vr(2*n,2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%ew_array(2*n))
-           allocate(workquery(1))
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%alphaR(2*n),&
+                stat = info)
+           if (info > 0) goto 9040
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%alphaI(2*n),&
+                stat = info)
+           if (info > 0) goto 9040
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%beta(2*n),&
+                stat = info)
+           if (info > 0) goto 9040
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%vr(2*n,2*n),&
+                stat = info)
+           if (info > 0) goto 9040
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%ew_array(2*n),&
+                stat = info)
+           if (info > 0) goto 9040
+           allocate(workquery(1),stat = info)
+           if (info > 0) goto 9040
            ! make a workspace query to dggev
            call dggev('N', & ! No left eigenvectors
                 'V', &! Yes right eigenvectors
@@ -1118,13 +1155,72 @@ contains
                 1.0, 0.1, 0.1, & ! eigenvalue data
                 0.1, 2*n, & ! not referenced
                 0.1, 2*n, & ! right eigenvectors
-                workquery, -1, info)
+                workquery, -1, lapack_info)
+           if (lapack_info > 0) goto 9050
            lwork = int(workquery(1))
            deallocate(workquery)
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%work(lwork))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%nullindex(2*n))
-           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%vecisreal(2*n))
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%work(lwork),&
+                stat = info)
+           if (info > 0) goto 9040
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%nullindex(2*n),&
+                stat = info)
+           if (info > 0) goto 9040
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%vecisreal(2*n),&
+                stat = info)
+           if (info > 0) goto 9040
         end select
+        
+        return
+
+! Error statements
+9010    continue
+        ! Allocation errors : dogleg
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for subroutine ''dogleg'': ',&
+                'not enough memory.' 
+        end if
+        return
+
+9020    continue
+        ! Allocation errors : solve_LLS
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for subroutine ''solve_LLS'': ',&
+                'not enough memory.' 
+        end if
+        return
+        
+9030    continue
+        ! Allocation errors : AINT_tr
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for subroutine ''AINT_tr'': ',&
+                'not enough memory.' 
+        end if
+        return
+        
+9040    continue
+        ! Allocation errors : max_eig
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for subroutine ''max_eig'': ',&
+                'not enough memory.' 
+        end if
+        return
+
+9050    continue
+        ! Error return from 
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for subroutine ''max_eig'': ',&
+                'not enough memory.' 
+        end if
+        return
+
         
       end subroutine setup_workspaces
 
