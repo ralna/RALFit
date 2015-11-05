@@ -396,7 +396,7 @@ module nlls_module
     end type max_eig_work
 
     type, private :: evaluate_model_work ! workspace for subroutine evaluate_model
-       real(wp), allocatable :: Jd(:)
+       real(wp), allocatable :: Jd(:), Hd(:)
     end type evaluate_model_work
 
     type, private :: solve_LLS_work ! workspace for subroutine solve_LLS
@@ -475,11 +475,18 @@ contains
     if (jstatus > 0) goto 4010
     call eval_F(fstatus, n, m, X, f, params)
     if (fstatus > 0) goto 4020
-    if (options%model == 2) then
+    select case (options%model)
+    case (1) ! first-order
+       hf(1:4) = 0.0_wp
+    case (2) ! second order
        call eval_HF(hfstatus, n, m, X, f, hf, params)
        if (hfstatus > 0) goto 4030
-    end if
-
+    case (3) ! barely second order (identity hessian)
+       hf((/ ( (i-1)*n + 1, i = 1,n ) /)) = 1.0_wp
+    case default
+       goto 4040 ! unsupported model -- return to user
+    end select
+   
     normF0 = norm2(f)
 
 !    g = -J^Tf
@@ -499,7 +506,7 @@ contains
        ! the value of the model at this step            !  
        !++++++++++++++++++++++++++++++++++++++++++++++++!
 
-       call calculate_step(J,f,g,n,m,Delta,d,md,options,& 
+       call calculate_step(J,f,hf,g,n,m,Delta,d,md,options,& 
                            workspace%calculate_step_ws)
        
        !++++++++++++++++++!
@@ -511,10 +518,15 @@ contains
        if (jstatus > 0) goto 4010
        call eval_F(fstatus, n, m, Xnew, fnew, params)
        if (fstatus > 0) goto 4020
-       if (options%model == 2) then
+       select case (options%model) ! only update hessians than change..
+       case (1) ! first-order
+          continue
+       case (2) ! second order
           call eval_HF(hfstatus, n, m, X, f, hf, params)
           if (hfstatus > 0) goto 4030
-       end if
+       case (3) ! barely second order (identity hessian)
+          continue
+       end select
 
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
              ( norm2(f)**2 - md)
@@ -607,9 +619,17 @@ contains
     goto 4000
 
 4030 continue
-    ! Error in eval_J
+    ! Error in eval_HF
     if (options%print_level >= 0) then
        write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
+    end if
+    goto 4000
+
+4040 continue 
+    ! unsupported choice of model
+    if (options%print_level >= 0) then
+       write(options%error,'(a,i0,a)') 'Error: the choice of options%model = ', &
+            options%model, 'is not supported'
     end if
     goto 4000
 
@@ -618,13 +638,13 @@ contains
 
   END SUBROUTINE RAL_NLLS
   
-  SUBROUTINE calculate_step(J,f,g,n,m,Delta,d,md,options,w)
+  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,md,options,w)
        
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
+     REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
@@ -632,9 +652,9 @@ contains
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
-        call dogleg(J,f,g,n,m,Delta,d,md,options,w%dogleg_ws)
+        call dogleg(J,f,hf,g,n,m,Delta,d,md,options,w%dogleg_ws)
      case (2) ! The AINT method
-        call AINT_TR(J,f,n,m,Delta,d,md,options,w%AINT_tr_ws)
+        call AINT_TR(J,f,hf,n,m,Delta,d,md,options,w%AINT_tr_ws)
      case default
         
         if ( options%print_level > 0 ) then
@@ -646,12 +666,12 @@ contains
    END SUBROUTINE calculate_step
 
 
-   SUBROUTINE dogleg(J,f,g,n,m,Delta,d,md,options,w)
+   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,md,options,w)
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
+     REAL(wp), intent(in) :: J(:), hf(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
@@ -692,18 +712,18 @@ contains
      ! get 
      !    md
      ! the value of the model evaluated at X + d
-     call evaluate_model(f,J,d,md,m,n,options,w%evaluate_model_ws)
+     call evaluate_model(f,J,hf,d,md,m,n,options,w%evaluate_model_ws)
      
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,n,m,Delta,d,md,options,w)
+   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,md,options,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), Delta
+     REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:), md
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
@@ -728,27 +748,12 @@ contains
      !       s.t. ||p||_B \leq Delta
      !
      ! set A and v for the model being considered here...
-     select case (options%model)
-     case (1)
-        call matmult_inner(J,n,m,w%A)
-        call mult_Jt(J,n,m,f,w%v)
-     case (2) ! second-order (exact hessian)
-        if (options%print_level > 0) then
-           write(options%error,'(a)') 'Second order methods to be implemented'
-           return
-        end if
-     case (3) ! barely second-order (identity Hessian)
-        if (options%print_level > 0) then
-           write(options%error,'(a)') 'barely 2nd order methods to be implemented'
-           return
-        end if
-     case default
-        if (options%print_level> 0) then
-           write(options%error,'(a)') 'Error: model not yet supported AINT'
-        end if
-        return
-     end select
 
+        call matmult_inner(J,n,m,w%A)
+        ! add any second order information...
+        w%A = w%A + reshape(hf,(/n,n/))
+        call mult_Jt(J,n,m,f,w%v)
+        
      ! Set B to I by hand  
      ! todo: make this an option
      w%B = 0
@@ -763,7 +768,7 @@ contains
      if (norm_p0 < Delta) then
         keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
-        call evaluate_model(f,J,w%p0,obj_p0,m,n,options,w%evaluate_model_ws)
+        call evaluate_model(f,J,hf,w%p0,obj_p0,m,n,options,w%evaluate_model_ws)
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -809,7 +814,7 @@ contains
      end if
      
      ! get obj_p1 : the value of the model at p1
-     call evaluate_model(f,J,w%p1,obj_p1,m,n,options,w%evaluate_model_ws)
+     call evaluate_model(f,J,hf,w%p1,obj_p1,m,n,options,w%evaluate_model_ws)
 
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
@@ -882,12 +887,12 @@ contains
      END SUBROUTINE findbeta
 
      
-     subroutine evaluate_model(f,J,d,md,m,n,options,w)
+     subroutine evaluate_model(f,J,hf,d,md,m,n,options,w)
 ! --------------------------------------------------
 ! evaluate_model, evaluate the model at the point d
 ! --------------------------------------------------       
 
-       real(wp), intent(in)  :: f(:), d(:), J(:)
+       real(wp), intent(in)  :: f(:), d(:), J(:), hf(:)
        integer :: m,n
        real(wp), intent(out) :: md
        TYPE( NLLS_control_type ), INTENT( IN ) :: options
@@ -895,23 +900,22 @@ contains
        
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd)
-
+       
+       ! First, get the base 
+       ! 0.5 (f^T f + f^T J d + d^T' J ^T J d )
+       md = 0.5 * norm2(f + w%Jd)**2
        select case (options%model)
        case (1) ! first-order (no Hessian)
-          md = norm2(f + w%Jd)**2
-       case (2) ! second-order (exact hessian)
-          if (options%print_level > 0) then
-             write(options%error,'(a)') 'Second order methods to be implemented'
-             return
-          end if
+          ! nothing to do here...
+          continue
        case (3) ! barely second-order (identity Hessian)
-          md = norm2(f + w%Jd + dot_product(d,d))**2
+          ! H = J^T J + I
+          md = md + 0.5 * dot_product(d,d)
        case default
-          if (options%print_level > 0) then
-             write(options%error,'(a)') 'Error: unsupported model specified'
-          end if
-          return
-          
+          ! these have a dynamic H -- recalculate
+          ! H = J^T J + HF, HF is (an approx?) to the Hessian
+          call mult_J(hf,n,n,d,w%Hd)
+          md = md + 0.5 * dot_product(d,w%Hd)
        end select
 
      end subroutine evaluate_model
@@ -1142,6 +1146,10 @@ contains
                 workspace%calculate_step_ws%dogleg_ws%evaluate_model_ws%Jd(m)&
                 ,stat = info)
            if (info > 0) goto 9060
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%evaluate_model_ws%Hd(n)&
+                ,stat = info)
+           if (info > 0) goto 9060
         case (2) ! use the AINT method
            allocate(workspace%calculate_step_ws%AINT_tr_ws%A(n,n),stat = info)
            if (info > 0) goto 9030
@@ -1216,6 +1224,10 @@ contains
            ! that is called by AINT_tr
            allocate(&
                 workspace%calculate_step_ws%AINT_tr_ws%evaluate_model_ws%Jd(m)&
+                ,stat = info)
+           if (info > 0) goto 9060
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%evaluate_model_ws%Hd(n)&
                 ,stat = info)
            if (info > 0) goto 9060
         end select
