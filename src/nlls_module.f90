@@ -482,7 +482,8 @@ contains
        call eval_HF(hfstatus, n, m, X, f, hf, params)
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
-       hf((/ ( (i-1)*n + 1, i = 1,n ) /)) = 1.0_wp
+       hf(1:4) = 0.0_wp
+       hf((/ ( (i-1)*n + i, i = 1,n ) /)) = 1.0_wp
     case default
        goto 4040 ! unsupported model -- return to user
     end select
