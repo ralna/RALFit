@@ -384,7 +384,46 @@ module nlls_module
        class(params_base_type), intent(in) :: params
      end subroutine eval_hf_type
   end interface
-  
+
+
+  ! define types for workspace arrays.
+    
+    type, private :: max_eig_work ! workspace for subroutine max_eig
+       real(wp), allocatable :: alphaR(:), alphaI(:), beta(:), vr(:,:)
+       real(wp), allocatable :: work(:), ew_array(:)
+       integer, allocatable :: nullindex(:)
+       logical, allocatable :: vecisreal(:)
+    end type max_eig_work
+
+    type, private :: evaluate_model_work ! workspace for subroutine evaluate_model
+       real(wp), allocatable :: Jd
+    end type evaluate_model_work
+
+    type, private :: solve_LLS_work ! workspace for subroutine solve_LLS
+       real(wp), allocatable :: temp(:), work(:), Jlls(:)
+    end type solve_LLS_work
+
+    type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
+       type( max_eig_work ) :: max_eig_ws
+       REAL(wp), allocatable :: A(:,:), v(:), B(:,:), p0(:), p1(:)
+       REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
+    end type AINT_tr_work
+
+    type, private :: dogleg_work ! workspace for subroutine dogleg
+       type( solve_LLS_work ) :: solve_LLS_ws
+       real(wp), allocatable :: d_sd(:), d_gn(:), ghat(:), Jg(:)
+    end type dogleg_work
+
+    type, private :: calculate_step_work ! workspace for subroutine calculate_step
+       type( AINT_tr_work ) :: AINT_tr_ws
+       type( dogleg_work ) :: dogleg_ws
+    end type calculate_step_work
+
+    type :: NLLS_workspace ! all workspaces called from the top level
+       type ( calculate_step_work ) :: calculate_step_ws
+       type ( evaluate_model_work ) :: evaluate_model_ws
+    end type NLLS_workspace
+
 contains
 
 
@@ -422,39 +461,11 @@ contains
     real(wp), DIMENSION(n)   :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
-! define types for workspace arrays.
+    type ( NLLS_workspace ) :: workspace
     
-    type :: max_eig_ws ! workspace for subroutine max_eig
-       real(wp), allocatable :: alphaR(:), alphaI(:), beta(:), vr(:,:)
-       real(wp), allocatable :: work(:), ew_array(:)
-       integer, allocatable :: nullindex(:)
-       logical, allocatable :: vecisreal(:)
-    end type max_eig_ws
-
-    type :: evaluate_model_ws ! workspace for subroutine evaluate_model
-       real(wp), allocatable :: Jd
-    end type evaluate_model_ws
-
-    type :: solve_LLS_ws ! workspace for subroutine solve_LLS
-       real(wp), allocatable :: temp(:), work(:), Jlls(:)
-    end type solve_LLS_ws
-
-    type :: AINT_tr_ws ! workspace for subroutine AINT_tr
-       type( max_eig_ws ) :: max_eig_ws
-       REAL(wp), allocatable :: A(:,:), v(:), B(:,:), p0(:), p1(:)
-       REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
-    end type AINT_tr_ws
-
-    type :: dogleg_ws ! workspace for subroutine dogleg
-       real(wp), allocatable :: d_sd(:), d_gn(:), ghat(:), Jg(:)
-    end type dogleg_ws
-
-    type :: calculate_step_ws ! workspace for subroutine calculate_step
-       type( AINT_tr_ws ) :: AINT_tr_ws
-       type( dogleg_ws ) :: dogleg_ws
-    end type calculate_step_ws
-
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
+
+    call setup_workspaces(workspace,n,m,options)
 
     Delta = options%initial_radius
     
@@ -486,7 +497,7 @@ contains
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
 
-       call calculate_step(J,f,g,n,m,Delta,d,options)
+       call calculate_step(J,f,g,n,m,Delta,d,options,workspace%calculate_step_ws)
        
        !++++++++++++++++++!
        ! Accept the step? !
@@ -576,7 +587,7 @@ contains
 
   END SUBROUTINE RAL_NLLS
   
-  SUBROUTINE calculate_step(J,f,g,n,m,Delta,d,options)
+  SUBROUTINE calculate_step(J,f,g,n,m,Delta,d,options,w)
        
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -586,13 +597,13 @@ contains
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
-
+     TYPE( calculate_step_work ) :: w
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
-        call dogleg(J,f,g,n,m,Delta,d,options)
+        call dogleg(J,f,g,n,m,Delta,d,options,w%dogleg_ws)
      case (2) ! The AINT method
-        call AINT_TR(J,f,g,n,m,Delta,d,options)
+        call AINT_TR(J,f,n,m,Delta,d,options,w%AINT_tr_ws)
      case default
         
         if ( options%print_level > 0 ) then
@@ -604,7 +615,7 @@ contains
    END SUBROUTINE calculate_step
 
 
-   SUBROUTINE dogleg(J,f,g,n,m,Delta,d,options)
+   SUBROUTINE dogleg(J,f,g,n,m,Delta,d,options,w)
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
@@ -613,68 +624,61 @@ contains
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
-
+     TYPE( dogleg_work ) :: w
+     
      real(wp) :: alpha, beta
      integer :: slls_status, fb_status
 
-     ! to be culled
-     real(wp) :: d_sd(n), d_gn(n), ghat(n)
-     real(wp) :: Jg(m)
-     
      !     Jg = J * g
-     call mult_J(J,n,m,g,Jg)
+     call mult_J(J,n,m,g,w%Jg)
 
-     alpha = norm2(g)**2 / norm2( Jg )**2
+     alpha = norm2(g)**2 / norm2( w%Jg )**2
        
-     d_sd = alpha * g;
+     w%d_sd = alpha * g;
 
      ! Solve the linear problem...
      select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,options%lls_solver,d_gn,slls_status)
+        call solve_LLS(J,f,n,m,options%lls_solver,w%d_gn,slls_status,w%solve_LLS_ws)
      case default
         if (options%print_level> 0) then
            write(options%error,'(a)') 'Error: model not supported in dogleg'
         end if
         return
      end select
-
      
-     if (norm2(d_gn) <= Delta) then
-        d = d_gn
-     else if (norm2( alpha * d_sd ) >= Delta) then
-        d = (Delta / norm2(d_sd) ) * d_sd
+     if (norm2(w%d_gn) <= Delta) then
+        d = w%d_gn
+     else if (norm2( alpha * w%d_sd ) >= Delta) then
+        d = (Delta / norm2(w%d_sd) ) * w%d_sd
      else
-        ghat = d_gn - alpha * d_sd
-        call findbeta(d_sd,ghat,alpha,Delta,beta,fb_status)
-        d = alpha * d_sd + beta * ghat
+        w%ghat = w%d_gn - alpha * w%d_sd
+        call findbeta(w%d_sd,w%ghat,alpha,Delta,beta,fb_status)
+        d = alpha * w%d_sd + beta * w%ghat
      end if
      
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,g,n,m,Delta,d,options)
+   SUBROUTINE AINT_tr(J,f,n,m,Delta,d,options,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), g(:), Delta
+     REAL(wp), intent(in) :: J(:), f(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
+     type( AINT_tr_work ) :: w
         
      integer :: solve_status, find_status
      integer :: keep_p0, i, eig_info, size_hard(2)
      real(wp) :: obj_p0, obj_p1
-     REAL(wp) :: norm_p0, norm_p1, tau, lam, eta
+     REAL(wp) :: norm_p0, tau, lam, eta
      REAL(wp), allocatable :: y_hardcase(:,:)
-
-     ! to be culled 
-     REAL(wp) :: A(n,n), v(n), B(n,n), p0(n), p1(n)
-     REAL(wp) :: M0(2*n,2*n), M1(2*n,2*n), y(2*n), gtg(n,n), q(n)
-
+     
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
@@ -690,8 +694,8 @@ contains
      ! set A and v for the model being considered here...
      select case (options%model)
      case (1)
-        call matmult_inner(J,n,m,A)
-        call mult_Jt(J,n,m,f,v)
+        call matmult_inner(J,n,m,w%A)
+        call mult_Jt(J,n,m,f,w%v)
      case (2) ! second-order (exact hessian)
         if (options%print_level > 0) then
            write(options%error,'(a)') 'Second order methods to be implemented'
@@ -711,48 +715,48 @@ contains
 
      ! Set B to I by hand  
      ! todo: make this an option
-     B = 0
+     w%B = 0
      do i = 1,n
-        B(i,i) = 1.0
+        w%B(i,i) = 1.0
      end do
        
-     call solve_spd(A,-v,p0,n,solve_status)
+     call solve_spd(w%A,-w%v,w%p0,n,solve_status)
 
-     call matrix_norm(p0,B,norm_p0)
+     call matrix_norm(w%p0,w%B,norm_p0)
      
      if (norm_p0 < Delta) then
         keep_p0 = 1;
-        obj_p0 = dot_product(v,p0) + 0.5 * dot_product(p0,matmul(A,p0))
+        obj_p0 = dot_product(w%v,w%p0) + 0.5 * dot_product(w%p0,matmul(w%A,w%p0))
      end if
 
-     M0(1:n,1:n) = -B
-     M0(n+1:2*n,1:n) = A
-     M0(1:n,n+1:2*n) = A
-     call outer_product(v,n,gtg) ! gtg = Jtg * Jtg^T
-     M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * gtg
+     w%M0(1:n,1:n) = -w%B
+     w%M0(n+1:2*n,1:n) = w%A
+     w%M0(1:n,n+1:2*n) = w%A
+     call outer_product(w%v,n,w%gtg) ! gtg = Jtg * Jtg^T
+     w%M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * w%gtg
 
-     M1 = 0.0
-     M1(n+1:2*n,1:n) = -B
-     M1(1:n,n+1:2*n) = -B
+     w%M1 = 0.0
+     w%M1(n+1:2*n,1:n) = -w%B
+     w%M1(1:n,n+1:2*n) = -w%B
      
-     call max_eig(M0,M1,2*n,lam, y, eig_info, y_hardcase)
+     call max_eig(w%M0,w%M1,2*n,lam, w%y, eig_info, y_hardcase, w%max_eig_ws)
      if ( eig_info > 0 ) then
         write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
         write(options%error,'(a,i0)') 'LAPACK returned info = ', eig_info
         return
      end if
 
-     if (norm2(y(1:n)) < tau) then
+     if (norm2(w%y(1:n)) < tau) then
         ! Hard case
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(y_hardcase)
-        call matmult_outer( matmul(B,y_hardcase), size_hard(2), n, M1(1:n,1:n))
-        M0(1:n,1:n) = A(:,:) + lam*B(:,:) + M1(1:n,1:n)
+        call matmult_outer( matmul(w%B,y_hardcase), size_hard(2), n, w%M1(1:n,1:n))
+        w%M0(1:n,1:n) = w%A(:,:) + lam*w%B(:,:) + w%M1(1:n,1:n)
         ! solve Hq + g = 0 for q
-        call solve_spd(M0(1:n,1:n),-v,q,n,solve_status)
+        call solve_spd(w%M0(1:n,1:n),-w%v,w%q,n,solve_status)
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
-        call findbeta(q,y_hardcase(:,1),1.0_wp,Delta,eta,find_status)
+        call findbeta(w%q,y_hardcase(:,1),1.0_wp,Delta,eta,find_status)
         if ( find_status .ne. 0 ) then
            write(*,*) 'error: no vaild beta found...'
            return
@@ -761,22 +765,23 @@ contains
         ! currently assumes B = I !!
         !!!!       fixme!!      !!!!
         
-        p1(:) = q(:) + eta * y_hardcase(:,1)
+        w%p1(:) = w%q(:) + eta * y_hardcase(:,1)
         
      else 
-        call solve_spd(A + lam*B,-v,p1,n,solve_status)
+        call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status)
      end if
 
-     obj_p1 = dot_product(v,p1) + 0.5 * (dot_product(p1,matmul(A,p1)))
+     obj_p1 = dot_product(w%v,w%p1) + 0.5 * (dot_product(w%p1,matmul(w%A,w%p1)))
 
-     d = p1
      if (obj_p0 < obj_p1) then
-        d = p0
+        d = w%p0
+     else 
+        d = w%p1
      end if
 
    end SUBROUTINE AINT_tr
    
-   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status)
+   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status,w)
        
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
@@ -790,25 +795,18 @@ contains
 
        character(1) :: trans = 'N'
        integer :: nrhs = 1, lwork, lda, ldb
-
-       ! to be culled
-       real(wp), allocatable :: temp(:), work(:), Jlls(:)
-!       REAL(wp), DIMENSION(:,:), allocatable :: Jlls
-
-
+       type( solve_LLS_work ) :: w
+       
        lda = m
        ldb = max(m,n)
-       allocate(temp(max(m,n)))
-       temp(1:m) = f(1:m)
-       lwork = max(1, min(m,n) + max(min(m,n), nrhs)*4)
-       allocate(work(lwork))
-       allocate(Jlls(m*n))
+       w%temp(1:m) = f(1:m)
+       lwork = size(w%work)
        
-       Jlls(:) = J(:)
+       w%Jlls(:) = J(:)
 
-       call dgels(trans, m, n, nrhs, Jlls, lda, temp, ldb, work, lwork, status)
+       call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, status)
 
-       d_gn = -temp(1:n)
+       d_gn = -w%temp(1:n)
               
      END SUBROUTINE solve_LLS
      
@@ -987,24 +985,19 @@ contains
         
       end subroutine outer_product
 
-      subroutine max_eig(A,B,n,ew,ev,info,nullevs)
+      subroutine max_eig(A,B,n,ew,ev,info,nullevs,w)
         
         real(wp), intent(inout) :: A(:,:), B(:,:)
         integer, intent(in) :: n 
         real(wp), intent(out) :: ew, ev(:)
         integer, intent(out) :: info
         real(wp), intent(out), allocatable :: nullevs(:,:)
+        type( max_eig_work ) :: w
         
         integer :: lwork, maxindex(1), no_null, halfn
         real(wp):: tau
         integer :: i 
 
-        ! to be culled...
-        real(wp) :: alphaR(n), alphaI(n), beta(n), vr(n,n), ew_array(n)
-        real(wp), allocatable :: work(:)
-        integer :: nullindex(n)
-        logical :: vecisreal(n)
-        
         ! Find the max eigenvalue/vector of the generalized eigenproblem
         !     A * y = lam * B * y
         ! further, if ||y(1:n/2)|| \approx 0, find and return the 
@@ -1019,34 +1012,34 @@ contains
         end if
         halfn = n/2
 
-        allocate(work(1))
-        ! get length of work...
+!!$        allocate(work(1))
+!!$        ! get length of work...
+!!$        call dggev('N', & ! No left eigenvectors
+!!$                   'V', &! Yes right eigenvectors
+!!$                   n, A, n, B, n, &
+!!$                   alphaR, alphaI, beta, & ! eigenvalue data
+!!$                   vr, n, & ! not referenced
+!!$                   vr, n, & ! right eigenvectors
+!!$                   work, -1, info)
+!!$
+!!$        lwork = int(work(1))
+!!$        deallocate(work)
+!!$        allocate(work(lwork))
+        lwork = size(w%work)
         call dggev('N', & ! No left eigenvectors
                    'V', &! Yes right eigenvectors
                    n, A, n, B, n, &
-                   alphaR, alphaI, beta, & ! eigenvalue data
-                   vr, n, & ! not referenced
-                   vr, n, & ! right eigenvectors
-                   work, -1, info)
-
-        lwork = int(work(1))
-        deallocate(work)
-        allocate(work(lwork))
-
-        call dggev('N', & ! No left eigenvectors
-                   'V', &! Yes right eigenvectors
-                   n, A, n, B, n, &
-                   alphaR, alphaI, beta, & ! eigenvalue data
-                   vr, n, & ! not referenced
-                   vr, n, & ! right eigenvectors
-                   work, lwork, info)
+                   w%alphaR, w%alphaI, w%beta, & ! eigenvalue data
+                   w%vr, n, & ! not referenced
+                   w%vr, n, & ! right eigenvectors
+                   w%work, lwork, info)
 
         ! now find the rightmost real eigenvalue
-        vecisreal = .true.
-        where ( abs(alphaI) > 1e-8 ) vecisreal = .false.
+        w%vecisreal = .true.
+        where ( abs(w%alphaI) > 1e-8 ) w%vecisreal = .false.
         
-        ew_array(:) = alphaR(:)/beta(:)
-        maxindex = maxloc(ew_array,vecisreal)
+        w%ew_array(:) = w%alphaR(:)/w%beta(:)
+        maxindex = maxloc(w%ew_array,w%vecisreal)
 
 
         if (maxindex(1) == 0) then
@@ -1057,26 +1050,86 @@ contains
         
         tau = 1e-4 ! todo -- pass this through from above...
         ! note n/2 always even -- validated by test on entry
-        if (norm2( vr(1:halfn,maxindex(1)) ) < tau) then 
+        if (norm2( w%vr(1:halfn,maxindex(1)) ) < tau) then 
            ! hard case
            ! let's find which ev's are null...
-           nullindex = 0
+           w%nullindex = 0
            no_null = 0
            do i = 1,n
 !              write(*,*) '||v(',i,')|| = ',norm2(vr(1:halfn,i))
-              if (norm2( vr(1:halfn,i)) < 1e-4 ) then
+              if (norm2( w%vr(1:halfn,i)) < 1e-4 ) then
                  no_null = no_null + 1 
-                 nullindex(no_null) = i
+                 w%nullindex(no_null) = i
               end if
            end do
            allocate(nullevs(halfn,no_null))
-           nullevs(:,:) = vr(halfn+1 : n,nullindex)
+           nullevs(:,:) = w%vr(halfn+1 : n,w%nullindex)
         end if
         
-        ew = alphaR(maxindex(1))/beta(maxindex(1))
-        ev(:) = vr(:,maxindex(1))
+        ew = w%alphaR(maxindex(1))/w%beta(maxindex(1))
+        ev(:) = w%vr(:,maxindex(1))
                 
       end subroutine max_eig
+
+      subroutine setup_workspaces(workspace,n,m,options)
+        
+        type( NLLS_workspace ), intent(out) :: workspace
+        type( NLLS_control_type ), intent(in) :: options
+        integer, intent(in) :: n,m
+
+        integer :: lwork,info
+        real(wp), allocatable :: workquery(:)
+        
+        select case (options%nlls_method)
+           
+        case (1) ! use the dogleg method
+           allocate(workspace%calculate_step_ws%dogleg_ws%d_sd(n))
+           allocate(workspace%calculate_step_ws%dogleg_ws%d_gn(n))
+           allocate(workspace%calculate_step_ws%dogleg_ws%ghat(n))
+           allocate(workspace%calculate_step_ws%dogleg_ws%Jg(m))
+           ! now allocate space for the subroutine
+           !  solve_LLS
+           ! that is called by dogleg
+           allocate(workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%temp(max(m,n)))
+           lwork = max(1, min(m,n) + max(min(m,n), 1)*4) 
+           allocate(workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%work(lwork))
+           allocate(workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%Jlls(n*m))
+        case (2) ! use the AINT method
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%A(n,n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%v(n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%B(n,n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%p0(n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%p1(n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%M0(2*n,2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%M1(2*n,2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%y(2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%gtg(n,n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%q(n))
+           ! now allocate space for the subroutine
+           !  max_eig
+           ! that is called by AINT_tr
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%alphaR(2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%alphaI(2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%beta(2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%vr(2*n,2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%ew_array(2*n))
+           allocate(workquery(1))
+           ! make a workspace query to dggev
+           call dggev('N', & ! No left eigenvectors
+                'V', &! Yes right eigenvectors
+                2*n, 1.0, 2*n, 1.0, 2*n, &
+                1.0, 0.1, 0.1, & ! eigenvalue data
+                0.1, 2*n, & ! not referenced
+                0.1, 2*n, & ! right eigenvectors
+                workquery, -1, info)
+           lwork = int(workquery(1))
+           deallocate(workquery)
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%work(lwork))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%nullindex(2*n))
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%vecisreal(2*n))
+        end select
+        
+      end subroutine setup_workspaces
 
 end module nlls_module
 
