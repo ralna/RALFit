@@ -396,7 +396,7 @@ module nlls_module
     end type max_eig_work
 
     type, private :: evaluate_model_work ! workspace for subroutine evaluate_model
-       real(wp), allocatable :: Jd
+       real(wp), allocatable :: Jd(:)
     end type evaluate_model_work
 
     type, private :: solve_LLS_work ! workspace for subroutine solve_LLS
@@ -405,12 +405,14 @@ module nlls_module
 
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
        type( max_eig_work ) :: max_eig_ws
+       type( evaluate_model_work ) :: evaluate_model_ws
        REAL(wp), allocatable :: A(:,:), v(:), B(:,:), p0(:), p1(:)
        REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
     end type AINT_tr_work
 
     type, private :: dogleg_work ! workspace for subroutine dogleg
        type( solve_LLS_work ) :: solve_LLS_ws
+       type( evaluate_model_work ) :: evaluate_model_ws
        real(wp), allocatable :: d_sd(:), d_gn(:), ghat(:), Jg(:)
     end type dogleg_work
 
@@ -421,7 +423,6 @@ module nlls_module
 
     type :: NLLS_workspace ! all workspaces called from the top level
        type ( calculate_step_work ) :: calculate_step_ws
-       type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
 
 contains
@@ -691,7 +692,7 @@ contains
      ! get 
      !    md
      ! the value of the model evaluated at X + d
-     call evaluate_model(f,J,d,md,m,n,options)
+     call evaluate_model(f,J,d,md,m,n,options,w%evaluate_model_ws)
      
    END SUBROUTINE dogleg
      
@@ -762,7 +763,7 @@ contains
      if (norm_p0 < Delta) then
         keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
-        call evaluate_model(f,J,w%p0,obj_p0,m,n,options)
+        call evaluate_model(f,J,w%p0,obj_p0,m,n,options,w%evaluate_model_ws)
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -808,7 +809,7 @@ contains
      end if
      
      ! get obj_p1 : the value of the model at p1
-     call evaluate_model(f,J,w%p1,obj_p1,m,n,options)
+     call evaluate_model(f,J,w%p1,obj_p1,m,n,options,w%evaluate_model_ws)
 
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
@@ -881,7 +882,7 @@ contains
      END SUBROUTINE findbeta
 
      
-     subroutine evaluate_model(f,J,d,md,m,n,options)
+     subroutine evaluate_model(f,J,d,md,m,n,options,w)
 ! --------------------------------------------------
 ! evaluate_model, evaluate the model at the point d
 ! --------------------------------------------------       
@@ -890,23 +891,21 @@ contains
        integer :: m,n
        real(wp), intent(out) :: md
        TYPE( NLLS_control_type ), INTENT( IN ) :: options
-
-       ! to be culled
-       real(wp) :: Jd(m)
+       type( evaluate_model_work ) :: w
        
        !Jd = J*d
-       call mult_J(J,n,m,d,Jd)
+       call mult_J(J,n,m,d,w%Jd)
 
        select case (options%model)
        case (1) ! first-order (no Hessian)
-          md = norm2(f + Jd)**2
+          md = norm2(f + w%Jd)**2
        case (2) ! second-order (exact hessian)
           if (options%print_level > 0) then
              write(options%error,'(a)') 'Second order methods to be implemented'
              return
           end if
        case (3) ! barely second-order (identity Hessian)
-          md = norm2(f + Jd + dot_product(d,d))**2
+          md = norm2(f + w%Jd + dot_product(d,d))**2
        case default
           if (options%print_level > 0) then
              write(options%error,'(a)') 'Error: unsupported model specified'
@@ -1136,6 +1135,13 @@ contains
                 workspace%calculate_step_ws%dogleg_ws%solve_LLS_ws%Jlls(n*m)&
                 ,stat = info)
            if (info > 0) goto 9020
+           ! now allocate space for the subroutine 
+           !   evaluate_model
+           ! that is called by dogleg
+           allocate(&
+                workspace%calculate_step_ws%dogleg_ws%evaluate_model_ws%Jd(m)&
+                ,stat = info)
+           if (info > 0) goto 9060
         case (2) ! use the AINT method
            allocate(workspace%calculate_step_ws%AINT_tr_ws%A(n,n),stat = info)
            if (info > 0) goto 9030
@@ -1205,6 +1211,13 @@ contains
                 workspace%calculate_step_ws%AINT_tr_ws%max_eig_ws%vecisreal(2*n),&
                 stat = info)
            if (info > 0) goto 9040
+           ! now allocate space for the subroutine 
+           !   evaluate_model
+           ! that is called by AINT_tr
+           allocate(&
+                workspace%calculate_step_ws%AINT_tr_ws%evaluate_model_ws%Jd(m)&
+                ,stat = info)
+           if (info > 0) goto 9060
         end select
         
         return
@@ -1247,14 +1260,22 @@ contains
         return
 
 9050    continue
-        ! Error return from 
+        ! Error return from lapack routine
         if (options%print_level >= 0) then
            write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''max_eig'': ',&
+                'Error allocating array for lapack subroutine: ',&
                 'not enough memory.' 
         end if
         return
 
+9060    continue
+        ! Error return from evaluate_model
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for subroutine ''evaluate_model'': ',&
+                'not enough memory.' 
+        end if
+        return
         
       end subroutine setup_workspaces
 
