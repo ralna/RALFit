@@ -15,8 +15,8 @@ program nlls_test
   real(wp) :: alpha
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
   integer :: nlls_method
-  
 
+  type( NLLS_workspace ) :: work, work2
 
 !!!!!!!!!!!!!!!!!!!!!!!!
 !! Test the main file !!
@@ -121,8 +121,13 @@ no_errors_helpers = 0
   deallocate(x,A,B,results)
   
 !! max_eig
-
+  
   n = 4
+  m = 4
+  ! make sure max_eig gets called
+  options%nlls_method = 2
+  call setup_workspaces(work,2,2,options) 
+
   allocate(x(n),A(n,n), B(n,n))
   A = reshape( (/1.0, 2.0, 3.0, 4.0, &
                  2.0, 4.0, 6.0, 8.0, &
@@ -133,7 +138,7 @@ no_errors_helpers = 0
      B(i,i) = real(i,wp)
   end do
 
-  call max_eig(A,B,n,alpha,x,info,C)
+  call max_eig(A,B,n,alpha,x,info,C,work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
 
   if ( (abs( alpha - 10.0 ) > 1e-12).or.(info .ne. 0) ) then
      write(*,*) 'error :: max_eig test failed'
@@ -145,39 +150,40 @@ no_errors_helpers = 0
   ! check the 'hard' case...
   n = 4
   allocate(x(n),A(n,n), B(n,n))
-  A = 0.0_wp
-  A(3,1) = 1.0_wp
-  A(4,1) = 2.0_wp
-  A(3,2) = 3.0_wp
-  A(4,2) = 4.0_wp
-  A(1,3) = A(3,1)
-  A(1,4) = A(4,1)
-  A(2,3) = A(3,2)
-  A(2,4) = A(2,4)
+  A = 0.0_wp  
+  A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
+  A(1,3) = A(3,1); A(1,4) = A(4,1); A(2,3) = A(3,2); A(2,4) = A(4,2)
   B = A
-  A(1,1) = 1.0_wp
-  A(2,2) = 1.0_wp
- 
-  call max_eig(A,B,n,alpha,x,info,C)
+  A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
+  
+  call max_eig(A,B,n,alpha,x,info,C,work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+
   if (.not. allocated(C)) then ! check C returned 
      write(*,*) 'error :: hard case of max_eig test failed - C not returned'
      no_errors_helpers = no_errors_helpers + 1 
   else
      allocate(y(2))
      y = shape(C)
-     if ((y(1) .ne. 2) .and. (y(2) .ne. n)) then
+     if ((y(1) .ne. 2) .or. (y(2) .ne. n)) then
         write(*,*) 'error :: hard case of max_eig test failed - wrong shape C returned'
         no_errors_helpers = no_errors_helpers + 1 
      else
         allocate(results(n))
+        ! Repopulate A (was overwritten by eig routine)
+        A = 0.0_wp  
+        A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
+        A(1,3) = A(3,1); A(1,4) = A(4,1); A(2,3) = A(3,2); A(2,4) = A(4,2)
+        B = A
+        A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
         do i = 1, n
-           results(n) = norm2(                                     &
-                               matmul( A(3:4,3:4),C(:,i) )         &
-                               - alpha * matmul(B(3:4,3:4),C(:,i)) & 
-                               )
+           results(i) = norm2(                        &
+                matmul( A(3:4,3:4),C(1:2,i) )         &
+                - alpha * matmul(B(3:4,3:4),C(1:2,i)) & 
+                )
         end do
         if (norm2(results) > 1e-10) then
            write(*,*) 'error :: hard case of max_eig test failed - wrong vectors returned'
+           write(*,*) 'results = ', results
            no_errors_helpers = no_errors_helpers + 1 
         end if
      end if
@@ -185,6 +191,8 @@ no_errors_helpers = 0
   
   deallocate(A,B,C,x,y,results)
   
+
+  call setup_workspaces(work2,1,1,options)  !todo: deallocation routine
   ! check the error return
   n = 2
   allocate(x(n), A(n,n), B(n,n))
@@ -195,13 +203,13 @@ no_errors_helpers = 0
   B(1,1) = 1.0_wp
   B(2,2) = 1.0_wp
 
-  call max_eig(A,B,n,alpha,x,info,C)
+  call max_eig(A,B,n,alpha,x,info,C,work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
   if (info .ne. 1) then
      write(*,*) 'error :: all complex part of max_eig test failed'
      no_errors_helpers = no_errors_helpers + 1
   end if
   
-  call max_eig(A,B,n+1,alpha,x,info,C)
+  call max_eig(A,B,n+1,alpha,x,info,C,work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
   if (info .ne. 2) then
      write(*,*) 'error :: even part of max_eig test failed'
      no_errors_helpers = no_errors_helpers + 1
