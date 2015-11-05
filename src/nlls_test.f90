@@ -14,7 +14,7 @@ program nlls_test
   real(wp), allocatable :: results(:)
   real(wp) :: alpha
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
-  integer :: nlls_method
+  integer :: nlls_method, model
 
   type( NLLS_workspace ) :: work, work2
 
@@ -29,31 +29,40 @@ n = 2
 m = 67
 
 do nlls_method = 1,2
-   allocate( x(n) )
+   do model = 1,3
+      allocate( x(n) )
 
-   X(1) = 1.0 
-   X(2) = 2.0
-   
-   options%print_level = 0
-   options%nlls_method = nlls_method
+      X(1) = 1.0 
+      X(2) = 2.0
 
-   ! Get params for the function evaluations
-   allocate(params%x_values(m))
-   allocate(params%y_values(m))
-   
-   call generate_data_example(params%x_values,params%y_values,m)
-   
-   call ral_nlls(n, m, X,                         &
-        eval_F, eval_J, eval_H, params,  &
-        status, options )
-   if ( status%status .ne. 0 ) then
-      write(*,*) 'ral_nlls failed to converge:'
-      write(*,*) 'NLLS_METHOD = ', nlls_method
-      no_errors_main = no_errors_main + 1
-   end if
-   
-   deallocate(x,params%x_values,params%y_values)
-   
+      options%print_level = 0
+      options%nlls_method = nlls_method
+      options%model = model
+      
+      ! Get params for the function evaluations
+      allocate(params%x_values(m))
+      allocate(params%y_values(m))
+
+      call generate_data_example(params%x_values,params%y_values,m)
+
+      call ral_nlls(n, m, X,                         &
+           eval_F, eval_J, eval_H, params,  &
+           status, options )
+      if (( nlls_method == 1).and.( model > 1)) then
+         if ( status%status .ne. 3 ) then
+            write(*,*) 'incorrect error return from ral_nlls'
+            no_errors_main = no_errors_main + 1
+         end if
+      else if ( status%status .ne. 0 ) then
+         write(*,*) 'ral_nlls failed to converge:'
+         write(*,*) 'NLLS_METHOD = ', nlls_method
+         write(*,*) 'MODEL = ', model
+         no_errors_main = no_errors_main + 1
+      end if
+
+      deallocate(x,params%x_values,params%y_values)
+
+   end do
 end do
 
 if (no_errors_main == 0) then
@@ -293,7 +302,7 @@ no_errors_helpers = 0
   end if
 
 
- if (no_errors_helpers == 0) then
+ if (no_errors_helpers + no_errors_main == 0) then
     write(*,*) ' '
     write(*,*) '**************************************'
     write(*,*) '*** All tests passed successfully! ***'
