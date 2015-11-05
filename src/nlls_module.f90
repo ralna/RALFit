@@ -453,7 +453,7 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0, hstatus=0
+    integer :: jstatus=0, fstatus=0, hfstatus=0
     integer :: i
     real(wp), DIMENSION(m*n) :: J, Jnew
     real(wp), DIMENSION(m)   :: f, fnew
@@ -471,12 +471,12 @@ contains
     Delta = options%initial_radius
     
     call eval_J(jstatus, n, m, X, J, params)
-    if (jstatus > 0) write( options%out, 1010) jstatus
+    if (jstatus > 0) goto 4010
     call eval_F(fstatus, n, m, X, f, params)
-    if (fstatus > 0) write( options%out, 1020) fstatus
+    if (fstatus > 0) goto 4020
     if (options%model == 2) then
-       call eval_HF(hstatus, n, m, X, f, hf, params)
-       if (hstatus > 0) write( options%out, 1030) fstatus
+       call eval_HF(hfstatus, n, m, X, f, hf, params)
+       if (hfstatus > 0) goto 4030
     end if
 
     normF0 = norm2(f)
@@ -504,10 +504,14 @@ contains
 
        Xnew = X + d;
        call eval_J(jstatus, n, m, Xnew, Jnew, params)
-       if (jstatus > 0) write( options%out, 1010) jstatus
+       if (jstatus > 0) goto 4010!write( options%out, 1010) jstatus; goto 4000
        call eval_F(fstatus, n, m, Xnew, fnew, params)
-       if (fstatus > 0) write( options%out, 1020) fstatus
-       
+       if (fstatus > 0) goto 4020!write( options%out, 1020) fstatus; goto 4000
+       if (options%model == 2) then
+          call eval_HF(hfstatus, n, m, X, f, hf, params)
+          if (hfstatus > 0) write( options%out, 1030) hfstatus; goto 4030
+       end if
+
        ! get 'md' --> the value of the model evaluated at Xnew 
        call evaluate_model(f,J,d,md,m,n,options)
 
@@ -584,10 +588,33 @@ contains
 
 ! error returns
 4000 continue
+    ! generic end of algorithm
     if (options%print_level >= 0) then
        write(options%error,'(a)') 'Exiting RAL_NLLS'
     end if
     return
+
+4010 continue
+    ! Error in eval_J
+    if (options%print_level >= 0) then
+       write(options%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
+    end if
+    goto 4000
+
+4020 continue
+    ! Error in eval_J
+    if (options%print_level >= 0) then
+       write(options%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
+    end if
+    goto 4000
+
+4030 continue
+    ! Error in eval_J
+    if (options%print_level >= 0) then
+       write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
+    end if
+    goto 4000
+
 !  End of subroutine RAL_NLLS
 
 
