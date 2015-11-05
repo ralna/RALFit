@@ -504,12 +504,12 @@ contains
 
        Xnew = X + d;
        call eval_J(jstatus, n, m, Xnew, Jnew, params)
-       if (jstatus > 0) goto 4010!write( options%out, 1010) jstatus; goto 4000
+       if (jstatus > 0) goto 4010
        call eval_F(fstatus, n, m, Xnew, fnew, params)
-       if (fstatus > 0) goto 4020!write( options%out, 1020) fstatus; goto 4000
+       if (fstatus > 0) goto 4020
        if (options%model == 2) then
           call eval_HF(hfstatus, n, m, X, f, hf, params)
-          if (hfstatus > 0) write( options%out, 1030) hfstatus; goto 4030
+          if (hfstatus > 0) goto 4030
        end if
 
        ! get 'md' --> the value of the model evaluated at Xnew 
