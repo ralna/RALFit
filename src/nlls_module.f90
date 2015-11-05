@@ -173,7 +173,7 @@ module nlls_module
      REAL ( KIND = wp ) :: eta_too_successful = two
 
 !   on very successful iterations, the trust-region radius will be increased by
-!    the factor %radius_increase, while if the iteration is unsucceful, the 
+!    the factor %radius_increase, while if the iteration is unsuccessful, the 
 !    radius will be decreased by a factor %radius_reduce but no more than
 !    %radius_reduce_max
 
@@ -181,7 +181,7 @@ module nlls_module
      REAL ( KIND = wp ) :: radius_reduce = half
      REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
        
-!   the smallest value the onjective function may take before the problem
+!   the smallest value the objective function may take before the problem
 !    is marked as unbounded
 
 !$$     REAL ( KIND = wp ) :: obj_unbounded = - epsmch ** ( - 2 )
@@ -533,7 +533,7 @@ contains
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
              ( norm2(f)**2 - md)
        
-       if (rho > options%eta_successful) then
+       success_rho: if (rho > options%eta_successful) then
           X = Xnew;
           J = Jnew;
           f = fnew;
@@ -548,7 +548,6 @@ contains
           !++++++++++++++++++!
           ! Test convergence !
           !++++++++++++++++++!
-                   
           if ( norm2(f) <= options%stop_g_absolute + &
                options%stop_g_relative * normF0) then
              if (options%print_level > 0 ) write(options%out,3020) i
@@ -559,21 +558,29 @@ contains
              if (options%print_level > 0 ) write(options%out,3020) i
              return
           end if
+          if (options%print_level > 2 ) write(options%out,3100) rho
           
-       end if
+       else 
+          ! print something....
+          if (options%print_level > 2 ) write(options%out,3090) rho
+                          
+       end if success_rho
           
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
-
-       if ( (rho > options%eta_very_successful) &
+       update_tr: if ( (rho > options%eta_very_successful) &
             .and. (rho < options%eta_too_successful) ) then
-          if (options%print_level >=3) write(options%out,3040)
           Delta = max(options%maximum_radius, options%radius_increase * Delta )
+          if (options%print_level > 2) write(options%out,3040) Delta
        else if (rho < options%eta_successful) then
-          if (options%print_level >=3) write(options%out,3050)
           Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
-       end if
+          if (options%print_level > 2) write(options%out,3050) Delta     
+       else if (rho > options%eta_too_successful) then
+          if (options%print_level > 2) write(options%out,3080) Delta 
+       else
+          if (options%print_level > 2) write(options%out,3070) Delta 
+       end if update_tr
        
      end do main_loop
 
@@ -595,10 +602,13 @@ contains
 3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
 3020 FORMAT('RAL_NLLS converged at iteration ',I6)
 3030 FORMAT('== Starting iteration ',i0,' ==')
-3040 FORMAT('Very successful step -- increasing Delta')
-3050 FORMAT('Successful step -- decreasing Delta')
+3040 FORMAT('Very successful step -- increasing Delta to', ES12.4)
+3050 FORMAT('Unsuccessful step -- decreasing Delta to', ES12.4)
 3060 FORMAT('||J''f||/||f|| = ',ES12.4)
-
+3070 FORMAT('Successful step -- Delta staying at', ES12.4)
+3080 FORMAT('Step too successful -- Delta staying at', ES12.4)   
+3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
+3100 FORMAT('Step was successful -- rho =', ES12.4)
 ! error returns
 4000 continue
     ! generic end of algorithm
