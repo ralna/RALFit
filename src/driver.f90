@@ -26,7 +26,8 @@ X(2) = 2.0
 
 options%print_level = 3
 options%nlls_method = 2
-!options%maxit = 2
+options%model = 2
+options%maxit = 25
 
 ! Get params for the function evaluations
 allocate(params%x_values(m))
