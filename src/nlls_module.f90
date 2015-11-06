@@ -462,11 +462,11 @@ contains
     real(wp), DIMENSION(n)   :: d, g, Xnew
     real(wp) :: Delta, rho, normJF0, normF0, md
 
-    type ( NLLS_workspace ) :: workspace
+    type ( NLLS_workspace ) :: w
     
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
-    call setup_workspaces(workspace,n,m,options,status%alloc_status)
+    call setup_workspaces(w,n,m,options,status%alloc_status)
     if (status%alloc_status > 0) goto 4000
 
     Delta = options%initial_radius
@@ -508,7 +508,7 @@ contains
        !++++++++++++++++++++++++++++++++++++++++++++++++!
 
        call calculate_step(J,f,hf,g,n,m,Delta,d,md,options,status,& 
-                           workspace%calculate_step_ws)
+                           w%calculate_step_ws)
        if (status%status .ne. 0) goto 4000
        
        !++++++++++++++++++!
