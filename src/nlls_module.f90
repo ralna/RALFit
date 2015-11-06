@@ -423,6 +423,7 @@ module nlls_module
 
     type :: NLLS_workspace ! all workspaces called from the top level
        type ( calculate_step_work ) :: calculate_step_ws
+       type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
 
 contains
@@ -530,6 +531,13 @@ contains
           continue
        end select
 
+       !++++++++++++++++++++++++++++!
+       ! Get the value of the model !
+       !         md                 !
+       ! evaluated at the new step  !
+       !++++++++++++++++++++++++++++!
+       call evaluate_model(f,J,hf,d,md,m,n,options,w%evaluate_model_ws)
+       
        rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
              ( norm2(f)**2 - md)
        
@@ -1251,7 +1259,13 @@ contains
                 ,stat = info)
            if (info > 0) goto 9060
         end select
-        
+
+! evaluate model in the main routine...                              
+        allocate(workspace%evaluate_model_ws%Jd(m),stat = info)
+        if (info > 0) goto 9060
+        allocate(workspace%evaluate_model_ws%Hd(n),stat = info)
+        if (info > 0) goto 9060
+
         return
 
 ! Error statements
