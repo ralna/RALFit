@@ -835,12 +835,14 @@ contains
         call matmult_outer( matmul(w%B,y_hardcase), size_hard(2), n, w%M1(1:n,1:n))
         w%M0(1:n,1:n) = w%A(:,:) + lam*w%B(:,:) + w%M1(1:n,1:n)
         ! solve Hq + g = 0 for q
-        select case (options%model)
+        select case (options%model) 
         case (1,3)
            call solve_spd(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_spd_ws)
         case default
           call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_general_ws)
         end select
+        ! note -- a copy of the matrix is taken on entry to the solve routines
+        ! (I think..) and inside...fix
 
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
@@ -860,8 +862,10 @@ contains
         case (1,3)
            call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_spd_ws)
         case default
-          call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_general_ws)
+           call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_general_ws)
         end select
+        ! note -- a copy of the matrix is taken on entry to the solve routines
+        ! and inside...fix
      end if
      
      ! get obj_p1 : the value of the model at p1
