@@ -500,15 +500,13 @@ contains
        
        if ( options%print_level >= 3 )  write( options%out , 3030 ) i
        
-       !++++++++++++++++++++++++++++++++++++++++++++++++!
-       ! Calculate the step                             !
-       !    d                                           !   
-       ! that the model thinks we should take next, and !
-       !    md                                          !
-       ! the value of the model at this step            !  
-       !++++++++++++++++++++++++++++++++++++++++++++++++!
+       !+++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the step                        !
+       !    d                                      !   
+       ! that the model thinks we should take next !
+       !+++++++++++++++++++++++++++++++++++++++++++!
 
-       call calculate_step(J,f,hf,g,n,m,Delta,d,md,options,status,& 
+       call calculate_step(J,f,hf,g,n,m,Delta,d,options,status,& 
                            w%calculate_step_ws)
        if (status%status .ne. 0) goto 4000
        
@@ -662,7 +660,7 @@ contains
 
   END SUBROUTINE RAL_NLLS
   
-  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,md,options,status,w)
+  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,options,status,w)
        
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -670,16 +668,16 @@ contains
 
      REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:), md
+     real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options     
      TYPE( NLLS_inform_type ), INTENT( INOUT ) :: status
      TYPE( calculate_step_work ) :: w
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
-        call dogleg(J,f,hf,g,n,m,Delta,d,md,options,status,w%dogleg_ws)
+        call dogleg(J,f,hf,g,n,m,Delta,d,options,status,w%dogleg_ws)
      case (2) ! The AINT method
-        call AINT_TR(J,f,hf,n,m,Delta,d,md,options,status,w%AINT_tr_ws)
+        call AINT_TR(J,f,hf,n,m,Delta,d,options,status,w%AINT_tr_ws)
      case default
         
         if ( options%print_level > 0 ) then
@@ -691,14 +689,14 @@ contains
    END SUBROUTINE calculate_step
 
 
-   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,md,options,status,w)
+   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,options,status,w)
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
 
      REAL(wp), intent(in) :: J(:), hf(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:), md
+     real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
      TYPE( NLLS_inform_type ), INTENT( INOUT ) :: status
      TYPE( dogleg_work ) :: w
@@ -736,14 +734,9 @@ contains
         d = alpha * w%d_sd + beta * w%ghat
      end if
      
-     ! get 
-     !    md
-     ! the value of the model evaluated at X + d
-     call evaluate_model(f,J,hf,d,md,m,n,options,w%evaluate_model_ws)
-     
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,md,options,status,w)
+   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,options,status,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
@@ -752,7 +745,7 @@ contains
 
      REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:), md
+     real(wp), intent(out) :: d(:)
      TYPE( NLLS_control_type ), INTENT( IN ) :: options
      TYPE( NLLS_inform_type ), INTENT( INOUT ) :: status
      type( AINT_tr_work ) :: w
@@ -863,10 +856,8 @@ contains
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
         d = w%p0
-        md = obj_p0
      else 
         d = w%p1
-        md = obj_p1
      end if
 
    end SUBROUTINE AINT_tr
