@@ -493,13 +493,13 @@ contains
     if (fstatus > 0) goto 4020
     select case (options%model)
     case (1) ! first-order
-       hf(1:4) = 0.0_wp
+       hf(1:4) = zero
     case (2) ! second order
        call eval_HF(hfstatus, n, m, X, f, hf, params)
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
-       hf(1:4) = 0.0_wp
-       hf((/ ( (i-1)*n + i, i = 1,n ) /)) = 1.0_wp
+       hf(1:4) = zero
+       hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
     case default
        goto 4040 ! unsupported model -- return to user
     end select
@@ -845,7 +845,7 @@ contains
 
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
-        call findbeta(w%q,y_hardcase(:,1),1.0_wp,Delta,eta,find_status)
+        call findbeta(w%q,y_hardcase(:,1),one,Delta,eta,find_status)
         if ( find_status .ne. 0 ) then
            write(*,*) 'error: no vaild beta found...'
            return
@@ -1081,9 +1081,9 @@ contains
         
         lengthJ = n*m
         
-        call dgemm('T','N',n, n, m, 1.0_wp,&
+        call dgemm('T','N',n, n, m, one,&
                    J, m, J, m, & 
-                   0.0_wp, A, n)
+                   zero, A, n)
         
         
       end subroutine matmult_inner
@@ -1101,9 +1101,9 @@ contains
         
         lengthJ = n*m
         
-        call dgemm('N','T',m, m, n, 1.0_wp,&
+        call dgemm('N','T',m, m, n, one,&
                    J, m, J, m, & 
-                   0.0_wp, A, m)
+                   zero, A, m)
         
         
       end subroutine matmult_outer
@@ -1118,8 +1118,8 @@ contains
         ! n x n matrix xtx given by
         ! xtx = x * x'
 
-        xtx(1:n,1:n) = 0.0_wp
-        call dger(n, n, 1.0_wp, x, 1, x, 1, xtx, n)
+        xtx(1:n,1:n) = zero
+        call dger(n, n, one, x, 1, x, 1, xtx, n)
         
       end subroutine outer_product
 
