@@ -96,6 +96,7 @@ module nlls_module
 
 !   specify the method used to solve the trust-region sub problem
 !      1 Powell's dogleg
+!      2 AINT method (of Yuji Nat.)
 !      ...
 
 
@@ -236,7 +237,11 @@ module nlls_module
 
   TYPE, PUBLIC :: NLLS_inform_type
      
-!  return status. See NLLS_solve for details
+!  return status
+!   1 -- maximum number of iterations reached
+!   2 -- error from evaluating a function/Jacobian/Hessian
+!   3 -- unsupported choice of model
+!   4 -- error return from an lapack routine
      
      INTEGER :: status = 0
      
@@ -785,8 +790,10 @@ contains
      select case (options%model)
      case (1,3)
         call solve_spd(w%A,-w%v,w%p0,n,solve_status)
+        if (solve_status .ne. 0) goto 1010
      case default
        call solve_general(w%A,-w%v,w%p0,n,solve_status)
+       if (solve_status .ne. 0) goto 1020
      end select
           
      call matrix_norm(w%p0,w%B,norm_p0)
@@ -808,11 +815,7 @@ contains
      w%M1(1:n,n+1:2*n) = -w%B
      
      call max_eig(w%M0,w%M1,2*n,lam, w%y, eig_info, y_hardcase, w%max_eig_ws)
-     if ( eig_info > 0 ) then
-        write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
-        write(options%error,'(a,i0)') 'LAPACK returned info = ', eig_info
-        return
-     end if
+     if ( eig_info > 0 ) goto 1030
 
      if (norm2(w%y(1:n)) < tau) then
         ! Hard case
@@ -859,6 +862,30 @@ contains
      else 
         d = w%p1
      end if
+
+     return
+
+1010 continue 
+     ! bad error return from solve_spd
+     write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
+     write(options%error,'(a,i0)') 'dposv returned info = ', solve_status
+     status%status = 4
+     return
+     
+1020 continue
+     ! bad error return from solve_general
+     write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
+     write(options%error,'(a,i0)') 'dgexv returned info = ', solve_status
+     status%status = 4
+     return
+     
+1030 continue
+     ! bad error return from max_eig
+     write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
+     write(options%error,'(a,i0)') 'dggev returned info = ', eig_info
+     status%status = 4
+     return
+
 
    end SUBROUTINE AINT_tr
    
@@ -997,7 +1024,7 @@ contains
         ! NOTE: A will be destroyed 
         x(1:n) = b(1:n)
         call dposv('U', n, 1, A, n, x, n, info)
-        
+           
       end subroutine solve_spd
 
       subroutine solve_general(A,b,x,n,info)
