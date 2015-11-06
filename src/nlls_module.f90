@@ -1020,10 +1020,14 @@ contains
         integer, intent(in) :: n
         integer, intent(out) :: info
 
+        ! to cull
+        real(wp) :: A_copy(n,n)
+
         ! A wrapper for the lapack subroutine dposv.f
-        ! NOTE: A will be destroyed 
+        ! NOTE: A would be destroyed 
+        A_copy(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dposv('U', n, 1, A, n, x, n, info)
+        call dposv('U', n, 1, A_copy, n, x, n, info)
            
       end subroutine solve_spd
 
@@ -1036,11 +1040,13 @@ contains
 
         ! to cull
         integer :: ipiv(n)
-
+        real(wp) :: A_copy(n,n)
+        
         ! A wrapper for the lapack subroutine dposv.f
-        ! NOTE: A will be destroyed 
+        ! NOTE: A would be destroyed
+        A_copy(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dgesv( n, 1, A, n, ipiv, x, n, info)
+        call dgesv( n, 1, A_copy, n, ipiv, x, n, info)
         
       end subroutine solve_general
 
