@@ -488,7 +488,7 @@ contains
     case default
        goto 4040 ! unsupported model -- return to user
     end select
-   
+
     normF0 = norm2(f)
 
 !    g = -J^Tf
@@ -777,10 +777,10 @@ contains
      !
      ! set A and v for the model being considered here...
 
-        call matmult_inner(J,n,m,w%A)
-        ! add any second order information...
-        w%A = w%A + reshape(hf,(/n,n/))
-        call mult_Jt(J,n,m,f,w%v)
+     call matmult_inner(J,n,m,w%A)
+     ! add any second order information...
+     w%A = w%A + reshape(hf,(/n,n/))
+     call mult_Jt(J,n,m,f,w%v)
         
      ! Set B to I by hand  
      ! todo: make this an option
@@ -788,9 +788,14 @@ contains
      do i = 1,n
         w%B(i,i) = 1.0
      end do
-       
-     call solve_spd(w%A,-w%v,w%p0,n,solve_status)
-
+     
+     select case (options%model)
+     case (1,3)
+        call solve_spd(w%A,-w%v,w%p0,n,solve_status)
+     case default
+       call solve_general(w%A,-w%v,w%p0,n,solve_status)
+     end select
+          
      call matrix_norm(w%p0,w%B,norm_p0)
      
      if (norm_p0 < Delta) then
@@ -823,7 +828,13 @@ contains
         call matmult_outer( matmul(w%B,y_hardcase), size_hard(2), n, w%M1(1:n,1:n))
         w%M0(1:n,1:n) = w%A(:,:) + lam*w%B(:,:) + w%M1(1:n,1:n)
         ! solve Hq + g = 0 for q
-        call solve_spd(w%M0(1:n,1:n),-w%v,w%q,n,solve_status)
+        select case (options%model)
+        case (1,3)
+           call solve_spd(w%M0(1:n,1:n),-w%v,w%q,n,solve_status)
+        case default
+          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status)
+        end select
+
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
         call findbeta(w%q,y_hardcase(:,1),1.0_wp,Delta,eta,find_status)
@@ -838,7 +849,12 @@ contains
         w%p1(:) = w%q(:) + eta * y_hardcase(:,1)
         
      else 
-        call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status)
+        select case (options%model)
+        case (1,3)
+           call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status)
+        case default
+          call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status)
+        end select
      end if
      
      ! get obj_p1 : the value of the model at p1
@@ -980,16 +996,35 @@ contains
       end subroutine mult_Jt
 
       subroutine solve_spd(A,b,x,n,info)
-        REAL(wp), intent(in) :: A(:,:), b(:)
+        REAL(wp), intent(in) :: A(:,:)
+        REAL(wp), intent(in) :: b(:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
         integer, intent(out) :: info
 
         ! A wrapper for the lapack subroutine dposv.f
+        ! NOTE: A will be destroyed 
         x(1:n) = b(1:n)
         call dposv('U', n, 1, A, n, x, n, info)
         
       end subroutine solve_spd
+
+      subroutine solve_general(A,b,x,n,info)
+        REAL(wp), intent(in) :: A(:,:)
+        REAL(wp), intent(in) :: b(:)
+        REAL(wp), intent(out) :: x(:)
+        integer, intent(in) :: n
+        integer, intent(out) :: info
+
+        ! to cull
+        integer :: ipiv(n)
+
+        ! A wrapper for the lapack subroutine dposv.f
+        ! NOTE: A will be destroyed 
+        x(1:n) = b(1:n)
+        call dgesv( n, 1, A, n, ipiv, x, n, info)
+        
+      end subroutine solve_general
 
       subroutine matrix_norm(x,A,norm_A_x)
         REAL(wp), intent(in) :: A(:,:), x(:)
@@ -1140,6 +1175,8 @@ contains
         
         info = 0
         
+        
+
         select case (options%nlls_method)
         
         case (1) ! use the dogleg method
