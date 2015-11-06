@@ -767,7 +767,7 @@ contains
 
      keep_p0 = 0
      tau = 1e-4
-     obj_p0 = (tau + tau)/(tau-tau) ! set a nan....is there a better way?
+     obj_p0 = HUGE(wp)
 
      ! The code finds 
      !  min_p   v^T p + 0.5 * p^T A p
