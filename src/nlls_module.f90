@@ -461,8 +461,7 @@ contains
 
 !   Dummy arguments
 
-    USE ISO_FORTRAN_ENV
-    INTEGER( int32 ), INTENT( IN ) :: n, m
+    INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
     TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
     TYPE( NLLS_control_type ), INTENT( IN ) :: options
