@@ -400,6 +400,15 @@ module nlls_module
        logical, allocatable :: vecisreal(:)
     end type max_eig_work
 
+    type, private :: solve_spd_work ! workspace for subroutine solve_general
+       real(wp), allocatable :: A(:,:)
+    end type solve_spd_work
+
+    type, private :: solve_general_work ! workspace for subroutine solve_general
+       real(wp), allocatable :: A(:,:)
+       integer, allocatable :: ipiv(:)
+    end type solve_general_work
+
     type, private :: evaluate_model_work ! workspace for subroutine evaluate_model
        real(wp), allocatable :: Jd(:), Hd(:)
     end type evaluate_model_work
@@ -411,6 +420,8 @@ module nlls_module
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
        type( max_eig_work ) :: max_eig_ws
        type( evaluate_model_work ) :: evaluate_model_ws
+       type( solve_general_work ) :: solve_general_ws
+       type( solve_spd_work ) :: solve_spd_ws
        REAL(wp), allocatable :: A(:,:), v(:), B(:,:), p0(:), p1(:)
        REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
     end type AINT_tr_work
@@ -789,10 +800,10 @@ contains
      
      select case (options%model)
      case (1,3)
-        call solve_spd(w%A,-w%v,w%p0,n,solve_status)
+        call solve_spd(w%A,-w%v,w%p0,n,solve_status,w%solve_spd_ws)
         if (solve_status .ne. 0) goto 1010
      case default
-       call solve_general(w%A,-w%v,w%p0,n,solve_status)
+       call solve_general(w%A,-w%v,w%p0,n,solve_status,w%solve_general_ws)
        if (solve_status .ne. 0) goto 1020
      end select
           
@@ -826,9 +837,9 @@ contains
         ! solve Hq + g = 0 for q
         select case (options%model)
         case (1,3)
-           call solve_spd(w%M0(1:n,1:n),-w%v,w%q,n,solve_status)
+           call solve_spd(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_spd_ws)
         case default
-          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status)
+          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_general_ws)
         end select
 
         
@@ -847,9 +858,9 @@ contains
      else 
         select case (options%model)
         case (1,3)
-           call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status)
+           call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_spd_ws)
         case default
-          call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status)
+          call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_general_ws)
         end select
      end if
      
@@ -885,7 +896,6 @@ contains
      write(options%error,'(a,i0)') 'dggev returned info = ', eig_info
      status%status = 4
      return
-
 
    end SUBROUTINE AINT_tr
    
@@ -1013,40 +1023,35 @@ contains
 
       end subroutine mult_Jt
 
-      subroutine solve_spd(A,b,x,n,info)
+      subroutine solve_spd(A,b,x,n,info,w)
         REAL(wp), intent(in) :: A(:,:)
         REAL(wp), intent(in) :: b(:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
         integer, intent(out) :: info
-
-        ! to cull
-        real(wp) :: A_copy(n,n)
+        type( solve_spd_work ) :: w
 
         ! A wrapper for the lapack subroutine dposv.f
         ! NOTE: A would be destroyed 
-        A_copy(1:n,1:n) = A(1:n,1:n)
+        w%A(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dposv('U', n, 1, A_copy, n, x, n, info)
+        call dposv('U', n, 1, w%A, n, x, n, info)
            
       end subroutine solve_spd
 
-      subroutine solve_general(A,b,x,n,info)
+      subroutine solve_general(A,b,x,n,info,w)
         REAL(wp), intent(in) :: A(:,:)
         REAL(wp), intent(in) :: b(:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
         integer, intent(out) :: info
-
-        ! to cull
-        integer :: ipiv(n)
-        real(wp) :: A_copy(n,n)
+        type( solve_general_work ) :: w
         
         ! A wrapper for the lapack subroutine dposv.f
         ! NOTE: A would be destroyed
-        A_copy(1:n,1:n) = A(1:n,1:n)
+        w%A(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dgesv( n, 1, A_copy, n, ipiv, x, n, info)
+        call dgesv( n, 1, w%A, n, w%ipiv, x, n, info)
         
       end subroutine solve_general
 
@@ -1319,6 +1324,24 @@ contains
                 workspace%calculate_step_ws%AINT_tr_ws%evaluate_model_ws%Hd(n)&
                 ,stat = info)
            if (info > 0) goto 9060
+           ! now allocate space for the solve routine 
+           ! called by AINT_tr
+           select case (options%model)
+           case (1,3)
+              allocate(&
+                   workspace%calculate_step_ws%AINT_tr_ws%solve_spd_ws%A(n,n)&
+                   ,stat = info)
+              if (info > 0) goto 9070
+           case default
+              allocate(&
+                   workspace%calculate_step_ws%AINT_tr_ws%solve_general_ws%A(n,n)&
+                   ,stat = info)
+              if (info > 0) goto 9070
+              allocate(&
+                   workspace%calculate_step_ws%AINT_tr_ws%solve_general_ws%ipiv(n)&
+                   ,stat = info)
+              if (info > 0) goto 9070
+           end select
         end select
 
 ! evaluate model in the main routine...                              
@@ -1380,6 +1403,15 @@ contains
         if (options%print_level >= 0) then
            write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''evaluate_model'': ',&
+                'not enough memory.' 
+        end if
+        return
+
+9070    continue
+        ! Error return from evaluate_model
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for dense linear solve subroutine ',&
                 'not enough memory.' 
         end if
         return

@@ -16,7 +16,7 @@ program nlls_test
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
   integer :: nlls_method, model
 
-  type( NLLS_workspace ) :: work, work2
+  type( NLLS_workspace ) :: work, work2, work3
 
 !!!!!!!!!!!!!!!!!!!!!!!!
 !! Test the main file !!
@@ -154,6 +154,13 @@ no_errors_helpers = 0
 
   deallocate(z, x, y)
 
+!!!!!!
+  ! Setup workspace for n = 2
+  ! use this for max_eig, solve_spd
+  options%nlls_method = 2
+  call setup_workspaces(work,2,2,options,info) 
+!!!!!!
+
 !-------------!
 !! solve_spd !!
 !-------------!
@@ -164,7 +171,7 @@ A = reshape((/ 4.0, 1.0, 1.0, 2.0 /),shape(A))
 z = (/ 1.0, 1.0 /)
 y = (/ 5.0, 3.0 /)
 
-call solve_spd(A,y,x,n,info)
+call solve_spd(A,y,x,n,info,work%calculate_step_ws%AINT_tr_ws%solve_spd_ws)
 if (info .ne. 0) then
    write(*,*) 'Error: info = ', info, ' returned from solve_spd'
    no_errors_helpers = no_errors_helpers + 1
@@ -174,6 +181,14 @@ else if (norm2(x-z) > 1e-12) then
 end if
 
 deallocate(A,x,y,z)
+
+!!!!!!
+  ! Setup workspace for n = 2
+  ! use this for max_eig, solve_spd
+  options%nlls_method = 2
+  options%model = 2
+  call setup_workspaces(work3,2,2,options,info) 
+!!!!!!
 
 !-----------------!
 !! solve_general !!
@@ -185,7 +200,7 @@ A = reshape((/ 4.0, 1.0, 2.0, 2.0 /),shape(A))
 z = (/ 1.0, 1.0 /)
 y = (/ 6.0, 3.0 /)
 
-call solve_general(A,y,x,n,info)
+call solve_general(A,y,x,n,info,work3%calculate_step_ws%AINT_tr_ws%solve_general_ws)
 if (info .ne. 0) then
    write(*,*) 'Error: info = ', info, ' returned from solve_spd'
    no_errors_helpers = no_errors_helpers + 1
@@ -281,8 +296,6 @@ deallocate(A,x,y,z)
   n = 4
   m = 4
   ! make sure max_eig gets called
-  options%nlls_method = 2
-  call setup_workspaces(work,2,2,options,info) 
 
   allocate(x(n),A(n,n), B(n,n))
   A = reshape( (/1.0, 2.0, 3.0, 4.0, &
