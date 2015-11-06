@@ -1173,7 +1173,7 @@ contains
               end if
            end do
            allocate(nullevs(halfn,no_null))
-           nullevs(:,:) = w%vr(halfn+1 : n,w%nullindex)
+           nullevs(:,:) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
         end if
         
         ew = w%alphaR(maxindex(1))/w%beta(maxindex(1))
