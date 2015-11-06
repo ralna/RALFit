@@ -86,7 +86,40 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 no_errors_helpers = 0
 
-!! mult_J
+!! solve_LLS 
+! ** TODO **
+
+!------------!
+!! findbeta !!
+!------------!
+  n = 3
+  allocate(x(n),y(n),z(n))
+
+  x = (/ 1.0, 2.0, 3.0 /) 
+  y = (/ 2.0, 1.0, 1.0 /)
+  
+  call findbeta(x,y,1.0_wp,10.0_wp,alpha,info)
+
+  if (info .ne. 0) then
+     write(*,*) 'error -- findbeta did not work: info /= 0'
+     no_errors_helpers = no_errors_helpers + 1
+  else if ( ( norm2( x + alpha * y ) - 10.0_wp ) > 1e-12 ) then
+     write(*,*) 'error -- findbeta did not work'
+     write(*,*) '|| x + beta y|| = ', norm2( (x + alpha * y)-10.0_wp)
+     no_errors_helpers = no_errors_helpers + 1
+  end if
+  
+  deallocate(x,y,z)
+
+!------------------!
+!! evaluate_model !!
+!------------------!
+ 
+!! todo
+
+!----------!
+!! mult_J !!
+!----------!
   
   n = 2
   m = 4
@@ -103,7 +136,9 @@ no_errors_helpers = 0
 
   deallocate(z, x, y)
 
-!! mult_Jt
+!-----------!
+!! mult_Jt !!
+!-----------!
   
   n = 2
   m = 4
@@ -119,7 +154,108 @@ no_errors_helpers = 0
 
   deallocate(z, x, y)
 
-!! outer_product
+!-------------!
+!! solve_spd !!
+!-------------!
+
+n = 2
+allocate(A(n,n),x(2),y(2),z(2))
+A = reshape((/ 4.0, 1.0, 1.0, 2.0 /),shape(A))
+z = (/ 1.0, 1.0 /)
+y = (/ 5.0, 3.0 /)
+
+call solve_spd(A,y,x,n,info)
+if (info .ne. 0) then
+   write(*,*) 'Error: info = ', info, ' returned from solve_spd'
+   no_errors_helpers = no_errors_helpers + 1
+else if (norm2(x-z) > 1e-12) then
+   write(*,*) 'Error: incorrect value returned from solve_spd'
+   no_errors_helpers = no_errors_helpers + 1
+end if
+
+deallocate(A,x,y,z)
+
+!-----------------!
+!! solve_general !!
+!-----------------!
+
+n = 2
+allocate(A(n,n),x(2),y(2),z(2))
+A = reshape((/ 4.0, 1.0, 2.0, 2.0 /),shape(A))
+z = (/ 1.0, 1.0 /)
+y = (/ 6.0, 3.0 /)
+
+call solve_general(A,y,x,n,info)
+if (info .ne. 0) then
+   write(*,*) 'Error: info = ', info, ' returned from solve_spd'
+   no_errors_helpers = no_errors_helpers + 1
+else if (norm2(x-z) > 1e-12) then
+   write(*,*) 'Error: incorrect value returned from solve_spd'
+   no_errors_helpers = no_errors_helpers + 1
+end if
+
+deallocate(A,x,y,z)
+
+!---------------!
+!! matrix_norm !!
+!---------------!
+
+! todo
+
+!-----------------!
+!! matmult_inner !!
+!-----------------!
+  
+  n = 2
+  m = 3
+  allocate(A(m,n),B(n,n),C(n,n),results(n))
+  A = reshape( (/1.0, 2.0, 3.0,  &
+                 2.0, 4.0, 6.0/),&
+                 shape(A))
+  call matmult_inner(A,n,m,B)
+  C = reshape( (/ 14.0, 28.0,  &
+                  28.0, 56.0 /) &
+                  , shape(C))
+  do i = 1,n
+     results(i) = norm2(C(:,i) - B(:,i))
+  end do
+  if (norm2(results) > 1e-10) then
+     write(*,*) 'error :: matmult_inner test failed'
+     no_errors_helpers = no_errors_helpers + 1
+  end if
+
+  deallocate(A,B,C,results)
+
+
+!-----------------!
+!! matmult_outer !!
+!-----------------!
+
+  n = 2
+  m = 3
+  allocate(A(m,n),B(m,m),C(m,m),results(m))
+  A = reshape( (/1.0, 2.0, 3.0,  &
+                 2.0, 4.0, 6.0/),&
+                 shape(A))
+  call matmult_outer(A,n,m,B)
+  C = reshape( (/ 5.0, 10.0, 15.0,  &
+       10.0, 20.0, 30.0, & 
+       15.0, 30.0, 45.0 /) &
+       , shape(C))
+  do i = 1,m
+     results(i) = norm2(C(:,i) - B(:,i))
+  end do
+  if (norm2(results) > 1e-10) then
+     write(*,*) 'error :: matmult_outer test failed'
+     no_errors_helpers = no_errors_helpers + 1
+  end if
+  
+  deallocate(A,B,C,results)
+
+!-----------------!
+!! outer_product !!
+!-----------------!
+
   n = 4
   allocate(x(n), A(n,n), B(n,n), results(n))
   x = (/ 1.0, 2.0, 3.0, 4.0 /)
@@ -138,7 +274,9 @@ no_errors_helpers = 0
   
   deallocate(x,A,B,results)
   
-!! max_eig
+!-----------!
+!! max_eig !!
+!-----------!
   
   n = 4
   m = 4
@@ -235,72 +373,9 @@ no_errors_helpers = 0
   
   deallocate(A,B,x)
 
-!! matmult_outer
-  
-  n = 2
-  m = 3
-  allocate(A(m,n),B(m,m),C(m,m),results(m))
-  A = reshape( (/1.0, 2.0, 3.0,  &
-                 2.0, 4.0, 6.0/),&
-                 shape(A))
-  call matmult_outer(A,n,m,B)
-  C = reshape( (/ 5.0, 10.0, 15.0,  &
-       10.0, 20.0, 30.0, & 
-       15.0, 30.0, 45.0 /) &
-       , shape(C))
-  do i = 1,m
-     results(i) = norm2(C(:,i) - B(:,i))
-  end do
-  if (norm2(results) > 1e-10) then
-     write(*,*) 'error :: matmult_outer test failed'
-     no_errors_helpers = no_errors_helpers + 1
-  end if
-  
-  deallocate(A,B,C,results)
 
- !! matmult_inner
-  
-  n = 2
-  m = 3
-  allocate(A(m,n),B(n,n),C(n,n),results(n))
-  A = reshape( (/1.0, 2.0, 3.0,  &
-                 2.0, 4.0, 6.0/),&
-                 shape(A))
-  call matmult_inner(A,n,m,B)
-  C = reshape( (/ 14.0, 28.0,  &
-                  28.0, 56.0 /) &
-                  , shape(C))
-  do i = 1,n
-     results(i) = norm2(C(:,i) - B(:,i))
-  end do
-  if (norm2(results) > 1e-10) then
-     write(*,*) 'error :: matmult_inner test failed'
-     no_errors_helpers = no_errors_helpers + 1
-  end if
-
-  deallocate(A,B,C,results)
   
 
-  ! test findbeta
-
-  n = 3
-  allocate(x(n),y(n),z(n))
-
-  x = (/ 1.0, 2.0, 3.0 /) 
-  y = (/ 2.0, 1.0, 1.0 /)
-  
-  call findbeta(x,y,1.0_wp,10.0_wp,alpha,info)
-
-  if (info .ne. 0) then
-     write(*,*) 'error -- findbeta did not work: info /= 0'
-     no_errors_helpers = no_errors_helpers + 1
-  else if ( ( norm2( x + alpha * y ) - 10.0_wp ) > 1e-12 ) then
-     write(*,*) 'error -- findbeta did not work'
-     write(*,*) '|| x + beta y|| = ', norm2( (x + alpha * y)-10.0_wp)
-     no_errors_helpers = no_errors_helpers + 1
-  end if
-  
-  deallocate(x,y,z)
   
 ! Report back results....
   
