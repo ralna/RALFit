@@ -28,7 +28,7 @@ n = 2
 
 m = 67
 
-do nlls_method = 1,2
+do nlls_method = 1,3
    do model = 0,3
       allocate( x(n) )
 
