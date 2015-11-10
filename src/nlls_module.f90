@@ -140,7 +140,7 @@ module nlls_module
 
 !  which linear least squares solver should we use?
      
-     INTEGER :: lls_solver
+!$$  INTEGER :: lls_solver
         
 !   overall convergence tolerances. The iteration will terminate when the
 !     norm of the gradient of the objective function is smaller than 
