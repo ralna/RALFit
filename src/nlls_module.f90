@@ -400,9 +400,9 @@ module nlls_module
        logical, allocatable :: vecisreal(:)
     end type max_eig_work
 
-    type, private :: solve_spd_work ! workspace for subroutine solve_general
-       real(wp), allocatable :: A(:,:)
-    end type solve_spd_work
+!!$    type, private :: solve_spd_work ! workspace for subroutine solve_general
+!!$       real(wp), allocatable :: A(:,:)
+!!$    end type solve_spd_work
 
     type, private :: solve_general_work ! workspace for subroutine solve_general
        real(wp), allocatable :: A(:,:)
@@ -799,7 +799,7 @@ contains
      
      select case (options%model)
      case (1,3)
-        call solve_spd(w%A,-w%v,w%p0,n,solve_status,w%solve_spd_ws)
+        call solve_spd(w%A,-w%v,w%LtL,w%p0,n,solve_status)!,w%solve_spd_ws)
         if (solve_status .ne. 0) goto 1010
      case default
        call solve_general(w%A,-w%v,w%p0,n,solve_status,w%solve_general_ws)
@@ -836,7 +836,7 @@ contains
         ! solve Hq + g = 0 for q
         select case (options%model) 
         case (1,3)
-           call solve_spd(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_spd_ws)
+           call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,solve_status)!,w%solve_spd_ws)
         case default
           call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_general_ws)
         end select
@@ -859,7 +859,7 @@ contains
      else 
         select case (options%model)
         case (1,3)
-           call solve_spd(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_spd_ws)
+           call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,solve_status)!,w%solve_spd_ws)
         case default
            call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_general_ws)
         end select
@@ -1026,19 +1026,20 @@ contains
 
       end subroutine mult_Jt
 
-      subroutine solve_spd(A,b,x,n,info,w)
+      subroutine solve_spd(A,b,LtL,x,n,info)
         REAL(wp), intent(in) :: A(:,:)
         REAL(wp), intent(in) :: b(:)
+        REAL(wp), intent(out) :: LtL(:,:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
         integer, intent(out) :: info
-        type( solve_spd_work ) :: w
+!        type( solve_spd_work ) :: w
 
         ! A wrapper for the lapack subroutine dposv.f
-        ! NOTE: A would be destroyed 
-        w%A(1:n,1:n) = A(1:n,1:n)
+        ! get workspace for the factors....
+        LtL(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dposv('U', n, 1, w%A, n, x, n, info)
+        call dposv('U', n, 1, LtL, n, x, n, info)
            
       end subroutine solve_spd
 
@@ -1268,6 +1269,8 @@ contains
            if (info > 0) goto 9030
            allocate(workspace%calculate_step_ws%AINT_tr_ws%q(n),stat = info)
            if (info > 0) goto 9030
+           allocate(workspace%calculate_step_ws%AINT_tr_ws%LtL(n,n),stat = info)
+           if (info > 0) goto 9030
            ! now allocate space for the subroutine
            !  max_eig
            ! that is called by AINT_tr
@@ -1331,10 +1334,10 @@ contains
            ! called by AINT_tr
            select case (options%model)
            case (1,3)
-              allocate(&
-                   workspace%calculate_step_ws%AINT_tr_ws%solve_spd_ws%A(n,n)&
-                   ,stat = info)
-              if (info > 0) goto 9070
+!              allocate(&
+!                   workspace%calculate_step_ws%AINT_tr_ws%solve_spd_ws%A(n,n)&
+!                   ,stat = info)
+!              if (info > 0) goto 9070
            case default
               allocate(&
                    workspace%calculate_step_ws%AINT_tr_ws%solve_general_ws%A(n,n)&

@@ -166,12 +166,12 @@ no_errors_helpers = 0
 !-------------!
 
 n = 2
-allocate(A(n,n),x(2),y(2),z(2))
+allocate(A(n,n),x(2),y(2),z(2),B(n,n))
 A = reshape((/ 4.0, 1.0, 1.0, 2.0 /),shape(A))
 z = (/ 1.0, 1.0 /)
 y = (/ 5.0, 3.0 /)
 
-call solve_spd(A,y,x,n,info,work%calculate_step_ws%AINT_tr_ws%solve_spd_ws)
+call solve_spd(A,y,B,x,n,info)!,work%calculate_step_ws%AINT_tr_ws%solve_spd_ws)
 if (info .ne. 0) then
    write(*,*) 'Error: info = ', info, ' returned from solve_spd'
    no_errors_helpers = no_errors_helpers + 1
@@ -180,7 +180,7 @@ else if (norm2(x-z) > 1e-12) then
    no_errors_helpers = no_errors_helpers + 1
 end if
 
-deallocate(A,x,y,z)
+deallocate(A,B,x,y,z)
 
 !!!!!!
   ! Setup workspace for n = 2
