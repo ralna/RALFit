@@ -32,7 +32,10 @@ CLIBS = -L$(GSLDIR)/lib -I$(GSLDIR)/include -lgslcblas -lgsl -lm
 F77 = $(FC)
 
 # What to build
-all: driver test
+all: driver lib test 
+
+# Build a library
+library: lib
 
 #DBLAS = $(BLASDIR)/dgemv.f $(BLASDIR)/lsame.f $(BLASDIR)/xerbla.f \
 #	$(BLASDIR)/dgemm.f $(BLASDIR)/dtrmv.f $(BLASDIR)/dtrmm.f \
@@ -68,11 +71,14 @@ driver: driver.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 test: nlls_test.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
+lib: example_module.o nlls_module.o
+	ar r libral_nlls.a $^
+
 cdriver: cdriver.o example_module.o ral_nlls_ciface.o nlls_module.o # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(CLIBS)
+
 lm_example: lm_example.o ral_nlls_ciface.o nlls_module.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(CLIBS)
-
 
 TOPDIR=.
 BLASDIR=$(TOPDIR)/blas
