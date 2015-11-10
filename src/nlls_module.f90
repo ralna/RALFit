@@ -97,6 +97,7 @@ module nlls_module
 !   specify the method used to solve the trust-region sub problem
 !      1 Powell's dogleg
 !      2 AINT method (of Yuji Nat.)
+!      3 More-Sorensen
 !      ...
 
 
@@ -417,12 +418,18 @@ module nlls_module
        real(wp), allocatable :: temp(:), work(:), Jlls(:)
     end type solve_LLS_work
 
+    type, private :: more_sorensen_work ! workspace for subroutine more_sorensen
+ !      type( solve_spd_work ) :: solve_spd_ws
+       real(wp), allocatable :: A(:,:), LtL(:,:), AplusSigma(:,:)
+       real(wp), allocatable :: v(:), q(:)
+    end type more_sorensen_work
+
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
        type( max_eig_work ) :: max_eig_ws
        type( evaluate_model_work ) :: evaluate_model_ws
        type( solve_general_work ) :: solve_general_ws
-       type( solve_spd_work ) :: solve_spd_ws
-       REAL(wp), allocatable :: A(:,:), v(:), B(:,:), p0(:), p1(:)
+!       type( solve_spd_work ) :: solve_spd_ws
+       REAL(wp), allocatable :: A(:,:), LtL(:,:), v(:), B(:,:), p0(:), p1(:)
        REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
     end type AINT_tr_work
 
@@ -435,6 +442,7 @@ module nlls_module
     type, private :: calculate_step_work ! workspace for subroutine calculate_step
        type( AINT_tr_work ) :: AINT_tr_ws
        type( dogleg_work ) :: dogleg_ws
+       type( more_sorensen_work ) :: more_sorensen_ws
     end type calculate_step_work
 
     type :: NLLS_workspace ! all workspaces called from the top level
@@ -693,10 +701,13 @@ contains
         call dogleg(J,f,hf,g,n,m,Delta,d,options,status,w%dogleg_ws)
      case (2) ! The AINT method
         call AINT_TR(J,f,hf,n,m,Delta,d,options,status,w%AINT_tr_ws)
+     case (3) ! More-Sorensen
+        call more_sorensen(J,f,hf,n,m,Delta,d,options,status,w%more_sorensen_ws)
      case default
         
         if ( options%print_level > 0 ) then
            write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
+           status%status = 110 ! fix me
         end if
 
      end select
@@ -901,7 +912,119 @@ contains
      return
 
    end SUBROUTINE AINT_tr
+
+   subroutine more_sorensen(J,f,hf,n,m,Delta,d,options,status,w)
+     ! -----------------------------------------
+     ! more_sorensen
+     ! Solve the trust-region subproblem using 
+     ! the method More and Sorensen
+     ! using the implementation as given by 
+     ! Erway and Marcia
+     ! 
+     ! main output :: d, the soln to the TR subproblem
+     ! -----------------------------------------
+
+     REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     TYPE( NLLS_control_type ), INTENT( IN ) :: options
+     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: status
+     type( more_sorensen_work ) :: w
+
+     ! parameters...make these options?
+     integer :: maxits = 100
+     real(wp) :: tol = 1e-12, sigma0 = 10.0
+     real(wp) :: nd, nq, nr
+
+     real(wp) :: sigma
+     integer :: solve_status
+     integer :: test_pd, i 
+     
+     ! The code finds 
+     !  d = arg min_p   v^T p + 0.5 * p^T A p
+     !       s.t. ||p|| \leq Delta
+     !
+     ! set A and v for the model being considered here...
+
+     ! Set A = J^T J
+     call matmult_inner(J,n,m,w%A)
+     ! add any second order information...
+     ! so A = J^T J + HF
+     w%A = w%A + reshape(hf,(/n,n/))
+     ! now form v = J^T f 
+     call mult_Jt(J,n,m,f,w%v)
+
+     ! d = -A\v
+     call solve_spd(W%A,-w%v,w%LtL,d,n,solve_status)!,w%solve_spd_ws)
+     if (solve_status .ne. 0) goto 1010
+     
+     if (norm2(d) .le. Delta) then
+        ! The first step is within the trust region...exit
+        goto 1050
+     else
+        do i = 1, maxits
+           test_pd = 1
+           do while (test_pd > 0)
+              call shift_matrix(w%A,sigma,w%AplusSigma,n)
+              call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)!,w%solve_spd_ws)
+              if (solve_status .ne. 0) goto 1010
+              ! increase the shift if needed....
+              if (test_pd .ne. 0) then
+                 sigma = 2*sigma
+                 if (options%print_level > 0 ) write(options%out,1030) 
+              end if
+           end do
+           w%q = d ! w%q = R'\d
+           CALL DTRSM( 'Left', 'Upper', 'No Transpose', 'Non-unit', n,  &
+!           CALL DTRSM( 'Left', 'Lower', 'Transpose', 'Non-unit', n, & 
+                1, one, w%LtL, n, w%q, n )
+           nd = norm2(d)
+           nq = norm2(w%q)
+           sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
+           nr = norm2(matmul(w%AplusSigma,d) + w%v)
+           if ( nr < tol ) goto 1020 ! converged!
+        end do
+     end if
+     
+     goto 1040
+     
+1010 continue 
+     ! bad error return from solve_spd
+     if ( options%print_level > 0 ) then
+        write(options%out,'(a)') 'Error in solving a linear system in More_sorensen'
+        write(options%out,'(a,i0)') 'dposv returned info = ', solve_status
+     end if
+     status%status = 4
+     return
+
+1020 continue
+     ! Converged!
+     if ( options%print_level > 3 ) then
+        write(options%error,'(a,i0)') 'More-Sorensen converged at iteration', i
+     end if
+     return
+
+1030 FORMAT('More-Sorensen, iteration ',I0,'. increasing sigma to ', ES12.4)
+     
+1040 continue
+     ! maxits reached, not converged
+     if ( options%print_level > 0 ) then
+        write(options%error,'(a)') 'Maximum iterations reached in More-Sorensen'
+        write(options%error,'(a)') 'without convergence'
+     end if
+     status%status = 100 ! fix me
+     return
+
+1050 continue
+     if ( options%print_level > 3 ) then
+        write(options%error,'(a)') 'More-Sorensen: first point within trust region'
+     end if
+
+     return
+     
+   end SUBROUTINE More_sorensen
    
+
    SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status,w)
        
 !  -----------------------------------------------------------------
@@ -1366,6 +1489,18 @@ contains
                    ,stat = info)
               if (info > 0) goto 9070
            end select
+           
+           case(3) ! More-Sorensen 
+              allocate(workspace%calculate_step_ws%more_sorensen_ws%A(n,n),stat = info)
+              if (info > 0) goto 9080
+              allocate(workspace%calculate_step_ws%more_sorensen_ws%LtL(n,n),stat = info)
+              if (info > 0) goto 9080
+              allocate(workspace%calculate_step_ws%more_sorensen_ws%v(n),stat = info)
+              if (info > 0) goto 9080
+              allocate(workspace%calculate_step_ws%more_sorensen_ws%q(n),stat = info)
+              if (info > 0) goto 9080
+              allocate(workspace%calculate_step_ws%more_sorensen_ws%AplusSigma(n,n),stat = info)
+              if (info > 0) goto 9080
         end select
 
 ! evaluate model in the main routine...                              
@@ -1436,6 +1571,15 @@ contains
         if (options%print_level >= 0) then
            write(options%error,'(a,a)') &
                 'Error allocating array for dense linear solve subroutine ',&
+                'not enough memory.' 
+        end if
+        return
+
+9080    continue
+        ! Error return from evaluate_model
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for more_sorensen subroutine ',&
                 'not enough memory.' 
         end if
         return
