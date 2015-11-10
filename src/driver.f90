@@ -45,5 +45,7 @@ do i = 1,n
    write(*,*) X(i)
 end do
 
+write(*,*) 'iteration number at convergence = ', status%iter
+
 end program driver
 
