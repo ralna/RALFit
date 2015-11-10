@@ -140,7 +140,7 @@ module nlls_module
 
 !  which linear least squares solver should we use?
      
-!$$  INTEGER :: lls_solver
+     INTEGER :: lls_solver
         
 !   overall convergence tolerances. The iteration will terminate when the
 !     norm of the gradient of the objective function is smaller than 
@@ -256,7 +256,7 @@ module nlls_module
 
 !  the total number of iterations performed
      
-!$$     INTEGER :: iter = 0
+     INTEGER :: iter = 0
        
 !  the total number of CG iterations performed
 
@@ -522,7 +522,8 @@ contains
     main_loop: do i = 1,options%maxit
        
        if ( options%print_level >= 3 )  write( options%out , 3030 ) i
-       
+       status%iter = i
+
        !+++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the step                        !
        !    d                                      !   
@@ -707,6 +708,7 @@ contains
         
         if ( options%print_level > 0 ) then
            write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
+           write(options%error,'(a,i0)') 'options%nlls_method = ', options%nlls_method
            status%status = 110 ! fix me
         end if
 
