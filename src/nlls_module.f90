@@ -1196,6 +1196,24 @@ contains
                 
       end subroutine max_eig
 
+      subroutine shift_matrix(A,sigma,AplusSigma,n)
+        
+        real(wp), intent(in)  :: A(:,:), sigma
+        real(wp), intent(out) :: AplusSigma(:,:)
+        integer, intent(in) :: n 
+
+        integer :: i 
+        ! calculate AplusSigma = A + sigma * I
+
+        AplusSigma(:,:) = A(:,:)
+        do i = 1,n
+           AplusSigma(i,i) = AplusSigma(i,i) + sigma
+        end do
+                
+      end subroutine shift_matrix
+
+
+      
       subroutine setup_workspaces(workspace,n,m,options,info)
         
         type( NLLS_workspace ), intent(out) :: workspace
