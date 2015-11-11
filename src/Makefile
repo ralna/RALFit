@@ -12,6 +12,7 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -f
 
 #MKLLOC = /opt/intel/mkl/10.1.0.015/lib/em64t #fox
 MKLLOC = /opt/intel/mkl/lib/intel64/         #irons
+CUTESTLOC = /numerical/trees/cutest_codes/cutest/objects/pc64.lnx.gfo/double/
 
 MKLFLAGS = -lmkl_gf_lp64 -lmkl_sequential -lmkl_core #gfortran, sequential
 #MKLFLAGS = -lmkl_intel_lp64 -lmkl_sequential -lmkl_core #ifort, sequential
@@ -23,7 +24,9 @@ GSLDIR = /usr
 GSLFLAGS = -lgsl
 
 # Get the commands for the libraries:
-LIBS = -L$(MKLLOC) $(MKLFLAGS) $(GSLFLAGS)
+LIBS = -L$(MKLLOC) $(MKLFLAGS) $(GSLFLAGS)\
+	-L$(CUTESTLOC) -lcutest	
+
 
 # C libraries
 CLIBS = -L$(GSLDIR)/lib -I$(GSLDIR)/include -lgslcblas -lgsl -lm
@@ -32,7 +35,7 @@ CLIBS = -L$(GSLDIR)/lib -I$(GSLDIR)/include -lgslcblas -lgsl -lm
 F77 = $(FC)
 
 # What to build
-all: driver lib test 
+all: driver lib test cutest
 
 # Build a library
 library: lib
@@ -50,7 +53,9 @@ library: lib
 #	$(LAPACKDIR)/dlarf.f $(LAPACKDIR)/dlarfg.f $(LAPACKDIR)/dorml2.f \
 #	$(LAPACKDIR)/dgelq2.f $(LAPACKDIR)/dlapy2.f $(LAPACKDIR)/dlamch.f
 
-#DDEPS = 
+DDEPS = ELFUN.f \
+	GROUP.f \
+	RANGE.f
 
 #COMMON90 =
 
@@ -62,6 +67,7 @@ driver.o :  example_module.o nlls_module.o
 test.o :  example_module.o nlls_module.o
 cdriver.o : example_module.o nlls_module.o
 lm_example.o : nlls_module.o
+run_cutest.o: nlls_module.o
 
 example_module.o : nlls_module.o
 
@@ -71,8 +77,14 @@ driver: driver.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 test: nlls_test.o example_module.o nlls_module.o  # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-lib: example_module.o nlls_module.o
+cutest: run_cutest.o nlls_module.o ddeps.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
+lib: nlls_module.o
 	ar r libral_nlls.a $^
+
+gen_problem:
+	sifdecoder $(SIFFILE).SIF
 
 cdriver: cdriver.o example_module.o ral_nlls_ciface.o nlls_module.o # common90.o ddeps90.o ddeps.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(CLIBS)
@@ -83,6 +95,11 @@ lm_example: lm_example.o ral_nlls_ciface.o nlls_module.o
 TOPDIR=.
 BLASDIR=$(TOPDIR)/blas
 LAPACKDIR=$(TOPDIR)/lapack
+
+# Tell the makefile where to look for sif files
+SIFFILESLOC = /numerical/trees/ral_nlls/cutest/sif
+SIFFILE = ARGAUSS
+
 
 # These two rules tell us how to compile module files from source files
 %.o: %.c
