@@ -125,14 +125,11 @@ control%print_level = 3
 control%nlls_method = 1
 control%model = 1
 inform%iter = 23
-open(unit=42,file="/numerical/trees/ral_nlls/src/results.out")
+open(unit=42,file="results.out",position="append")
 CALL RAL_NLLS( n, m, X,                                    &
-                                !              Work_integer, len_work_integer, Work_real, len_work_real &
+     !              Work_integer, len_work_integer, Work_real, len_work_real &
     eval_F, eval_J, eval_HF, params,            &
     inform, control)!, inform )
-write(42,'(a,i0,a,i0)') 'status = ', inform%status,'       iter = ', inform%iter
-write(* ,'(a,i0,a,i0)') 'status = ', inform%status,'       iter = ', inform%iter
-close(unit=42)
 IF ( status /= 0 ) GO TO 910
 
 !  output report
@@ -142,6 +139,12 @@ IF ( status /= 0 ) GO TO 910
 
 ALLOCATE( F( m ), VNAMES( n ), CNAMES( m ), STAT = status )
 CALL CUTEST_cnames( status, n, m, pname, VNAMES, CNAMES )
+
+write(42,'(a,a,i0,a,i0)') pname,': status = ', inform%status,'       iter = ', inform%iter
+write(* ,'(a,a,i0,a,i0)') pname,': status = ', inform%status,'       iter = ', inform%iter
+close(unit=42)
+
+
 CALL eval_F( status, n, m, X, F, params)
 
 !WRITE( out, 2110 ) ( i, VNAMES( i ), X( i ), i = 1, n )
