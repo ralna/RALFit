@@ -12,7 +12,7 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -f
 
 #MKLLOC = /opt/intel/mkl/10.1.0.015/lib/em64t #fox
 MKLLOC = /opt/intel/mkl/lib/intel64/         #irons
-CUTESTLOC = /numerical/trees/cutest_codes/cutest/objects/pc64.lnx.gfo/double/
+CUTESTLOC = $(CUTEST)/objects/pc64.lnx.gfo/double/
 
 MKLFLAGS = -lmkl_gf_lp64 -lmkl_sequential -lmkl_core #gfortran, sequential
 #MKLFLAGS = -lmkl_intel_lp64 -lmkl_sequential -lmkl_core #ifort, sequential
@@ -97,7 +97,7 @@ BLASDIR=$(TOPDIR)/blas
 LAPACKDIR=$(TOPDIR)/lapack
 
 # Tell the makefile where to look for sif files
-SIFFILESLOC = /numerical/trees/ral_nlls/cutest/sif
+SIFFILESLOC = ../cutest/sif
 SIFFILE = ARGAUSS
 
 
