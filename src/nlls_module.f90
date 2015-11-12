@@ -939,7 +939,7 @@ contains
      real(wp) :: tol = 1e-12, sigma0 = 10.0
      real(wp) :: nd, nq, nr
 
-     real(wp) :: sigma
+     real(wp) :: sigma 
      integer :: solve_status
      integer :: test_pd, i 
      
@@ -948,7 +948,9 @@ contains
      !       s.t. ||p|| \leq Delta
      !
      ! set A and v for the model being considered here...
-
+     
+     solve_status = 0
+     
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
      ! add any second order information...
@@ -972,14 +974,14 @@ contains
      else
         do i = 1, maxits
            test_pd = 1
+           sigma = 10.0_wp
            do while (test_pd > 0)
               call shift_matrix(w%A,sigma,w%AplusSigma,n)
               call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)!,w%solve_spd_ws)
-              if (solve_status .ne. 0) goto 1010
               ! increase the shift if needed....
               if (test_pd .ne. 0) then
                  sigma = 2*sigma
-                 if (options%print_level > 0 ) write(options%out,1030) 
+                 if (options%print_level > 0 ) write(options%out,1030) i, sigma
               end if
            end do
            w%q = d ! w%q = R'\d
