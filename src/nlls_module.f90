@@ -256,7 +256,7 @@ module nlls_module
 
 !  the total number of iterations performed
      
-     INTEGER :: iter = 0
+     INTEGER :: iter
        
 !  the total number of CG iterations performed
 
@@ -959,10 +959,11 @@ contains
 
      ! d = -A\v
      call solve_spd(w%A,-w%v,w%LtL,d,n,solve_status)!,w%solve_spd_ws)
-     if (solve_status .ne. 0) then 
-        call solve_general(w%A,-w%v,d,n,solve_status,w%solve_general_ws)
-        if (solve_status .ne. 0) goto 1010
-     end if
+     if (solve_status .ne. 0) goto 1010
+     !then 
+     !   call solve_general(w%A,-w%v,d,n,solve_status,w%solve_general_ws)
+     !   if (solve_status .ne. 0) goto 1010
+     !end if
 
      
      if (norm2(d) .le. Delta) then
@@ -1653,6 +1654,9 @@ contains
         if (info > 0) goto 9000
         allocate(w%AplusSigma(n,n),stat = info)
         if (info > 0) goto 9000
+
+        call setup_workspace_solve_general(n,m,w%solve_general_ws,options,info)
+        if (info > 0) goto 9010
         
         return
         
@@ -1665,6 +1669,17 @@ contains
         end if
         
         return
+        
+9010    continue
+        ! Allocation errors : dogleg
+        if (options%print_level >= 0) then
+           write(options%error,'(a)') &
+                'Called from subroutine ''dogleg'': '
+        end if
+
+        return
+
+
       end subroutine setup_workspace_more_sorensen
       
 
