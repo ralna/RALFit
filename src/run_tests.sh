@@ -23,3 +23,8 @@ cat sif_names.txt | while read file; do
     make cutest
     ./cutest
 done
+
+if [ $# -eq 1 ]
+ then
+    mv results.out $1
+fi
