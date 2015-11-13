@@ -608,7 +608,7 @@ contains
        !++++++++++++++++++++++!
        update_tr: if ( (rho > options%eta_very_successful) &
             .and. (rho < options%eta_too_successful) ) then
-          Delta = max(options%maximum_radius, options%radius_increase * Delta )
+          Delta = min(options%maximum_radius, options%radius_increase * Delta )
           if (options%print_level > 2) write(options%out,3040) Delta
        else if (rho < options%eta_successful) then
           Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
