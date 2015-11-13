@@ -122,8 +122,8 @@ CLOSE ( indr )
 
 !  call the minimizer
 control%print_level = 3
-control%nlls_method = 1
-control%model = 1
+control%nlls_method = 3
+control%model = 2
 inform%iter = 23
 open(unit=42,file="results.out",position="append")
 CALL RAL_NLLS( n, m, X,                                    &
@@ -140,8 +140,12 @@ IF ( status /= 0 ) GO TO 910
 ALLOCATE( F( m ), VNAMES( n ), CNAMES( m ), STAT = status )
 CALL CUTEST_cnames( status, n, m, pname, VNAMES, CNAMES )
 
-write(42,'(a,a,i0,a,i0)') pname,': status = ', inform%status,'       iter = ', inform%iter
-write(* ,'(a,a,i0,a,i0)') pname,': status = ', inform%status,'       iter = ', inform%iter
+write(42,'(a,a,i0,a,i0,a,i0,a,i0)') pname,': n = ', n, ', m = ',m, &
+     ',   status = ', inform%status, &                                   
+     ',   iter = ', inform%iter
+write(*,'(a,a,i0,a,i0,a,i0,a,i0)') pname,': n = ', n, ', m = ',m, &
+     ',   status = ', inform%status, &                                   
+     ',   iter = ', inform%iter
 close(unit=42)
 
 
