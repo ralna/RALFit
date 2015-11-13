@@ -943,7 +943,7 @@ contains
 
      ! parameters...make these options?
      integer :: maxits 
-     real(wp) :: tol = 1e-12
+     real(wp) :: tol = 1e-8
      real(wp) :: nd, nq, nr
 
      real(wp) :: sigma, sigma1, alpha
@@ -958,8 +958,8 @@ contains
      ! set A and v for the model being considered here...
      
      !solve_status = 0
-     tiny = 1e-6
-     maxits = 10
+     tiny = 1e-10
+     maxits = 100
      
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
