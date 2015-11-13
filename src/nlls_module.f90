@@ -417,12 +417,18 @@ module nlls_module
     type, private :: solve_LLS_work ! workspace for subroutine solve_LLS
        real(wp), allocatable :: temp(:), work(:), Jlls(:)
     end type solve_LLS_work
-
+    
+    type, private :: min_eig_symm_work ! workspace for subroutine min_eig_work
+       real(wp), allocatable :: A(:,:), work(:) 
+       integer, allocatable :: iwork(:), ifail(:)
+    end type min_eig_symm_work
+    
     type, private :: more_sorensen_work ! workspace for subroutine more_sorensen
  !      type( solve_spd_work ) :: solve_spd_ws
        real(wp), allocatable :: A(:,:), LtL(:,:), AplusSigma(:,:)
-       real(wp), allocatable :: v(:), q(:)
-       type( solve_general_work ) :: solve_general_ws
+       real(wp), allocatable :: v(:), q(:), y1(:)
+!       type( solve_general_work ) :: solve_general_ws
+       type( min_eig_symm_work ) :: min_eig_symm_ws
     end type more_sorensen_work
 
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
@@ -920,9 +926,10 @@ contains
      ! -----------------------------------------
      ! more_sorensen
      ! Solve the trust-region subproblem using 
-     ! the method More and Sorensen
-     ! using the implementation as given by 
-     ! Erway and Marcia
+     ! the method of More and Sorensen
+     !
+     ! Using the implementation as in Algorithm 7.3.6
+     ! of Trust Region Methods
      ! 
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
@@ -935,12 +942,13 @@ contains
      type( more_sorensen_work ) :: w
 
      ! parameters...make these options?
-     integer :: maxits = 100
-     real(wp) :: tol = 1e-12, sigma0 = 10.0
+     integer :: maxits 
+     real(wp) :: tol = 1e-12
      real(wp) :: nd, nq, nr
 
-     real(wp) :: sigma 
-     integer :: solve_status
+     real(wp) :: sigma, sigma1, alpha
+     real(wp) :: tiny
+     integer :: solve_status, fb_status, mineig_status
      integer :: test_pd, i 
      
      ! The code finds 
@@ -949,7 +957,9 @@ contains
      !
      ! set A and v for the model being considered here...
      
-     solve_status = 0
+     !solve_status = 0
+     tiny = 1e-6
+     maxits = 10
      
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
@@ -958,43 +968,58 @@ contains
      w%A = w%A + reshape(hf,(/n,n/))
      ! now form v = J^T f 
      call mult_Jt(J,n,m,f,w%v)
-
+          
      ! d = -A\v
-     call solve_spd(w%A,-w%v,w%LtL,d,n,solve_status)!,w%solve_spd_ws)
-     if (solve_status .ne. 0) goto 1010
-     !then 
-     !   call solve_general(w%A,-w%v,d,n,solve_status,w%solve_general_ws)
-     !   if (solve_status .ne. 0) goto 1010
-     !end if
-
-     
-     if (norm2(d) .le. Delta) then
-        ! The first step is within the trust region...exit
-        goto 1050
+     call solve_spd(w%A,-w%v,w%LtL,d,n,test_pd)!,w%solve_spd_ws)
+     if (test_pd .eq. 0) then
+        ! A is symmetric positive definite....
+        sigma = zero
      else
-        do i = 1, maxits
-           test_pd = 1
-           sigma = 10.0_wp
-           do while (test_pd > 0)
-              call shift_matrix(w%A,sigma,w%AplusSigma,n)
-              call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)!,w%solve_spd_ws)
-              ! increase the shift if needed....
-              if (test_pd .ne. 0) then
-                 sigma = 2*sigma
-                 if (options%print_level > 0 ) write(options%out,1030) i, sigma
-              end if
-           end do
-           w%q = d ! w%q = R'\d
-           CALL DTRSM( 'Left', 'Upper', 'No Transpose', 'Non-unit', n,  &
-!           CALL DTRSM( 'Left', 'Lower', 'Transpose', 'Non-unit', n, & 
-                1, one, w%LtL, n, w%q, n )
-           nd = norm2(d)
-           nq = norm2(w%q)
-           sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
-           nr = norm2(matmul(w%AplusSigma,d) + w%v)
-           if ( nr < tol ) goto 1020 ! converged!
-        end do
+        call min_eig_symm(w%A,n,sigma,w%y1,mineig_status,w%min_eig_symm_ws) 
+        if (mineig_status .ne. 0) goto 1060 
+        sigma = -sigma + tiny
+        call shift_matrix(w%A,sigma,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
+        if ( test_pd .ne. 0 ) goto 2000 ! shouldn't happen!
      end if
+     
+     nd = norm2(d)
+     
+     if (nd .le. Delta) then
+        ! we're within the tr radius from the start!
+        if ( abs(sigma) < tiny ) then
+           ! we're good....exit
+           goto 1050
+        else if ( abs( nd - Delta ) < tiny ) then
+           ! also good...exit
+           goto 1050              
+        end if
+        call findbeta(d,w%y1,one,Delta,alpha,fb_status)
+        if (fb_status .ne. 0 ) goto 1070  !! todo! change this error code....
+        d = d + alpha * w%y1
+        ! also good....exit
+        goto 1050
+     end if
+
+     ! now, we're not in the trust region initally, so iterate....
+     do i = 1, maxits
+        if ( abs(nd - Delta) <= tol * Delta) then
+           goto 1020 ! converged!
+        end if
+        
+        w%q = d ! w%q = R'\d
+        CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
+             1, one, w%LtL, n, w%q, n )
+        
+        nq = norm2(w%q)
+        sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
+        
+        call shift_matrix(w%A,sigma,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
+        if (test_pd .ne. 0)  goto 2010 ! shouldn't happen...
+        nd = norm2(d)
+
+     end do
      
      goto 1040
      
@@ -1029,8 +1054,43 @@ contains
      if ( options%print_level > 3 ) then
         write(options%error,'(a)') 'More-Sorensen: first point within trust region'
      end if
+     return
+
+1060 continue
+     if ( options%print_level > 3 ) then
+        write(options%error,'(a)') 'More-Sorensen: error from lapack routine dsyevx'
+     end if
+     status%status = 4
 
      return
+
+1070 continue
+     if ( options%print_level > 3 ) then
+        write(options%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
+     end if
+     status%status = 4
+
+     return
+     
+2000 continue 
+     ! bad error return from solve_spd
+     if ( options%print_level > 0 ) then
+        write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
+        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
+     end if
+     status%status = 4
+     return
+     
+2010 continue 
+     ! bad error return from solve_spd
+     if ( options%print_level > 0 ) then
+        write(options%out,'(a,a)') 'Unexpected error in solving a linear system ', &
+                                   'in More_sorensen loop'
+        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
+     end if
+     status%status = 4
+     return
+     
      
    end SUBROUTINE More_sorensen
    
@@ -1151,9 +1211,9 @@ contains
        
        double precision :: alpha, beta
 
-       Jtx(1:n) = 1.0
-       alpha = 1.0
-       beta  = 0.0
+       Jtx(1:n) = one
+       alpha = one
+       beta  = zero
 
        call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
 
@@ -1172,7 +1232,7 @@ contains
         ! get workspace for the factors....
         LtL(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dposv('U', n, 1, LtL, n, x, n, info)
+        call dposv('L', n, 1, LtL, n, x, n, info)
            
       end subroutine solve_spd
 
@@ -1256,6 +1316,50 @@ contains
         call dger(n, n, one, x, 1, x, 1, xtx, n)
         
       end subroutine outer_product
+
+      subroutine min_eig_symm(A,n,ew,ev,info,w)
+        ! calculate the leftmost eigenvalue of A
+        
+        real(wp), intent(in) :: A(:,:)
+        integer, intent(in) :: n
+        real(wp), intent(out) :: ew, ev(:)
+        integer, intent(out) :: info
+        type( min_eig_symm_work ) :: w
+
+        real(wp) :: tol, dlamch
+        integer :: lwork, i, eigsout
+        real(wp), allocatable :: temp_ev(:,:), temp_ew(:)
+
+        tol = 2*dlamch('S')!1e-15
+        
+        info = 0
+                
+        w%A(1:n,1:n) = A(1:n,1:n) ! copy A, as workspace for dsyevx
+        ! note that dsyevx only destroys the lower (or upper) part of A
+        ! so we could possibly reduce memory use here...leaving for 
+        ! ease of understanding for now.
+
+        lwork = size(w%work)
+
+        ! call dsyevx --> selected eigs of a symmetric matrix
+        call dsyevx( 'V',& ! get both ew's and ev's
+                     'I',& ! just the numbered eigenvalues
+                     'U',& ! upper triangle of A
+                      n, w%A, n, & 
+                      1.0, 1.0, & ! not used for RANGE = 'I'
+                      1, 1, & ! only find the first eigenpair
+                      tol, & ! abstol for the eigensolver
+                      eigsout, & ! total number of eigs found
+                      ew, ev, & ! the eigenvalue and eigenvector
+                      n, & ! ldz (the eigenvector array)
+                      w%work, lwork, w%iwork, &  ! workspace
+                      w%ifail, & ! array containing indicies of non-converging ews
+                      info)
+        ! let the calling subroutine handle the errors
+        
+        return
+                      
+      end subroutine min_eig_symm
 
       subroutine max_eig(A,B,n,ew,ev,info,nullevs,w)
         
@@ -1554,6 +1658,72 @@ contains
         
       end subroutine setup_workspace_AINT_tr
 
+
+      subroutine setup_workspace_min_eig_symm(n,m,w,options,info)
+        integer, intent(in) :: n, m 
+        type( min_eig_symm_work) :: w
+        type( NLLS_control_type ) :: options
+        integer, intent(out) :: info
+        
+        real(wp), allocatable :: workquery(:)
+        integer :: lapack_info, lwork, eigsout
+        
+        allocate(w%A(n,n),stat = info)
+        if (info > 0) goto 9000
+        allocate( w%iwork(5*n), stat = info )
+        if (info > 0) goto 9000
+        allocate( w%ifail(n), stat = info ) 
+        if (info > 0) goto 9000
+
+        allocate(workquery(1),stat = info)
+        if (info > 0) goto 9000
+
+        lapack_info = 0
+        
+        ! make a workspace query to dsyevx
+        call dsyevx( 'V',& ! get both ew's and ev's
+                     'I',& ! just the numbered eigenvalues
+                     'U',& ! upper triangle of A
+                      n, w%A, n, & 
+                      1.0, 1.0, & ! not used for RANGE = 'I'
+                      1, 1, & ! only find the first eigenpair
+                      0.5, & ! abstol for the eigensolver
+                      eigsout, & ! total number of eigs found
+                      1.0, 1.0, & ! the eigenvalue and eigenvector
+                      n, & ! ldz (the eigenvector array)
+                      workquery, -1, w%iwork, &  ! workspace
+                      w%ifail, & ! array containing indicies of non-converging ews
+                      lapack_info)
+        if (lapack_info > 0) goto 9020
+        lwork = int(workquery(1))
+        deallocate(workquery)
+        allocate( w%work(lwork), stat = info )
+        if (info > 0) goto 9000
+
+
+        return
+        
+9000    continue
+        ! Allocation errors : dogleg
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for subroutine ''min_eig_symm'': ',&
+                'not enough memory.' 
+        end if
+        
+        return
+
+9020    continue
+        ! Error return from lapack routine
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating array for lapack subroutine: ',&
+                'not enough memory.' 
+        end if
+        return
+
+      end subroutine setup_workspace_min_eig_symm
+      
       subroutine setup_workspace_max_eig(n,m,w,options,info)
         integer, intent(in) :: n, m 
         type( max_eig_work) :: w
@@ -1654,10 +1824,12 @@ contains
         if (info > 0) goto 9000
         allocate(w%q(n),stat = info)
         if (info > 0) goto 9000
+        allocate(w%y1(n),stat = info)
+        if (info > 0) goto 9000
         allocate(w%AplusSigma(n,n),stat = info)
         if (info > 0) goto 9000
 
-        call setup_workspace_solve_general(n,m,w%solve_general_ws,options,info)
+        call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,info)
         if (info > 0) goto 9010
         
         return
