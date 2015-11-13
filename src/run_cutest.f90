@@ -14,7 +14,7 @@ program run_cutest
      ! still empty
 end type user_type
 
-INTEGER :: status, i, m, n
+INTEGER :: status, m, n
 INTEGER( c_int ) :: len_work_integer, len_work_real
 REAL( c_double ), PARAMETER :: infty = 1.0D+19
 REAL( c_double ), DIMENSION( : ), ALLOCATABLE :: X, X_l, X_u
@@ -176,20 +176,20 @@ STOP
 
 !  Non-executable statements
 
-2000 FORMAT( /, 24('*'), ' CUTEst statistics ', 24('*') //,                    &
-    ' Package used            :  RAL_NLLS ',  /,                         &
-    ' Problem                 :  ', A10,    /,                           &
-    ' # variables             =      ', I10 /,                           &
-    ' # residuals             =        ', F8.2 /,                        &
-    ' Final f                 = ', E15.7 /,                              &
-    ' Set up time             =      ', 0P, F10.2, ' seconds' /,         &
-    ' Solve time              =      ', 0P, F10.2, ' seconds' //,        &
-    66('*') / )
+!!$2000 FORMAT( /, 24('*'), ' CUTEst statistics ', 24('*') //,                    &
+!!$    ' Package used            :  RAL_NLLS ',  /,                         &
+!!$    ' Problem                 :  ', A10,    /,                           &
+!!$    ' # variables             =      ', I10 /,                           &
+!!$    ' # residuals             =        ', F8.2 /,                        &
+!!$    ' Final f                 = ', E15.7 /,                              &
+!!$    ' Set up time             =      ', 0P, F10.2, ' seconds' /,         &
+!!$    ' Solve time              =      ', 0P, F10.2, ' seconds' //,        &
+!!$    66('*') / )
 1000 FORMAT( I6, /, I6, /, I6 )
-2110 FORMAT( /, ' The variables:', /, &
-    '     i name          value',  /, ( I6, 1X, A10, 1P, D12.4 ) )
-2120 FORMAT( /, ' The constraints:', /, '     i name          value',          &
-    /, ( I6, 1X, A10, 1P, D12.4 ) )
+!!$2110 FORMAT( /, ' The variables:', /, &
+!!$    '     i name          value',  /, ( I6, 1X, A10, 1P, D12.4 ) )
+!!$2120 FORMAT( /, ' The constraints:', /, '     i name          value',          &
+!!$    /, ( I6, 1X, A10, 1P, D12.4 ) )
 
 !  End of RAL_NLLS_main
 
