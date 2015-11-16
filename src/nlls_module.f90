@@ -641,17 +641,24 @@ contains
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
-       update_tr: if ( (rho > options%eta_very_successful) &
-            .and. (rho < options%eta_too_successful) ) then
-          Delta = min(options%maximum_radius, options%radius_increase * Delta )
-          if (options%print_level > 2) write(options%out,3040) Delta
-       else if (rho < options%eta_successful) then
+       update_tr: if (rho < options%eta_successful) then
+          ! unsuccessful....reduce Delta
           Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
           if (options%print_level > 2) write(options%out,3050) Delta     
-       else if (rho > options%eta_too_successful) then
+       else if (rho < options%eta_very_successful) then 
+          ! doing ok...retain status quo
+          if (options%print_level > 2) write(options%out,3070) Delta 
+       else if (rho < options%eta_too_successful ) then
+          ! more than very successful -- increase delta
+          Delta = min(options%maximum_radius, options%radius_increase * Delta )
+          if (options%print_level > 2) write(options%out,3040) Delta
+       else if (rho >= options%eta_too_successful) then
+          ! too successful....accept step, but don't change Delta
           if (options%print_level > 2) write(options%out,3080) Delta 
        else
-          if (options%print_level > 2) write(options%out,3070) Delta 
+          ! just incase (NaNs and the like...)
+          if (options%print_level > 2) write(options%out,3050) Delta 
+          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
        end if update_tr
        
      end do main_loop
