@@ -26,8 +26,8 @@ X(2) = 2.0
 
 options%print_level = 3
 options%nlls_method = 3
-options%model = 3
-options%maxit = 25
+options%model = 1
+options%maxit = 100
 !options%stop_g_relative = 1e-10
 !options%stop_g_absolute = 1e-10
 
@@ -45,7 +45,7 @@ do i = 1,n
    write(*,*) X(i)
 end do
 
-write(*,*) 'iteration number at convergence = ', status%iter
+write(*,*) 'iteration number at end = ', status%iter
 
 end program driver
 
