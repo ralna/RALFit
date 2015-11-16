@@ -124,7 +124,8 @@ CLOSE ( indr )
 control%print_level = 3
 control%nlls_method = 3
 control%subproblem_eig_fact = .true.
-control%model = 1
+control%maxit = 1000
+control%model = 2
 
 inform%iter = 23
 open(unit=42,file="results.out",position="append")
@@ -142,12 +143,14 @@ IF ( status /= 0 ) GO TO 910
 ALLOCATE( F( m ), VNAMES( n ), CNAMES( m ), STAT = status )
 CALL CUTEST_cnames( status, n, m, pname, VNAMES, CNAMES )
 
-write(42,'(a,a,i0,a,i0,a,i0,a,i0)') pname,': n = ', n, ', m = ',m, &
+write(42,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   status = ', inform%status, &                                   
-     ',   iter = ', inform%iter
-write(*,'(a,a,i0,a,i0,a,i0,a,i0)') pname,': n = ', n, ', m = ',m, &
+     ',   iter = ', inform%iter , &
+     ',   obj = ', inform%obj
+write(*,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   status = ', inform%status, &                                   
-     ',   iter = ', inform%iter
+     ',   iter = ', inform%iter, &
+     ',   obj = ', inform%obj
 close(unit=42)
 
 
