@@ -513,12 +513,12 @@ contains
     if (fstatus > 0) goto 4020
     select case (options%model)
     case (1) ! first-order
-       hf(1:4) = zero
+       hf(1:n**2) = zero
     case (2) ! second order
        call eval_HF(hfstatus, n, m, X, f, hf, params)
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
-       hf(1:4) = zero
+       hf(1:n**2) = zero
        hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
     case default
        goto 4040 ! unsupported model -- return to user
