@@ -267,17 +267,17 @@ module nlls_module
 
 !$$     INTEGER :: cg_iter = 0
 
-!  the total number of evaluations of the objection function
+!  the total number of evaluations of the objective function
 
-!$$     INTEGER :: f_eval = 0
+     INTEGER :: f_eval = 0
 
-!  the total number of evaluations of the gradient of the objection function
+!  the total number of evaluations of the gradient of the objective function
 
-!$$     INTEGER :: g_eval = 0
+     INTEGER :: g_eval = 0
 
-!  the total number of evaluations of the Hessian of the objection function
+!  the total number of evaluations of the Hessian of the objective function
      
-!$$     INTEGER :: h_eval = 0
+     INTEGER :: h_eval = 0
 
 !  the maximum number of factorizations in a sub-problem solve
 
@@ -306,12 +306,12 @@ module nlls_module
 !  the value of the objective function at the best estimate of the solution 
 !   determined by NLLS_solve
 
-!$$     REAL ( KIND = wp ) :: obj = HUGE( one )
+     REAL ( KIND = wp ) :: obj = HUGE( one )
 
 !  the norm of the gradient of the objective function at the best estimate 
 !   of the solution determined by NLLS_solve
 
-!$$     REAL ( KIND = wp ) :: norm_g = HUGE( one )
+     REAL ( KIND = wp ) :: norm_g = HUGE( one )
 
 !  the total CPU time spent in the package
 
@@ -494,9 +494,10 @@ contains
     integer :: i
     real(wp), DIMENSION(m*n) :: J, Jnew
     real(wp), DIMENSION(m)   :: f, fnew
-    real(wp), DIMENSION(n*n) :: hf
+    real(wp), DIMENSION(n*n) :: hf, hfnew
     real(wp), DIMENSION(n)   :: d, g, Xnew
-    real(wp) :: Delta, rho, normJF0, normF0, md
+    real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, md
+    real(wp) :: actual_reduction, predicted_reduction
 
     type ( NLLS_workspace ) :: w
     
@@ -507,29 +508,38 @@ contains
 
     Delta = options%initial_radius
     
-    call eval_J(jstatus, n, m, X, J, params)
-    if (jstatus > 0) goto 4010
+    
     call eval_F(fstatus, n, m, X, f, params)
+    status%f_eval = status%f_eval + 1
     if (fstatus > 0) goto 4020
+    call eval_J(jstatus, n, m, X, J, params)
+    status%g_eval = status%g_eval + 1
+    if (jstatus > 0) goto 4010
     select case (options%model)
     case (1) ! first-order
        hf(1:n**2) = zero
+       hfnew(1:n**2) = zero
     case (2) ! second order
        call eval_HF(hfstatus, n, m, X, f, hf, params)
+       status%h_eval = status%h_eval + 1
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
        hf(1:n**2) = zero
        hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
+       hfnew(1:n**2) = hf
     case default
        goto 4040 ! unsupported model -- return to user
     end select
 
     normF0 = norm2(f)
-
 !    g = -J^Tf
     call mult_Jt(J,n,m,f,g)
     g = -g
     normJF0 = norm2(g)
+    
+    ! save some data 
+    status%obj = 0.5 * ( normF0**2 )
+    status%norm_g = normJF0
     
     main_loop: do i = 1,options%maxit
        
@@ -551,15 +561,18 @@ contains
        !++++++++++++++++++!
 
        Xnew = X + d;
-       call eval_J(jstatus, n, m, Xnew, Jnew, params)
-       if (jstatus > 0) goto 4010
        call eval_F(fstatus, n, m, Xnew, fnew, params)
+       status%f_eval = status%f_eval + 1
        if (fstatus > 0) goto 4020
+       call eval_J(jstatus, n, m, Xnew, Jnew, params)
+       status%g_eval = status%g_eval + 1
+       if (jstatus > 0) goto 4010
        select case (options%model) ! only update hessians than change..
        case (1) ! first-order
           continue
        case (2) ! second order
-          call eval_HF(hfstatus, n, m, X, f, hf, params)
+          call eval_HF(hfstatus, n, m, X, fnew, hfnew, params)
+          status%h_eval = status%h_eval + 1
           if (hfstatus > 0) goto 4030
        case (3) ! barely second order (identity hessian)
           continue
@@ -572,30 +585,47 @@ contains
        !++++++++++++++++++++++++++++!
        call evaluate_model(f,J,hf,d,md,m,n,options,w%evaluate_model_ws)
        
-       rho = ( norm2(f)**2 - norm2(fnew)**2 ) / &
-             ( norm2(f)**2 - md)
+       actual_reduction = ( 0.5 * norm2(f)**2 ) - ( 0.5 * norm2(fnew)**2 )
+       predicted_reduction = ( ( 0.5 * norm2(f)**2 ) - md )
        
+       if ( abs(actual_reduction) < 10*epsmch ) then 
+          rho = one
+       else if (abs( predicted_reduction ) < 10 * epsmch ) then 
+          rho = one
+       else
+          rho = actual_reduction / predicted_reduction
+       end if
+
        success_rho: if (rho > options%eta_successful) then
           X = Xnew;
           J = Jnew;
           f = fnew;
+          hf = hfnew;
 
           ! g = -J^Tf
           call mult_Jt(J,n,m,f,g)
           g = -g
+          
+          normF = norm2(f)
+          normJF = norm2(g)
+          
+          ! update the stats 
+          status%obj = 0.5*(normF**2)
+          status%norm_g = normJF
 
-          if (options%print_level >=3) write(options%out,3010) 0.5 * norm2(f)**2
-          if (options%print_level >=3) write(options%out,3060) norm2(g)/norm2(f)
+
+          if (options%print_level >=3) write(options%out,3010) status%obj
+          if (options%print_level >=3) write(options%out,3060) normJF/normF
 
           !++++++++++++++++++!
           ! Test convergence !
           !++++++++++++++++++!
-          if ( norm2(f) <= options%stop_g_absolute + &
+          if ( normF <= options%stop_g_absolute + &
                options%stop_g_relative * normF0) then
              if (options%print_level > 0 ) write(options%out,3020) i
              return
           end if
-          if ( (norm2(g)/norm2(f)) <= options%stop_g_absolute + &
+          if ( (normJF/normF) <= options%stop_g_absolute + &
                options%stop_g_relative * (normJF0/normF0)) then
              if (options%print_level > 0 ) write(options%out,3020) i
              return
