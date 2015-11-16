@@ -1240,6 +1240,7 @@ contains
 
         ! A wrapper for the lapack subroutine dposv.f
         ! get workspace for the factors....
+        info = 0
         LtL(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
         call dposv('L', n, 1, LtL, n, x, n, info)
