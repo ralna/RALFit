@@ -206,6 +206,11 @@ module nlls_module
 
 !$$     LOGICAL :: subproblem_direct = .FALSE.
 
+!   use a factorization (dsyev) to find the smallest eigenvalue for the subproblem
+!    solve? (alternative is an iterative method (dsyevx)
+     LOGICAL :: subproblem_eig_fact = .FALSE.
+     
+
 !   is a retrospective strategy to be used to update the trust-region radius?
 
 !$$     LOGICAL :: retrospective_trust_region = .FALSE.
@@ -419,7 +424,7 @@ module nlls_module
     end type solve_LLS_work
     
     type, private :: min_eig_symm_work ! workspace for subroutine min_eig_work
-       real(wp), allocatable :: A(:,:), work(:) 
+       real(wp), allocatable :: A(:,:), work(:), ew(:)
        integer, allocatable :: iwork(:), ifail(:)
     end type min_eig_symm_work
     
@@ -943,7 +948,7 @@ contains
 
      ! parameters...make these options?
      integer :: maxits 
-     real(wp) :: tol = 1e-8
+     real(wp) :: tol
      real(wp) :: nd, nq, nr
 
      real(wp) :: sigma, sigma1, alpha
@@ -958,9 +963,9 @@ contains
      ! set A and v for the model being considered here...
      
      !solve_status = 0
-     tiny = 1e-10
+     tiny = 1e-8
      maxits = 100
-     
+     tol = 1e-6
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
      ! add any second order information...
@@ -975,12 +980,16 @@ contains
         ! A is symmetric positive definite....
         sigma = zero
      else
-        call min_eig_symm(w%A,n,sigma,w%y1,mineig_status,w%min_eig_symm_ws) 
+        call min_eig_symm(w%A,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
         if (mineig_status .ne. 0) goto 1060 
-        sigma = -sigma + tiny
+        sigma = -(sigma - tiny)
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
-        if ( test_pd .ne. 0 ) goto 2000 ! shouldn't happen!
+        if ( test_pd .ne. 0 ) then
+           call min_eig_symm(w%AplusSigma,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
+           write(*,*) 'new smallest eig = ', sigma
+           goto 2000 ! shouldn't happen!
+        end if
      end if
      
      nd = norm2(d)
@@ -1057,10 +1066,11 @@ contains
      return
 
 1060 continue
-     if ( options%print_level > 3 ) then
-        write(options%error,'(a)') 'More-Sorensen: error from lapack routine dsyevx'
+     if ( options%print_level > 0 ) then
+        write(options%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
+        write(options%error,'(a,i0)') 'info = ', mineig_status
      end if
-     status%status = 4
+     status%status = 333
 
      return
 
@@ -1068,7 +1078,7 @@ contains
      if ( options%print_level > 3 ) then
         write(options%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
      end if
-     status%status = 4
+     status%status = 200
 
      return
      
@@ -1078,7 +1088,7 @@ contains
         write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
         write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     status%status = 4
+     status%status = 500
      return
      
 2010 continue 
@@ -1088,7 +1098,7 @@ contains
                                    'in More_sorensen loop'
         write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     status%status = 4
+     status%status = 600
      return
      
      
@@ -1317,44 +1327,59 @@ contains
         
       end subroutine outer_product
 
-      subroutine min_eig_symm(A,n,ew,ev,info,w)
+      subroutine min_eig_symm(A,n,ew,ev,options,info,w)
         ! calculate the leftmost eigenvalue of A
         
         real(wp), intent(in) :: A(:,:)
         integer, intent(in) :: n
         real(wp), intent(out) :: ew, ev(:)
         integer, intent(out) :: info
+        type( NLLS_control_type ), INTENT( IN ) :: options
         type( min_eig_symm_work ) :: w
 
         real(wp) :: tol, dlamch
-        integer :: lwork, i, eigsout
-        real(wp), allocatable :: temp_ev(:,:), temp_ew(:)
+        integer :: lwork, i, eigsout, minindex(1)
+!        real(wp), allocatable :: temp_ev(:,:), temp_ew(:)
 
         tol = 2*dlamch('S')!1e-15
         
         info = 0
-                
-        w%A(1:n,1:n) = A(1:n,1:n) ! copy A, as workspace for dsyevx
-        ! note that dsyevx only destroys the lower (or upper) part of A
+        w%A(1:n,1:n) = A(1:n,1:n) ! copy A, as workspace for dsyev(x)
+        ! note that dsyevx (but not dsyev) only destroys the lower (or upper) part of A
         ! so we could possibly reduce memory use here...leaving for 
         ! ease of understanding for now.
 
         lwork = size(w%work)
+        if ( options%subproblem_eig_fact ) then
+           ! call dsyev --> all eigs of a symmetric matrix
+           call dsyev('V', & ! both ew's and ev's 
+                'U', & ! upper triangle of A
+                n, w%A, n, & ! data about A
+                w%ew, w%work, lwork, & 
+                info)
+           
+           minindex = minloc(w%ew)
+           ew = w%ew(minindex(1))
+           ev = w%A(1:n,minindex(1))
+           
+        else
+           ! call dsyevx --> selected eigs of a symmetric matrix
+           call dsyevx( 'V',& ! get both ew's and ev's
+                'I',& ! just the numbered eigenvalues
+                'U',& ! upper triangle of A
+                n, w%A, n, & 
+                1.0, 1.0, & ! not used for RANGE = 'I'
+                1, 1, & ! only find the first eigenpair
+                tol, & ! abstol for the eigensolver
+                eigsout, & ! total number of eigs found
+                ew, ev, & ! the eigenvalue and eigenvector
+                n, & ! ldz (the eigenvector array)
+                w%work, lwork, w%iwork, &  ! workspace
+                w%ifail, & ! array containing indicies of non-converging ews
+                info)
 
-        ! call dsyevx --> selected eigs of a symmetric matrix
-        call dsyevx( 'V',& ! get both ew's and ev's
-                     'I',& ! just the numbered eigenvalues
-                     'U',& ! upper triangle of A
-                      n, w%A, n, & 
-                      1.0, 1.0, & ! not used for RANGE = 'I'
-                      1, 1, & ! only find the first eigenpair
-                      tol, & ! abstol for the eigensolver
-                      eigsout, & ! total number of eigs found
-                      ew, ev, & ! the eigenvalue and eigenvector
-                      n, & ! ldz (the eigenvector array)
-                      w%work, lwork, w%iwork, &  ! workspace
-                      w%ifail, & ! array containing indicies of non-converging ews
-                      info)
+        end if
+           
         ! let the calling subroutine handle the errors
         
         return
@@ -1418,7 +1443,6 @@ contains
            w%nullindex = 0
            no_null = 0
            do i = 1,n
-!              write(*,*) '||v(',i,')|| = ',norm2(vr(1:halfn,i))
               if (norm2( w%vr(1:halfn,i)) < 1e-4 ) then
                  no_null = no_null + 1 
                  w%nullindex(no_null) = i
@@ -1670,18 +1694,28 @@ contains
         
         allocate(w%A(n,n),stat = info)
         if (info > 0) goto 9000
-        allocate( w%iwork(5*n), stat = info )
-        if (info > 0) goto 9000
-        allocate( w%ifail(n), stat = info ) 
-        if (info > 0) goto 9000
-
+        
         allocate(workquery(1),stat = info)
         if (info > 0) goto 9000
-
         lapack_info = 0
         
-        ! make a workspace query to dsyevx
-        call dsyevx( 'V',& ! get both ew's and ev's
+        if (options%subproblem_eig_fact) then 
+           allocate(w%ew(n), stat = info)
+           if (info > 0) goto 9000
+           
+           call dsyev('V', & ! both ew's and ev's 
+                'U', & ! upper triangle of A
+                n, w%A, n, & ! data about A
+                w%ew, workquery, -1, & 
+                lapack_info)
+        else
+           allocate( w%iwork(5*n), stat = info )
+           if (info > 0) goto 9000
+           allocate( w%ifail(n), stat = info ) 
+           if (info > 0) goto 9000
+           
+           ! make a workspace query to dsyevx
+           call dsyevx( 'V',& ! get both ew's and ev's
                      'I',& ! just the numbered eigenvalues
                      'U',& ! upper triangle of A
                       n, w%A, n, & 
@@ -1694,17 +1728,17 @@ contains
                       workquery, -1, w%iwork, &  ! workspace
                       w%ifail, & ! array containing indicies of non-converging ews
                       lapack_info)
-        if (lapack_info > 0) goto 9020
+           if (lapack_info > 0) goto 9020
+        end if
         lwork = int(workquery(1))
         deallocate(workquery)
         allocate( w%work(lwork), stat = info )
         if (info > 0) goto 9000
 
-
         return
         
 9000    continue
-        ! Allocation errors : dogleg
+        ! Allocation errors : min_eig_symm
         if (options%print_level >= 0) then
            write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''min_eig_symm'': ',&

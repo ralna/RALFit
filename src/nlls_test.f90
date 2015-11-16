@@ -17,7 +17,7 @@ program nlls_test
   integer :: nlls_method, model
   logical :: test_all, test_subs
 
-  type( NLLS_workspace ) :: work, work2, work3, work4
+  type( NLLS_workspace ) :: work, work2, work3, work4, work5
 
   test_all = .true.
   test_subs = .true.
@@ -308,34 +308,55 @@ program nlls_test
      !----------------!
      !! min_eig_symm !!
      !----------------!
-     !!!!!!
-     ! Setup workspace for n = 4
-     ! use this for min_eig_symm
-     options%nlls_method = 3
-     call setup_workspaces(work4,4,4,options,info) 
-     options%nlls_method = 2 ! revert...
-     !!!!!!
 
      n = 4
      m = 4
-     ! make sure max_eig gets called
-
      allocate(x(n),A(n,n))
-     A = reshape( (/-5.0,  1.0, 0.0, 0.0, &
+
+     ! make sure min_eig_symm gets called
+
+     do i = 1, 2
+        ! Setup workspace for n = 4
+        ! use this for min_eig_symm
+
+        options%nlls_method = 3
+        select case (i)
+        case (1)
+           options%subproblem_eig_fact = .TRUE.
+           call setup_workspaces(work4,4,4,options,info) 
+        case (2)
+           options%subproblem_eig_fact = .FALSE.
+           call setup_workspaces(work5,4,4,options,info) 
+        end select
+        
+
+
+        options%nlls_method = 2 ! revert...
+        
+        A = reshape( (/-5.0,  1.0, 0.0, 0.0, &
           1.0, -5.0, 0.0, 0.0, &
           0.0,  0.0, 4.0, 2.0, & 
           0.0,  0.0, 2.0, 4.0/), shape(A))
 
-     call min_eig_symm(A,n,alpha,x,info,work4%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
+        select case (i)
+        case (1)
+           call min_eig_symm(A,n,alpha,x,options,info, & 
+                work4%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
+        case (2)
+           call min_eig_symm(A,n,alpha,x,options,info, & 
+                work5%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
+        end select
 
-     if ( (abs( alpha + 6.0 ) > 1e-12).or.(info .ne. 0) ) then
-        write(*,*) 'error :: max_eig test failed -- wrong eig found'
-        no_errors_helpers = no_errors_helpers + 1 
-     elseif ( norm2(matmul(A,x) - alpha*x) > 1e-12 ) then
-        write(*,*) 'error :: max_eig test failed -- not an eigenvector'
-        no_errors_helpers = no_errors_helpers + 1
-     end if
-
+        if ( (abs( alpha + 6.0 ) > 1e-12).or.(info .ne. 0) ) then
+           write(*,*) 'error :: max_eig test failed -- wrong eig found'
+           no_errors_helpers = no_errors_helpers + 1 
+        elseif ( norm2(matmul(A,x) - alpha*x) > 1e-12 ) then
+           write(*,*) 'error :: max_eig test failed -- not an eigenvector'
+           no_errors_helpers = no_errors_helpers + 1
+        end if
+        
+     end do
+          
      deallocate(A,x)
 
 

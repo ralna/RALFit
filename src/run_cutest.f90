@@ -6,7 +6,7 @@ program run_cutest
   ! A local (and more customizable) version of ral_nlls_main
   ! in order to run the test problems....
   !
-  ! Tyrone Rees, 2015
+  ! Tyrone Rees, 2015 (heavily based on Nick Gould's version in cutest)
 
   implicit none
 
@@ -123,7 +123,9 @@ CLOSE ( indr )
 !  call the minimizer
 control%print_level = 3
 control%nlls_method = 3
-control%model = 2
+control%subproblem_eig_fact = .true.
+control%model = 1
+
 inform%iter = 23
 open(unit=42,file="results.out",position="append")
 CALL RAL_NLLS( n, m, X,                                    &
