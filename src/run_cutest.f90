@@ -129,6 +129,7 @@ control%model = 2
 
 inform%iter = 23
 open(unit=42,file="results.out",position="append")
+open(unit=52,file="results.out_data",position="append")
 CALL RAL_NLLS( n, m, X,                                    &
      !              Work_integer, len_work_integer, Work_real, len_work_real &
     eval_F, eval_J, eval_HF, params,            &
@@ -147,6 +148,7 @@ write(42,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   status = ', inform%status, &                                   
      ',   iter = ', inform%iter , &
      ',   obj = ', inform%obj
+write(52,'(i0,T10,i0,T20,i0,T30,i0,T40,ES20.14)') n,m,inform%status, inform%iter,inform%obj
 write(*,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   status = ', inform%status, &                                   
      ',   iter = ', inform%iter, &

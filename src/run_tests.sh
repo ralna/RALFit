@@ -14,6 +14,7 @@ echo "**                                 **"
 echo "*************************************"
 
 rm results.out
+rm results.out_data
 cat sif_names.txt | while read file; do
     echo " "
     echo " ~~~~~~~ $file ~~~~~~~~ "
@@ -27,4 +28,5 @@ done
 if [ $# -eq 1 ]
  then
     mv results.out $1
+    mv results.out $1_data
 fi
