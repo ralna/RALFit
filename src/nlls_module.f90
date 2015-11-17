@@ -1004,7 +1004,7 @@ contains
      
      !solve_status = 0
      tiny = 1e-8
-     maxits = 100
+     maxits = 500
      tol = 1e-6
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
