@@ -506,7 +506,7 @@ contains
     class( params_base_type ) :: params
       
     integer :: jstatus=0, fstatus=0, hfstatus=0
-    integer :: i
+    integer :: i, conv_status
     real(wp), allocatable :: J(:)
     real(wp), allocatable :: f(:), fnew(:)
     real(wp), allocatable :: hf(:)
@@ -604,6 +604,8 @@ contains
           ! update X and f
           X = Xnew; 
           f = fnew; 
+
+
           ! evaluate J and hf at the new point
           call eval_J(jstatus, n, m, X, J, params)
           status%g_eval = status%g_eval + 1
@@ -637,16 +639,9 @@ contains
           !++++++++++++++++++!
           ! Test convergence !
           !++++++++++++++++++!
-          if ( normF <= options%stop_g_absolute + &
-               options%stop_g_relative * normF0) then
-             if (options%print_level > 0 ) write(options%out,3020) i
-             return
-          end if
-          if ( (normJF/normF) <= options%stop_g_absolute + &
-               options%stop_g_relative * (normJF0/normF0)) then
-             if (options%print_level > 0 ) write(options%out,3020) i
-             return
-          end if
+          call test_convergence(normF,normJF,normF0,normJF0,options,conv_status)
+          if (conv_status .ne. 0) goto 5000 ! <----converged!!
+          
           if (options%print_level > 2 ) write(options%out,3100) rho
           
        else 
@@ -658,32 +653,15 @@ contains
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
-       update_tr: if (rho < options%eta_successful) then
-          ! unsuccessful....reduce Delta
-          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
-          if (options%print_level > 2) write(options%out,3050) Delta     
-       else if (rho < options%eta_very_successful) then 
-          ! doing ok...retain status quo
-          if (options%print_level > 2) write(options%out,3070) Delta 
-       else if (rho < options%eta_too_successful ) then
-          ! more than very successful -- increase delta
-          Delta = min(options%maximum_radius, options%radius_increase * Delta )
-          if (options%print_level > 2) write(options%out,3040) Delta
-       else if (rho >= options%eta_too_successful) then
-          ! too successful....accept step, but don't change Delta
-          if (options%print_level > 2) write(options%out,3080) Delta 
-       else
-          ! just incase (NaNs and the like...)
-          if (options%print_level > 2) write(options%out,3050) Delta 
-          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
-       end if update_tr
+       call update_trust_region_radius(rho,options,Delta)
        
      end do main_loop
-
-    if (options%print_level > 0 ) write(options%out,1040) 
-    status%status = 1
     
-    RETURN
+     ! If we reach here, then we're over maxits     
+     if (options%print_level > 0 ) write(options%out,1040) 
+     status%status = 1
+    
+     RETURN
 
 ! Non-executable statements
 
@@ -696,13 +674,8 @@ contains
 ! print level > 2
 3000 FORMAT(/,'* Running RAL_NLLS *')
 3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
-3020 FORMAT('RAL_NLLS converged at iteration ',I6)
 3030 FORMAT('== Starting iteration ',i0,' ==')
-3040 FORMAT('Very successful step -- increasing Delta to', ES12.4)
-3050 FORMAT('Unsuccessful step -- decreasing Delta to', ES12.4)
 3060 FORMAT('||J''f||/||f|| = ',ES12.4)
-3070 FORMAT('Successful step -- Delta staying at', ES12.4)
-3080 FORMAT('Step too successful -- Delta staying at', ES12.4)   
 3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
 3100 FORMAT('Step was successful -- rho =', ES12.4)
 ! error returns
@@ -746,6 +719,20 @@ contains
     status%status = 3
     goto 4000
 
+! convergence 
+5000 continue
+    ! convegence test satisfied
+    select case (conv_status ) 
+    case (1) 
+       if (options%print_level > 2) then
+          write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', i
+       end if
+    case (2)
+       if (options%print_level > 2) then
+          write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', i
+       end if
+    end select
+    return
 !  End of subroutine RAL_NLLS
 
   END SUBROUTINE RAL_NLLS
@@ -1090,7 +1077,7 @@ contains
 
 1020 continue
      ! Converged!
-     if ( options%print_level > 3 ) then
+     if ( options%print_level >= 3 ) then
         write(options%error,'(a,i0)') 'More-Sorensen converged at iteration', i
      end if
      return
@@ -1107,7 +1094,7 @@ contains
      return
 
 1050 continue
-     if ( options%print_level > 3 ) then
+     if ( options%print_level >= 3 ) then
         write(options%error,'(a)') 'More-Sorensen: first point within trust region'
      end if
      return
@@ -1122,7 +1109,7 @@ contains
      return
 
 1070 continue
-     if ( options%print_level > 3 ) then
+     if ( options%print_level >= 3 ) then
         write(options%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
      end if
      status%status = 200
@@ -1288,7 +1275,70 @@ contains
 
      end subroutine calculate_rho
 
-         
+     subroutine update_trust_region_radius(rho,options,Delta)
+       
+       real(wp), intent(in) :: rho ! ratio of actual to predicted reduction
+       type( NLLS_control_type ), intent(in) :: options
+       real(wp), intent(inout) :: Delta ! trust region size
+       
+       if (rho < options%eta_successful) then
+          ! unsuccessful....reduce Delta
+          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+          if (options%print_level > 2) write(options%out,3010) Delta     
+       else if (rho < options%eta_very_successful) then 
+          ! doing ok...retain status quo
+          if (options%print_level > 2) write(options%out,3020) Delta 
+       else if (rho < options%eta_too_successful ) then
+          ! more than very successful -- increase delta
+          Delta = min(options%maximum_radius, options%radius_increase * Delta )
+          if (options%print_level > 2) write(options%out,3030) Delta
+       else if (rho >= options%eta_too_successful) then
+          ! too successful....accept step, but don't change Delta
+          if (options%print_level > 2) write(options%out,3040) Delta 
+       else
+          ! just incase (NaNs and the like...)
+          if (options%print_level > 2) write(options%out,3010) Delta 
+          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+       end if 
+
+       return
+       
+! print statements
+
+3010   FORMAT('Unsuccessful step -- decreasing Delta to', ES12.4)      
+3020   FORMAT('Successful step -- Delta staying at', ES12.4)     
+3030   FORMAT('Very successful step -- increasing Delta to', ES12.4)
+3040   FORMAT('Step too successful -- Delta staying at', ES12.4)   
+       
+
+     end subroutine update_trust_region_radius
+   
+     
+     subroutine test_convergence(normF,normJF,normF0,normJF0,options,info)
+       
+       real(wp), intent(in) :: normF, normJf, normF0, normJF0
+       type( NLLS_control_type ) :: options
+       integer, intent(out) :: info
+
+       info = 0 
+
+       if ( normF <= options%stop_g_absolute + &
+               options%stop_g_relative * normF0) then
+             info = 1
+             return
+          end if
+          if ( (normJF/normF) <= options%stop_g_absolute + &
+               options%stop_g_relative * (normJF0/normF0)) then
+             info = 2
+             return
+          end if
+          
+          return
+          
+       
+     end subroutine test_convergence
+     
+
      subroutine mult_J(J,n,m,x,Jx)
        real(wp), intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
