@@ -125,7 +125,7 @@ control%print_level = 3
 control%nlls_method = 3
 control%subproblem_eig_fact = .true.
 control%maxit = 1000
-control%model = 2
+control%model = 1
 
 inform%iter = 23
 open(unit=42,file="results.out",position="append")
@@ -148,7 +148,12 @@ write(42,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   status = ', inform%status, &                                   
      ',   iter = ', inform%iter , &
      ',   obj = ', inform%obj
-write(52,'(i0,T10,i0,T20,i0,T30,i0,T40,ES20.14)') n,m,inform%status, inform%iter,inform%obj
+write(52,'(i0,T10,i0,T20,i0,T30,i0,T40,ES20.14,T65,ES20.14)') n,&
+                                                  m,&
+                                                  inform%status, &
+                                                  inform%iter, &
+                                                  inform%obj, & 
+                                                  inform%norm_g
 write(*,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   status = ', inform%status, &                                   
      ',   iter = ', inform%iter, &
