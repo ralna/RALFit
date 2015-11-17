@@ -245,7 +245,7 @@ module nlls_module
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
 
-     real(wp) :: more_sorensen_maxits = 500
+     integer  :: more_sorensen_maxits = 500
      real(wp) :: more_sorensen_shift = 1e-8
      real(wp) :: more_sorensen_tiny = 10.0 * epsmch
      real(wp) :: more_sorensen_tol = 1e-6
@@ -507,9 +507,9 @@ contains
       
     integer :: jstatus=0, fstatus=0, hfstatus=0
     integer :: i
-    real(wp), allocatable :: J(:), Jnew(:)
+    real(wp), allocatable :: J(:)
     real(wp), allocatable :: f(:), fnew(:)
-    real(wp), allocatable :: hf(:), hfnew(:)
+    real(wp), allocatable :: hf(:)
     real(wp), allocatable :: d(:), g(:), Xnew(:)
     real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, md
     real(wp) :: actual_reduction, predicted_reduction
@@ -518,7 +518,7 @@ contains
     
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
-    call allocate_local_arrays(n,m,J,Jnew,f,fnew,hf,hfnew,d,g,Xnew, & 
+    call allocate_local_arrays(n,m,J,f,fnew,hf,d,g,Xnew, & 
                                options,status%alloc_status)
     if ( status%alloc_status > 0 ) goto 4000
     call setup_workspaces(w,n,m,options,status%alloc_status)
@@ -536,7 +536,6 @@ contains
     select case (options%model)
     case (1) ! first-order
        hf(1:n**2) = zero
-       hfnew(1:n**2) = zero
     case (2) ! second order
        call eval_HF(hfstatus, n, m, X, f, hf, params)
        status%h_eval = status%h_eval + 1
@@ -544,7 +543,6 @@ contains
     case (3) ! barely second order (identity hessian)
        hf(1:n**2) = zero
        hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
-       hfnew(1:n**2) = hf
     case default
        goto 4040 ! unsupported model -- return to user
     end select
@@ -582,19 +580,6 @@ contains
        call eval_F(fstatus, n, m, Xnew, fnew, params)
        status%f_eval = status%f_eval + 1
        if (fstatus > 0) goto 4020
-       call eval_J(jstatus, n, m, Xnew, Jnew, params)
-       status%g_eval = status%g_eval + 1
-       if (jstatus > 0) goto 4010
-       select case (options%model) ! only update hessians than change..
-       case (1) ! first-order
-          continue
-       case (2) ! second order
-          call eval_HF(hfstatus, n, m, X, fnew, hfnew, params)
-          status%h_eval = status%h_eval + 1
-          if (hfstatus > 0) goto 4030
-       case (3) ! barely second order (identity hessian)
-          continue
-       end select
 
        !++++++++++++++++++++++++++++!
        ! Get the value of the model !
@@ -615,10 +600,24 @@ contains
        end if
 
        success_rho: if (rho > options%eta_successful) then
-          X = Xnew;
-          J = Jnew;
-          f = fnew;
-          hf = hfnew;
+          
+          ! update X and f
+          X = Xnew; 
+          f = fnew; 
+          ! evaluate J and hf at the new point
+          call eval_J(jstatus, n, m, X, J, params)
+          status%g_eval = status%g_eval + 1
+          if (jstatus > 0) goto 4010
+          select case (options%model) ! only update hessians than change..
+          case (1) ! first-order
+             continue
+          case (2) ! second order
+             call eval_HF(hfstatus, n, m, X, f, hf, params)
+             status%h_eval = status%h_eval + 1
+             if (hfstatus > 0) goto 4030
+          case (3) ! barely second order (identity hessian)
+             continue
+          end select
 
           ! g = -J^Tf
           call mult_Jt(J,n,m,f,g)
@@ -1523,27 +1522,23 @@ contains
       end subroutine shift_matrix
 
 
-      subroutine allocate_local_arrays(n,m,J,Jnew,f,fnew,hf,hfnew,d,g,Xnew,options,info)
+      subroutine allocate_local_arrays(n,m,J,f,fnew,hf,d,g,Xnew,options,info)
 
         integer, intent(in) :: n,m 
-        real(wp), allocatable :: J(:), Jnew(:)
+        real(wp), allocatable :: J(:)
         real(wp), allocatable :: f(:), fnew(:)
-        real(wp), allocatable :: hf(:), hfnew(:)
+        real(wp), allocatable :: hf(:)
         real(wp), allocatable :: d(:), g(:), Xnew(:)
         TYPE( NLLS_control_type ), INTENT( IN ) :: options
         integer, intent(out) :: info
         
         if( .not. allocated(J)) allocate(J(n*m), stat = info)
         if (info > 0) goto 9000
-        if( .not. allocated(Jnew)) allocate(Jnew(n*m), stat = info)
-        if (info > 0) goto 9000
         if( .not. allocated(f)) allocate(f(m), stat = info)
         if (info > 0) goto 9000
         if( .not. allocated(fnew)) allocate(fnew(m), stat = info)
         if (info > 0) goto 9000
         if( .not. allocated(hf)) allocate(hf(n*n), stat = info)
-        if (info > 0) goto 9000
-        if( .not. allocated(hfnew)) allocate(hfnew(n*n), stat = info)
         if (info > 0) goto 9000
         if( .not. allocated(d)) allocate(d(n), stat = info)
         if (info > 0) goto 9000
