@@ -20,7 +20,10 @@ module nlls_module
 
   
   TYPE, PUBLIC :: NLLS_control_type
-     
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! P R I N T I N G   C O N T R O L S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
 !   error and warning diagnostics occur on stream error 
      
      INTEGER :: error = 6
@@ -46,6 +49,10 @@ module nlls_module
 !   the number of iterations between printing
 
 !$$     INTEGER :: print_gap = 1
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! M A I N   R O U T I N E   C O N T R O L S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !   the maximum number of iterations performed
 
@@ -90,6 +97,8 @@ module nlls_module
 !      7  incomplete factorization of Hessian, HSL_MI28
 !      8  incomplete factorization of Hessian, Munskgaard (*not yet *)
 !      9  expanding band of Hessian (*not yet implemented*)
+!
+!$$     INTEGER :: norm = 1
 
 
      INTEGER :: nlls_method = 1
@@ -99,9 +108,6 @@ module nlls_module
 !      2 AINT method (of Yuji Nat.)
 !      3 More-Sorensen
 !      ...
-
-
-!$$     INTEGER :: norm = 1
 
 !   specify the semi-bandwidth of the band matrix P if required
 
@@ -234,6 +240,15 @@ module nlls_module
 !   quotes, e.g. "string" or 'string'
 
 !$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! M O R E - S O R E N S E N   C O N T R O L S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
+
+     real(wp) :: more_sorensen_maxits = 500
+     real(wp) :: more_sorensen_shift = 1e-8
+     real(wp) :: more_sorensen_tiny = 10.0 * epsmch
+     real(wp) :: more_sorensen_tol = 1e-6
      
   END TYPE NLLS_control_type
 
@@ -987,12 +1002,12 @@ contains
      type( more_sorensen_work ) :: w
 
      ! parameters...make these options?
-     integer :: maxits 
-     real(wp) :: tol
+!    integer :: maxits 
+!    real(wp) :: tol
      real(wp) :: nd, nq, nr
 
      real(wp) :: sigma, sigma1, alpha
-     real(wp) :: tiny
+!    real(wp) :: tiny
      integer :: solve_status, fb_status, mineig_status
      integer :: test_pd, i 
      
@@ -1003,9 +1018,9 @@ contains
      ! set A and v for the model being considered here...
      
      !solve_status = 0
-     tiny = 1e-8
-     maxits = 500
-     tol = 1e-6
+!    tiny = 1e-8
+!    maxits = 500
+!    tol = 1e-6
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
      ! add any second order information...
@@ -1022,7 +1037,7 @@ contains
      else
         call min_eig_symm(w%A,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
         if (mineig_status .ne. 0) goto 1060 
-        sigma = -(sigma - tiny)
+        sigma = -(sigma - options%more_sorensen_shift)
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
         if ( test_pd .ne. 0 ) then
@@ -1036,10 +1051,10 @@ contains
      
      if (nd .le. Delta) then
         ! we're within the tr radius from the start!
-        if ( abs(sigma) < tiny ) then
+        if ( abs(sigma) < options%more_sorensen_tiny ) then
            ! we're good....exit
            goto 1050
-        else if ( abs( nd - Delta ) < tiny ) then
+        else if ( abs( nd - Delta ) < options%more_sorensen_tiny ) then
            ! also good...exit
            goto 1050              
         end if
@@ -1051,8 +1066,8 @@ contains
      end if
 
      ! now, we're not in the trust region initally, so iterate....
-     do i = 1, maxits
-        if ( abs(nd - Delta) <= tol * Delta) then
+     do i = 1, options%more_sorensen_maxits
+        if ( abs(nd - Delta) <= options%more_sorensen_tol * Delta) then
            goto 1020 ! converged!
         end if
         
