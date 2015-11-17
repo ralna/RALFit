@@ -1002,12 +1002,9 @@ contains
      type( more_sorensen_work ) :: w
 
      ! parameters...make these options?
-!    integer :: maxits 
-!    real(wp) :: tol
      real(wp) :: nd, nq, nr
 
      real(wp) :: sigma, sigma1, alpha
-!    real(wp) :: tiny
      integer :: solve_status, fb_status, mineig_status
      integer :: test_pd, i 
      
@@ -1017,10 +1014,6 @@ contains
      !
      ! set A and v for the model being considered here...
      
-     !solve_status = 0
-!    tiny = 1e-8
-!    maxits = 500
-!    tol = 1e-6
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
      ! add any second order information...
