@@ -1,6 +1,6 @@
 The following small nonlinear least-squares examples are currently available
 
-                More', Gilbow + Hilstom set
+                More', Gilbow + Hilstrom set
 
  nonlinear equations                  least squares
 
@@ -9,17 +9,17 @@ The following small nonlinear least-squares examples are currently available
 
   RSNBRNE.SIF                          ROSENBR.SIF 
   POWELLSE.SIF                         POWELLSG.SIF
-  POWELLBS.SIF                         (to do)
+  POWELLBS.SIF                         POWELLBSLS.SIF
   WOODSNE.SIF                          WOODS.SIF 
   HELIXNE.SIF                          HELIX.SIF 
   WATSONNE.SIF                         WATSON.SIF
   BROWNALE.SIF                         BROWNAL.SIF
   MOREBVNE.SIF                         MOREBV.SIF
-  INTEQNE.SIF                          (to do) 
-  ARGTRIG.SIF                          (to do)
+  INTEQNE.SIF                          INTEQNELS.SIF
+  ARGTRIG.SIF                          ARGTRIGLS.SIF
   VARDIMNE.SIF                         VARDIM.SIF
-  BROYDN3D.SIF                         (to do)
-  BROYDNBD.SIF                         (to do
+  BROYDN3D.SIF                         BROYDN3DLS.SIF
+  BROYDNBD.SIF                         BROYDNBDLS.SIF
   FREURONE.SIF                         FREUROTH.SIF
   BARDNE.SIF                           BARD.SIF  
   KOWOSBNE.SIF                         KOWOSB.SIF
@@ -39,15 +39,40 @@ The following small nonlinear least-squares examples are currently available
 
   BENNETT5.SIF                         BENNETT5LS.SIF
   BOXBOD.SIF                           BOXBODLS.SIF  
+  CHWIRUT1.SIF                         CHWIRUT1LS.SIF
+  CHWIRUT2.SIF                         CHWIRUT2LS.SIF
+  DANWOOD.SIF                          DANWOODLS.SIF 
   ECKERLE4.SIF                         ECKERLE4LS.SIF
+  ENSO.SIF                             ENSOLS.SIF    
+  GAUSS1.SIF                           GAUSS1LS.SIF  
+  GAUSS2.SIF                           GAUSS2LS.SIF  
+  GAUSS3.SIF                           GAUSS3LS.SIF  
   HAHN1.SIF                            HAHN1LS.SIF   
+  KIRBY2.SIF                           KIRBY2LS.SIF  
+  LANCZOS1.SIF                         LANCZOS1LS.SIF
+  LANCZOS2.SIF                         LANCZOS2LS.SIF
+  LANCZOS3.SIF                         LANCZOS3LS.SIF
   MGH09.SIF                            MGH09LS.SIF   
   MGH10.SIF                            MGH10LS.SIF   
+  MGH17.SIF                            MGH17LS.SIF   
   MISRA1A.SIF                          MISRA1ALS.SIF 
+  MISRA1B.SIF                          MISRA1BLS.SIF 
+  MISRA1C.SIF                          MISRA1CLS.SIF 
+  MISRA1D.SIF                          MISRA1DLS.SIF 
+  NELSON.SIF                           NELSONLS.SIF  
   RAT42.SIF                            RAT42LS.SIF   
   RAT43.SIF                            RAT43LS.SIF   
+  ROSZMAN1.SIF                         ROSZMAN1LS.SIF
   THURBER.SIF                          THURBERLS.SIF 
 
-  more to come!
+                   ISIS Set
+
+  VESUVIOU.SIF                         VESUVIOULS.SIF 
+  VESUVIO.SIF                          VESUVIOLS.SIF 
+  VESUVIA.SIF                          VESUVIALS.SIF 
+
+more to come!
 
 Nick Gould
+21 Oct 2015
+

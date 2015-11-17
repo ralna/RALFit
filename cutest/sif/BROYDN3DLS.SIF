@@ -1,0 +1,151 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BROYDN3DLS
+
+*   Problem :
+*   *********
+
+*   Broyden tridiagonal system of nonlinear equations in the least
+*   square sense.
+
+*   Source:  problem 30 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Toint#17 and Buckley#78.
+*   SIF input: Ph. Toint, Dec 1989.
+*   Least-squares version: Nick Gould, Oct 2015.
+
+*   classification SUR2-AN-V-0
+
+*   N is the number of variables (variable).
+
+ IE N                   10             $-PARAMETER     original value
+*IE N                   50             $-PARAMETER
+*IE N                   100            $-PARAMETER
+*IE N                   500            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+*IE N                   5000           $-PARAMETER
+*IE N                   10000          $-PARAMETER
+
+*   Other parameters
+
+ RE KAPPA1              2.0            $-PARAMETER
+ RE KAPPA2              1.0            $-PARAMETER
+
+*   Constants
+
+ IE 1                   1
+ IE 2                   2
+
+*   Computed parameters
+
+ RM -K2       KAPPA2    -1.0
+ IA N-1       N         -1
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ XN E1        X(2)      -2.0
+
+ DO I         2                        N-1
+ IA I-1       I         -1
+ IA I+1       I         1
+ XN E(I)      X(I-1)    -1.0           X(I+1)    -2.0
+ ND
+
+ XN E(N)      X(N-1)    -1.0
+
+CONSTANTS
+
+ DO I         1                        N
+ Z  BROYDN3D  E(I)                     -K2
+ ND
+
+BOUNDS
+
+ FR BRO3D     'DEFAULT'
+
+START POINT
+
+ XV BROYDN3D  'DEFAULT' -1.0
+
+ELEMENT TYPE
+
+ EV BROY      V1
+ EP BROY      K1
+
+ELEMENT USES
+
+ DO I         1                        N
+ XT B(I)      BROY
+ ZV B(I)      V1                       X(I)
+ ZP B(I)      K1                       KAPPA1
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ T  'DEFAULT' L2
+
+ DO I         1                        N
+ XE E(I)      B(I)
+ ND
+
+OBJECT BOUND
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      BROYDN3DLS
+
+TEMPORARIES
+
+ R  TEMP1
+ R  TEMP2
+
+INDIVIDUALS
+
+ T  BROY
+ A  TEMP1               - K1 * V1
+ A  TEMP2               3.0 + TEMP1
+ F                      TEMP2 * V1
+ G  V1                  TEMP2 + TEMP1
+ H  V1        V1        - K1 - K1
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        BROYDN3DLS
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

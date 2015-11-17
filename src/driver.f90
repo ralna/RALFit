@@ -4,9 +4,8 @@ use nlls_module
 use example_module
 implicit none
 
-integer                   :: n, m, len_work_int, len_work_real, i
-real(wp), allocatable     :: X(:), Work_real(:)
-integer, allocatable      :: Work_int(:)
+integer                   :: n, m, i
+real(wp), allocatable     :: X(:)
 type( NLLS_inform_type )  :: status
 type( NLLS_control_type ) :: options
 type( user_type ), target :: params
@@ -20,18 +19,17 @@ n = 2
 
 m = 67
 
-len_work_int = n
-allocate( Work_int(len_work_int) )
-
-len_work_real = n
-allocate( Work_real(len_work_real) ) 
-
 allocate( X(n) )
 
 X(1) = 1.0 
 X(2) = 2.0
 
 options%print_level = 3
+options%nlls_method = 3
+options%model = 1
+options%maxit = 100
+!options%stop_g_relative = 1e-10
+!options%stop_g_absolute = 1e-10
 
 ! Get params for the function evaluations
 allocate(params%x_values(m))
@@ -46,6 +44,8 @@ call ral_nlls(n, m, X,                         &
 do i = 1,n
    write(*,*) X(i)
 end do
+
+write(*,*) 'iteration number at end = ', status%iter
 
 end program driver
 

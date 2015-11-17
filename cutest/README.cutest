@@ -30,6 +30,15 @@ To test NLLS examples from CUTEst:
 
    see the man page for ral_nlls for options
 
+   If you have installed GALAHAD, you can
+
+     sdgal pc.lnx.gfo lanb RAT43.SIF   (nonlinear equation formulation)
+     sdgal pc.lnx.gfo lanb RAT43LS.SIF (nlls formulation)
+
+   or
+
+     sdgal pc.lnx.gfo tru RAT43LS.SIF  (nlls formulation only)
+   
 Nick Gould
 For the RAL_nlls team
 14 Oct 2015

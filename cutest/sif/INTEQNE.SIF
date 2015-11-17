@@ -44,7 +44,7 @@ VARIABLES
 
 GROUPS
 
- XE G(0)      X(1)      1.0
+ XE G(0)      X(0)      1.0
  DO I         1                        N
  XE G(I)      X(I)      1.0
  ND

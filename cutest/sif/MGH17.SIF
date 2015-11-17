@@ -1,0 +1,209 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          MGH17
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem MGH17 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = b1 + b2*exp[-x*b4] + b3*exp[-x*b5] + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Osborne, M. R. (1972).  
+*    Some aspects of nonlinear least squares calculations.  
+*    In Numerical Methods for Nonlinear Optimization, Lootsma (Ed).  
+*    New York, NY:  Academic Press, pp. 171-189.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-5-33
+
+*   Number of data values
+
+ IE M                   33
+
+*   Number of variables
+
+ IE N                   5
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  0.0E+0
+ RE X2                  1.0E+1
+ RE X3                  2.0E+1
+ RE X4                  3.0E+1
+ RE X5                  4.0E+1
+ RE X6                  5.0E+1
+ RE X7                  6.0E+1
+ RE X8                  7.0E+1
+ RE X9                  8.0E+1
+ RE X10                 9.0E+1
+ RE X11                 1.0E+2
+ RE X12                 1.1E+2
+ RE X13                 1.2E+2
+ RE X14                 1.3E+2
+ RE X15                 1.4E+2
+ RE X16                 1.5E+2
+ RE X17                 1.6E+2
+ RE X18                 1.7E+2
+ RE X19                 1.8E+2
+ RE X20                 1.9E+2
+ RE X21                 2.0E+2
+ RE X22                 2.1E+2
+ RE X23                 2.2E+2
+ RE X24                 2.3E+2
+ RE X25                 2.4E+2
+ RE X26                 2.5E+2
+ RE X27                 2.6E+2
+ RE X28                 2.7E+2
+ RE X29                 2.8E+2
+ RE X30                 2.9E+2
+ RE X31                 3.0E+2
+ RE X32                 3.1E+2
+ RE X33                 3.2E+2
+
+ RE Y1                  8.44E-1
+ RE Y2                  9.08E-1
+ RE Y3                  9.32E-1
+ RE Y4                  9.36E-1
+ RE Y5                  9.25E-1
+ RE Y6                  9.08E-1
+ RE Y7                  8.81E-1
+ RE Y8                  8.50E-1
+ RE Y9                  8.18E-1
+ RE Y10                 7.84E-1
+ RE Y11                 7.51E-1
+ RE Y12                 7.18E-1
+ RE Y13                 6.85E-1
+ RE Y14                 6.58E-1
+ RE Y15                 6.28E-1
+ RE Y16                 6.03E-1
+ RE Y17                 5.80E-1
+ RE Y18                 5.58E-1
+ RE Y19                 5.38E-1
+ RE Y20                 5.22E-1
+ RE Y21                 5.06E-1
+ RE Y22                 4.90E-1
+ RE Y23                 4.78E-1
+ RE Y24                 4.67E-1
+ RE Y25                 4.57E-1
+ RE Y26                 4.48E-1
+ RE Y27                 4.38E-1
+ RE Y28                 4.31E-1
+ RE Y29                 4.24E-1
+ RE Y30                 4.20E-1
+ RE Y31                 4.14E-1
+ RE Y32                 4.11E-1
+ RE Y33                 4.06E-1
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)      B1        1.0 
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  MGH17     F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR MGH17     'DEFAULT'
+
+START POINT
+
+    START1    B1        50.0  
+    START1    B2        150.0 
+    START1    B3        -100.0
+    START1    B4        1.0   
+    START1    B5        2.0   
+
+*  Alternative start point
+
+    START2    B1        0.5 
+    START2    B2        1.5 
+    START2    B3        -1.0
+    START2    B4        0.01
+    START2    B5        0.02
+
+ELEMENT TYPE
+
+ EV E2        V1
+ EV E2        V2
+ EP E2        X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT EA(I)     E2
+ ZV EA(I)     V1                       B2
+ ZV EA(I)     V2                       B4
+ ZP EA(I)     X                        X(I)
+ XT EB(I)     E2
+ ZV EB(I)     V1                       B3
+ ZV EB(I)     V2                       B5
+ ZP EB(I)     X                        X(I)
+ ND
+
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      EA(I)
+ XE F(I)      EB(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO MGH17               0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      MGH17
+
+TEMPORARIES
+
+ R  E
+ M  EXP
+
+INDIVIDUALS
+
+ T  E2
+ A  E                   EXP( - V2 * X )
+ F                      V1 * E
+ G  V1                  E
+ G  V2                  - V1 * X * E
+ H  V1        V2        - X * E
+ H  V2        V2        V1 * X * X * E
+
+ENDATA
+
