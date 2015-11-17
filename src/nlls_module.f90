@@ -492,10 +492,10 @@ contains
       
     integer :: jstatus=0, fstatus=0, hfstatus=0
     integer :: i
-    real(wp), DIMENSION(m*n) :: J, Jnew
-    real(wp), DIMENSION(m)   :: f, fnew
-    real(wp), DIMENSION(n*n) :: hf, hfnew
-    real(wp), DIMENSION(n)   :: d, g, Xnew
+    real(wp), allocatable :: J(:), Jnew(:)
+    real(wp), allocatable :: f(:), fnew(:)
+    real(wp), allocatable :: hf(:), hfnew(:)
+    real(wp), allocatable :: d(:), g(:), Xnew(:)
     real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, md
     real(wp) :: actual_reduction, predicted_reduction
 
@@ -503,8 +503,11 @@ contains
     
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
+    call allocate_local_arrays(n,m,J,Jnew,f,fnew,hf,hfnew,d,g,Xnew, & 
+                               options,status%alloc_status)
+    if ( status%alloc_status > 0 ) goto 4000
     call setup_workspaces(w,n,m,options,status%alloc_status)
-    if (status%alloc_status > 0) goto 4000
+    if ( status%alloc_status > 0) goto 4000
 
     Delta = options%initial_radius
     
@@ -1512,6 +1515,48 @@ contains
       end subroutine shift_matrix
 
 
+      subroutine allocate_local_arrays(n,m,J,Jnew,f,fnew,hf,hfnew,d,g,Xnew,options,info)
+
+        integer, intent(in) :: n,m 
+        real(wp), allocatable :: J(:), Jnew(:)
+        real(wp), allocatable :: f(:), fnew(:)
+        real(wp), allocatable :: hf(:), hfnew(:)
+        real(wp), allocatable :: d(:), g(:), Xnew(:)
+        TYPE( NLLS_control_type ), INTENT( IN ) :: options
+        integer, intent(out) :: info
+        
+        if( .not. allocated(J)) allocate(J(n*m), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(Jnew)) allocate(Jnew(n*m), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(f)) allocate(f(m), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(fnew)) allocate(fnew(m), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(hf)) allocate(hf(n*n), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(hfnew)) allocate(hfnew(n*n), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(d)) allocate(d(n), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(g)) allocate(g(n), stat = info)
+        if (info > 0) goto 9000
+        if( .not. allocated(Xnew)) allocate(Xnew(n), stat = info)
+        if (info > 0) goto 9000
+
+        return        
+! Error statements
+9000    continue
+        ! Allocation errors : dogleg
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating local array: ',&
+                'not enough memory.' 
+           write(options%error,'(a,i0)') 'status = ', info
+ 
+        end if
+        
+      end subroutine allocate_local_arrays
       
       subroutine setup_workspaces(workspace,n,m,options,info)
         
