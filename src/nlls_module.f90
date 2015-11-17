@@ -511,7 +511,7 @@ contains
     real(wp), allocatable :: f(:), fnew(:)
     real(wp), allocatable :: hf(:)
     real(wp), allocatable :: d(:), g(:), Xnew(:)
-    real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, md
+    real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, normFnew, md
     real(wp) :: actual_reduction, predicted_reduction
 
     type ( NLLS_workspace ) :: w
@@ -548,6 +548,7 @@ contains
     end select
 
     normF0 = norm2(f)
+    normF = normF0
 !    g = -J^Tf
     call mult_Jt(J,n,m,f,g)
     g = -g
@@ -580,24 +581,24 @@ contains
        call eval_F(fstatus, n, m, Xnew, fnew, params)
        status%f_eval = status%f_eval + 1
        if (fstatus > 0) goto 4020
+       normFnew = norm2(fnew)
 
        !++++++++++++++++++++++++++++!
        ! Get the value of the model !
-       !         md                 !
+       !      md :=   m_k(d)        !
        ! evaluated at the new step  !
        !++++++++++++++++++++++++++++!
        call evaluate_model(f,J,hf,d,md,m,n,options,w%evaluate_model_ws)
        
-       actual_reduction = ( 0.5 * norm2(f)**2 ) - ( 0.5 * norm2(fnew)**2 )
-       predicted_reduction = ( ( 0.5 * norm2(f)**2 ) - md )
-       
-       if ( abs(actual_reduction) < 10*epsmch ) then 
-          rho = one
-       else if (abs( predicted_reduction ) < 10 * epsmch ) then 
-          rho = one
-       else
-          rho = actual_reduction / predicted_reduction
-       end if
+       !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the quantity                                   ! 
+       !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
+       !         --------------------------   ------------------- !
+       !             m_k(0)  - m_k(d)         predicted_reduction !
+       !                                                          !
+       ! if model is good, rho should be close to one             !
+       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+       call calculate_rho(normF,normFnew,md,rho)
 
        success_rho: if (rho > options%eta_successful) then
           
@@ -623,7 +624,7 @@ contains
           call mult_Jt(J,n,m,f,g)
           g = -g
           
-          normF = norm2(f)
+          normF = normFnew
           normJF = norm2(g)
           
           ! update the stats 
@@ -1214,12 +1215,24 @@ contains
      
      subroutine evaluate_model(f,J,hf,d,md,m,n,options,w)
 ! --------------------------------------------------
-! evaluate_model, evaluate the model at the point d
+! Input:
+! f = f(x_k), J = J(x_k), 
+! hf = \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k) (or an approx)
+!
+! We have a model 
+!      m_k(d) = 0.5 f^T f  + d^T J f + 0.5 d^T (J^T J + HF) d
+!
+! This subroutine evaluates the model at the point d 
+! This value is returned as the scalar
+!       md :=m_k(d)
 ! --------------------------------------------------       
 
-       real(wp), intent(in)  :: f(:), d(:), J(:), hf(:)
-       integer :: m,n
-       real(wp), intent(out) :: md
+       real(wp), intent(in) :: f(:) ! f(x_k)
+       real(wp), intent(in) :: d(:) ! direction in which we move
+       real(wp), intent(in) :: J(:) ! J(x_k) (by columns)
+       real(wp), intent(in) :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
+       integer, intent(in) :: m,n
+       real(wp), intent(out) :: md  ! m_k(d)
        TYPE( NLLS_control_type ), INTENT( IN ) :: options
        type( evaluate_model_work ) :: w
        
@@ -1245,6 +1258,37 @@ contains
 
      end subroutine evaluate_model
      
+     subroutine calculate_rho(normf,normfnew,md,rho)
+       !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the quantity                                   ! 
+       !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
+       !         --------------------------   ------------------- !
+       !             m_k(0)  - m_k(d)         predicted_reduction !
+       !                                                          !
+       ! if model is good, rho should be close to one             !
+       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+       real(wp), intent(in)  :: normf    ! ||f(x_k)|| at 
+       real(wp), intent(in)  :: normfnew ! ||f(x_k + d)||
+       real(wp), intent(in)  :: md       !    m_k(d)
+       real(wp), intent(out) :: rho      ! act_red / pred_red (close to 1 == good)
+
+       real(wp) :: actual_reduction, predicted_reduction
+       
+       actual_reduction = ( 0.5 * normf**2 ) - ( 0.5 * normfnew**2 )
+       predicted_reduction = ( ( 0.5 * normf**2 ) - md )
+       
+       if ( abs(actual_reduction) < 10*epsmch ) then 
+          rho = one
+       else if (abs( predicted_reduction ) < 10 * epsmch ) then 
+          rho = one
+       else
+          rho = actual_reduction / predicted_reduction
+       end if
+
+
+     end subroutine calculate_rho
+
          
      subroutine mult_J(J,n,m,x,Jx)
        real(wp), intent(in) :: J(*), x(*)
