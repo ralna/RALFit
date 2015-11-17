@@ -512,7 +512,6 @@ contains
     real(wp), allocatable :: hf(:)
     real(wp), allocatable :: d(:), g(:), Xnew(:)
     real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, normFnew, md
-    real(wp) :: actual_reduction, predicted_reduction
 
     type ( NLLS_workspace ) :: w
     
@@ -1002,9 +1001,9 @@ contains
      type( more_sorensen_work ) :: w
 
      ! parameters...make these options?
-     real(wp) :: nd, nq, nr
+     real(wp) :: nd, nq
 
-     real(wp) :: sigma, sigma1, alpha
+     real(wp) :: sigma, alpha
      integer :: solve_status, fb_status, mineig_status
      integer :: test_pd, i 
      
@@ -1430,8 +1429,7 @@ contains
         type( min_eig_symm_work ) :: w
 
         real(wp) :: tol, dlamch
-        integer :: lwork, i, eigsout, minindex(1)
-!        real(wp), allocatable :: temp_ev(:,:), temp_ew(:)
+        integer :: lwork, eigsout, minindex(1)
 
         tol = 2*dlamch('S')!1e-15
         
@@ -1612,9 +1610,6 @@ contains
         integer, intent(in) :: n,m
         integer, intent(out) :: info
 
-        integer :: lwork, lapack_info
-        real(wp), allocatable :: workquery(:)
-        
         info = 0      
         
         select case (options%nlls_method)
