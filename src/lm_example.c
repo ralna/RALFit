@@ -112,13 +112,17 @@ main (void)
   nlls_default_control(&ral_options);
   
   ral_options.print_level = 3;
-  ral_options.maxit = 1;
+  ral_options.maxit = 100;
+  ral_options.model = 1;
+  ral_options.nlls_method = 3;
 
   printf("p = %i n = %i", p, n);
 
   ral_nlls(p,n,
 	   x_ral, eval_F, eval_J, eval_HF, &d,
 	   &ral_status, &ral_options);
+
+  printf(" A = %.5f \n lambda = %.5f \n b = %.5f\n ", x_ral[0], x_ral[1], x_ral[2]);
 
   return 0;
 }

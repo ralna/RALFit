@@ -81,22 +81,19 @@ void eval_F ( int fstatus, const int n, const int m,
   for (i = 0; i < n; i++) {
     gsl_vector_set(x_gsl,i,x[i]);
   }
-   
+
   // then call the expb_f function
   gsl_vector * f_gsl =  gsl_vector_alloc(m);
 
-  expb_f (x_gsl, params, f_gsl);
+  expb_f ( x_gsl,  params,  f_gsl);
   
   // then convert f back into an array...
   //  f = f_gsl->data;
   for (i = 0; i < m; i++){
-    f[i] = f_gsl->data[i];
+    f[i] = gsl_vector_get( f_gsl,i);
+    //    f[i] = f_gsl->data[i];
   }
   
-  for (i = 0; i < n; i++){
-    printf("eval_F (C): f[%i] = %5.3f\n", i, f[i]);
-  }
-
   gsl_vector_free(x_gsl);
   gsl_vector_free(f_gsl);
 
@@ -112,21 +109,12 @@ void eval_J  ( int fstatus, const int n, const int m,
   int jj;
   for (i = 0; i < n; i++) {
     gsl_vector_set(x_gsl,i,x[i]);
-    printf("l104: x(%i) = %5.3f\n",i,gsl_vector_get(x_gsl,i));
   }
   
   // then call the expb_f function
   gsl_matrix * J_gsl = gsl_matrix_alloc(40,3);
   expb_df (x_gsl, params, J_gsl);
   
-  printf("l113: J = \n");
-  for (i = 0; i < m; i++) {
-    for (jj = 0; jj < n; jj++){
-      printf("%5.4f \t",gsl_matrix_get(J_gsl,i,jj));
-    }
-    printf("\n");
-  }
-
   // then convert J into an array...
   // (find better way...)
   gsl_matrix * J_gsl_t = gsl_matrix_alloc(3,40);
@@ -140,10 +128,7 @@ void eval_J  ( int fstatus, const int n, const int m,
   gsl_matrix_free(J_gsl);
   gsl_matrix_free(J_gsl_t);
   
-  for (i = 0; i < 10; i++){
-    printf("eval_J(C): J[%i] = %5.3f\n", i, J[i]);
-  }
-
+  
   
 }
 

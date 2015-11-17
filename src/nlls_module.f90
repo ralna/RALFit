@@ -1361,26 +1361,28 @@ contains
        
        double precision :: alpha, beta
 
+       integer :: i 
+
        Jtx(1:n) = one
        alpha = one
        beta  = zero
 
-       do i = 1,n
-          write(*,*) 'multJt(F): x(',i,') = ',x(i)
-       end do
+!       do i = 1,n
+!          write(*,*) 'multJt(F): x(',i,') = ',x(i)
+!       end do
 
-
-       write(*,*) 'multJt(F):'
-       do i = 1,m*n
-          write(*,*) 'J(',i,') = ',J(i)
-       end do
+!
+!       write(*,*) 'multJt(F):'
+!       do i = 1,m*n
+!          write(*,*) 'J(',i,') = ',J(i)
+!       end do
 
        call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
 
-       write(*,*) 'multJt(F):'
-       do i = 1,m*n
-          write(*,*) 'Jtx(',i,') = ',J(i)
-       end do
+ !      write(*,*) 'multJt(F):'
+ !      do i = 1,m*n
+ !         write(*,*) 'Jtx(',i,') = ',J(i)
+ !      end do
 
 
       end subroutine mult_Jt
