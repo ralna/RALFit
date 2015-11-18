@@ -12,7 +12,7 @@ program nlls_test
   real(wp), allocatable :: x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
   real(wp), allocatable :: results(:)
-  real(wp) :: alpha
+  real(wp) :: alpha, beta
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
   integer :: nlls_method, model
   logical :: test_all, test_subs
@@ -101,6 +101,15 @@ program nlls_test
      write(*,*) '============================='
      
 
+     !! dogleg 
+     ! ** TODO **
+
+     !! aint_tr
+     ! ** TODO ** 
+
+     !! more_sorensen
+     ! ** TODO ** 
+
      !! solve_LLS 
      ! ** TODO **
 
@@ -132,6 +141,18 @@ program nlls_test
 
      !! todo
 
+     !! calculate_rho
+     ! todo
+     
+     !------------------------------!
+     !! update_trust_region_radius !!
+     !------------------------------!
+     
+     ! todo
+
+     !! test_convergence
+     ! todo
+     
      !----------!
      !! mult_J !!
      !----------!
