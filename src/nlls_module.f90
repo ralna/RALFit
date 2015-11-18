@@ -294,6 +294,14 @@ module nlls_module
      
      INTEGER :: h_eval = 0
 
+!  test on the size of f satisfied?
+     
+     integer :: convergence_normf = 0
+
+!  test on the size of the gradient satisfied?
+     
+     integer :: convergence_normg = 0
+
 !  the maximum number of factorizations in a sub-problem solve
 
 !$$     INTEGER :: factorization_max = 0
@@ -469,6 +477,10 @@ module nlls_module
     end type calculate_step_work
 
     type :: NLLS_workspace ! all workspaces called from the top level
+       integer :: first_call = 1
+       integer :: iter = 0 
+       real(wp) :: normF0, normJF0
+       real(wp) :: Delta
        real(wp), allocatable :: J(:)
        real(wp), allocatable :: f(:), fnew(:)
        real(wp), allocatable :: hf(:)
@@ -505,148 +517,22 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0, hfstatus=0
-    integer :: i, conv_status
-    real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, normFnew, md
-
+    integer  :: i
+    
     type ( NLLS_workspace ) :: w
-    
-    if ( options%print_level >= 3 )  write( options%out , 3000 ) 
-
-    call setup_workspaces(w,n,m,options,status%alloc_status)
-    if ( status%alloc_status > 0) goto 4000
-
-    Delta = options%initial_radius
-    
-    
-    call eval_F(fstatus, n, m, X, w%f, params)
-    status%f_eval = status%f_eval + 1
-    if (fstatus > 0) goto 4020
-    call eval_J(jstatus, n, m, X, w%J, params)
-    status%g_eval = status%g_eval + 1
-    if (jstatus > 0) goto 4010
-    select case (options%model)
-    case (1) ! first-order
-       w%hf(1:n**2) = zero
-    case (2) ! second order
-       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-       status%h_eval = status%h_eval + 1
-       if (hfstatus > 0) goto 4030
-    case (3) ! barely second order (identity hessian)
-       w%hf(1:n**2) = zero
-       w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
-    case default
-       goto 4040 ! unsupported model -- return to user
-    end select
-
-    normF0 = norm2(w%f)
-    normF = normF0
-!    g = -J^Tf
-    call mult_Jt(w%J,n,m,w%f,w%g)
-    w%g = -w%g
-    normJF0 = norm2(w%g)
-    
-    ! save some data 
-    status%obj = 0.5 * ( normF0**2 )
-    status%norm_g = normJF0
     
     main_loop: do i = 1,options%maxit
        
-       if ( options%print_level >= 3 )  write( options%out , 3030 ) i
-       status%iter = i
-
-       !+++++++++++++++++++++++++++++++++++++++++++!
-       ! Calculate the step                        !
-       !    d                                      !   
-       ! that the model thinks we should take next !
-       !+++++++++++++++++++++++++++++++++++++++++++!
-
-       call calculate_step(w%J,w%f,w%hf,w%g,n,m,Delta,w%d,options,status,& 
-                           w%calculate_step_ws)
-       if (status%status .ne. 0) goto 4000
-       
-       !++++++++++++++++++!
-       ! Accept the step? !
-       !++++++++++++++++++!
-
-       w%Xnew = X + w%d;
-       call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
-       status%f_eval = status%f_eval + 1
-       if (fstatus > 0) goto 4020
-       normFnew = norm2(w%fnew)
-
-       !++++++++++++++++++++++++++++!
-       ! Get the value of the model !
-       !      md :=   m_k(d)        !
-       ! evaluated at the new step  !
-       !++++++++++++++++++++++++++++!
-       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,options,w%evaluate_model_ws)
-       
-       !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
-       ! Calculate the quantity                                   ! 
-       !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
-       !         --------------------------   ------------------- !
-       !             m_k(0)  - m_k(d)         predicted_reduction !
-       !                                                          !
-       ! if model is good, rho should be close to one             !
-       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-       call calculate_rho(normF,normFnew,md,rho)
-
-       success_rho: if (rho > options%eta_successful) then
-          
-          ! update X and f
-          X = w%Xnew; 
-          w%f = w%fnew; 
-
-
-          ! evaluate J and hf at the new point
-          call eval_J(jstatus, n, m, X, w%J, params)
-          status%g_eval = status%g_eval + 1
-          if (jstatus > 0) goto 4010
-          select case (options%model) ! only update hessians than change..
-          case (1) ! first-order
-             continue
-          case (2) ! second order
-             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-             status%h_eval = status%h_eval + 1
-             if (hfstatus > 0) goto 4030
-          case (3) ! barely second order (identity hessian)
-             continue
-          end select
-
-          ! g = -J^Tf
-          call mult_Jt(w%J,n,m,w%f,w%g)
-          w%g = -w%g
-          
-          normF = normFnew
-          normJF = norm2(w%g)
-          
-          ! update the stats 
-          status%obj = 0.5*(normF**2)
-          status%norm_g = normJF
-
-
-          if (options%print_level >=3) write(options%out,3010) status%obj
-          if (options%print_level >=3) write(options%out,3060) normJF/normF
-
-          !++++++++++++++++++!
-          ! Test convergence !
-          !++++++++++++++++++!
-          call test_convergence(normF,normJF,normF0,normJF0,options,conv_status)
-          if (conv_status .ne. 0) goto 5000 ! <----converged!!
-          
-          if (options%print_level > 2 ) write(options%out,3100) rho
-          
-       else 
-          ! print something....
-          if (options%print_level > 2 ) write(options%out,3090) rho
-                          
-       end if success_rho
-          
-       !++++++++++++++++++++++!
-       ! Update the TR radius !
-       !++++++++++++++++++++++!
-       call update_trust_region_radius(rho,options,Delta)
+       call ral_nlls_iterate(n, m, X,                   & 
+                             eval_F, eval_J, eval_HF,   & 
+                             params,                    &
+                             status, options, w )
+       ! test the returns to see if we've converged
+       if (status%status .ne. 0) then 
+          return 
+       elseif ((status%convergence_normf == 1).or.(status%convergence_normg == 1)) then
+          return
+       end if
        
      end do main_loop
     
@@ -662,6 +548,174 @@ contains
 
 1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
+!  End of subroutine RAL_NLLS
+
+  END SUBROUTINE RAL_NLLS
+  
+  subroutine ral_nlls_iterate(n, m, X,                   & 
+                              eval_F, eval_J, eval_HF,   & 
+                              params,                    &
+                              status, options, w )
+
+    INTEGER, INTENT( IN ) :: n, m
+    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
+    TYPE( NLLS_inform_type ), INTENT( OUT ) :: status
+    TYPE( NLLS_control_type ), INTENT( IN ) :: options
+    type( NLLS_workspace ), INTENT( INOUT ) :: w
+    procedure( eval_f_type ) :: eval_F
+    procedure( eval_j_type ) :: eval_J
+    procedure( eval_hf_type ) :: eval_HF
+    class( params_base_type ) :: params
+      
+    integer :: jstatus=0, fstatus=0, hfstatus=0
+    integer :: i 
+    real(wp) :: rho, normJF, normF, normFnew, md
+
+    ! Perform a single iteration of the RAL_NLLS loop
+    
+    if (w%first_call == 1) then
+       ! This is the first call...allocate arrays, and get initial 
+       ! function evaluations
+       if ( options%print_level >= 3 )  write( options%out , 3000 ) 
+       call setup_workspaces(w,n,m,options,status%alloc_status)
+       if ( status%alloc_status > 0) goto 4000
+       w%Delta = options%initial_radius
+
+       call eval_F(fstatus, n, m, X, w%f, params)
+       status%f_eval = status%f_eval + 1
+       if (fstatus > 0) goto 4020
+       call eval_J(jstatus, n, m, X, w%J, params)
+       status%g_eval = status%g_eval + 1
+       if (jstatus > 0) goto 4010
+       select case (options%model)
+       case (1) ! first-order
+          w%hf(1:n**2) = zero
+       case (2) ! second order
+          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+          status%h_eval = status%h_eval + 1
+          if (hfstatus > 0) goto 4030
+       case (3) ! barely second order (identity hessian)
+          w%hf(1:n**2) = zero
+          w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
+       case default
+          goto 4040 ! unsupported model -- return to user
+       end select
+
+       normF = norm2(w%f)
+       w%normF0 = normF
+       !    g = -J^Tf
+       call mult_Jt(w%J,n,m,w%f,w%g)
+       w%g = -w%g
+       normJF = norm2(w%g)
+       w%normJF0 = normJF
+
+       ! save some data 
+       status%obj = 0.5 * ( normF**2 )
+       status%norm_g = normJF
+
+    end if
+
+
+    w%iter = w%iter + 1
+    if ( options%print_level >= 3 )  write( options%out , 3030 ) w%iter
+    status%iter = w%iter
+    
+    rho  = -one ! intialize rho as a negative value
+
+    do while (rho < options%eta_successful) ! loop until successful
+       !+++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the step                        !
+       !    d                                      !   
+       ! that the model thinks we should take next !
+       !+++++++++++++++++++++++++++++++++++++++++++!
+
+       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,options,status,& 
+            w%calculate_step_ws)
+       if (status%status .ne. 0) goto 4000
+       
+       !++++++++++++++++++!
+       ! Accept the step? !
+       !++++++++++++++++++!
+       
+       w%Xnew = X + w%d;
+       call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
+       status%f_eval = status%f_eval + 1
+       if (fstatus > 0) goto 4020
+       normFnew = norm2(w%fnew)
+       
+       !++++++++++++++++++++++++++++!
+       ! Get the value of the model !
+       !      md :=   m_k(d)        !
+       ! evaluated at the new step  !
+       !++++++++++++++++++++++++++++!
+       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,options,w%evaluate_model_ws)
+    
+       !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the quantity                                   ! 
+       !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
+       !         --------------------------   ------------------- !
+       !             m_k(0)  - m_k(d)         predicted_reduction !
+       !                                                          !
+       ! if model is good, rho should be close to one             !
+       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+       call calculate_rho(normF,normFnew,md,rho)
+    
+       !++++++++++++++++++++++!
+       ! Update the TR radius !
+       !++++++++++++++++++++++!
+       call update_trust_region_radius(rho,options,w%Delta)
+       
+    end do
+    ! if we reach here, a successful step has been found
+    
+    ! update X and f
+    X = w%Xnew; 
+    w%f = w%fnew; 
+    ! evaluate J and hf at the new point
+    call eval_J(jstatus, n, m, X, w%J, params)
+    status%g_eval = status%g_eval + 1
+    if (jstatus > 0) goto 4010
+    select case (options%model) ! only update hessians than change..
+    case (1) ! first-order
+       continue
+    case (2) ! second order
+       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+       status%h_eval = status%h_eval + 1
+       if (hfstatus > 0) goto 4030
+    case (3) ! barely second order (identity hessian)
+       continue
+    end select
+
+    ! g = -J^Tf
+    call mult_Jt(w%J,n,m,w%f,w%g)
+    w%g = -w%g
+
+    normF = normFnew
+    normJF = norm2(w%g)
+
+    ! update the stats 
+    status%obj = 0.5*(normF**2)
+    status%norm_g = normJF
+
+
+    if (options%print_level >=3) write(options%out,3010) status%obj
+    if (options%print_level >=3) write(options%out,3060) normJF/normF
+
+    !++++++++++++++++++!
+    ! Test convergence !
+    !++++++++++++++++++!
+    call test_convergence(normF,normJF,w%normF0,w%normJF0,options,status)
+    if (status%convergence_normf == 1) goto 5000 ! <----converged!!
+    if (status%convergence_normg == 1) goto 5010 ! <----converged!!
+
+    if (options%print_level > 2 ) write(options%out,3100) rho
+
+! Non-executable statements
+
+! print level > 0
+
+!1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+
 ! print level > 1
 
 ! print level > 2
@@ -669,14 +723,11 @@ contains
 3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
 3030 FORMAT('== Starting iteration ',i0,' ==')
 3060 FORMAT('||J''f||/||f|| = ',ES12.4)
-3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
+!3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
 3100 FORMAT('Step was successful -- rho =', ES12.4)
 ! error returns
 4000 continue
     ! generic end of algorithm
-    if (options%print_level > 0) then
-       write(options%error,'(a)') 'Exiting RAL_NLLS'
-    end if
     return
 
 4010 continue
@@ -715,23 +766,25 @@ contains
 ! convergence 
 5000 continue
     ! convegence test satisfied
-    select case (conv_status ) 
-    case (1) 
-       if (options%print_level > 2) then
-          write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', i
-       end if
-    case (2)
-       if (options%print_level > 2) then
-          write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', i
-       end if
-    end select
+    if (options%print_level > 2) then
+       write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
+            w%iter
+    end if
     return
-!  End of subroutine RAL_NLLS
+5010 continue
+    if (options%print_level > 2) then
+       write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
+            w%iter
+    end if
 
-  END SUBROUTINE RAL_NLLS
-  
+    return
+!  End of subroutine RAL_NLLS_iterate
+
+  end subroutine ral_nlls_iterate
+
+
   SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,options,status,w)
-       
+
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
@@ -1307,27 +1360,24 @@ contains
      end subroutine update_trust_region_radius
    
      
-     subroutine test_convergence(normF,normJF,normF0,normJF0,options,info)
+     subroutine test_convergence(normF,normJF,normF0,normJF0,options,status)
        
        real(wp), intent(in) :: normF, normJf, normF0, normJF0
-       type( NLLS_control_type ) :: options
-       integer, intent(out) :: info
-
-       info = 0 
+       type( NLLS_control_type ), intent(in) :: options
+       type( NLLS_inform_type ), intent(inout) :: status
 
        if ( normF <= options%stop_g_absolute + &
                options%stop_g_relative * normF0) then
-             info = 1
-             return
-          end if
-          if ( (normJF/normF) <= options%stop_g_absolute + &
-               options%stop_g_relative * (normJF0/normF0)) then
-             info = 2
-             return
-          end if
-          
+          status%convergence_normf = 1
           return
+       end if
+       
+       if ( (normJF/normF) <= options%stop_g_absolute + &
+            options%stop_g_relative * (normJF0/normF0)) then
+          status%convergence_normg = 1
+       end if
           
+       return
        
      end subroutine test_convergence
      
@@ -1632,7 +1682,9 @@ contains
         integer, intent(out) :: info
 
         info = 0      
-
+        
+        workspace%first_call = 0
+                
         if( .not. allocated(workspace%J)) then
            allocate(workspace%J(n*m), stat = info)
            if (info > 0) goto 9000
