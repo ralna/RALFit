@@ -473,6 +473,10 @@ module nlls_module
     end type calculate_step_work
 
     type :: NLLS_workspace ! all workspaces called from the top level
+       real(wp), allocatable :: J(:)
+       real(wp), allocatable :: f(:), fnew(:)
+       real(wp), allocatable :: hf(:)
+       real(wp), allocatable :: d(:), g(:), Xnew(:)
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
@@ -507,51 +511,44 @@ contains
       
     integer :: jstatus=0, fstatus=0, hfstatus=0
     integer :: i, conv_status
-    real(wp), allocatable :: J(:)
-    real(wp), allocatable :: f(:), fnew(:)
-    real(wp), allocatable :: hf(:)
-    real(wp), allocatable :: d(:), g(:), Xnew(:)
     real(wp) :: Delta, rho, normJF0, normF0, normJF, normF, normFnew, md
 
     type ( NLLS_workspace ) :: w
     
     if ( options%print_level >= 3 )  write( options%out , 3000 ) 
 
-    call allocate_local_arrays(n,m,J,f,fnew,hf,d,g,Xnew, & 
-                               options,status%alloc_status)
-    if ( status%alloc_status > 0 ) goto 4000
     call setup_workspaces(w,n,m,options,status%alloc_status)
     if ( status%alloc_status > 0) goto 4000
 
     Delta = options%initial_radius
     
     
-    call eval_F(fstatus, n, m, X, f, params)
+    call eval_F(fstatus, n, m, X, w%f, params)
     status%f_eval = status%f_eval + 1
     if (fstatus > 0) goto 4020
-    call eval_J(jstatus, n, m, X, J, params)
+    call eval_J(jstatus, n, m, X, w%J, params)
     status%g_eval = status%g_eval + 1
     if (jstatus > 0) goto 4010
     select case (options%model)
     case (1) ! first-order
-       hf(1:n**2) = zero
+       w%hf(1:n**2) = zero
     case (2) ! second order
-       call eval_HF(hfstatus, n, m, X, f, hf, params)
+       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
        status%h_eval = status%h_eval + 1
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
-       hf(1:n**2) = zero
-       hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
+       w%hf(1:n**2) = zero
+       w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
     case default
        goto 4040 ! unsupported model -- return to user
     end select
 
-    normF0 = norm2(f)
+    normF0 = norm2(w%f)
     normF = normF0
 !    g = -J^Tf
-    call mult_Jt(J,n,m,f,g)
-    g = -g
-    normJF0 = norm2(g)
+    call mult_Jt(w%J,n,m,w%f,w%g)
+    w%g = -w%g
+    normJF0 = norm2(w%g)
     
     ! save some data 
     status%obj = 0.5 * ( normF0**2 )
@@ -568,7 +565,7 @@ contains
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
 
-       call calculate_step(J,f,hf,g,n,m,Delta,d,options,status,& 
+       call calculate_step(w%J,w%f,w%hf,w%g,n,m,Delta,w%d,options,status,& 
                            w%calculate_step_ws)
        if (status%status .ne. 0) goto 4000
        
@@ -576,18 +573,18 @@ contains
        ! Accept the step? !
        !++++++++++++++++++!
 
-       Xnew = X + d;
-       call eval_F(fstatus, n, m, Xnew, fnew, params)
+       w%Xnew = X + w%d;
+       call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
        status%f_eval = status%f_eval + 1
        if (fstatus > 0) goto 4020
-       normFnew = norm2(fnew)
+       normFnew = norm2(w%fnew)
 
        !++++++++++++++++++++++++++++!
        ! Get the value of the model !
        !      md :=   m_k(d)        !
        ! evaluated at the new step  !
        !++++++++++++++++++++++++++++!
-       call evaluate_model(f,J,hf,d,md,m,n,options,w%evaluate_model_ws)
+       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,options,w%evaluate_model_ws)
        
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
@@ -602,19 +599,19 @@ contains
        success_rho: if (rho > options%eta_successful) then
           
           ! update X and f
-          X = Xnew; 
-          f = fnew; 
+          X = w%Xnew; 
+          w%f = w%fnew; 
 
 
           ! evaluate J and hf at the new point
-          call eval_J(jstatus, n, m, X, J, params)
+          call eval_J(jstatus, n, m, X, w%J, params)
           status%g_eval = status%g_eval + 1
           if (jstatus > 0) goto 4010
           select case (options%model) ! only update hessians than change..
           case (1) ! first-order
              continue
           case (2) ! second order
-             call eval_HF(hfstatus, n, m, X, f, hf, params)
+             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
              status%h_eval = status%h_eval + 1
              if (hfstatus > 0) goto 4030
           case (3) ! barely second order (identity hessian)
@@ -622,11 +619,11 @@ contains
           end select
 
           ! g = -J^Tf
-          call mult_Jt(J,n,m,f,g)
-          g = -g
+          call mult_Jt(w%J,n,m,w%f,w%g)
+          w%g = -w%g
           
           normF = normFnew
-          normJF = norm2(g)
+          normJF = norm2(w%g)
           
           ! update the stats 
           status%obj = 0.5*(normF**2)
@@ -1631,46 +1628,6 @@ contains
                 
       end subroutine shift_matrix
 
-
-      subroutine allocate_local_arrays(n,m,J,f,fnew,hf,d,g,Xnew,options,info)
-
-        integer, intent(in) :: n,m 
-        real(wp), allocatable :: J(:)
-        real(wp), allocatable :: f(:), fnew(:)
-        real(wp), allocatable :: hf(:)
-        real(wp), allocatable :: d(:), g(:), Xnew(:)
-        TYPE( NLLS_control_type ), INTENT( IN ) :: options
-        integer, intent(out) :: info
-        
-        if( .not. allocated(J)) allocate(J(n*m), stat = info)
-        if (info > 0) goto 9000
-        if( .not. allocated(f)) allocate(f(m), stat = info)
-        if (info > 0) goto 9000
-        if( .not. allocated(fnew)) allocate(fnew(m), stat = info)
-        if (info > 0) goto 9000
-        if( .not. allocated(hf)) allocate(hf(n*n), stat = info)
-        if (info > 0) goto 9000
-        if( .not. allocated(d)) allocate(d(n), stat = info)
-        if (info > 0) goto 9000
-        if( .not. allocated(g)) allocate(g(n), stat = info)
-        if (info > 0) goto 9000
-        if( .not. allocated(Xnew)) allocate(Xnew(n), stat = info)
-        if (info > 0) goto 9000
-
-        return        
-! Error statements
-9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating local array: ',&
-                'not enough memory.' 
-           write(options%error,'(a,i0)') 'status = ', info
- 
-        end if
-        
-      end subroutine allocate_local_arrays
-      
       subroutine setup_workspaces(workspace,n,m,options,info)
         
         type( NLLS_workspace ), intent(out) :: workspace
@@ -1679,7 +1636,37 @@ contains
         integer, intent(out) :: info
 
         info = 0      
-        
+
+        if( .not. allocated(workspace%J)) then
+           allocate(workspace%J(n*m), stat = info)
+           if (info > 0) goto 9000
+        end if
+        if( .not. allocated(workspace%f)) then
+           allocate(workspace%f(m), stat = info)
+           if (info > 0) goto 9000
+        end if
+        if( .not. allocated(workspace%fnew)) then 
+           allocate(workspace%fnew(m), stat = info)
+           if (info > 0) goto 9000
+        end if
+        if( .not. allocated(workspace%hf)) then
+           allocate(workspace%hf(n*n), stat = info)
+           if (info > 0) goto 9000
+        end if
+        if( .not. allocated(workspace%d)) then
+           allocate(workspace%d(n), stat = info)
+           if (info > 0) goto 9000
+        end if
+        if( .not. allocated(workspace%g)) then
+           allocate(workspace%g(n), stat = info)
+           if (info > 0) goto 9000
+        end if
+        if( .not. allocated(workspace%Xnew)) then
+           allocate(workspace%Xnew(n), stat = info)
+           if (info > 0) goto 9000
+        end if
+
+
         select case (options%nlls_method)
         
         case (1) ! use the dogleg method
@@ -1690,7 +1677,7 @@ contains
         case(2) ! use the AINT method
            call setup_workspace_AINT_tr(n,m,workspace%calculate_step_ws%AINT_tr_ws, & 
                 options, info)
-           if (info > 0) goto 9000
+           if (info > 0) goto 9010
            
         case(3) ! More-Sorensen 
            call setup_workspace_more_sorensen(n,m,&
@@ -1701,15 +1688,26 @@ contains
 
 ! evaluate model in the main routine...       
         call setup_workspace_evaluate_model(n,m,workspace%evaluate_model_ws,options,info)
-        if (info > 0) goto 9000
+        if (info > 0) goto 9010
 
         return
 
 ! Error statements
-9000    continue 
-
+9000    continue
+        ! Allocation errors : dogleg
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
+                'Error allocating local array: ',&
+                'not enough memory.' 
+           write(options%error,'(a,i0)') 'status = ', info
+ 
+        end if
         return
+       
+9010    continue 
         
+        return
+
       end subroutine setup_workspaces
 
       subroutine setup_workspace_dogleg(n,m,w,options,info)
@@ -1759,6 +1757,7 @@ contains
 
         return
         
+
       end subroutine setup_workspace_dogleg
 
       subroutine setup_workspace_solve_LLS(n,m,w,options,info)
