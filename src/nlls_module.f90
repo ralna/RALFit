@@ -421,10 +421,6 @@ module nlls_module
        logical, allocatable :: vecisreal(:)
     end type max_eig_work
 
-!!$    type, private :: solve_spd_work ! workspace for subroutine solve_general
-!!$       real(wp), allocatable :: A(:,:)
-!!$    end type solve_spd_work
-
     type, private :: solve_general_work ! workspace for subroutine solve_general
        real(wp), allocatable :: A(:,:)
        integer, allocatable :: ipiv(:)
