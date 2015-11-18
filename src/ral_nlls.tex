@@ -90,10 +90,10 @@ module to declare scalars of the types {\tt NLLS\_inform\_type}, and
 {\tt NLLS\_control\_type}.
 The following pseudocode illustrates this.
 \begin{verbatim}
-      use nlls\_module
+      use nlls_module
       ...
-      type (NLLS\_inform\_type) :: status
-      type (NLLS\_control\_type) :: control
+      type (NLLS_inform_type) :: status
+      type (NLLS_control_type) :: control
       ...
 \end{verbatim}
 The components of {\tt NLLS\_control} and {\tt NLLS\_inform} are explained
@@ -104,11 +104,11 @@ in Sections~\ref{typecontrol} and \ref{typeinform}.
 \hslarguments
 
 \subsubsection{Integer and package types}
-{\tt INTEGER} denotes default {\tt INTEGER} and 
-{\tt INTEGER(long)} denotes {\tt INTEGER(kind=selected\_int\_kind(18))}.
+{\tt INTEGER} denotes default {\tt INTEGER}.
+% and {\tt INTEGER(long)} denotes {\tt INTEGER(kind=selected\_int\_kind(18))}.
 We use the term {\bf package type} to mean
 default real if the single precision version is being used and
-double precision real for the double precision version.
+double precision real for the double precision version. {\color{red} (remove if only a single precision version is available).}
 
 \subsubsection{To solve the non-linear least squares problem}
 \label{sec:factorize}
@@ -130,14 +130,15 @@ data points available; i.e., $m$ is the number of functions $r_i$.
 and size {\tt n}.  On entry it holds the initial guess, and on 
 successful exit it holds the solution to the non-linear least squares problem.
 
-\itt{eval\_f} is a {\tt PROCEDURE} that returns a vector giving the values of the function $r(x)$.  Further details of the format required are given in Section {\color{red}xxx}
+\itt{eval\_f} is a {\tt PROCEDURE} that returns a vector giving the values of the function $r(x)$.  Further details of the format required are given in Section \ref{sec::function_eval}.
 
-\itt{eval\_j} is a {\tt PROCEDURE} that returns the $m \times n$ Jacobian matrix, $J$, of the function $r(x)$.  Further details of the format required are given in Section {\color{red}xxx}
+\itt{eval\_j} is a {\tt PROCEDURE} that returns the $m \times n$ Jacobian matrix, $J$, of the function $r(x)$.  Further details of the format required are given in Section \ref{sec::function_eval}.
 
-\itt{eval\_hf} is a {\tt PROCEDURE} that returns the matrix $r(x)$.  Further details of the format required are given in Section {\color{red}xxx}
+\itt{eval\_hf} is a {\tt PROCEDURE} that returns the $n \times n$ matrix $\sum_{i=1}^mr_i(x)\nabla^2 r_i(x)$.  Further details of the format required are given in Section \ref{sec::function_eval}.
 
-\itt{params} is an \inentin\ scalar of class {\tt params\_base\_type} that holds parameters to 
-be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}. Further details of its use are given in Section {\color{red}xxx}
+\itt{params} is an \inentin\ scalar of class {\tt user\_type} that must have the {\tt target} attribute.  The structure {\tt params} holds parameters that are to 
+be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}.  
+Here {\tt user\_type} is a user-defined extension of the {\tt params\_base\_type}; for more details, see Section \ref{sec::function_eval}.
 
 \itt{control}is an \intentin\  scalar  of type {\tt NLLS\_control\_type}
 (see Section~\ref{typecontrol}).
@@ -150,9 +151,30 @@ of the subroutine, as explained in Section~\ref{typeinform}.
 
 
 \subsection{The user-supplied function evaluation routines}
-
+\label{sec::function_eval}
 In order to evaluate the function, Jacobian and Hessian at a point, the user must supply
-subroutines that perform this operation that the code {\tt ral\_nlls} will call internally.  The calling sequence of these subroutines much match that described below.
+subroutines that perform this operation that the code {\tt ral\_nlls} will call internally.  
+We recommend that these routines are contained within a module.
+
+In order to pass user-defined data into the evaluation calls, the {\tt params\_base\_type} must be extended to a {\tt user\_type}, as follows:
+\begin{verbatim}
+  module example
+
+    use :: nlls_module, only : params_base_type
+    implicit none
+
+    type, extends( params_base_type ) :: user_type
+       ! code declaring components of user_type 
+    end type user_type
+  
+  contains 
+
+    ! subroutines eval_F, eval_J and eval_HF
+
+  end module example
+\end{verbatim}
+The module should then contain subroutines for evaluating the function, Jacobian, and Hessian.
+The calling sequence of these subroutines much match that described below.
 
 \begin{verbatim}
    eval_F( status, n, m, x, f, params )
@@ -162,6 +184,14 @@ subroutines that perform this operation that the code {\tt ral\_nlls} will call 
   \itt{status} \scalarintegerio that reports on the success of the subroutine call.  A successful call must return {\tt status = 0}, otherwise an error will occur and the {\tt ral\_nlls} subroutine will be exited prematurely.
 
   \itt{n, m, \text{and} params} are as in the call to {\tt ral\_nlls}.
+
+  \itt{params} is an \intentin scalar of class {\tt params\_base\_type} that holds parameters to be passed to the function.  This should be extended to {\tt user\_type} within the code by using a call of the form
+\begin{verbatim}
+   select type(params)
+   type is(user_type)
+     ! code that accesses components of params that were defined within user_type 
+   end select
+\end{verbatim}
 
   \itt{x} \ronearrayrealii{n} that holds the current point, $x_k$.
   
