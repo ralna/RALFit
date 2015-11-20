@@ -936,7 +936,7 @@ contains
      w%M1(n+1:2*n,1:n) = -w%B
      w%M1(1:n,n+1:2*n) = -w%B
      
-     call max_eig(w%M0,w%M1,2*n,lam, w%y, eig_info, y_hardcase, w%max_eig_ws)
+     call max_eig(w%M0,w%M1,2*n,lam, w%y, eig_info, y_hardcase,  options, w%max_eig_ws)
      if ( eig_info > 0 ) goto 1030
 
      if (norm2(w%y(1:n)) < tau) then
@@ -958,10 +958,8 @@ contains
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
         call findbeta(w%q,y_hardcase(:,1),one,Delta,eta,find_status)
-        if ( find_status .ne. 0 ) then
-           write(*,*) 'error: no vaild beta found...'
-           return
-        end if
+        if ( find_status .ne. 0 ) goto 1040
+
         !!!!!      ^^TODO^^    !!!!!
         ! currently assumes B = I !!
         !!!!       fixme!!      !!!!
@@ -993,22 +991,36 @@ contains
 
 1010 continue 
      ! bad error return from solve_spd
-     write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
-     write(options%error,'(a,i0)') 'dposv returned info = ', solve_status
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
+        write(options%error,'(a,i0)') 'dposv returned info = ', solve_status
+     end if
      status%status = 4
      return
      
 1020 continue
      ! bad error return from solve_general
-     write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
-     write(options%error,'(a,i0)') 'dgexv returned info = ', solve_status
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
+        write(options%error,'(a,i0)') 'dgexv returned info = ', solve_status
+     end if
      status%status = 4
      return
      
 1030 continue
      ! bad error return from max_eig
-     write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
-     write(options%error,'(a,i0)') 'dggev returned info = ', eig_info
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
+        write(options%error,'(a,i0)') 'dggev returned info = ', eig_info
+     end if
+     status%status = 4
+     return
+
+1040 continue
+     ! no valid beta found
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'No valid beta found'
+     end if
      status%status = 4
      return
 
@@ -1038,7 +1050,7 @@ contains
 
      real(wp) :: sigma, alpha
      integer :: solve_status, fb_status, mineig_status
-     integer :: test_pd, i 
+     integer :: test_pd, i, no_shifts
      
      ! The code finds 
      !  d = arg min_p   v^T p + 0.5 * p^T A p
@@ -1063,12 +1075,15 @@ contains
         call min_eig_symm(w%A,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
         if (mineig_status .ne. 0) goto 1060 
         sigma = -(sigma - options%more_sorensen_shift)
-        call shift_matrix(w%A,sigma,w%AplusSigma,n)
+        no_shifts = 1
+100     call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
         if ( test_pd .ne. 0 ) then
-           call min_eig_symm(w%AplusSigma,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
-           write(*,*) 'new smallest eig = ', sigma
-           goto 2000 ! shouldn't happen!
+           no_shifts = no_shifts + 1
+           if ( no_shifts == 10 ) goto 3000
+           sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
+           if (options%print_level >=3) write(options%out,2000) sigma
+           goto 100 
         end if
      end if
      
@@ -1124,7 +1139,7 @@ contains
 1020 continue
      ! Converged!
      if ( options%print_level >= 3 ) then
-        write(options%error,'(a,i0)') 'More-Sorensen converged at iteration', i
+        write(options%error,'(a,i0)') 'More-Sorensen converged at iteration ', i
      end if
      return
 
@@ -1162,7 +1177,9 @@ contains
 
      return
      
-2000 continue 
+2000 format('Non-spd system in more_sorensen. Increasing sigma to ',es12.4)
+
+3000 continue 
      ! bad error return from solve_spd
      if ( options%print_level > 0 ) then
         write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
@@ -1323,7 +1340,7 @@ contains
 
      subroutine update_trust_region_radius(rho,options,Delta)
        
-       real(wp), intent(in) :: rho ! ratio of actual to predicted reduction
+       real(wp), intent(inout) :: rho ! ratio of actual to predicted reduction
        type( NLLS_control_type ), intent(in) :: options
        real(wp), intent(inout) :: Delta ! trust region size
        
@@ -1345,6 +1362,7 @@ contains
           ! just incase (NaNs and the like...)
           if (options%print_level > 2) write(options%out,3010) Delta 
           Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+          rho = -one ! set to be negative, so that the logic works....
        end if 
 
        return
@@ -1410,23 +1428,7 @@ contains
        alpha = one
        beta  = zero
 
-!       do i = 1,n
-!          write(*,*) 'multJt(F): x(',i,') = ',x(i)
-!       end do
-
-!
-!       write(*,*) 'multJt(F):'
-!       do i = 1,m*n
-!          write(*,*) 'J(',i,') = ',J(i)
-!       end do
-
        call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
-
- !      write(*,*) 'multJt(F):'
- !      do i = 1,m*n
- !         write(*,*) 'Jtx(',i,') = ',J(i)
- !      end do
-
 
       end subroutine mult_Jt
 
@@ -1437,7 +1439,6 @@ contains
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
         integer, intent(out) :: info
-!        type( solve_spd_work ) :: w
 
         ! A wrapper for the lapack subroutine dposv.f
         ! get workspace for the factors....
@@ -1587,13 +1588,14 @@ contains
                       
       end subroutine min_eig_symm
 
-      subroutine max_eig(A,B,n,ew,ev,info,nullevs,w)
+      subroutine max_eig(A,B,n,ew,ev,info,nullevs,options,w)
         
         real(wp), intent(inout) :: A(:,:), B(:,:)
         integer, intent(in) :: n 
         real(wp), intent(out) :: ew, ev(:)
         integer, intent(out) :: info
         real(wp), intent(out), allocatable :: nullevs(:,:)
+        type( NLLS_control_type ), intent(in) :: options
         type( max_eig_work ) :: w
         
         integer :: lwork, maxindex(1), no_null, halfn
@@ -1607,11 +1609,8 @@ contains
 
         info = 0
         ! check that n is even (important for hard case -- see below)
-        if (modulo(n,2).ne.0) then
-           write(*,*) 'error : non-even sized matrix sent to max eig'
-           info = 2
-           return
-        end if
+        if (modulo(n,2).ne.0) goto 1010
+        
         halfn = n/2
         lwork = size(w%work)
         call dggev('N', & ! No left eigenvectors
@@ -1628,13 +1627,7 @@ contains
         
         w%ew_array(:) = w%alphaR(:)/w%beta(:)
         maxindex = maxloc(w%ew_array,w%vecisreal)
-
-
-        if (maxindex(1) == 0) then
-           write(*,*) 'Error, all eigs are imaginary'
-           info = 1 ! Eigs imaginary error
-           return
-        end if
+        if (maxindex(1) == 0) goto 1000
         
         tau = 1e-4 ! todo -- pass this through from above...
         ! note n/2 always even -- validated by test on entry
@@ -1655,6 +1648,25 @@ contains
         
         ew = w%alphaR(maxindex(1))/w%beta(maxindex(1))
         ev(:) = w%vr(:,maxindex(1))
+
+        return 
+
+1000    continue 
+        if ( options%print_level >=0 ) then
+           write(options%error,'(a)') 'Error, all eigs are imaginary'
+        end if
+        info = 1 ! Eigs imaginary error
+        
+        return
+
+1010    continue
+        if (options%print_level >= 0 ) then 
+           write(options%error,'(a)') 'error : non-even sized matrix sent to max eig'
+        end if
+        info = 2
+
+        return
+
                 
       end subroutine max_eig
 
