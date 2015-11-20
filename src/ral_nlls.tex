@@ -1,4 +1,6 @@
 \documentclass{hslspec}
+
+\usepackage{amsfonts,bm,amsmath}
 \usepackage{color}
 % set the release and package names
 
@@ -8,9 +10,9 @@
 \newcommand{\versionum}{1.0.0}
 \newcommand{\versiondate}{xx xx 20xx}
 \newcommand{\version}{\versionum}
-\newcommand{\scalarinteger}{is a scalar of type {\tt INTEGER}}
-\newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER}}
-\newcommand{\scalarintegerii}{is an \intentin scalar of type {\tt INTEGER}}
+\newcommand{\scalarinteger}{is a scalar of type {\tt INTEGER} }
+\newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER} }
+\newcommand{\scalarintegerii}{is an \intentin scalar of type {\tt INTEGER} }
 \newcommand{\scalarreal}{is a scalar of package type\ }
 \newcommand{\ronearrayinteger}[1]{is a rank-1 array of type {\tt INTEGER} and size {\tt #1}}
 \newcommand{\ronearrayreal}[1]{is a rank-1 array of package type and size {\tt #1}\ }
@@ -21,32 +23,44 @@
 \hslheader
 
 \hslsummary
-{\tt \fullpackagename} computes a solution to the nonlinear least-squares problem
+{\tt \fullpackagename} computes a solution to the non-linear least-squares problem
 \begin{equation}
-\min_{x} \  F(x) := \frac{1}{2}\| r(x) \|^2,
+\min_{\bm x} \  F({\bm x}) := \frac{1}{2}\| {\bm r}({\bm x}) \|_2^2,
 \label{eq:nlls_problem}
 \end{equation}
-
-where $r_i(x) := y_i - f_i(x)$, $i = 1,\dots,m$, is the residual of the fit of the data $y$ to some nonlinear function $f : \mathbb{R}^n \rightarrow \mathbb{R}^m$.  The $n$ parameters we fit are given by $x$.
+where ${\bm r}({\bm x }) =(r_1({\bm x }), r_2({\bm x }),...,r_m({\bm x }))^T$, 
+$r_i({\bm x }) := y_i - f_i({\bm x })$, $i = 1,\dots,m$, is the residual of 
+the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
+($m>n$).  
+The $n$ variables that are fitted are ${\bm x }=(x_1,x_2,...,x_n)^T$.
+\textcolor{blue}{Some confusion: the $y_i$ don't appear again.}
 
 The algorithm is iterative.
-At each point, $x_k$, we build a quadratic model of the function
+At each point, ${\bm x }_k$, a quadratic model of the function
 \[
-F(x_k) \approx m_k(x) := g_k^T x + \frac{1}{2} x^T H_k x.
+F({\bm x }_k) \approx m_k({\bm x }) := {\bm g}_k^T {\bm x } + \frac{1}{2} {\bm x }^T {\bm H}_k {\bm x }.
 \]
-The `ideal' values in this model are $g_k = J_k^Tr(x_k)$ and $H_k = J_k^TJ_k + \sum_{i = 1}^m r_i(x) \nabla^2 r_i(x)$, where $J_k$ denotes the Jacobian of $r(x)$ at the point $x_k$.
+is built.
+The `ideal' values in this model are ${\bm g}_k = {\bm J}_k^T{\bm r}({\bm x }_k)$ and 
+${\bm H}_k = {\bm J}_k^T{\bm J}_k + \sum_{i = 1}^m r_i({\bm x}_k) \nabla^2 r_i({\bm x}_k)$, 
+where ${\bm J}_k$ denotes the $m \times n$ Jacobian of ${\bm r}({\bm x })$ at the point ${\bm x }_k$
+and ${\bm H}_k$ is th Hessian at ${\bm x }_k$.
 
-Once we've formed our model, we solve a trust-region sub-problem of the form
+Once the model has been formed, a trust-region sub-problem of the form
 \[
-d = \arg \min_{x} \ m_k(x) \quad \mathrm{s.t.} \quad  \|x\|_B \leq \Delta,
+{\bm d} = \arg \min_{{\bm x }} \ m_k({\bm x }) \quad \mathrm{s.t.} \quad  \|{\bm x }\|_B \leq \Delta,
 \]
+is solved, 
 where $\Delta$ is the trust region radius and $B$ is a given symmetric positive definite matrix. 
-We then calculate the quantity
-\[\rho = \frac{F(x_k) - F(x_k + d)}{m_k(x_k) - m_k(x_k + d)}.\]
-If this is sufficiently large we accept the point, and set $x_{k+1} = x_k + d$; if not we reduce the trust-region radius, $\Delta$, and solve the new trust-region sub-problem.  If the step is very successful -- in that $\rho$ is close to one -- we increase the trust-region radius.
+The quantity
+\[\rho = \frac{F({\bm x }_k) - F({\bm x }_k + {\bm d})}{m_k({\bm x }_k) - m_k({\bm x }_k + {\bm d})}\]
+is then calculated.
+If this is sufficiently large, the point is accepted and  ${\bm x }_{k+1}$ is set to ${\bm x }_k + {\bm d}$; if not, the trust-region radius, $\Delta$, 
+is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one -- 
+the trust-region radius is increased.
 
-This process continues until either the residual, $\|r(x_k)\|$, or a measure of the gradient,
-$\|J_k^Tr(x_k)\| / \|r(x_k)\|$, is sufficiently small.
+This process continues until either the residual, $\|{\bm r}({\bm x }_k)\|_2$, or a measure of the gradient,
+$\|{\bm J}_k^Tr({\bm x }_k)\|_2 / \|{\bm r}({\bm x }_k)\|_2$, is sufficiently small.
 
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -56,10 +70,10 @@ $\|J_k^Tr(x_k)\| / \|r(x_k)\|$, is sufficiently small.
 \hslIRDCZ Real (single, double).
 \hslcalls {\tt \color{red} todo}.
 \hsllanguage Fortran 2003 subset (F95+TR155581).  
-\hsldate May 2015. 
-\hslorigin The numerical analysis group.
+\hsldate xxx 2015. 
+\hslorigin The Numerical Analysis Group, Rutherford Appleton Laboratory.
 \hslremark The development of this package was 
-partially supported by EPSRC grant {\color{red}EP/xxxxxxx/x}.
+partially supported by EPSRC grant EP/M025179/1.
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!
 \newpage
@@ -78,7 +92,7 @@ Access to the package requires a {\tt USE} statement \\ \\
 \noindent The user can then call the procedure:
 \vspace{-0.1cm}
 \begin{description}
-\item {\tt ral\_nlls}  solves the nonlinear least squares problem (\ref{eq:nlls_problem}).
+\item {\tt RAL\_NLLS}  solves the non-linear least squares problem (\ref{eq:nlls_problem}).
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% derived types %%%%%%%%%%%%%%%%%%%%%%%%
@@ -104,11 +118,11 @@ in Sections~\ref{typecontrol} and \ref{typeinform}.
 \hslarguments
 
 \subsubsection{Integer and package types}
-{\tt INTEGER} denotes default {\tt INTEGER}.
-% and {\tt INTEGER(long)} denotes {\tt INTEGER(kind=selected\_int\_kind(18))}.
-We use the term {\bf package type} to mean
+%{\tt INTEGER} denotes default {\tt INTEGER} and 
+%{\tt INTEGER(long)} denotes {\tt INTEGER(kind=selected\_int\_kind(18))}.
+The term {\bf package type} is used to mean
 default real if the single precision version is being used and
-double precision real for the double precision version. {\color{red} (remove if only a single precision version is available).}
+double precision real for the double precision version.
 
 \subsubsection{To solve the non-linear least squares problem}
 \label{sec:factorize}
@@ -116,29 +130,35 @@ double precision real for the double precision version. {\color{red} (remove if 
 To solve the non-linear least squares problem a call of the following form should be made:
 
 \begin{verbatim}
-   call RAL_NLLS(n, m, X, evalF, eval_J, eval_H, params, status, options)
+   call ral_nlls(n, m, X, evalF, eval_J, eval_H, params, status, options)
 \end{verbatim}
 
 \begin{description}
 \itt{n} \scalarintegerii that holds the number $n$ of 
-parameters to be fitted; i.e., $n$ is the length of the unknown vector $x$.
+variables to be fitted; i.e., $n$ is the length of the unknown vector $\bm x$.
 
 \itt{m} \scalarintegerii that holds the number $m$ of 
-data points available; i.e., $m$ is the number of functions $r_i$.
+data points available; i.e., $m$ is the number of functions $f_i$.
+\textcolor{blue}{restrictions on n and m?}
 
 \itt{X} is an \intentinout\  rank-1 array of package type 
-and size {\tt n}.  On entry it holds the initial guess, and on 
+and size {\tt n}.  On entry, it must hold the initial guess for $\bm x$, and on 
 successful exit it holds the solution to the non-linear least squares problem.
 
-\itt{eval\_f} is a {\tt PROCEDURE} that returns a vector giving the values of the function $r(x)$.  Further details of the format required are given in Section \ref{sec::function_eval}.
+\itt{eval\_f} is a {\tt PROCEDURE} that, given a point ${\bm x}_k$, returns the vector ${\bm r}({\bm x}_k)$.  
+Further details of the format required are given in Section {\color{red}xxx}
 
-\itt{eval\_j} is a {\tt PROCEDURE} that returns the $m \times n$ Jacobian matrix, $J$, of the function $r(x)$.  Further details of the format required are given in Section \ref{sec::function_eval}.
+\itt{eval\_J} is a {\tt PROCEDURE} that, given a point ${\bm x}_k$
+and function $f$, returns the $m \times n$ Jacobian matrix, $\bm J$, of ${\bm r}$ at ${\bm x}_k$.  
+Further details of the format required are given in Section {\color{red}xxx}
 
-\itt{eval\_hf} is a {\tt PROCEDURE} that returns the $n \times n$ matrix $\sum_{i=1}^mr_i(x)\nabla^2 r_i(x)$.  Further details of the format required are given in Section \ref{sec::function_eval}.
+\itt{eval\_Hf} is a {\tt PROCEDURE} that, given a point ${\bm x}_k$
+and function $f$ returns the Hessian at ${\bm x}_k$. 
+Further details of the format required are given in Section {\color{red}xxx}
 
-\itt{params} is an \inentin\ scalar of class {\tt user\_type} that must have the {\tt target} attribute.  The structure {\tt params} holds parameters that are to 
-be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}.  
-Here {\tt user\_type} is a user-defined extension of the {\tt params\_base\_type}; for more details, see Section \ref{sec::function_eval}.
+\itt{params} is an \intentin\ scalar of class {\tt params\_base\_type} that holds parameters to 
+be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}. 
+Further details of its use are given in Section {\color{red}xxx}
 
 \itt{control}is an \intentin\  scalar  of type {\tt NLLS\_control\_type}
 (see Section~\ref{typecontrol}).
@@ -204,9 +224,11 @@ The calling sequence of these subroutines much match that described below.
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  A successful call must return {\tt status = 0}, otherwise an error will occur and the {\tt ral\_nlls} subroutine will be exited prematurely.
+  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
+  A successful call must return {\tt status = 0}, otherwise an error will occur 
+  and the {\tt ral\_nlls} subroutine will exit.
 
-  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_F}.
+  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_f}.
 
   
   \itt{J} \ronearrayrealio{n*m} that holds the Jacobian evaluated at the current point held by columns as a vector.
@@ -214,18 +236,22 @@ The calling sequence of these subroutines much match that described below.
 \end{description}
 
 \begin{verbatim}
-   eval_HF( status, n, m, x, f, HF, params )
+   eval_Hf( status, n, m, x, f, HF, params )
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  A successful call must return {\tt status = 0}, otherwise an error will occur and the {\tt ral\_nlls} subroutine will be exited prematurely.
+  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
+  A successful call must return {\tt status = 0}, otherwise an error will occur and the {\tt ral\_nlls} subroutine 
+  will exit.
 
-  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_F}.
+  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_f}.
 
   
-  \itt{f} \ronearrayrealii{m} that holds the function evaluated at the current point, $r(x_k)$, as returned by a call to {\tt eval\_F}.
+  \itt{f} \ronearrayrealii{m} that holds the function \textcolor{blue}{(what function?)}
+  evaluated at the current point ${\bm x}_k)$, 
+  as returned by a call to {\tt eval\_f}.
 
-  \itt{HF} \ronearrayrealio{n*n} that holds the matrix $\sum_{i = 1}^m r_i(x_k)\nabla^2r_i(x_k)$, held by columns as a vector.
+  \itt{HF} \ronearrayrealio{n*n} that holds the matrix $\sum_{i = 1}^m r_i({\bm x}_k)\nabla^2r_i({\bm x}_k)$, held by columns as a vector.
   
 \end{description}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -260,7 +286,7 @@ controls the level of output required.
 \item{\tt > 3} As 3, and gives increasingly verbose (debugging) output.
 \end{description}
 The default is {\tt diagnostics\_level} $=$ 0.
-
+\end{description}
 
 \noindent {\bf Components that control the main iteration}.
 
@@ -269,7 +295,7 @@ The default is {\tt diagnostics\_level} $=$ 0.
 \itt{maxit} \scalarinteger that gives an upper bound on the number
 of iterations the algorithm is allowed to take before being stopped.  The default value is {\tt 100}.
 
-\itt{model} \scalarinteger that specifies the model, $m_k(\cdot)}$, used.  Possible values are 
+\itt{model} \scalarinteger that specifies the model, $m_k(\cdot)$, used.  Possible values are 
 \begin{description}
   \item{\tt 1} First-order (no Hessian).
   \item{\tt 2} Second-order (exact Hessian).
@@ -277,7 +303,8 @@ of iterations the algorithm is allowed to take before being stopped.  The defaul
 \end{description}
 The default is {\tt model = 1}.
 
-\itt{nlls\_method} \scalarinteger that specifies the method used to solve (or approximate the solution to) the trust-region sub problem.  Possible values are
+\itt{nlls\_method} \scalarinteger that specifies the method used to solve 
+(or approximate the solution to) the trust-region sub problem.  Possible values are
 \begin{description}
   \item{\tt 1} Powell's dogleg method (approximates the solution).
   \item{\tt 2} The Adachi-Iwata-Nakatsukasa-Takeda (AINT) method.
@@ -299,13 +326,16 @@ The default is {\tt nlls\_method = 1}.
 
 \itt{eta\_very\_successful} \scalarreal that specifies the value of $\rho$ after which we increase the trust-region radius.
 
-\itt{eta\_too\_successful} \scalarreal that specifies that value of $\rho$ after which we accept the step, but keep the trust-region radius unchanged.
+\itt{eta\_too\_successful} \scalarreal that specifies that value of $\rho$ after which we accept the step, 
+but keep the trust-region radius unchanged.
 
 \itt{radius\_increase} \scalarreal that specifies the factor to increase the trust-region radius by.
 
 \itt{radius\_reduce} \scalarreal that specifies the factor to decrease the trust-region radius by.
 
-\itt{radius\_reduce\_max} \scalarreal that specifies the smallest factor by which we can reduce the trust-region radius {\color{red} coded up, but always inactive until a more sophisticated increase/reduction strategy is employed}.
+\itt{radius\_reduce\_max} \scalarreal that specifies the smallest factor by 
+which we can reduce the trust-region radius {\color{red} coded up, but always 
+inactive until a more sophisticated increase/reduction strategy is employed}.
 
 \end{description}
 
@@ -313,7 +343,7 @@ The default is {\tt nlls\_method = 1}.
 \subsection{The derived data type for holding information}
 \label{typeinform} 
 The derived data type {\tt NLLS\_inform\_type} is used
-to hold information from the execution of {\tt RAL\_NLLS}.
+to hold information from the execution of {\tt ral\_nlls}.
 The components are:
 \begin{description}
 \itt{status} \scalarinteger that gives the exit status of the subroutine.  See Section {\color{red} ???} for details.
@@ -326,28 +356,28 @@ The components are:
 \hslerrors
 
 A successful return from a subroutine in the package is indicated by 
-{\tt info$\%$flag} having the value zero.  
+{\tt NLLS\_inform$\%$status} having the value zero.  
 A non-zero value is associated with an error message that by default will  
-be output on unit {\tt control$\%$unit\_error}. 
+be output on unit {\tt NLLS\_control$\%$error}. 
 
 Possible values are:
 \begin{description}
-\item{} {\tt 1} Maximum number of iterations reached without convergence.
-\item{} {\tt 2} Error from evaluating a function/Jacobian/Hessian.
-\item{} {\tt 3} Unsupported choice of model.
-\item{} {\tt 4} Error return from an {\tt lapack} routine.
+\item{} {\tt -1} Maximum number of iterations reached without convergence.
+\item{} {\tt -2} Error from evaluating a function/Jacobian/Hessian.
+\item{} {\tt -3} Unsupported choice of model.
+\item{} {\tt -4} Error return from an {\tt lapack} routine.
 \end{description}
 
 \hslgeneral
 
 
 \hslio 
-   Error messages on unit {\tt control$\%$lp} and warning
-   and diagnostic messages on units {\tt control$\%$wp} and {\tt control$\%$mp},
+   Error messages on unit {\tt NLLS\_control$\%$error} and warning
+   and diagnostic messages on unit {\tt NLLS\_control$\%$out},
    respectively. These have default value {\tt 6};
    printing of these messages is suppressed if the relevant unit number
-   is negative or if {\tt print\_level} is negative.
-\hslrestrictions {\tt m$\ge$n$\ge$1}. 
+   is negative or if {\tt NLLS\_control$\%$print\_level} is negative.
+\hslrestrictions {\tt m$\ge$n$\ge$1}.  \textcolor{blue}{do you check this? Error code?}
 
 \hslmethod 
 \label{method}
