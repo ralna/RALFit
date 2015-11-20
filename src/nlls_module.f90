@@ -246,7 +246,7 @@ module nlls_module
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
 
      integer  :: more_sorensen_maxits = 500
-     real(wp) :: more_sorensen_shift = 1e-8
+     real(wp) :: more_sorensen_shift = 1e-13
      real(wp) :: more_sorensen_tiny = 10.0 * epsmch
      real(wp) :: more_sorensen_tol = 1e-6
      
