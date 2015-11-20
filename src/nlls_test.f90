@@ -19,6 +19,10 @@ program nlls_test
 
   type( NLLS_workspace ) :: work, work2, work3, work4, work5
 
+  open(unit = 17, file="nlls_test.out")
+  options%error = 17
+  options%out   = 17 
+
   test_all = .true.
   test_subs = .true.
 
@@ -400,7 +404,8 @@ program nlls_test
      end do
      
      
-     call max_eig(A,B,n,alpha,x,info,C,work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+     call max_eig(A,B,n,alpha,x,info,C,options, & 
+                  work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
 
      if ( (abs( alpha - 10.0 ) > 1e-12).or.(info .ne. 0) ) then
         write(*,*) 'error :: max_eig test failed'
@@ -418,7 +423,8 @@ program nlls_test
      B = A
      A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
 
-     call max_eig(A,B,n,alpha,x,info,C,work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+     call max_eig(A,B,n,alpha,x,info,C,options,& 
+                  work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
 
      if (.not. allocated(C)) then ! check C returned 
         write(*,*) 'error :: hard case of max_eig test failed - C not returned'
@@ -464,13 +470,15 @@ program nlls_test
      B(1,1) = 1.0_wp
      B(2,2) = 1.0_wp
 
-     call max_eig(A,B,n,alpha,x,info,C,work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+     call max_eig(A,B,n,alpha,x,info,C,options, & 
+                  work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
      if (info .ne. 1) then
         write(*,*) 'error :: all complex part of max_eig test failed'
         no_errors_helpers = no_errors_helpers + 1
      end if
 
-     call max_eig(A,B,n+1,alpha,x,info,C,work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+     call max_eig(A,B,n+1,alpha,x,info,C, options, & 
+                  work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
      if (info .ne. 2) then
         write(*,*) 'error :: even part of max_eig test failed'
         no_errors_helpers = no_errors_helpers + 1
@@ -489,7 +497,7 @@ program nlls_test
   end if
 
   
-
+close(unit = 17)
   
 
  if (no_errors_helpers + no_errors_main == 0) then
