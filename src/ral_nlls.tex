@@ -197,11 +197,13 @@ The module should then contain subroutines for evaluating the function, Jacobian
 The calling sequence of these subroutines much match that described below.
 
 \begin{verbatim}
-   eval_F( status, n, m, x, f, params )
+   eval_f( status, n, m, x, f, params )
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  A successful call must return {\tt status = 0}, otherwise an error will occur and the {\tt ral\_nlls} subroutine will be exited prematurely.
+  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
+  A successful call must return {\tt status = 0}, otherwise an error will occur and the 
+  {\tt ral\_nlls} subroutine will  exit.
 
   \itt{n, m, \text{and} params} are as in the call to {\tt ral\_nlls}.
 
@@ -213,9 +215,10 @@ The calling sequence of these subroutines much match that described below.
    end select
 \end{verbatim}
 
-  \itt{x} \ronearrayrealii{n} that holds the current point, $x_k$.
+  \itt{x} \ronearrayrealii{n} that holds the current point ${\bm x}_k$.
   
-  \itt{f} \ronearrayrealio{m} that holds the function evaluated at the current point, $r(x_k)$.
+  \itt{f} \ronearrayrealio{m} that holds the function \textcolor{blue}{(what function?)}
+  evaluated at the current point ${\bm x}_k)$.
   
 \end{description}
 
