@@ -18,6 +18,14 @@
 \newcommand{\ronearrayreal}[1]{is a rank-1 array of package type and size {\tt #1}\ }
 \newcommand{\ronearrayrealii}[1]{is an \intentin rank-1 array of package type and size {\tt #1}\ }
 \newcommand{\ronearrayrealio}[1]{is an \intentout rank-1 array of package type and size {\tt #1}\ }
+\newcommand{\vx}{ {\bm x} } % macro for a vector x
+\newcommand{\vr}{ {\bm r} } % macro for a vector r
+\newcommand{\vg}{ {\bm g} } % macro for a vector g
+\newcommand{\vd}{ {\bm d} } % macro for a vector d
+\newcommand{\vH}{ {\bm H} } % macro for a matrix H
+\newcommand{\vJ}{ {\bm J} } % macro for a matrix J
+\newcommand{\iter}[2][k]{ #2_{#1}^{}} % macro for an iteration
+\newcommand{\comp}[2][i]{ #2_{#1}^{}} % macro for a component of a vector
 \begin{document}
 
 \hslheader
@@ -25,42 +33,42 @@
 \hslsummary
 {\tt \fullpackagename} computes a solution to the non-linear least-squares problem
 \begin{equation}
-\min_{\bm x} \  F({\bm x}) := \frac{1}{2}\| {\bm r}({\bm x}) \|_2^2,
+\min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_2^2,
 \label{eq:nlls_problem}
 \end{equation}
-where ${\bm r}({\bm x }) =(r_1({\bm x }), r_2({\bm x }),...,r_m({\bm x }))^T$, 
-$r_i({\bm x }) := y_i - f_i({\bm x })$, $i = 1,\dots,m$, is the residual of 
-the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
-($m>n$).  
-The $n$ variables that are fitted are ${\bm x }=(x_1,x_2,...,x_n)^T$.
-\textcolor{blue}{Some confusion: the $y_i$ don't appear again.}
+where $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is the non-linear residual of 
+some data that needs fitting.
+% the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
+% ($m>n$).  
+% The $n$ variables that are fitted are $\vx=(x_1,x_2,...,x_n)^T$.
+% \textcolor{blue}{Some confusion: the $y_i$ don't appear again.}
 
 The algorithm is iterative.
-At each point, ${\bm x }_k$, a quadratic model of the function
+At each point, $\iter{\vx}$, a quadratic model of the function
 \[
-F({\bm x }_k) \approx m_k({\bm x }) := {\bm g}_k^T {\bm x } + \frac{1}{2} {\bm x }^T {\bm H}_k {\bm x }.
+F(\iter{\vx}) \approx \iter{m}(\vx) := \iter{\vg}^T \vx + \frac{1}{2} \vx^T \iter{\vH} \vx.
 \]
 is built.
-The `ideal' values in this model are ${\bm g}_k = {\bm J}_k^T{\bm r}({\bm x }_k)$ and 
-${\bm H}_k = {\bm J}_k^T{\bm J}_k + \sum_{i = 1}^m r_i({\bm x}_k) \nabla^2 r_i({\bm x}_k)$, 
-where ${\bm J}_k$ denotes the $m \times n$ Jacobian of ${\bm r}({\bm x })$ at the point ${\bm x }_k$
-and ${\bm H}_k$ is th Hessian at ${\bm x }_k$.
+The `ideal' values in this model are $\iter{\vg} = \iter{\vJ}^T\vr(\iter{\vx})$ and 
+$\iter{\vH} = \iter{\vJ}^T\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \nabla^2 \comp{r}(\iter{\vx})$, 
+where $\iter{\vJ}$ denotes the $m \times n$ Jacobian of $\vr(\vx)$ at the point $\iter{\vx}$
+and $\iter{\vH}$ is the Hessian at $\iter{\vx}$.
 
 Once the model has been formed, a trust-region sub-problem of the form
 \[
-{\bm d} = \arg \min_{{\bm x }} \ m_k({\bm x }) \quad \mathrm{s.t.} \quad  \|{\bm x }\|_B \leq \Delta,
+\vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,
 \]
 is solved, 
 where $\Delta$ is the trust region radius and $B$ is a given symmetric positive definite matrix. 
 The quantity
-\[\rho = \frac{F({\bm x }_k) - F({\bm x }_k + {\bm d})}{m_k({\bm x }_k) - m_k({\bm x }_k + {\bm d})}\]
+\[\rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \vd)}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \vd)}\]
 is then calculated.
-If this is sufficiently large, the point is accepted and  ${\bm x }_{k+1}$ is set to ${\bm x }_k + {\bm d}$; if not, the trust-region radius, $\Delta$, 
+If this is sufficiently large, the point is accepted and  $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \vd$; if not, the trust-region radius, $\Delta$, 
 is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one -- 
 the trust-region radius is increased.
 
-This process continues until either the residual, $\|{\bm r}({\bm x }_k)\|_2$, or a measure of the gradient,
-$\|{\bm J}_k^Tr({\bm x }_k)\|_2 / \|{\bm r}({\bm x }_k)\|_2$, is sufficiently small.
+This process continues until either the residual, $\|\vr(\iter{\vx})\|_2$, or a measure of the gradient,
+$\|\iter{\vJ}^T\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_2$, is sufficiently small.
 
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -145,15 +153,15 @@ data points available; i.e., $m$ is the number of functions $f_i$.
 and size {\tt n}.  On entry, it must hold the initial guess for $\bm x$, and on 
 successful exit it holds the solution to the non-linear least squares problem.
 
-\itt{eval\_f} is a {\tt PROCEDURE} that, given a point ${\bm x}_k$, returns the vector ${\bm r}({\bm x}_k)$.  
+\itt{eval\_f} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, returns the vector $\vr(\iter{\vx})$.  
 Further details of the format required are given in Section {\color{red}xxx}
 
-\itt{eval\_J} is a {\tt PROCEDURE} that, given a point ${\bm x}_k$
-and function $f$, returns the $m \times n$ Jacobian matrix, $\bm J$, of ${\bm r}$ at ${\bm x}_k$.  
+\itt{eval\_J} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, 
+returns the $m \times n$ Jacobian matrix, $\iter{\vJ}$, of $\vr$ at $\iter{\vx}$.  
 Further details of the format required are given in Section {\color{red}xxx}
 
-\itt{eval\_Hf} is a {\tt PROCEDURE} that, given a point ${\bm x}_k$
-and function $f$ returns the Hessian at ${\bm x}_k$. 
+\itt{eval\_Hf} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$
+and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at $\iter{\vx}$. 
 Further details of the format required are given in Section {\color{red}xxx}
 
 \itt{params} is an \intentin\ scalar of class {\tt params\_base\_type} that holds parameters to 
@@ -205,7 +213,7 @@ The calling sequence of these subroutines much match that described below.
   A successful call must return {\tt status = 0}, otherwise an error will occur and the 
   {\tt ral\_nlls} subroutine will  exit.
 
-  \itt{n, m, \text{and} params} are as in the call to {\tt ral\_nlls}.
+  \itt{n, m} are as in the call to {\tt ral\_nlls}.
 
   \itt{params} is an \intentin scalar of class {\tt params\_base\_type} that holds parameters to be passed to the function.  This should be extended to {\tt user\_type} within the code by using a call of the form
 \begin{verbatim}
@@ -215,10 +223,10 @@ The calling sequence of these subroutines much match that described below.
    end select
 \end{verbatim}
 
-  \itt{x} \ronearrayrealii{n} that holds the current point ${\bm x}_k$.
+  \itt{x} \ronearrayrealii{n} that holds the current point $\iter{\vx}$.
   
-  \itt{f} \ronearrayrealio{m} that holds the function \textcolor{blue}{(what function?)}
-  evaluated at the current point ${\bm x}_k)$.
+  \itt{f} \ronearrayrealio{m} that holds the residual function 
+  evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
   
 \end{description}
 
@@ -250,11 +258,11 @@ The calling sequence of these subroutines much match that described below.
   \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_f}.
 
   
-  \itt{f} \ronearrayrealii{m} that holds the function \textcolor{blue}{(what function?)}
-  evaluated at the current point ${\bm x}_k)$, 
+  \itt{f} \ronearrayrealii{m} that holds the residual function
+  evaluated at the current point $\vx_k)$, 
   as returned by a call to {\tt eval\_f}.
 
-  \itt{HF} \ronearrayrealio{n*n} that holds the matrix $\sum_{i = 1}^m r_i({\bm x}_k)\nabla^2r_i({\bm x}_k)$, held by columns as a vector.
+  \itt{HF} \ronearrayrealio{n*n} that holds the matrix $\sum_{i = 1}^m \comp{r}(\iter{\vx})\nabla^2\comp{r}(\iter{\vx})$, held by columns as a vector.
   
 \end{description}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
