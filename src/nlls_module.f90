@@ -538,7 +538,7 @@ contains
     
      ! If we reach here, then we're over maxits     
      if (control%print_level > 0 ) write(control%out,1040) 
-     info%status = 1
+     info%status = -1
     
      RETURN
 
@@ -735,7 +735,7 @@ contains
     if (control%print_level > 0) then
        write(control%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
     end if
-    info%status = 2
+    info%status = -2
     goto 4000
 
 4020 continue
@@ -743,7 +743,7 @@ contains
     if (control%print_level > 0) then
        write(control%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
     end if
-    info%status = 2
+    info%status = -2
     goto 4000
 
 4030 continue
@@ -751,7 +751,7 @@ contains
     if (control%print_level > 0) then
        write(control%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
     end if
-    info%status = 2
+    info%status = -2
     goto 4000
 
 4040 continue 
@@ -760,7 +760,7 @@ contains
        write(control%error,'(a,i0,a)') 'Error: the choice of control%model = ', &
             control%model, ' is not supported'
     end if
-    info%status = 3
+    info%status = -3
     goto 4000
 
 ! convergence 
@@ -808,7 +808,7 @@ contains
         if ( control%print_level > 0 ) then
            write(control%error,'(a)') 'Error: unknown value of control%nlls_method'
            write(control%error,'(a,i0)') 'control%nlls_method = ', control%nlls_method
-           info%status = 110 ! fix me
+           info%status = -110 ! fix me
         end if
 
      end select
@@ -847,7 +847,7 @@ contains
         if (control%print_level> 0) then
            write(control%error,'(a)') 'Error: model not supported in dogleg'
         end if
-        info%status = 3
+        info%status = -3
         return
      end select
      
@@ -995,7 +995,7 @@ contains
         write(control%error,'(a)') 'Error in solving a linear system in AINT_TR'
         write(control%error,'(a,i0)') 'dposv returned info = ', solve_status
      end if
-     info%status = 4
+     info%status = -4
      return
      
 1020 continue
@@ -1004,7 +1004,7 @@ contains
         write(control%error,'(a)') 'Error in solving a linear system in AINT_TR'
         write(control%error,'(a,i0)') 'dgexv returned info = ', solve_status
      end if
-     info%status = 4
+     info%status = -4
      return
      
 1030 continue
@@ -1013,7 +1013,7 @@ contains
         write(control%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
         write(control%error,'(a,i0)') 'dggev returned info = ', eig_info
      end if
-     info%status = 4
+     info%status = -4
      return
 
 1040 continue
@@ -1021,7 +1021,7 @@ contains
      if ( control%print_level >= 0 ) then 
         write(control%error,'(a)') 'No valid beta found'
      end if
-     info%status = 4
+     info%status = -4
      return
 
    end SUBROUTINE AINT_tr
@@ -1133,7 +1133,7 @@ contains
         write(control%out,'(a)') 'Error in solving a linear system in More_sorensen'
         write(control%out,'(a,i0)') 'dposv returned info = ', solve_status
      end if
-     info%status = 4
+     info%status = -4
      return
 
 1020 continue
@@ -1151,7 +1151,7 @@ contains
         write(control%error,'(a)') 'Maximum iterations reached in More-Sorensen'
         write(control%error,'(a)') 'without convergence'
      end if
-     info%status = 100 ! fix me
+     info%status = -100 ! fix me
      return
 
 1050 continue
@@ -1165,7 +1165,7 @@ contains
         write(control%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
         write(control%error,'(a,i0)') 'info = ', mineig_status
      end if
-     info%status = 333
+     info%status = -333
 
      return
 
@@ -1173,7 +1173,7 @@ contains
      if ( control%print_level >= 3 ) then
         write(control%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
      end if
-     info%status = 200
+     info%status = -200
 
      return
      
@@ -1185,7 +1185,7 @@ contains
         write(control%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
         write(control%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     info%status = 500
+     info%status = -500
      return
      
 2010 continue 
@@ -1195,7 +1195,7 @@ contains
                                    'in More_sorensen loop'
         write(control%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     info%status = 600
+     info%status = -600
      return
      
      

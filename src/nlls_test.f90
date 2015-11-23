@@ -61,14 +61,14 @@ program nlls_test
                 eval_F, eval_J, eval_H, params,  &
                 status, options )
            if (( nlls_method == 1).and.( model > 1)) then
-              if ( status%status .ne. 3 ) then
+              if ( status%status .ne. -3 ) then
                  write(*,*) 'incorrect error return from ral_nlls:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', model
                  no_errors_main = no_errors_main + 1
               end if
            else if ( model == 0 ) then
-              if ( status%status .ne. 3 ) then
+              if ( status%status .ne. -3 ) then
                  write(*,*) 'incorrect error return from ral_nlls:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', model
