@@ -114,7 +114,7 @@ The following pseudocode illustrates this.
 \begin{verbatim}
       use nlls_module
       ...
-      type (NLLS_inform_type) :: status
+      type (NLLS_inform_type) :: info
       type (NLLS_control_type) :: control
       ...
 \end{verbatim}
@@ -138,7 +138,7 @@ double precision real for the double precision version.
 To solve the non-linear least squares problem a call of the following form should be made:
 
 \begin{verbatim}
-   call ral_nlls(n, m, X, evalF, eval_J, eval_H, params, status, options)
+   call ral_nlls(n, m, X, evalF, eval_J, eval_H, params, info, control)
 \end{verbatim}
 
 \begin{description}
@@ -168,12 +168,13 @@ Further details of the format required are given in Section {\color{red}xxx}
 be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}. 
 Further details of its use are given in Section {\color{red}xxx}
 
+\itt{info} is an \intentinout\ scalar of type 
+{\tt NLLS\_inform\_type}. Its components provide information about the execution
+of the subroutine, as explained in Section~\ref{typeinform}.
+
 \itt{control}is an \intentin\  scalar  of type {\tt NLLS\_control\_type}
 (see Section~\ref{typecontrol}).
 
-\itt{status} is an \intentinout\ scalar of type 
-{\tt NLLS\_inform\_type}. Its components provide information about the execution
-of the subroutine, as explained in Section~\ref{typeinform}.
 
 \end{description}
 
