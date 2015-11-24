@@ -13,8 +13,8 @@ echo "**        R A L _ N L L S          **"
 echo "**                                 **"
 echo "*************************************"
 
-> results.out
-> results.out_data
+> data/results.out
+> data/results.out_data
 cat sif_names.txt | while read file; do
     echo " "
     echo " ~~~~~~~ $file ~~~~~~~~ "
@@ -27,6 +27,6 @@ done
 
 if [ $# -eq 1 ]
  then
-    mv results.out $1
-    mv results.out_data $1_data
+    mv data/results.out data/$1
+    mv data/results.out_data data/$1_data
 fi

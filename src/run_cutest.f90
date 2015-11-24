@@ -146,8 +146,8 @@ else
 end if
 
 inform%iter = 23
-open(unit=42,file="results.out",position="append")
-open(unit=52,file="results.out_data",position="append")
+open(unit=42,file="data/results.out",position="append")
+open(unit=52,file="data/results.out_data",position="append")
 CALL RAL_NLLS( n, m, X,                                    &
      !              Work_integer, len_work_integer, Work_real, len_work_real &
     eval_F, eval_J, eval_HF, params,            &
@@ -180,7 +180,7 @@ close(unit=42)
 
 
 if (control%output_progress_vectors) then
-   progressfile = trim(pname) // "_progress.out"
+   progressfile = "data/" // trim(pname) // "_progress.out"
    open(unit = 62, file = progressfile)
    do i = 1,inform%iter + 1
       write(62,'(ES20.14, T25, ES20.14)') inform%gradvec(i), &

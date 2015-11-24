@@ -5,9 +5,9 @@ import numpy as np
 info = np.dtype({'names' : ('n','m','status','iter','res','grad'),
         'formats' : ('int','int','int','int','float','float')})
 
-data1 = np.loadtxt("results_m1.out_data", dtype = info)
-data2 = np.loadtxt("results_m2.out_data", dtype = info)
-data7 = np.loadtxt("results_m7.out_data", dtype = info)
+data1 = np.loadtxt("data/results_m1.out_data", dtype = info)
+data2 = np.loadtxt("data/results_m2.out_data", dtype = info)
+data7 = np.loadtxt("data/results_m7.out_data", dtype = info)
 
 all_iterates = np.array([ data1['iter'] , data2['iter'], data7['iter']  ])
 all_status = np.array([ data1['status'] , data2['status'], data7['status']  ])
