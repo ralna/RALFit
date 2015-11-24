@@ -254,7 +254,15 @@ module nlls_module
      real(wp) :: more_sorensen_shift = 1e-13
      real(wp) :: more_sorensen_tiny = 10.0 * epsmch
      real(wp) :: more_sorensen_tol = 1e-6
-     
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! O U T P U T   C O N T R O L S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! Shall we output progess vectors at termination of the routine?
+     logical :: output_progress_vectors = .false.
+
+
   END TYPE NLLS_control_type
 
 !  - - - - - - - - - - - - - - - - - - - - - - - 
@@ -499,6 +507,7 @@ module nlls_module
        real(wp), allocatable :: f(:), fnew(:)
        real(wp), allocatable :: hf(:)
        real(wp), allocatable :: d(:), g(:), Xnew(:)
+       real(wp), allocatable :: resvec(:), gradvec(:)
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
@@ -581,7 +590,7 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0, hfstatus=0
+    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0
     integer :: i 
     real(wp) :: rho, normJF, normF, normFnew, md
 
@@ -620,6 +629,7 @@ contains
        
        normF = norm2(w%f)
        w%normF0 = normF
+
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
@@ -629,6 +639,11 @@ contains
        ! save some data 
        info%obj = 0.5 * ( normF**2 )
        info%norm_g = normJF
+
+       if (control%output_progress_vectors) then
+          w%resvec(1) = info%obj
+          w%gradvec(1) = info%norm_g
+       end if
        
     end if
 
@@ -720,6 +735,10 @@ contains
     ! update the stats 
     info%obj = 0.5*(normF**2)
     info%norm_g = normJF
+    if (control%output_progress_vectors) then
+       w%resvec (w%iter + 1) = info%obj
+       w%gradvec(w%iter + 1) = info%norm_g
+    end if
     
     if ( (control%model == 7) .and. (normJF < control%hybrid_switch) ) then
        w%use_second_derivatives = .true.
@@ -755,6 +774,27 @@ contains
 ! error returns
 4000 continue
     ! generic end of algorithm
+        ! all (final) exits should pass through here...
+    if (control%output_progress_vectors) then
+       write(*,*) 'here!'
+       if(.not. allocated(info%resvec)) then 
+          allocate(info%resvec(w%iter + 1), stat = astatus)
+          if (astatus > 0) then
+             info%status = -9999
+             return
+          end if
+          info%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
+       end if
+       if(.not. allocated(info%gradvec)) then 
+          allocate(info%gradvec(w%iter + 1), stat = astatus)
+          if (astatus > 0) then
+             info%status = -9999
+             return
+          end if
+          info%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
+       end if
+    end if
+
     return
 
 4010 continue
@@ -797,14 +837,16 @@ contains
        write(control%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
             w%iter
     end if
-    return
+    goto 4000
+
 5010 continue
     if (control%print_level > 2) then
        write(control%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
             w%iter
     end if
+    goto 4000
 
-    return
+
 !  End of subroutine RAL_NLLS_iterate
 
   end subroutine ral_nlls_iterate
@@ -1723,6 +1765,17 @@ contains
         status = 0      
         
         workspace%first_call = 0
+
+        if( control%output_progress_vectors ) then 
+           if (.not. allocated(workspace%resvec)) then
+              allocate(workspace%resvec(control%maxit+1), stat = status)
+              if (status > 0) goto 9000
+           end if
+           if (.not. allocated(workspace%gradvec)) then
+              allocate(workspace%gradvec(control%maxit+1), stat = status)
+              if (status > 0) goto 9000
+           end if
+        end if
                 
         if( .not. allocated(workspace%J)) then
            allocate(workspace%J(n*m), stat = status)
