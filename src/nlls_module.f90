@@ -776,7 +776,6 @@ contains
     ! generic end of algorithm
         ! all (final) exits should pass through here...
     if (control%output_progress_vectors) then
-       write(*,*) 'here!'
        if(.not. allocated(info%resvec)) then 
           allocate(info%resvec(w%iter + 1), stat = astatus)
           if (astatus > 0) then

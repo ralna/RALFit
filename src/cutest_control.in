@@ -1,0 +1,7 @@
+3                   ! print_level
+3		    ! nlls_method
+.true.		    ! subproblem_eig_fact
+1000		    ! maxit
+1		    ! model
+1e-12, 1e-12	    ! stop_g_(relative,absolute)
+.true. 		    ! output_progress_vectors

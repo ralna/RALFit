@@ -26,12 +26,14 @@ TYPE( NLLS_inform_type ) :: inform
 TYPE( NLLS_control_type ) :: control
 LOGICAL, DIMENSION( : ), ALLOCATABLE  :: EQUATN, LINEAR
 CHARACTER ( LEN = 10 ) :: pname
+CHARACTER ( LEN = 30 ) :: progressfile
 CHARACTER ( LEN = 10 ), ALLOCATABLE, DIMENSION( : )  :: VNAMES, CNAMES
 REAL( c_double ), DIMENSION( 2 ) :: CPU
 REAL( c_double ), DIMENSION( 4 ) :: CALLS
 INTEGER :: io_buffer = 11
 INTEGER, PARAMETER :: input = 55, indr = 46, out = 6
-
+integer :: i
+logical :: read_controls_in
 !  Interface blocks
 
 INTERFACE
@@ -121,13 +123,27 @@ READ ( indr, 1000 ) control%error, control%out, control%print_level
 CLOSE ( indr )
 
 !  call the minimizer
-control%print_level = 3
-control%nlls_method = 3
-control%subproblem_eig_fact = .true.
-control%maxit = 1000
-control%model = 7
-control%stop_g_relative = 1e-12
-control%stop_g_absolute = 1e-12
+read_controls_in = .true.
+if (read_controls_in) then
+   open(unit = 17, file = "cutest_control.in")
+   read(17,*) control%print_level
+   read(17,*) control%nlls_method
+   read(17,*) control%subproblem_eig_fact
+   read(17,*) control%maxit
+   read(17,*) control%model
+   read(17,*) control%stop_g_relative, control%stop_g_absolute
+   read(17,*) control%output_progress_vectors
+   close(unit=17)
+else
+   control%print_level = 3
+   control%nlls_method = 3
+   control%subproblem_eig_fact = .true.
+   control%maxit = 1000
+   control%model = 7
+   control%stop_g_relative = 1e-12
+   control%stop_g_absolute = 1e-12
+   control%output_progress_vectors = .true.
+end if
 
 inform%iter = 23
 open(unit=42,file="results.out",position="append")
@@ -150,7 +166,7 @@ write(42,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   status = ', inform%status, &                                   
      ',   iter = ', inform%iter , &
      ',   obj = ', inform%obj
-write(52,'(i0,T10,i0,T20,i0,T30,i0,T40,ES20.14,T65,ES20.14)') n,&
+write(52,'(i0,T10,i0,T20,i0,T30,i0,T40,ES23.15E3,T65,ES23.15E3)') n,&
                                                   m,&
                                                   inform%status, &
                                                   inform%iter, &
@@ -161,6 +177,18 @@ write(*,'(a,a,i0,a,i0,a,i0,a,i0,a,ES12.4)') pname,': n = ', n, ', m = ',m, &
      ',   iter = ', inform%iter, &
      ',   obj = ', inform%obj
 close(unit=42)
+
+
+if (control%output_progress_vectors) then
+   progressfile = trim(pname) // "_progress.out"
+   open(unit = 62, file = progressfile)
+   do i = 1,inform%iter + 1
+      write(62,'(ES20.14, T25, ES20.14)') inform%gradvec(i), &
+                                          inform%resvec(i)
+   end do
+   close(unit = 62)
+end if
+
 
 
 CALL eval_F( status, n, m, X, F, params)
