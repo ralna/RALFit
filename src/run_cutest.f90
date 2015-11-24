@@ -125,7 +125,9 @@ control%print_level = 3
 control%nlls_method = 3
 control%subproblem_eig_fact = .true.
 control%maxit = 1000
-control%model = 1
+control%model = 7
+control%stop_g_relative = 1e-12
+control%stop_g_absolute = 1e-12
 
 inform%iter = 23
 open(unit=42,file="results.out",position="append")

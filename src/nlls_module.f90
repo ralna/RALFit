@@ -71,13 +71,14 @@ module nlls_module
 !   specify the model used. Possible values are
 !
 !      0  dynamic (*not yet implemented*)
-!      1  first-order (no Hessian)
+!      1  Gauss-Newton (no 2nd derivatives)
 !      2  second-order (exact Hessian)
 !      3  barely second-order (identity Hessian)
 !      4  secant second-order (sparsity-based)
 !      5  secant second-order (limited-memory BFGS, with %lbfgs_vectors history)
 !      6  secant second-order (limited-memory SR1, with %lbfgs_vectors history)
-
+!      7  hybrid (Gauss-Newton until gradient small, then Newton)
+ 
      INTEGER :: model = 1
 
 !   specify the norm used. The norm is defined via ||v||^2 = v^T P v,
@@ -194,6 +195,10 @@ module nlls_module
 
 !$$     REAL ( KIND = wp ) :: obj_unbounded = - epsmch ** ( - 2 )
 
+!   if model=7, then the value with which we switch on second derivatives
+     
+     real ( kind = wp ) :: hybrid_switch = 0.1_wp
+
 !   the maximum CPU time allowed (-ve means infinite)
      
 !$$     REAL ( KIND = wp ) :: cpu_time_limit = - one
@@ -301,6 +306,14 @@ module nlls_module
 !  test on the size of the gradient satisfied?
      
      integer :: convergence_normg = 0
+     
+!  vector of residuals 
+     
+     real(wp), allocatable :: resvec(:)
+
+!  vector of gradients 
+     
+     real(wp), allocatable :: gradvec(:)
 
 !  the maximum number of factorizations in a sub-problem solve
 
@@ -481,6 +494,7 @@ module nlls_module
        integer :: iter = 0 
        real(wp) :: normF0, normJF0
        real(wp) :: Delta
+       logical :: use_second_derivatives = .false.
        real(wp), allocatable :: J(:)
        real(wp), allocatable :: f(:), fnew(:)
        real(wp), allocatable :: hf(:)
@@ -597,10 +611,13 @@ contains
        case (3) ! barely second order (identity hessian)
           w%hf(1:n**2) = zero
           w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
+       case (7) ! hybrid
+          ! first call, so always first-derivatives only
+          w%hf(1:n**2) = zero
        case default
           goto 4040 ! unsupported model -- return to user
        end select
-
+       
        normF = norm2(w%f)
        w%normF0 = normF
        !    g = -J^Tf
@@ -612,7 +629,7 @@ contains
        ! save some data 
        info%obj = 0.5 * ( normF**2 )
        info%norm_g = normJF
-
+       
     end if
 
 
@@ -684,6 +701,13 @@ contains
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
        continue
+    case (7) ! hybrid method
+       if ( w%use_second_derivatives ) then 
+          ! hybrid switch turned on....
+          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+          info%h_eval = info%h_eval + 1
+          if (hfstatus > 0) goto 4030
+       end if
     end select
 
     ! g = -J^Tf
@@ -696,8 +720,11 @@ contains
     ! update the stats 
     info%obj = 0.5*(normF**2)
     info%norm_g = normJF
-
-
+    
+    if ( (control%model == 7) .and. (normJF < control%hybrid_switch) ) then
+       w%use_second_derivatives = .true.
+    end if
+    
     if (control%print_level >=3) write(control%out,3010) info%obj
     if (control%print_level >=3) write(control%out,3060) normJF/normF
 
