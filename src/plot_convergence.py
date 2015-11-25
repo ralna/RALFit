@@ -21,9 +21,30 @@ try:
 except:
     print "Sorry, no data linked with problem ", problem, " found"
 
+# Plot the gradients
+plt.figure(1)
 plt.semilogy(progress1['grad'],label="Gauss-Newton")
 plt.semilogy(progress2['grad'],label="Newton")
 plt.semilogy(progress7['grad'],label="Hybrid")
 
 plt.legend()
+plt.title(problem+': gradients')
+plt.xlabel('Iteration number')
+plt.ylabel('$||J^Tr||_2$')
+plt.savefig('../doc/img/'+problem+'.png')
+
+# Plot the residuals
+plt.figure(2)
+plt.semilogy(progress1['res'],label="Gauss-Newton")
+plt.semilogy(progress2['res'],label="Newton")
+plt.semilogy(progress7['res'],label="Hybrid")
+
+plt.legend()
+plt.title(problem+': residuals')
+plt.xlabel('Iteration number')
+plt.ylabel('$1/2||r||^2_2$')
+
+
 plt.show()
+plt.savefig('../doc/img/'+problem+'_res.png')
+
