@@ -501,8 +501,10 @@ module nlls_module
        integer :: first_call = 1
        integer :: iter = 0 
        real(wp) :: normF0, normJF0
+       real(wp) :: normJFold, normJF_Newton
        real(wp) :: Delta
        logical :: use_second_derivatives = .false.
+       real(wp), allocatable :: fNewton(:), JNewton(:), XNewton(:)
        real(wp), allocatable :: J(:)
        real(wp), allocatable :: f(:), fnew(:)
        real(wp), allocatable :: hf(:)
@@ -593,6 +595,7 @@ contains
     integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0
     integer :: i 
     real(wp) :: rho, normJF, normF, normFnew, md
+    logical :: success
 
     ! Perform a single iteration of the RAL_NLLS loop
     
@@ -623,6 +626,12 @@ contains
        case (7) ! hybrid
           ! first call, so always first-derivatives only
           w%hf(1:n**2) = zero
+       case (8) ! hybrid II
+          ! always second order for first call...
+          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+          info%h_eval = info%h_eval + 1
+          if (hfstatus > 0) goto 4030
+          w%use_second_derivatives = .true.
        case default
           goto 4040 ! unsupported model -- return to user
        end select
@@ -635,11 +644,14 @@ contains
        w%g = -w%g
        normJF = norm2(w%g)
        w%normJF0 = normJF
+       if (control%model == 8) w%normJFold = normJF
 
        ! save some data 
        info%obj = 0.5 * ( normF**2 )
        info%norm_g = normJF
 
+       
+       write(*,*) 'normJF = ', normJF
        if (control%output_progress_vectors) then
           w%resvec(1) = info%obj
           w%gradvec(1) = info%norm_g
@@ -653,8 +665,9 @@ contains
     info%iter = w%iter
     
     rho  = -one ! intialize rho as a negative value
-
-    do while (rho < control%eta_successful) ! loop until successful
+    success = .false.
+    
+    do while (.not. success) ! loop until successful
        !+++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the step                        !
        !    d                                      !   
@@ -691,11 +704,67 @@ contains
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
        call calculate_rho(normF,normFnew,md,rho)
-    
+       if (rho > control%eta_successful) success = .true.
+       
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
        call update_trust_region_radius(rho,control,w%Delta)
+
+       !+++++++++++++++++++++++!
+       ! Add tests for model=8 !
+       !+++++++++++++++++++++++!
+       model8_success: if ( success .and. (control%model == 8) ) then
+          ! evaluate J and hf at the new point
+          call eval_J(jstatus, n, m, w%Xnew, w%J, params)
+          info%g_eval = info%g_eval + 1
+          if (jstatus > 0) goto 4010
+
+          ! g = -J^Tf
+          call mult_Jt(w%J,n,m,w%fnew,w%g)
+          w%g = -w%g
+       
+          normF = normFnew
+          normJF = norm2(w%g)
+          
+          write(*,*) 'normJf = ', normJF
+          write(*,*) 'previous normJF = ', w%normJFold
+          
+          decrease_grad: if (normJF > w%normJFold) then
+             ! no reduction in residual...
+             which_time_round: if (w%use_second_derivatives) then
+                w%use_second_derivatives = .false.
+                w%hf(1:n**2) = zero
+                w%normJF_Newton = normJF
+                success = .false.
+                ! copy current vectors....
+                ! (maybe streamline for production?!)
+                w%fNewton(:) = w%fnew(:)
+                w%JNewton(:) = w%J(:)
+                w%XNewton(:) = w%Xnew(:)
+             else  
+                ! Gauss-Newton gave no benefit either....
+                w%use_second_derivatives = .true.
+                write(*,*) 'JtF (Newton) = ', w%normJF_Newton
+                write(*,*) 'JtF (GN) = ', normJF
+                write(*,*) 'JtF (previous) = ', w%normJFold
+                Newton_better: if ( w%normJF_Newton < normJF ) then
+                   ! Newton values were better...replace
+                   w%fnew(:) = w%fNewton(:)
+                   w%J(:) = w%JNewton(:)
+                   w%Xnew(:) = w%XNewton(:)
+                   w%normJFold = w%normJF_Newton
+                   normJF = w%normJF_Newton
+                else
+                   w%normJFold = normJF
+                end if Newton_better
+                success = .true.
+             end if which_time_round
+          else 
+             w%normJFold = normJF
+          end if decrease_grad
+                 
+       end if model8_success
        
     end do
     ! if we reach here, a successful step has been found
@@ -703,10 +772,24 @@ contains
     ! update X and f
     X = w%Xnew; 
     w%f = w%fnew; 
-    ! evaluate J and hf at the new point
-    call eval_J(jstatus, n, m, X, w%J, params)
-    info%g_eval = info%g_eval + 1
-    if (jstatus > 0) goto 4010
+    
+    if ( control%model .ne. 8 ) then 
+       ! evaluate J and hf at the new point
+       call eval_J(jstatus, n, m, X, w%J, params)
+       info%g_eval = info%g_eval + 1
+       if (jstatus > 0) goto 4010
+
+       ! g = -J^Tf
+       call mult_Jt(w%J,n,m,w%f,w%g)
+       w%g = -w%g
+
+       normF = normFnew
+       normJF = norm2(w%g)
+       
+    end if
+
+    
+
     select case (control%model) ! only update hessians than change..
     case (1) ! first-order
        continue
@@ -723,18 +806,16 @@ contains
           info%h_eval = info%h_eval + 1
           if (hfstatus > 0) goto 4030
        end if
+    case (8)
+       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+       info%h_eval = info%h_eval + 1
+       if (hfstatus > 0) goto 4030
     end select
-
-    ! g = -J^Tf
-    call mult_Jt(w%J,n,m,w%f,w%g)
-    w%g = -w%g
-
-    normF = normFnew
-    normJF = norm2(w%g)
 
     ! update the stats 
     info%obj = 0.5*(normF**2)
     info%norm_g = normJF
+    write(*,*) 'normJF = ', normJF
     if (control%output_progress_vectors) then
        w%resvec (w%iter + 1) = info%obj
        w%gradvec(w%iter + 1) = info%norm_g
@@ -1772,6 +1853,21 @@ contains
            end if
            if (.not. allocated(workspace%gradvec)) then
               allocate(workspace%gradvec(control%maxit+1), stat = status)
+              if (status > 0) goto 9000
+           end if
+        end if
+
+        if( control%model == 8 ) then 
+           if (.not. allocated(workspace%fNewton)) then
+              allocate(workspace%fNewton(m), stat = status)
+              if (status > 0) goto 9000
+           end if
+           if (.not. allocated(workspace%JNewton)) then
+              allocate(workspace%JNewton(n*m), stat = status)
+              if (status > 0) goto 9000
+           end if
+           if (.not. allocated(workspace%XNewton)) then
+              allocate(workspace%XNewton(n), stat = status)
               if (status > 0) goto 9000
            end if
         end if
