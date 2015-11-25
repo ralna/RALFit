@@ -17,6 +17,9 @@ program nlls_test
   integer :: nlls_method, model
   logical :: test_all, test_subs
 
+  integer :: number_of_models
+  integer, allocatable :: model_to_test(:)
+
   type( NLLS_workspace ) :: work, work2, work3, work4, work5
 
   open(unit = 17, file="nlls_test.out")
@@ -39,9 +42,13 @@ program nlls_test
      n = 2
 
      m = 67
-
+          
+     number_of_models = 5
+     allocate(model_to_test(number_of_models))
+     model_to_test = (/ 0, 1, 2, 3, 7 /)
+     
      do nlls_method = 1,3
-        do model = 0,3
+        do model = 1,number_of_models
            allocate( x(n) )
 
            X(1) = 1.0 
@@ -49,7 +56,7 @@ program nlls_test
 
            options%print_level = 0
            options%nlls_method = nlls_method
-           options%model = model
+           options%model = model_to_test(model)
 
            ! Get params for the function evaluations
            allocate(params%x_values(m))
@@ -60,24 +67,24 @@ program nlls_test
            call ral_nlls(n, m, X,                         &
                 eval_F, eval_J, eval_H, params,  &
                 status, options )
-           if (( nlls_method == 1).and.( model > 1)) then
+           if (( nlls_method == 1).and.( options%model > 1)) then
               if ( status%status .ne. -3 ) then
                  write(*,*) 'incorrect error return from ral_nlls:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
-                 write(*,*) 'MODEL = ', model
+                 write(*,*) 'MODEL = ', options%model
                  no_errors_main = no_errors_main + 1
               end if
-           else if ( model == 0 ) then
+           else if ( options%model == 0 ) then
               if ( status%status .ne. -3 ) then
                  write(*,*) 'incorrect error return from ral_nlls:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
-                 write(*,*) 'MODEL = ', model
+                 write(*,*) 'MODEL = ', options%model
                  no_errors_main = no_errors_main + 1
               end if
            else if ( status%status .ne. 0 ) then
               write(*,*) 'ral_nlls failed to converge:'
               write(*,*) 'NLLS_METHOD = ', nlls_method
-              write(*,*) 'MODEL = ', model
+              write(*,*) 'MODEL = ', options%model
               no_errors_main = no_errors_main + 1
            end if
 
