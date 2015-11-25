@@ -13,4 +13,8 @@ echo "model = 7"
 sed -i '5s/.*/7		    ! model/' cutest_control.in
 ./run_tests.sh results_m7.out
 
+echo "model = 8"
+sed -i '5s/.*/8		    ! model/' cutest_control.in
+./run_tests.sh results_m8.out
+
 ./analyse_iterations.py

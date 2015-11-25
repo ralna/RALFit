@@ -23,4 +23,9 @@ sed -i '5s/.*/7		    ! model/' cutest_control.in
 ./run_single_test.sh $problem
 mv 'data/'$problem'_progress.out' 'data/'$problem'_progress.out_m7'
 
+echo "model = 8"
+sed -i '5s/.*/8		    ! model/' cutest_control.in
+./run_single_test.sh $problem
+mv 'data/'$problem'_progress.out' 'data/'$problem'_progress.out_m8'
+
 ./plot_convergence.py $problem

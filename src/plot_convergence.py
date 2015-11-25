@@ -18,14 +18,24 @@ try:
     progress1 = np.loadtxt(filename+"_m1", dtype = datatype)
     progress2 = np.loadtxt(filename+"_m2", dtype = datatype)
     progress7 = np.loadtxt(filename+"_m7", dtype = datatype)
+    progress8 = np.loadtxt(filename+"_m8", dtype = datatype)
 except:
     print "Sorry, no data linked with problem ", problem, " found"
+
+
+all_min = np.array([ progress1['res'].min(),
+                     progress2['res'].min(),
+                     progress7['res'].min(),
+                     progress8['res'].min()])
+minvalue = all_min.min()
+print 'minvalue = ', minvalue
 
 # Plot the gradients
 plt.figure(1)
 plt.semilogy(progress1['grad'],label="Gauss-Newton")
 plt.semilogy(progress2['grad'],label="Newton")
 plt.semilogy(progress7['grad'],label="Hybrid")
+plt.semilogy(progress8['grad'],label="Hybrid II")
 
 plt.legend()
 plt.title(problem+': gradients')
@@ -33,18 +43,21 @@ plt.xlabel('Iteration number')
 plt.ylabel('$||J^Tr||_2$')
 plt.savefig('../doc/img/'+problem+'.png')
 
+
+
 # Plot the residuals
 plt.figure(2)
-plt.semilogy(progress1['res'],label="Gauss-Newton")
-plt.semilogy(progress2['res'],label="Newton")
-plt.semilogy(progress7['res'],label="Hybrid")
+plt.semilogy(progress1['res']-minvalue,label="Gauss-Newton")
+plt.semilogy(progress2['res']-minvalue,label="Newton")
+plt.semilogy(progress7['res']-minvalue,label="Hybrid")
+plt.semilogy(progress8['res']-minvalue,label="Hybrid II")
 
 plt.legend()
-plt.title(problem+': residuals')
+plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
 plt.xlabel('Iteration number')
-plt.ylabel('$1/2||r||^2_2$')
-
+plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
+plt.savefig('../doc/img/'+problem+'_res.png')
 
 plt.show()
-plt.savefig('../doc/img/'+problem+'_res.png')
+
 
