@@ -650,8 +650,6 @@ contains
        info%obj = 0.5 * ( normF**2 )
        info%norm_g = normJF
 
-       
-       write(*,*) 'normJF = ', normJF
        if (control%output_progress_vectors) then
           w%resvec(1) = info%obj
           w%gradvec(1) = info%norm_g
@@ -727,9 +725,6 @@ contains
           normF = normFnew
           normJF = norm2(w%g)
           
-          write(*,*) 'normJf = ', normJF
-          write(*,*) 'previous normJF = ', w%normJFold
-          
           decrease_grad: if (normJF > w%normJFold) then
              ! no reduction in residual...
              which_time_round: if (w%use_second_derivatives) then
@@ -745,9 +740,6 @@ contains
              else  
                 ! Gauss-Newton gave no benefit either....
                 w%use_second_derivatives = .true.
-                write(*,*) 'JtF (Newton) = ', w%normJF_Newton
-                write(*,*) 'JtF (GN) = ', normJF
-                write(*,*) 'JtF (previous) = ', w%normJFold
                 Newton_better: if ( w%normJF_Newton < normJF ) then
                    ! Newton values were better...replace
                    w%fnew(:) = w%fNewton(:)
@@ -815,7 +807,6 @@ contains
     ! update the stats 
     info%obj = 0.5*(normF**2)
     info%norm_g = normJF
-    write(*,*) 'normJF = ', normJF
     if (control%output_progress_vectors) then
        w%resvec (w%iter + 1) = info%obj
        w%gradvec(w%iter + 1) = info%norm_g
