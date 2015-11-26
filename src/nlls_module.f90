@@ -983,6 +983,7 @@ contains
      case (1)
         ! linear model...
         call solve_LLS(J,f,n,m,control%lls_solver,w%d_gn,slls_status,w%solve_LLS_ws)
+        if ( slls_status .ne. 0 ) goto 1000
      case default
         if (control%print_level> 0) then
            write(control%error,'(a)') 'Error: model not supported in dogleg'
@@ -998,8 +999,31 @@ contains
      else
         w%ghat = w%d_gn - alpha * w%d_sd
         call findbeta(w%d_sd,w%ghat,alpha,Delta,beta,fb_status)
+        if ( fb_status .ne. 0 ) goto 1010
         d = alpha * w%d_sd + beta * w%ghat
      end if
+     
+     return
+     
+1000 continue 
+     ! bad error return from solve_LLS
+     if ( control%print_level > 0 ) then
+        write(control%out,'(a,a)') 'Unexpected error in solving a linear least squares ', &
+                                   'problem in dogleg'
+        write(control%out,'(a,i0)') 'dposv returned info = ', slls_status
+     end if
+     info%status = -700
+     return
+
+1010 continue
+          if ( control%print_level > 0 ) then
+        write(control%out,'(a,a)') 'Unexpected error in finding beta ', &
+                                   'in dogleg'
+        write(control%out,'(a,i0)') 'dogleg returned info = ', fb_status
+     end if
+     info%status = -701
+     return
+
      
    END SUBROUTINE dogleg
      
@@ -1366,7 +1390,7 @@ contains
        w%Jlls(:) = J(:)
 
        call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, status)
-
+       
        d_gn = -w%temp(1:n)
               
      END SUBROUTINE solve_LLS
@@ -1524,14 +1548,14 @@ contains
        type( NLLS_control_type ), intent(in) :: control
        type( NLLS_inform_type ), intent(inout) :: info
 
-       if ( normF <= control%stop_g_absolute + &
-               control%stop_g_relative * normF0) then
+       if ( normF <= max(control%stop_g_absolute, &
+            control%stop_g_relative * normF0) ) then
           info%convergence_normf = 1
           return
        end if
        
-       if ( (normJF/normF) <= control%stop_g_absolute + &
-            control%stop_g_relative * (normJF0/normF0)) then
+       if ( (normJF/normF) <= max(control%stop_g_absolute, &
+            control%stop_g_relative * (normJF0/normF0)) ) then
           info%convergence_normg = 1
        end if
           

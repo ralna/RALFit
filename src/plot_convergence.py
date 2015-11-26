@@ -3,6 +3,9 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import subprocess
+
+short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
 
 try:
     problem = sys.argv[1]
@@ -41,7 +44,7 @@ plt.legend()
 plt.title(problem+': gradients')
 plt.xlabel('Iteration number')
 plt.ylabel('$||J^Tr||_2$')
-plt.savefig('../doc/img/'+problem+'.png')
+plt.savefig('../doc/img/'+problem+'_'+short_hash+'.png')
 
 
 
@@ -56,7 +59,7 @@ plt.legend()
 plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
 plt.xlabel('Iteration number')
 plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
-plt.savefig('../doc/img/'+problem+'_res.png')
+plt.savefig('../doc/img/'+problem+'_res_'+short_hash+'.png')
 
 plt.show()
 
