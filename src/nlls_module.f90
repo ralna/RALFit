@@ -250,10 +250,10 @@ module nlls_module
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
 
-     integer  :: more_sorensen_maxits = 500
-     real(wp) :: more_sorensen_shift = 1e-13
-     real(wp) :: more_sorensen_tiny = 10.0 * epsmch
-     real(wp) :: more_sorensen_tol = 1e-6
+    integer  :: more_sorensen_maxits = 500
+    real(wp) :: more_sorensen_shift = 1e-13
+    real(wp) :: more_sorensen_tiny = 10.0 * epsmch
+    real(wp) :: more_sorensen_tol = 1e-3
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! O U T P U T   C O N T R O L S !!!
@@ -1224,9 +1224,13 @@ contains
      
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
+     write(*,*) 'max(J^TJ) = ', maxval(w%A)
+     write(*,*) 'min(J^TJ) = ', minval(w%A)
      ! add any second order information...
      ! so A = J^T J + HF
      w%A = w%A + reshape(hf,(/n,n/))
+     write(*,*) 'max(Hf) = ', maxval(hf)
+     write(*,*) 'min(Hf) = ', minval(hf)
      ! now form v = J^T f 
      call mult_Jt(J,n,m,f,w%v)
           
@@ -1252,7 +1256,8 @@ contains
      end if
      
      nd = norm2(d)
-     
+     write(*,*) 'sigma_0 = ', sigma
+     write(*,*) 'nd_0 = ', nd
      if (nd .le. Delta) then
         ! we're within the tr radius from the start!
         if ( abs(sigma) < control%more_sorensen_tiny ) then
@@ -1271,6 +1276,9 @@ contains
 
      ! now, we're not in the trust region initally, so iterate....
      do i = 1, control%more_sorensen_maxits
+!        write(*,*) 'Delta = ', Delta
+!        write(*,*) 'tol = ', control%more_sorensen_tol
+!        write(*,*) '|nd - Delta| = ', abs(nd - Delta)
         if ( abs(nd - Delta) <= control%more_sorensen_tol * Delta) then
            goto 1020 ! converged!
         end if
@@ -1280,11 +1288,21 @@ contains
              1, one, w%LtL, n, w%q, n )
         
         nq = norm2(w%q)
+        
+        write(*,*) 'sigma = ', sigma
+ !       write(*,*) 'nd = ', nd
+ !       write(*,*) 'nq = ', nq
+  !      write(*,*) 'nd - Delta = ', nd - Delta
+  !      write(*,*) 'Delta = ', Delta
+
         sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
         
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
         if (test_pd .ne. 0)  goto 2010 ! shouldn't happen...
+        
+  !      write(*,*) 'residual = ', norm2(matmul(w%AplusSigma,d) + w%v)
+        
         nd = norm2(d)
 
      end do
