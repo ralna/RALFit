@@ -16,7 +16,8 @@ echo "*************************************"
 echo " "
 echo " ~~~~~~~ $file ~~~~~~~~ "
 echo " "
-make gen_problem SIFFILE=../cutest/sif/$file
-make all
-make cutest
-./cutest
+cd ../cutest/sif/
+runcutest -p ral_nlls --decode $file
+echo '$file'_progress.out
+mv 'RAL_NLLS_iter.sum' '../../src/data/'$file'_progress.out'
+cd ../../src/

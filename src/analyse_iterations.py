@@ -23,7 +23,7 @@ all_iterates = np.array([ data1['iter'],
 all_status = np.array([ data1['status'], 
                         data2['status'], 
                         data7['status'],
-                        data8['status'],])
+                        data8['status'] ])
 
 best = [0, 0, 0, 0]
 
