@@ -244,7 +244,7 @@ module nlls_module
 !   where %prefix contains the required string enclosed in 
 !   quotes, e.g. "string" or 'string'
 
-!$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '
+!$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '    
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
@@ -619,13 +619,18 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0
+    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, normJF, normF, normFnew, md
-    logical :: success
+    logical :: success, calculate_svd_J
+    real(wp) :: s1, sn
+
+    ! todo: make max_tr_decrease a control variable
 
     ! Perform a single iteration of the RAL_NLLS loop
     
+    calculate_svd_J = .true. ! todo :: make a control variable 
+
     if (w%first_call == 1) then
        ! This is the first call...allocate arrays, and get initial 
        ! function evaluations
@@ -640,6 +645,13 @@ contains
        call eval_J(jstatus, n, m, X, w%J, params)
        info%g_eval = info%g_eval + 1
        if (jstatus > 0) goto 4010
+
+       if ( calculate_svd_J ) then
+          call get_svd_J(n,m,w%J,s1,sn,svdstatus)
+          write(*,*) 's1 = ', s1, '    sn = ', sn
+          write(*,*) 'k(J) = ', s1/sn
+       end if
+       
        select case (control%model)
        case (1) ! first-order
           w%hf(1:n**2) = zero
@@ -746,7 +758,12 @@ contains
           call eval_J(jstatus, n, m, w%Xnew, w%J, params)
           info%g_eval = info%g_eval + 1
           if (jstatus > 0) goto 4010
-
+          if ( calculate_svd_J ) then
+             call get_svd_J(n,m,w%J,s1,sn,svdstatus)
+             write(*,*) 's1 = ', s1, '    sn = ', sn
+             write(*,*) 'k(J) = ', s1/sn
+          end if
+          
           ! g = -J^Tf
           call mult_Jt(w%J,n,m,w%fnew,w%g)
           w%g = -w%g
@@ -798,6 +815,11 @@ contains
        call eval_J(jstatus, n, m, X, w%J, params)
        info%g_eval = info%g_eval + 1
        if (jstatus > 0) goto 4010
+       if ( calculate_svd_J ) then 
+          call get_svd_J(n,m,w%J,s1,sn,svdstatus)
+          write(*,*) 's1 = ', s1, '    sn = ', sn
+          write(*,*) 'k(J) = ', s1/sn
+       end if
 
        ! g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
@@ -1886,6 +1908,51 @@ contains
                 
       end subroutine shift_matrix
 
+      subroutine get_svd_J(n,m,J,s1,sn,status)
+        integer, intent(in) :: n,m 
+        real(wp), intent(in) :: J(:)
+        real(wp), intent(out) :: s1, sn
+        integer, intent(out) :: status
+
+        character :: jobu(1), jobvt(1)
+        real(wp), allocatable :: Jcopy(:)
+        real(wp), allocatable :: S(:)
+        real(wp), allocatable :: work(:)
+        integer :: lwork
+        integer :: info
+        
+        allocate(Jcopy(n*m))
+        allocate(S(n))
+        Jcopy(:) = J(:)
+
+        jobu  = 'N' ! calculate no left singular vectors
+        jobvt = 'N' ! calculate no right singular vectors
+        
+        allocate(work(1))
+        ! make a workspace query....
+        call dgesvd( jobu, jobvt, n, m, Jcopy, n, S, S, 1, S, 1, & 
+             work, -1, info )
+        if (info .ne. 0 ) write(*,*) 'error!!!'
+        lwork = int(work(1))
+        deallocate(work)
+        allocate(work(lwork))     
+        
+        ! call the real thing....
+        call dgesvd( JOBU, JOBVT, n, m, Jcopy, n, S, S, 1, S, 1, & 
+             work, lwork, info )
+
+        s1 = S(1)
+        sn = S(n)
+
+        
+      end subroutine get_svd_J
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                       !!
+!! W O R K S P A C E   S E T U P   S U B R O U T I N E S !!
+!!                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       subroutine setup_workspaces(workspace,n,m,control,status)
         
         type( NLLS_workspace ), intent(out) :: workspace
