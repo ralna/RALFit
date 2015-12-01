@@ -546,6 +546,33 @@ contains
     
     type ( NLLS_workspace ) :: w
     
+!!$    write(*,*) 'Controls in:'
+!!$    write(*,*) control
+!!$    write(*,*) 'error = ',control%error
+!!$    write(*,*) 'out = ', control%out
+!!$    write(*,*) 'print_level = ', control%print_level
+!!$    write(*,*) 'maxit = ', control%maxit
+!!$    write(*,*) 'model = ', control%model
+!!$    write(*,*) 'nlls_method = ', control%nlls_method
+!!$    write(*,*) 'lls_solver = ', control%lls_solver
+!!$    write(*,*) 'stop_g_absolute = ', control%stop_g_absolute
+!!$    write(*,*) 'stop_g_relative = ', control%stop_g_relative     
+!!$    write(*,*) 'initial_radius = ', control%initial_radius
+!!$    write(*,*) 'maximum_radius = ', control%maximum_radius
+!!$    write(*,*) 'eta_successful = ', control%eta_successful
+!!$    write(*,*) 'eta_very_successful = ',control%eta_very_successful
+!!$    write(*,*) 'eta_too_successful = ',control%eta_too_successful
+!!$    write(*,*) 'radius_increase = ',control%radius_increase
+!!$    write(*,*) 'radius_reduce = ',control%radius_reduce
+!!$    write(*,*) 'radius_reduce_max = ',control%radius_reduce_max
+!!$    write(*,*) 'hybrid_switch = ',control%hybrid_switch
+!!$    write(*,*) 'subproblem_eig_fact = ',control%subproblem_eig_fact
+!!$    write(*,*) 'more_sorensen_maxits = ',control%more_sorensen_maxits
+!!$    write(*,*) 'more_sorensen_shift = ',control%more_sorensen_shift
+!!$    write(*,*) 'more_sorensen_tiny = ',control%more_sorensen_tiny
+!!$    write(*,*) 'more_sorensen_tol = ',control%more_sorensen_tol
+!!$    write(*,*) 'output_progress_vectors = ',control%output_progress_vectors
+
     main_loop: do i = 1,control%maxit
        
        call ral_nlls_iterate(n, m, X,                   & 
@@ -593,7 +620,7 @@ contains
     class( params_base_type ) :: params
       
     integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0
-    integer :: i 
+    integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, normJF, normF, normFnew, md
     logical :: success
 
@@ -664,14 +691,17 @@ contains
     
     rho  = -one ! intialize rho as a negative value
     success = .false.
-    
+    no_reductions = 0
+
     do while (.not. success) ! loop until successful
+       no_reductions = no_reductions + 1
+       if (no_reductions > max_tr_decrease+1) goto 4050
+
        !+++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the step                        !
        !    d                                      !   
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-
        call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,control,info,& 
             w%calculate_step_ws)
        if (info%status .ne. 0) goto 4000
@@ -679,8 +709,7 @@ contains
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
-       
-       w%Xnew = X + w%d;
+       w%Xnew = X + w%d
        call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
        info%f_eval = info%f_eval + 1
        if (fstatus > 0) goto 4020
@@ -692,7 +721,7 @@ contains
        ! evaluated at the new step  !
        !++++++++++++++++++++++++++++!
        call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,control,w%evaluate_model_ws)
-    
+       
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
        !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
@@ -708,7 +737,7 @@ contains
        ! Update the TR radius !
        !++++++++++++++++++++++!
        call update_trust_region_radius(rho,control,w%Delta)
-
+       
        !+++++++++++++++++++++++!
        ! Add tests for model=8 !
        !+++++++++++++++++++++++!
@@ -757,7 +786,6 @@ contains
           end if decrease_grad
                  
        end if model8_success
-       
     end do
     ! if we reach here, a successful step has been found
     
@@ -899,6 +927,14 @@ contains
             control%model, ' is not supported'
     end if
     info%status = -3
+    goto 4000
+
+4050 continue 
+    ! max tr reductions exceeded
+    if (control%print_level > 0) then
+       write(control%error,'(a)') 'Error: maximum tr reductions reached'
+    end if
+    info%status = -500
     goto 4000
 
 ! convergence 
