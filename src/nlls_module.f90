@@ -244,7 +244,7 @@ module nlls_module
 !   where %prefix contains the required string enclosed in 
 !   quotes, e.g. "string" or 'string'
 
-!$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '
+!$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '    
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
@@ -546,6 +546,33 @@ contains
     
     type ( NLLS_workspace ) :: w
     
+!!$    write(*,*) 'Controls in:'
+!!$    write(*,*) control
+!!$    write(*,*) 'error = ',control%error
+!!$    write(*,*) 'out = ', control%out
+!!$    write(*,*) 'print_level = ', control%print_level
+!!$    write(*,*) 'maxit = ', control%maxit
+!!$    write(*,*) 'model = ', control%model
+!!$    write(*,*) 'nlls_method = ', control%nlls_method
+!!$    write(*,*) 'lls_solver = ', control%lls_solver
+!!$    write(*,*) 'stop_g_absolute = ', control%stop_g_absolute
+!!$    write(*,*) 'stop_g_relative = ', control%stop_g_relative     
+!!$    write(*,*) 'initial_radius = ', control%initial_radius
+!!$    write(*,*) 'maximum_radius = ', control%maximum_radius
+!!$    write(*,*) 'eta_successful = ', control%eta_successful
+!!$    write(*,*) 'eta_very_successful = ',control%eta_very_successful
+!!$    write(*,*) 'eta_too_successful = ',control%eta_too_successful
+!!$    write(*,*) 'radius_increase = ',control%radius_increase
+!!$    write(*,*) 'radius_reduce = ',control%radius_reduce
+!!$    write(*,*) 'radius_reduce_max = ',control%radius_reduce_max
+!!$    write(*,*) 'hybrid_switch = ',control%hybrid_switch
+!!$    write(*,*) 'subproblem_eig_fact = ',control%subproblem_eig_fact
+!!$    write(*,*) 'more_sorensen_maxits = ',control%more_sorensen_maxits
+!!$    write(*,*) 'more_sorensen_shift = ',control%more_sorensen_shift
+!!$    write(*,*) 'more_sorensen_tiny = ',control%more_sorensen_tiny
+!!$    write(*,*) 'more_sorensen_tol = ',control%more_sorensen_tol
+!!$    write(*,*) 'output_progress_vectors = ',control%output_progress_vectors
+
     main_loop: do i = 1,control%maxit
        
        call ral_nlls_iterate(n, m, X,                   & 
@@ -592,13 +619,18 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0
-    integer :: i 
+    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
+    integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, normJF, normF, normFnew, md
-    logical :: success
+    logical :: success, calculate_svd_J
+    real(wp) :: s1, sn
+
+    ! todo: make max_tr_decrease a control variable
 
     ! Perform a single iteration of the RAL_NLLS loop
     
+    calculate_svd_J = .true. ! todo :: make a control variable 
+
     if (w%first_call == 1) then
        ! This is the first call...allocate arrays, and get initial 
        ! function evaluations
@@ -613,6 +645,13 @@ contains
        call eval_J(jstatus, n, m, X, w%J, params)
        info%g_eval = info%g_eval + 1
        if (jstatus > 0) goto 4010
+
+       if ( calculate_svd_J ) then
+          call get_svd_J(n,m,w%J,s1,sn,svdstatus)
+          write(*,*) 's1 = ', s1, '    sn = ', sn
+          write(*,*) 'k(J) = ', s1/sn
+       end if
+       
        select case (control%model)
        case (1) ! first-order
           w%hf(1:n**2) = zero
@@ -664,14 +703,17 @@ contains
     
     rho  = -one ! intialize rho as a negative value
     success = .false.
-    
+    no_reductions = 0
+
     do while (.not. success) ! loop until successful
+       no_reductions = no_reductions + 1
+       if (no_reductions > max_tr_decrease+1) goto 4050
+
        !+++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the step                        !
        !    d                                      !   
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-
        call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,control,info,& 
             w%calculate_step_ws)
        if (info%status .ne. 0) goto 4000
@@ -679,8 +721,7 @@ contains
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
-       
-       w%Xnew = X + w%d;
+       w%Xnew = X + w%d
        call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
        info%f_eval = info%f_eval + 1
        if (fstatus > 0) goto 4020
@@ -692,7 +733,7 @@ contains
        ! evaluated at the new step  !
        !++++++++++++++++++++++++++++!
        call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,control,w%evaluate_model_ws)
-    
+       
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
        !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
@@ -708,7 +749,7 @@ contains
        ! Update the TR radius !
        !++++++++++++++++++++++!
        call update_trust_region_radius(rho,control,w%Delta)
-
+       
        !+++++++++++++++++++++++!
        ! Add tests for model=8 !
        !+++++++++++++++++++++++!
@@ -717,7 +758,12 @@ contains
           call eval_J(jstatus, n, m, w%Xnew, w%J, params)
           info%g_eval = info%g_eval + 1
           if (jstatus > 0) goto 4010
-
+          if ( calculate_svd_J ) then
+             call get_svd_J(n,m,w%J,s1,sn,svdstatus)
+             write(*,*) 's1 = ', s1, '    sn = ', sn
+             write(*,*) 'k(J) = ', s1/sn
+          end if
+          
           ! g = -J^Tf
           call mult_Jt(w%J,n,m,w%fnew,w%g)
           w%g = -w%g
@@ -757,7 +803,6 @@ contains
           end if decrease_grad
                  
        end if model8_success
-       
     end do
     ! if we reach here, a successful step has been found
     
@@ -770,6 +815,11 @@ contains
        call eval_J(jstatus, n, m, X, w%J, params)
        info%g_eval = info%g_eval + 1
        if (jstatus > 0) goto 4010
+       if ( calculate_svd_J ) then 
+          call get_svd_J(n,m,w%J,s1,sn,svdstatus)
+          write(*,*) 's1 = ', s1, '    sn = ', sn
+          write(*,*) 'k(J) = ', s1/sn
+       end if
 
        ! g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
@@ -899,6 +949,14 @@ contains
             control%model, ' is not supported'
     end if
     info%status = -3
+    goto 4000
+
+4050 continue 
+    ! max tr reductions exceeded
+    if (control%print_level > 0) then
+       write(control%error,'(a)') 'Error: maximum tr reductions reached'
+    end if
+    info%status = -500
     goto 4000
 
 ! convergence 
@@ -1868,6 +1926,51 @@ contains
                 
       end subroutine shift_matrix
 
+      subroutine get_svd_J(n,m,J,s1,sn,status)
+        integer, intent(in) :: n,m 
+        real(wp), intent(in) :: J(:)
+        real(wp), intent(out) :: s1, sn
+        integer, intent(out) :: status
+
+        character :: jobu(1), jobvt(1)
+        real(wp), allocatable :: Jcopy(:)
+        real(wp), allocatable :: S(:)
+        real(wp), allocatable :: work(:)
+        integer :: lwork
+        integer :: info
+        
+        allocate(Jcopy(n*m))
+        allocate(S(n))
+        Jcopy(:) = J(:)
+
+        jobu  = 'N' ! calculate no left singular vectors
+        jobvt = 'N' ! calculate no right singular vectors
+        
+        allocate(work(1))
+        ! make a workspace query....
+        call dgesvd( jobu, jobvt, n, m, Jcopy, n, S, S, 1, S, 1, & 
+             work, -1, info )
+        if (info .ne. 0 ) write(*,*) 'error!!!'
+        lwork = int(work(1))
+        deallocate(work)
+        allocate(work(lwork))     
+        
+        ! call the real thing....
+        call dgesvd( JOBU, JOBVT, n, m, Jcopy, n, S, S, 1, S, 1, & 
+             work, lwork, info )
+
+        s1 = S(1)
+        sn = S(n)
+
+        
+      end subroutine get_svd_J
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                       !!
+!! W O R K S P A C E   S E T U P   S U B R O U T I N E S !!
+!!                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       subroutine setup_workspaces(workspace,n,m,control,status)
         
         type( NLLS_workspace ), intent(out) :: workspace

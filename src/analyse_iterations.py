@@ -5,15 +5,16 @@ import subprocess
 
 short_hash =  subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
 
-info = np.dtype({'names' : ('n','m','status','iter','res','grad'),
-        'formats' : ('int','int','int','int','float','float')})
+info = np.dtype({'names' :   ['pname','n','m','status','iter','res','grad'],
+                 'formats' : ['S10' ,int ,int,int,     int,   float,float]})
 
-data1 = np.loadtxt("data/results_m1.out_data", dtype = info)
-data2 = np.loadtxt("data/results_m2.out_data", dtype = info)
-data7 = np.loadtxt("data/results_m7.out_data", dtype = info)
-data8 = np.loadtxt("data/results_m8.out_data", dtype = info)
+data1 = np.loadtxt("data/results_m1.out", dtype = info)
+data2 = np.loadtxt("data/results_m2.out", dtype = info)
+data7 = np.loadtxt("data/results_m7.out", dtype = info)
+data8 = np.loadtxt("data/results_m8.out", dtype = info)
 
-problems = np.loadtxt("sif_names.txt", dtype=str)
+#problems = np.loadtxt("sif_names.txt", dtype=str)
+problems = np.array(data1['pname']);
 
 all_iterates = np.array([ data1['iter'], 
                           data2['iter'], 
@@ -22,7 +23,7 @@ all_iterates = np.array([ data1['iter'],
 all_status = np.array([ data1['status'], 
                         data2['status'], 
                         data7['status'],
-                        data8['status'],])
+                        data8['status'] ])
 
 best = [0, 0, 0, 0]
 
