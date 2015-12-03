@@ -217,7 +217,6 @@ subroutine ral_nlls_d(n, m, cx,  &
   TYPE( f_nlls_control_type ) :: foptions
 
   logical :: f_arrays
-  integer :: i
   
   ! copy data in and associate pointers correctly
   call copy_control_in(coptions, foptions, f_arrays)

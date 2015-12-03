@@ -123,7 +123,7 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
 
-       integer :: i, j, index
+       integer :: i
 
 ! then, let's work this into the format we need
 ! X(1) = m, X(2) = c

@@ -624,7 +624,7 @@ contains
     real(wp) :: rho, normJF, normF, normFnew, md
     logical :: success, calculate_svd_J
     real(wp) :: s1, sn
-
+    
     ! todo: make max_tr_decrease a control variable
 
     ! Perform a single iteration of the RAL_NLLS loop
@@ -1268,7 +1268,7 @@ contains
      real(wp) :: nd, nq
 
      real(wp) :: sigma, alpha
-     integer :: solve_status, fb_status, mineig_status
+     integer :: fb_status, mineig_status
      integer :: test_pd, i, no_shifts
      
      ! The code finds 
@@ -1279,13 +1279,9 @@ contains
      
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
-     write(*,*) 'max(J^TJ) = ', maxval(w%A)
-     write(*,*) 'min(J^TJ) = ', minval(w%A)
      ! add any second order information...
      ! so A = J^T J + HF
      w%A = w%A + reshape(hf,(/n,n/))
-     write(*,*) 'max(Hf) = ', maxval(hf)
-     write(*,*) 'min(Hf) = ', minval(hf)
      ! now form v = J^T f 
      call mult_Jt(J,n,m,f,w%v)
           
@@ -1311,8 +1307,6 @@ contains
      end if
      
      nd = norm2(d)
-     write(*,*) 'sigma_0 = ', sigma
-     write(*,*) 'nd_0 = ', nd
      if (nd .le. Delta) then
         ! we're within the tr radius from the start!
         if ( abs(sigma) < control%more_sorensen_tiny ) then
@@ -1331,9 +1325,6 @@ contains
 
      ! now, we're not in the trust region initally, so iterate....
      do i = 1, control%more_sorensen_maxits
-!        write(*,*) 'Delta = ', Delta
-!        write(*,*) 'tol = ', control%more_sorensen_tol
-!        write(*,*) '|nd - Delta| = ', abs(nd - Delta)
         if ( abs(nd - Delta) <= control%more_sorensen_tol * Delta) then
            goto 1020 ! converged!
         end if
@@ -1344,19 +1335,11 @@ contains
         
         nq = norm2(w%q)
         
-        write(*,*) 'sigma = ', sigma
- !       write(*,*) 'nd = ', nd
- !       write(*,*) 'nq = ', nq
-  !      write(*,*) 'nd - Delta = ', nd - Delta
-  !      write(*,*) 'Delta = ', Delta
-
         sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
         
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
         if (test_pd .ne. 0)  goto 2010 ! shouldn't happen...
-        
-  !      write(*,*) 'residual = ', norm2(matmul(w%AplusSigma,d) + w%v)
         
         nd = norm2(d)
 
@@ -1364,23 +1347,12 @@ contains
      
      goto 1040
      
-1010 continue 
-     ! bad error return from solve_spd
-     if ( control%print_level > 0 ) then
-        write(control%out,'(a)') 'Error in solving a linear system in More_sorensen'
-        write(control%out,'(a,i0)') 'dposv returned info = ', solve_status
-     end if
-     info%status = -4
-     return
-
 1020 continue
      ! Converged!
      if ( control%print_level >= 3 ) then
         write(control%error,'(a,i0)') 'More-Sorensen converged at iteration ', i
      end if
      return
-
-1030 FORMAT('More-Sorensen, iteration ',I0,'. increasing sigma to ', ES12.4)
      
 1040 continue
      ! maxits reached, not converged
@@ -1658,8 +1630,6 @@ contains
        double precision, intent(out) :: Jtx(*)
        
        double precision :: alpha, beta
-
-       integer :: i 
 
        Jtx(1:n) = one
        alpha = one

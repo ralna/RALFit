@@ -12,7 +12,7 @@ program nlls_test
   real(wp), allocatable :: x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
   real(wp), allocatable :: results(:)
-  real(wp) :: alpha, beta
+  real(wp) :: alpha
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
   integer :: nlls_method, model
   logical :: test_all, test_subs
