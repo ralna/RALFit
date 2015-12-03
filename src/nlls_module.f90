@@ -647,9 +647,8 @@ contains
        if (jstatus > 0) goto 4010
 
        if ( calculate_svd_J ) then
-          call get_svd_J(n,m,w%J,s1,sn,svdstatus)
-          write(*,*) 's1 = ', s1, '    sn = ', sn
-          write(*,*) 'k(J) = ', s1/sn
+          call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
+          ! todo: trap error
        end if
        
        select case (control%model)
@@ -759,9 +758,8 @@ contains
           info%g_eval = info%g_eval + 1
           if (jstatus > 0) goto 4010
           if ( calculate_svd_J ) then
-             call get_svd_J(n,m,w%J,s1,sn,svdstatus)
-             write(*,*) 's1 = ', s1, '    sn = ', sn
-             write(*,*) 'k(J) = ', s1/sn
+             call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
+             ! todo: trap error
           end if
           
           ! g = -J^Tf
@@ -815,10 +813,9 @@ contains
        call eval_J(jstatus, n, m, X, w%J, params)
        info%g_eval = info%g_eval + 1
        if (jstatus > 0) goto 4010
-       if ( calculate_svd_J ) then 
-          call get_svd_J(n,m,w%J,s1,sn,svdstatus)
-          write(*,*) 's1 = ', s1, '    sn = ', sn
-          write(*,*) 'k(J) = ', s1/sn
+       if ( calculate_svd_J ) then
+          call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
+          ! todo : error trap
        end if
 
        ! g = -J^Tf
@@ -1926,10 +1923,11 @@ contains
                 
       end subroutine shift_matrix
 
-      subroutine get_svd_J(n,m,J,s1,sn,status)
+      subroutine get_svd_J(n,m,J,s1,sn,control,status)
         integer, intent(in) :: n,m 
         real(wp), intent(in) :: J(:)
         real(wp), intent(out) :: s1, sn
+        type( NLLS_control_type ) :: control
         integer, intent(out) :: status
 
         character :: jobu(1), jobvt(1)
@@ -1937,7 +1935,6 @@ contains
         real(wp), allocatable :: S(:)
         real(wp), allocatable :: work(:)
         integer :: lwork
-        integer :: info
         
         allocate(Jcopy(n*m))
         allocate(S(n))
@@ -1949,20 +1946,25 @@ contains
         allocate(work(1))
         ! make a workspace query....
         call dgesvd( jobu, jobvt, n, m, Jcopy, n, S, S, 1, S, 1, & 
-             work, -1, info )
-        if (info .ne. 0 ) write(*,*) 'error!!!'
+             work, -1, status )
+        if (status .ne. 0 ) write(control%error,'(a)') 'error!!!'
+        ! todo :: make this right....
+
         lwork = int(work(1))
         deallocate(work)
         allocate(work(lwork))     
         
         ! call the real thing....
         call dgesvd( JOBU, JOBVT, n, m, Jcopy, n, S, S, 1, S, 1, & 
-             work, lwork, info )
+             work, lwork, status )
 
         s1 = S(1)
         sn = S(n)
-
         
+        write(control%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
+        write(control%out,'(a,es12.4)') 'k(J) = ', s1/sn
+
+
       end subroutine get_svd_J
 
 
