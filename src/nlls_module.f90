@@ -648,7 +648,9 @@ contains
 
        if ( calculate_svd_J ) then
           call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
-          ! todo: trap error
+          if ((svdstatus .ne. 0).and.(control%print_level > 3)) then 
+             write( control%out, 3000 ) svdstatus
+          end if
        end if
        
        select case (control%model)
@@ -759,7 +761,9 @@ contains
           if (jstatus > 0) goto 4010
           if ( calculate_svd_J ) then
              call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
-             ! todo: trap error
+             if ((svdstatus .ne. 0).and.(control%print_level > 3)) then 
+                write( control%out, 3000 ) svdstatus
+             end if
           end if
           
           ! g = -J^Tf
@@ -815,7 +819,9 @@ contains
        if (jstatus > 0) goto 4010
        if ( calculate_svd_J ) then
           call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
-          ! todo : error trap
+          if ((svdstatus .ne. 0).and.(control%print_level > 3)) then 
+             write( control%out, 3000 ) svdstatus
+          end if
        end if
 
        ! g = -J^Tf
@@ -888,6 +894,7 @@ contains
 3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
 3030 FORMAT('== Starting iteration ',i0,' ==')
 3060 FORMAT('||J''f||/||f|| = ',ES12.4)
+
 !3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
 3100 FORMAT('Step was successful -- rho =', ES12.4)
 ! error returns
@@ -1917,8 +1924,7 @@ contains
         ! make a workspace query....
         call dgesvd( jobu, jobvt, n, m, Jcopy, n, S, S, 1, S, 1, & 
              work, -1, status )
-        if (status .ne. 0 ) write(control%error,'(a)') 'error!!!'
-        ! todo :: make this right....
+        if (status .ne. 0 ) return
 
         lwork = int(work(1))
         deallocate(work)
@@ -1927,13 +1933,18 @@ contains
         ! call the real thing....
         call dgesvd( JOBU, JOBVT, n, m, Jcopy, n, S, S, 1, S, 1, & 
              work, lwork, status )
-
-        s1 = S(1)
-        sn = S(n)
-        
-        write(control%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
-        write(control%out,'(a,es12.4)') 'k(J) = ', s1/sn
-
+        if ( (status .ne. 0) .and. (control%print_level > 3) ) then 
+           write(control%out,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
+                                        status
+           s1 = -1.0
+           sn = -1.0
+           ! allow to continue, but warn user and return zero singular values
+        else
+           s1 = S(1)
+           sn = S(n)
+           write(control%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
+           write(control%out,'(a,es12.4)') 'k(J) = ', s1/sn
+        end if
 
       end subroutine get_svd_J
 
