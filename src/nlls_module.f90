@@ -6,6 +6,7 @@ module nlls_module
 
   integer, parameter :: wp = kind(1.0d0)
   integer, parameter :: long = selected_int_kind(8)
+  real (kind = wp), parameter :: tenm3 = 1.0e-3
   real (kind = wp), parameter :: tenm5 = 1.0e-5
   real (kind = wp), parameter :: tenm8 = 1.0e-8
   real (kind = wp), parameter :: epsmch = epsilon(1.0_wp)
@@ -163,9 +164,21 @@ module nlls_module
      
 !$$     INTEGER :: advanced_start = 0
      
+!   should we scale the initial trust region radius?
+     
+     integer :: relative_tr_radius = 1
+
+!   if relative_tr_radius == 1, then pick a scaling parameter
+!   Madsen, Nielsen and Tingleff say pick this to be 1e-6, say, if x_0 is good,
+!   otherwise 1e-3 or even 1 would be good starts...
+     
+     real (kind = wp) :: initial_radius_scale = 1.0!tenm3
+
+!   if relative_tr_radius /= 1, then set the 
 !   initial value for the trust-region radius (-ve => ||g_0||)
      
      REAL ( KIND = wp ) :: initial_radius = hundred
+
      
 !   maximum permitted trust-region radius
 
@@ -262,6 +275,8 @@ module nlls_module
 ! Shall we output progess vectors at termination of the routine?
      logical :: output_progress_vectors = .false.
 
+
+     
 
   END TYPE NLLS_control_type
 
@@ -621,7 +636,7 @@ contains
       
     integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, normJF, normF, normFnew, md
+    real(wp) :: rho, normJF, normF, normFnew, md, Jmax
     logical :: success, calculate_svd_J
     real(wp) :: s1, sn
     
@@ -637,7 +652,6 @@ contains
        if ( control%print_level >= 3 )  write( control%out , 3000 ) 
        call setup_workspaces(w,n,m,control,info%alloc_status)
        if ( info%alloc_status > 0) goto 4000
-       w%Delta = control%initial_radius
 
        call eval_F(fstatus, n, m, X, w%f, params)
        info%f_eval = info%f_eval + 1
@@ -645,6 +659,20 @@ contains
        call eval_J(jstatus, n, m, X, w%J, params)
        info%g_eval = info%g_eval + 1
        if (jstatus > 0) goto 4010
+
+       if (control%relative_tr_radius == 1) then 
+          Jmax = maxval(abs(w%J)) ! todo: really just want J^TJ(i,i)...fixme...
+          w%Delta = control%initial_radius_scale * (Jmax**2)
+          write(*,*) '================================================'
+          write(*,*) '*                                               '
+          write(*,*) '* initial trust region radius taken as ', w%Delta
+          write(*,*) '*                                               '
+          write(*,*) '================================================'
+       else
+          w%Delta = control%initial_radius
+       end if
+              
+       
 
        if ( calculate_svd_J ) then
           call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
