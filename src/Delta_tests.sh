@@ -4,18 +4,18 @@
 echo "base test (Delta = 100)"
 sed -i '7s/.*/0                     relative trust region? (1=relative)/' \
     $CUTEST/src/ral_nlls/RAL_NLLS.SPC
-sed -i '8s/.*/100.0                 initial TR radius/' \
+sed -i '9s/.*/100.0                 initial TR radius/' \
     $CUTEST/src/ral_nlls/RAL_NLLS.SPC
 ./run_tests.sh results_Deltabase.out
 
 # now, let's do the 'real' tests 
-sed -i '7s/.*/1                     relative trust region? (1=relative)' \
+sed -i '7s/.*/1                     relative trust region? (1=relative)/' \
     $CUTEST/src/ral_nlls/RAL_NLLS.SPC
 
 declare -a lines=( '-3' '0' '3')
 for i in "${lines[@]}"
 do
-    sed -i '9s/.*/1.0E'$i'                TR scaling parameter/' \
+    sed -i '8s/.*/1.0E'$i'                TR scaling parameter/' \
     $CUTEST/src/ral_nlls/RAL_NLLS.SPC
     ./run_tests.sh 'results_Delta'$i'.out'
 done
@@ -33,4 +33,4 @@ done
 #echo "gsl"
 #./run_tests_gsl.sh results_gsl.out
 
-./analyse_iterations.py
+./analyse_delta.py
