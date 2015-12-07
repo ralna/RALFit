@@ -805,6 +805,11 @@ contains
           end if decrease_grad
                  
        end if model8_success
+
+       if (.not. success) then
+          ! finally, check d makes progress
+          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
+       end if
     end do
     ! if we reach here, a successful step has been found
     
@@ -953,7 +958,7 @@ contains
             control%model, ' is not supported'
     end if
     info%status = -3
-    goto 4000
+   goto 4000
 
 4050 continue 
     ! max tr reductions exceeded
@@ -961,6 +966,14 @@ contains
        write(control%error,'(a)') 'Error: maximum tr reductions reached'
     end if
     info%status = -500
+    goto 4000
+
+4060 continue 
+    ! x makes no progress
+    if (control%print_level > 0) then
+       write(control%error,'(a)') 'No further progress in X'
+    end if
+    info%status = -700
     goto 4000
 
 ! convergence 
