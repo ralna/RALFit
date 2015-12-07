@@ -636,7 +636,7 @@ contains
       
     integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, normJF, normF, normFnew, md, Jmax
+    real(wp) :: rho, normJF, normF, normFnew, md, Jmax, JtJdiag
     logical :: success, calculate_svd_J
     real(wp) :: s1, sn
     
@@ -661,7 +661,13 @@ contains
        if (jstatus > 0) goto 4010
 
        if (control%relative_tr_radius == 1) then 
-          Jmax = maxval(abs(w%J)) ! todo: really just want J^TJ(i,i)...fixme...
+          ! first, let's get diag(J^TJ)
+          Jmax = 0.0
+          do i = 1, n
+             ! note:: assumes column-storage of J
+             JtJdiag = norm2( J( (i-1)*m + 1 : i*m ) )
+             if (JtJdiag > Jmax) Jmax = JtJdiag
+          end do
           w%Delta = control%initial_radius_scale * (Jmax**2)
           write(*,*) '================================================'
           write(*,*) '*                                               '
