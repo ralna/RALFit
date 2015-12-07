@@ -4,7 +4,7 @@
 echo "base test (Delta = 100)"
 sed -i '7s/.*/0                     relative trust region? (1=relative)/' \
     $CUTEST/src/ral_nlls/RAL_NLLS.SPC
-sed -i '9s/.*/100.0                 initial TR radius/' \
+sed -i '8s/.*/100.0                 initial TR radius/' \
     $CUTEST/src/ral_nlls/RAL_NLLS.SPC
 ./run_tests.sh results_Deltabase.out
 
