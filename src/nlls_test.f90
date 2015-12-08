@@ -43,9 +43,9 @@ program nlls_test
 
      m = 67
           
-     number_of_models = 6
+     number_of_models = 7
      allocate(model_to_test(number_of_models))
-     model_to_test = (/ 0, 1, 2, 3, 7, 8 /)
+     model_to_test = (/ 0, 1, 2, 3, 7, 8, 9 /)
      
      do nlls_method = 1,3
         do model = 1,number_of_models
