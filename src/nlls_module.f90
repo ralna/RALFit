@@ -81,7 +81,7 @@ module nlls_module
 !      7  hybrid (Gauss-Newton until gradient small, then Newton)
 !      8  hybrid (using Madsen, Nielsen and Tingleff's method)    
  
-     INTEGER :: model = 1
+     INTEGER :: model = 9
 
 !   specify the norm used. The norm is defined via ||v||^2 = v^T P v,
 !    and will define the preconditioner used for iterative methods.
@@ -167,7 +167,7 @@ module nlls_module
      
 !   should we scale the initial trust region radius?
      
-     integer :: relative_tr_radius = 1
+     integer :: relative_tr_radius = 0
 
 !   if relative_tr_radius == 1, then pick a scaling parameter
 !   Madsen, Nielsen and Tingleff say pick this to be 1e-6, say, if x_0 is good,
@@ -671,11 +671,7 @@ contains
              if (JtJdiag > Jmax) Jmax = JtJdiag
           end do
           w%Delta = control%initial_radius_scale * (Jmax**2)
-          write(*,*) '================================================'
-          write(*,*) '*                                               '
-          write(*,*) '* initial trust region radius taken as ', w%Delta
-          write(*,*) '*                                               '
-          write(*,*) '================================================'
+          if (control%print_level .ge. 3) write(control%out,3110) w%Delta
        else
           w%Delta = control%initial_radius
        end if
@@ -684,7 +680,7 @@ contains
 
        if ( calculate_svd_J ) then
           call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
-          if ((svdstatus .ne. 0).and.(control%print_level > 3)) then 
+          if ((svdstatus .ne. 0).and.(control%print_level .ge. 3)) then 
              write( control%out, 3000 ) svdstatus
           end if
        end if
@@ -906,8 +902,8 @@ contains
        ! First, check if we need to switch methods
        if (w%use_second_derivatives) then 
           if (normJf > w%normJFold) then 
-             ! switch to Gauss-Newton
-             write(*,*) '** Switching to Gauss-Newton **'
+             ! switch to Gauss-Newton             
+             if (control%print_level .ge. 3) write(control%out,3120) 
              w%use_second_derivatives = .false.
           end if
        else
@@ -915,7 +911,7 @@ contains
              w%hybrid_count = w%hybrid_count + 1
              if (w%hybrid_count == 3) then
                 ! use (Quasi-)Newton
-                write(*,*) '** Switching to Newton **'
+                if (control%print_level .ge. 3) write(control%out,3130) 
                 w%use_second_derivatives = .true.
                 w%hybrid_count = 0
              end if
@@ -973,6 +969,9 @@ contains
 
 !3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
 3100 FORMAT('Step was successful -- rho =', ES12.4)
+3110 FORMAT('Initial trust region radius taken as ', ES12.4)
+3120 FORMAT('** Switching to Gauss-Newton **')
+3130 FORMAT('** Switching to (Quasi-)Newton **')
 ! error returns
 4000 continue
     ! generic end of algorithm
