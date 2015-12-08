@@ -220,11 +220,16 @@ module nlls_module
 !   the maximum elapsed clock time allowed (-ve means infinite)
 
 !$$     REAL ( KIND = wp ) :: clock_time_limit = - one
-       
+ 
+!   shall we use explicit second derivatives, or approximate using a secant 
+!   method
+     
+     LOGICAL :: exact_second_derivatives = .false.!.true.
+      
 !   is the Hessian matrix of second derivatives available or is access only
 !    via matrix-vector products?
 
-!$$     LOGICAL :: hessian_available = .TRUE.
+!     LOGICAL :: hessian_available = .TRUE.
 
 !   use a direct (factorization) or (preconditioned) iterative method to 
 !    find the search direction
@@ -689,8 +694,8 @@ contains
        case (1) ! first-order
           w%hf(1:n**2) = zero
        case (2) ! second order
-          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-          info%h_eval = info%h_eval + 1
+          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf,params,control, info)
+!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
           if (hfstatus > 0) goto 4030
        case (3) ! barely second order (identity hessian)
           w%hf(1:n**2) = zero
@@ -700,8 +705,10 @@ contains
           w%hf(1:n**2) = zero
        case (8) ! hybrid II
           ! always second order for first call...
-          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-          info%h_eval = info%h_eval + 1
+          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+               params,control,info)
+!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!          info%h_eval = info%h_eval + 1
           if (hfstatus > 0) goto 4030
           w%use_second_derivatives = .true.
        case (9) ! hybrid (MNT)
@@ -882,21 +889,28 @@ contains
     case (1) ! first-order
        continue
     case (2) ! second order
-       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-       info%h_eval = info%h_eval + 1
+       call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+            params,control,info)
+!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!       info%h_eval = info%h_eval + 1
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
        continue
     case (7) ! hybrid method
        if ( w%use_second_derivatives ) then 
           ! hybrid switch turned on....
-          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-          info%h_eval = info%h_eval + 1
+          
+          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+               params,control,info)
+!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!          info%h_eval = info%h_eval + 1
           if (hfstatus > 0) goto 4030
        end if
-    case (8)
-       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-       info%h_eval = info%h_eval + 1
+    case (8)       
+       call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+            params,control,info)
+!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!       info%h_eval = info%h_eval + 1
        if (hfstatus > 0) goto 4030
     case (9)
        ! First, check if we need to switch methods
@@ -921,8 +935,10 @@ contains
        end if
 
        if (w%use_second_derivatives) then 
-          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-          info%h_eval = info%h_eval + 1
+          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+               params,control,info)
+!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+ !         info%h_eval = info%h_eval + 1
           if (hfstatus > 0) goto 4030
        else 
           w%hf(1:n**2) = zero
@@ -1636,6 +1652,29 @@ contains
 
 
      end subroutine calculate_rho
+
+     subroutine apply_second_order_info(status,n,m,X,f,hf,eval_Hf,params,control,info)
+       integer, intent(out) :: status
+       integer, intent(in)  :: n, m 
+       real(wp), intent(in) :: X(*), f(*)
+       real(wp), intent(inout) :: hf(*)
+       procedure( eval_hf_type ) :: eval_Hf
+       class( params_base_type ) :: params
+       type( NLLS_control_type ), intent(in) :: control
+       type( NLLS_inform_type ), intent(inout) :: info
+       
+       real(wp), allocatable :: s(:), y(:), yhash(:)
+
+       if (control%exact_second_derivatives) then
+          call eval_HF(status, n, m, X, f, hf, params)
+          info%h_eval = info%h_eval + 1
+       else
+          write(*,*) 'eek, do this!!!'
+          status = -1234
+       end if
+
+
+     end subroutine apply_second_order_info
 
      subroutine update_trust_region_radius(rho,control,Delta)
        
