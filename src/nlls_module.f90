@@ -224,7 +224,7 @@ module nlls_module
 !   shall we use explicit second derivatives, or approximate using a secant 
 !   method
      
-     LOGICAL :: exact_second_derivatives = .false.!.true.
+     LOGICAL :: exact_second_derivatives = .true.
       
 !   is the Hessian matrix of second derivatives available or is access only
 !    via matrix-vector products?
