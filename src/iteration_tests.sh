@@ -21,6 +21,12 @@ sed -i '5s/.*/8                     model used (1=first order, 2=Newton)/' \
     $CUTEST/src/ral_nlls/RAL_NLLS.SPC
 ./run_tests.sh results_m8.out
 
+echo "model = 9"
+sed -i '5s/.*/9                     model used (1=first order, 2=Newton)/' \
+    $CUTEST/src/ral_nlls/RAL_NLLS.SPC
+./run_tests.sh results_m9.out
+
+
 echo "gsl"
 ./run_tests_gsl.sh results_gsl.out
 

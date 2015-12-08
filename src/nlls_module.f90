@@ -79,6 +79,7 @@ module nlls_module
 !      5  secant second-order (limited-memory BFGS, with %lbfgs_vectors history)
 !      6  secant second-order (limited-memory SR1, with %lbfgs_vectors history)
 !      7  hybrid (Gauss-Newton until gradient small, then Newton)
+!      8  hybrid (using Madsen, Nielsen and Tingleff's method)    
  
      INTEGER :: model = 1
 
@@ -519,6 +520,7 @@ module nlls_module
        real(wp) :: normJFold, normJF_Newton
        real(wp) :: Delta
        logical :: use_second_derivatives = .false.
+       integer :: hybrid_count = 0
        real(wp), allocatable :: fNewton(:), JNewton(:), XNewton(:)
        real(wp), allocatable :: J(:)
        real(wp), allocatable :: f(:), fnew(:)
@@ -665,7 +667,7 @@ contains
           Jmax = 0.0
           do i = 1, n
              ! note:: assumes column-storage of J
-             JtJdiag = norm2( J( (i-1)*m + 1 : i*m ) )
+             JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
              if (JtJdiag > Jmax) Jmax = JtJdiag
           end do
           w%Delta = control%initial_radius_scale * (Jmax**2)
@@ -706,6 +708,10 @@ contains
           info%h_eval = info%h_eval + 1
           if (hfstatus > 0) goto 4030
           w%use_second_derivatives = .true.
+       case (9) ! hybrid (MNT)
+          ! use first-order method initially
+          w%hf(1:n**2) = zero
+          w%use_second_derivatives = .false.
        case default
           goto 4040 ! unsupported model -- return to user
        end select
@@ -718,7 +724,7 @@ contains
        w%g = -w%g
        normJF = norm2(w%g)
        w%normJF0 = normJF
-       if (control%model == 8) w%normJFold = normJF
+       if (control%model == 8 .or. control%model == 9) w%normJFold = normJF
 
        ! save some data 
        info%obj = 0.5 * ( normF**2 )
@@ -867,6 +873,8 @@ contains
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
 
+       if ( control%model == 9) w%normJFold = normJF
+
        normF = normFnew
        normJF = norm2(w%g)
        
@@ -894,6 +902,35 @@ contains
        call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
        info%h_eval = info%h_eval + 1
        if (hfstatus > 0) goto 4030
+    case (9)
+       ! First, check if we need to switch methods
+       if (w%use_second_derivatives) then 
+          if (normJf > w%normJFold) then 
+             ! switch to Gauss-Newton
+             write(*,*) '** Switching to Gauss-Newton **'
+             w%use_second_derivatives = .false.
+          end if
+       else
+          if ( normJf < 0.02 *  ( 0.5 * (normF**2) ) ) then 
+             w%hybrid_count = w%hybrid_count + 1
+             if (w%hybrid_count == 3) then
+                ! use (Quasi-)Newton
+                write(*,*) '** Switching to Newton **'
+                w%use_second_derivatives = .true.
+                w%hybrid_count = 0
+             end if
+          else 
+             w%hybrid_count = 0
+          end if
+       end if
+
+       if (w%use_second_derivatives) then 
+          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+          info%h_eval = info%h_eval + 1
+          if (hfstatus > 0) goto 4030
+       else 
+          w%hf(1:n**2) = zero
+       end if
     end select
 
     ! update the stats 
