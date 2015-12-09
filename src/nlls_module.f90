@@ -531,6 +531,7 @@ module nlls_module
        real(wp), allocatable :: f(:), fnew(:)
        real(wp), allocatable :: hf(:)
        real(wp), allocatable :: d(:), g(:), Xnew(:)
+       real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
        real(wp), allocatable :: resvec(:), gradvec(:)
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
@@ -681,44 +682,13 @@ contains
           w%Delta = control%initial_radius
        end if
               
-       
-
        if ( calculate_svd_J ) then
           call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
           if ((svdstatus .ne. 0).and.(control%print_level .ge. 3)) then 
              write( control%out, 3000 ) svdstatus
           end if
        end if
-       
-       select case (control%model)
-       case (1) ! first-order
-          w%hf(1:n**2) = zero
-       case (2) ! second order
-          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf,params,control, info)
-!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-          if (hfstatus > 0) goto 4030
-       case (3) ! barely second order (identity hessian)
-          w%hf(1:n**2) = zero
-          w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
-       case (7) ! hybrid
-          ! first call, so always first-derivatives only
-          w%hf(1:n**2) = zero
-       case (8) ! hybrid II
-          ! always second order for first call...
-          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
-               params,control,info)
-!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!          info%h_eval = info%h_eval + 1
-          if (hfstatus > 0) goto 4030
-          w%use_second_derivatives = .true.
-       case (9) ! hybrid (MNT)
-          ! use first-order method initially
-          w%hf(1:n**2) = zero
-          w%use_second_derivatives = .false.
-       case default
-          goto 4040 ! unsupported model -- return to user
-       end select
-       
+
        normF = norm2(w%f)
        w%normF0 = normF
 
@@ -737,6 +707,44 @@ contains
           w%resvec(1) = info%obj
           w%gradvec(1) = info%norm_g
        end if
+       
+       select case (control%model)
+       case (1) ! first-order
+          w%hf(1:n**2) = zero
+       case (2) ! second order
+          if ( control%exact_second_derivatives ) then
+             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+             info%h_eval = info%h_eval + 1
+             if (hfstatus > 0) goto 4030
+          else
+             ! S_0 = 0 (see Dennis, Gay and Welsch)
+             w%hf(1:n**2) = zero
+          end if
+       case (3) ! barely second order (identity hessian)
+          w%hf(1:n**2) = zero
+          w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
+       case (7) ! hybrid
+          ! first call, so always first-derivatives only
+          w%hf(1:n**2) = zero
+       case (8) ! hybrid II
+          ! always second order for first call...
+                    if ( control%exact_second_derivatives ) then
+             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+             info%h_eval = info%h_eval + 1
+             if (hfstatus > 0) goto 4030
+          else
+             ! S_0 = 0 (see Dennis, Gay and Welsch)
+             w%hf(1:n**2) = zero
+          end if
+          w%use_second_derivatives = .true.
+       case (9) ! hybrid (MNT)
+          ! use first-order method initially
+          w%hf(1:n**2) = zero
+          w%use_second_derivatives = .false.
+       case default
+          goto 4040 ! unsupported model -- return to user
+       end select
+       
        
     end if
 
@@ -798,6 +806,14 @@ contains
        ! Add tests for model=8 !
        !+++++++++++++++++++++++!
        model8_success: if ( success .and. (control%model == 8) ) then
+
+          if (.not. control%exact_second_derivatives) then 
+             ! first, let's save some old values...
+             w%g_old = w%g
+             ! g_mixed = J_k^T r_{k+1}
+             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
+          end if
+
           ! evaluate J and hf at the new point
           call eval_J(jstatus, n, m, w%Xnew, w%J, params)
           info%g_eval = info%g_eval + 1
@@ -809,6 +825,7 @@ contains
              end if
           end if
           
+
           ! g = -J^Tf
           call mult_Jt(w%J,n,m,w%fnew,w%g)
           w%g = -w%g
@@ -857,10 +874,20 @@ contains
     ! if we reach here, a successful step has been found
     
     ! update X and f
-    X = w%Xnew; 
-    w%f = w%fnew; 
+    X(:) = w%Xnew(:)
+    w%f(:) = w%fnew(:)
     
     if ( control%model .ne. 8 ) then 
+       
+       if (.not. control%exact_second_derivatives) then 
+          ! first, let's save some old values...
+          ! g_old = -J_k^T r_k
+          w%g_old = w%g
+          ! g_mixed = -J_k^T r_{k+1}
+          call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
+          w%g_mixed = -w%g_mixed
+       end if
+
        ! evaluate J and hf at the new point
        call eval_J(jstatus, n, m, X, w%J, params)
        info%g_eval = info%g_eval + 1
@@ -871,7 +898,7 @@ contains
              write( control%out, 3000 ) svdstatus
           end if
        end if
-
+       
        ! g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
@@ -883,13 +910,21 @@ contains
        
     end if
 
-    
+    ! setup the vectors needed if second derivatives are not available
+    if (.not. control%exact_second_derivatives) then 
+       
+       w%y       = w%g_old   - w%g
+       w%y_sharp = w%g_mixed - w%g
+
+    end if
 
     select case (control%model) ! only update hessians than change..
     case (1) ! first-order
        continue
     case (2) ! second order
-       call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+       call apply_second_order_info(hfstatus,n,m, & 
+            X,w%f,w%hf,eval_Hf, &
+            w%d, w%y, w%y_sharp,  &
             params,control,info)
 !       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
 !       info%h_eval = info%h_eval + 1
@@ -900,14 +935,18 @@ contains
        if ( w%use_second_derivatives ) then 
           ! hybrid switch turned on....
           
-          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+          call apply_second_order_info(hfstatus,n,m, &
+               X,w%f,w%hf,eval_Hf, &
+               w%d, w%y, w%y_sharp,  &
                params,control,info)
 !          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
 !          info%h_eval = info%h_eval + 1
           if (hfstatus > 0) goto 4030
        end if
     case (8)       
-       call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+       call apply_second_order_info(hfstatus,n,m,&
+            X,w%f,w%hf,eval_Hf, &
+            w%d, w%y, w%y_sharp,  &
             params,control,info)
 !       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
 !       info%h_eval = info%h_eval + 1
@@ -935,7 +974,9 @@ contains
        end if
 
        if (w%use_second_derivatives) then 
-          call apply_second_order_info(hfstatus,n,m,X,w%f,w%hf,eval_Hf, &
+          call apply_second_order_info(hfstatus,n,m, &
+               X,w%f,w%hf,eval_Hf, &
+               w%d, w%y, w%y_sharp,  &
                params,control,info)
 !          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
  !         info%h_eval = info%h_eval + 1
@@ -1653,24 +1694,50 @@ contains
 
      end subroutine calculate_rho
 
-     subroutine apply_second_order_info(status,n,m,X,f,hf,eval_Hf,params,control,info)
+     subroutine apply_second_order_info(status,n,m,&
+          X,f,hf,eval_Hf,&
+          d, y, y_sharp, & 
+          params,control,info)
        integer, intent(out) :: status
        integer, intent(in)  :: n, m 
-       real(wp), intent(in) :: X(*), f(*)
-       real(wp), intent(inout) :: hf(*)
+       real(wp), intent(in) :: X(:), f(:)
+       real(wp), intent(inout) :: hf(:)
+       real(wp), intent(in) :: d(:), y(:), y_sharp(:)
        procedure( eval_hf_type ) :: eval_Hf
        class( params_base_type ) :: params
        type( NLLS_control_type ), intent(in) :: control
        type( NLLS_inform_type ), intent(inout) :: info
        
-       real(wp), allocatable :: s(:), y(:), yhash(:)
+       real(wp), allocatable :: Sks(:), ysharpSks(:)
 
-       if (control%exact_second_derivatives) then
+       real(wp) :: yts, alpha
+
+        if (control%exact_second_derivatives) then
           call eval_HF(status, n, m, X, f, hf, params)
           info%h_eval = info%h_eval + 1
        else
-          write(*,*) 'eek, do this!!!'
-          status = -1234
+          
+          yts = dot_product(d,y)
+          allocate(Sks(n))
+          allocate(ysharpSks(n))
+          ysharpSks = y_sharp - Sks
+          call mult_J(hf,n,n,d,Sks) ! hfs = S_k * d
+          
+          ! now, let's scale hd (Nocedal and Wright, Section 10.2)
+          alpha = abs(dot_product(d,y_sharp))/abs(dot_product(d,Sks))
+          alpha = min(one,alpha)
+          hf(:)  = alpha * hf(:)
+
+          ! update S_k (again, as in N&W, Section 10.2)
+
+          ! hf = hf + (1/yts) (y# - Sk d)^T y:
+          alpha = 1/yts
+          call dGER(n,n,alpha,ysharpSks,1,y,1,hf,n)
+          ! hf = hf + (1/yts) y^T (y# - Sk d):
+          call dGER(n,n,alpha,y,1,ysharpSks,1,hf,n)
+          ! hf = hf - ((y# - Sk d)^T d)/((yts)**2)) * y y^T
+          alpha = dot_product(ysharpSks,d)/(yts**2)
+          call dGER(n,n,alpha,y,1,y,1,hf,n)
        end if
 
 
@@ -2086,6 +2153,26 @@ contains
         status = 0      
         
         workspace%first_call = 0
+
+        if (.not. control%exact_second_derivatives) then
+           if (.not. allocated(workspace%y)) then
+              allocate(workspace%y(n), stat = status)
+              if (status > 0) goto 9000
+           end if
+           if (.not. allocated(workspace%y_sharp)) then
+              allocate(workspace%y_sharp(n), stat = status)
+              if (status > 0) goto 9000
+           end if
+           if (.not. allocated(workspace%g_old)) then
+              allocate(workspace%g_old(n), stat = status)
+              if (status > 0) goto 9000
+           end if
+           if (.not. allocated(workspace%g_mixed)) then
+              allocate(workspace%g_mixed(n), stat = status)
+              if (status > 0) goto 9000
+           end if
+
+        end if
 
         if( control%output_progress_vectors ) then 
            if (.not. allocated(workspace%resvec)) then
