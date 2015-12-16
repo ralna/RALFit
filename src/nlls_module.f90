@@ -1718,14 +1718,6 @@ contains
           info%h_eval = info%h_eval + 1
        else
 
-          do i = 1,n
-             write(*,*) 'hf = ', hf( (/ (n * (i-1) + j, j = 1, n )/) )
-          end do
-          
-          write(*,*) 'y = '
-          write(*,*) y
-          write(*,*) 's = '
-          write(*,*) d
           yts = dot_product(d,y)
           allocate(Sks(n))
           call mult_J(hf,n,n,d,Sks) ! hfs = S_k * d
@@ -1750,11 +1742,6 @@ contains
           call dGER(n,n,alpha,y,1,y,1,hf,n)
                     
        end if
-
-       do i = 1,n
-          write(*,*) 'hf = ', hf( (/ (n * (i-1) + j, j = 1, n )/) )
-       end do
-
 
      end subroutine apply_second_order_info
 
