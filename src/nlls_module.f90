@@ -1711,17 +1711,27 @@ contains
        real(wp), allocatable :: Sks(:), ysharpSks(:)
 
        real(wp) :: yts, alpha
+       integer :: i,j
 
-        if (control%exact_second_derivatives) then
+       if (control%exact_second_derivatives) then
           call eval_HF(status, n, m, X, f, hf, params)
           info%h_eval = info%h_eval + 1
        else
+
+          do i = 1,n
+             write(*,*) 'hf = ', hf( (/ (n * (i-1) + j, j = 1, n )/) )
+          end do
           
+          write(*,*) 'y = '
+          write(*,*) y
+          write(*,*) 's = '
+          write(*,*) d
           yts = dot_product(d,y)
           allocate(Sks(n))
+          call mult_J(hf,n,n,d,Sks) ! hfs = S_k * d
+
           allocate(ysharpSks(n))
           ysharpSks = y_sharp - Sks
-          call mult_J(hf,n,n,d,Sks) ! hfs = S_k * d
           
           ! now, let's scale hd (Nocedal and Wright, Section 10.2)
           alpha = abs(dot_product(d,y_sharp))/abs(dot_product(d,Sks))
@@ -1736,9 +1746,14 @@ contains
           ! hf = hf + (1/yts) y^T (y# - Sk d):
           call dGER(n,n,alpha,y,1,ysharpSks,1,hf,n)
           ! hf = hf - ((y# - Sk d)^T d)/((yts)**2)) * y y^T
-          alpha = dot_product(ysharpSks,d)/(yts**2)
+          alpha = -dot_product(ysharpSks,d)/(yts**2)
           call dGER(n,n,alpha,y,1,y,1,hf,n)
+                    
        end if
+
+       do i = 1,n
+          write(*,*) 'hf = ', hf( (/ (n * (i-1) + j, j = 1, n )/) )
+       end do
 
 
      end subroutine apply_second_order_info
