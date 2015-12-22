@@ -14,6 +14,6 @@
 T                     output_progress_vectors
 T                     exact second derivatives
 44                    summary unit (not + = don't write)
-H_1Ep1_3.out           summary file (max 20 chars)
+H_1Ep2_3.out           summary file (max 20 chars)
 45                    iteration summary (not + = don't write)		    
-H_1Ep1_3_iter.out           iteration summary file (max 20 chars)
+H_1Ep2_3_iter.out           iteration summary file (max 20 chars)
