@@ -2,18 +2,18 @@
 6                     normal output unit
 3                     controls the amount of printing --- set to 0, 1, 2 or 3
 3                     method used (1=dogleg, 2=AINT, 3=More-Sorensen)
-2                     model used (1=first order, 2=Newton)
+9                     model used (1=first order, 2=Newton)
 1000                  maxits		      
 0                     relative trust region? (1=relative)
 1.0                   TR scaling parameter
 100.0                 initial TR radius
 1.0E-7                absolute stopping tolerance
 1.0E-7                relative stopping tolerance
-2.0E-2		      hybrid_tol
-3		      hybrid_switch_its
-T  		      output_progress_vectors
-F                     exact second derivatives
+2.0E-3                hybrid_tol
+1                     hybrid_switch_its
+T                     output_progress_vectors
+T                     exact second derivatives
 44                    summary unit (not + = don't write)
-QuasiNewton.out       summary file (max 20 chars)
+H_1E3_1.out           summary file (max 20 chars)
 45                    iteration summary (not + = don't write)		    
-QuasiNewton_iter.out  iteration summary file (max 20 chars)		      
+H_1E3_1_iter.out           iteration summary file (max 20 chars)

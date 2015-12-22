@@ -9,6 +9,8 @@
 100.0                 initial TR radius
 1.0E-7                absolute stopping tolerance
 1.0E-7                relative stopping tolerance
+2.0E-2		      hybrid_tol
+3		      hybrid_switch_its
 T  		      output_progress_vectors
 F                     exact second derivatives
 44                    summary unit (not + = don't write)
