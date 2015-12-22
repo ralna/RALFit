@@ -275,6 +275,16 @@ module nlls_module
     real(wp) :: more_sorensen_tol = 1e-3
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! H Y B R I D   C O N T R O L S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! what's the tolerance such that ||J^T f || < tol * 0.5 ||f||^2 triggers a switch
+    real(wp) :: hybrid_tol = 0.02
+
+! how many successive iterations does the above condition need to hold before we switch?
+    integer  :: hybrid_switch_its = 3
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! O U T P U T   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -526,6 +536,7 @@ module nlls_module
        real(wp) :: Delta
        logical :: use_second_derivatives = .false.
        integer :: hybrid_count = 0
+       real(wp) :: hybrid_tol = 1.0
        real(wp), allocatable :: fNewton(:), JNewton(:), XNewton(:)
        real(wp), allocatable :: J(:)
        real(wp), allocatable :: f(:), fnew(:)
@@ -594,6 +605,8 @@ contains
 !!$    write(*,*) 'more_sorensen_shift = ',control%more_sorensen_shift
 !!$    write(*,*) 'more_sorensen_tiny = ',control%more_sorensen_tiny
 !!$    write(*,*) 'more_sorensen_tol = ',control%more_sorensen_tol
+!!$    write(*,*) 'hybrid_tol = ', control%hybrid_tol
+!!$    write(*,*) 'hybrid_switch_its = ', control%hybrid_switch_its
 !!$    write(*,*) 'output_progress_vectors = ',control%output_progress_vectors
 
     main_loop: do i = 1,control%maxit
@@ -645,6 +658,7 @@ contains
     integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, normJF, normF, normFnew, md, Jmax, JtJdiag
+    real(wp) :: FunctionValue, hybrid_tol
     logical :: success, calculate_svd_J
     real(wp) :: s1, sn
     
@@ -699,6 +713,11 @@ contains
        w%normJF0 = normJF
        if (control%model == 8 .or. control%model == 9) w%normJFold = normJF
 
+       if (control%model == 9) then
+          ! make this relative....
+          w%hybrid_tol = control%hybrid_tol * ( normJF/(0.5*(normF**2)) )
+       end if
+       
        ! save some data 
        info%obj = 0.5 * ( normF**2 )
        info%norm_g = normJF
@@ -960,9 +979,10 @@ contains
              w%use_second_derivatives = .false.
           end if
        else
-          if ( normJf < 0.02 *  ( 0.5 * (normF**2) ) ) then 
+          FunctionValue = 0.5 * (normF**2)
+          if ( normJf/FunctionValue < w%hybrid_tol ) then 
              w%hybrid_count = w%hybrid_count + 1
-             if (w%hybrid_count == 3) then
+             if (w%hybrid_count == control%hybrid_switch_its) then
                 ! use (Quasi-)Newton
                 if (control%print_level .ge. 3) write(control%out,3130) 
                 w%use_second_derivatives = .true.
