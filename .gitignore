@@ -1,0 +1,6 @@
+*.o
+*.mod
+*.gcno
+*.gcna
+*.gcda
+*.a
