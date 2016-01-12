@@ -7,3 +7,12 @@
 galahad/*
 libral_nlls/build/*
 src/data/*
+cutest/sif/*
+doc/*
+libral_nlls/doc/ral_nlls.aux
+libral_nlls/doc/ral_nlls.log
+libral_nlls/doc/ral_nlls.pdf
+libral_nlls/doc/ral_nlls.synctex.gz
+libral_nlls/doc/spec.aux
+libral_nlls/doc/spec.fdb_latexmk
+libral_nlls/test/comparison_tests/data/*

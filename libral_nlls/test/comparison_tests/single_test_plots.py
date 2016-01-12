@@ -47,7 +47,7 @@ for i in range(no_tests-1):
     except:
         print "Error: No control file " + control_files[i] + "found"
     
-    os.chdir("../cutest/sif/")
+    os.chdir("cutest/sif/")
 
     if i == 0:
         # very first call, so create blank file...
@@ -56,9 +56,9 @@ for i in range(no_tests-1):
     else: # no need to decode again....
         subprocess.call(["runcutest","-p",package])
     subprocess.call(["mv", control_files[i]+"_iter.out", \
-                     "../../src/data/"+control_files[i]+"_iter.out"])
+                     "../../data/"+control_files[i]+"_iter.out"])
 
-    os.chdir("../../src/")
+    os.chdir("../../")
     filename = "data/" + control_files[i] + "_iter.out"
     progress[i] = np.loadtxt(filename,dtype = datatype)
     all_min[i] = progress[i]['res'].min()
@@ -80,7 +80,7 @@ plt.legend()
 plt.title(problem+': gradients')
 plt.xlabel('Iteration number')
 plt.ylabel('$||J^Tr||_2$')
-plt.savefig('../doc/img/'+problem+'_'+short_hash+'.png')
+plt.savefig('../../../doc/img/'+problem+'_'+short_hash+'.png')
 
 plt.figure(2)
 for i in range(no_tests-1):
@@ -90,6 +90,6 @@ plt.legend()
 plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
 plt.xlabel('Iteration number')
 plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
-plt.savefig('../doc/img/'+problem+'_res_'+short_hash+'.png')
+plt.savefig('../../../doc/img/'+problem+'_res_'+short_hash+'.png')
 
 plt.show()

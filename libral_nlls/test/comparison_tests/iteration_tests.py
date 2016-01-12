@@ -33,7 +33,7 @@ info = np.dtype({'names' :   ['pname','n','m','status','iter','res','grad'],
                  'formats' : ['S10' ,int ,int,int,     int,   float,float]})
 
 # get the list of problems...
-problems = np.loadtxt("../cutest/sif/sif_names.txt", dtype = str)
+problems = np.loadtxt("cutest/sif/sif_names.txt", dtype = str)
 
 no_probs = len(problems)
 
@@ -52,7 +52,7 @@ for i in range(no_probs):
         except:
             print "Error: No control file " + control_files[i] + "found"
            
-        os.chdir("../cutest/sif/")
+        os.chdir("cutest/sif/")
                
         if i == 0:
             # very first call, so create blank file...
@@ -64,7 +64,7 @@ for i in range(no_probs):
         else: # no need to decode again....
             subprocess.call(["runcutest","-p",package])
         
-        os.chdir("../../src/")
+        os.chdir("../../")
 
 # now we have all the data, we just need to process it....
 
@@ -74,7 +74,7 @@ best = np.zeros(no_tests,dtype = np.int)
 too_many_its = np.zeros(no_tests, dtype = np.int)
 
 for j in range(no_tests):
-    subprocess.call(["mv", "../cutest/sif/"+control_files[j]+".out", \
+    subprocess.call(["mv", "/cutest/sif/"+control_files[j]+".out", \
                      "data/"+control_files[j]+".out"])
     data[j] = np.loadtxt("data/"+control_files[j]+".out", dtype = info)
     if control_files[j] == "gsl":
