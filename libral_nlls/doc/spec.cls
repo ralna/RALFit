@@ -627,7 +627,7 @@
   \onecolumn
 \fi
 
-\newcommand{\hsl}{HSL}
+\newcommand{\hsl}{}
 
 \usepackage{graphicx,fancyhdr,pslatex}
 
@@ -656,7 +656,7 @@
 \renewcommand{\footrulewidth}{0.5mm}
 
 \newcommand{\licence}{\textbf{\large All use is subject to licence.}}
-\newcommand{\website}{\texttt{http://www.hsl.rl.ac.uk/}}
+\newcommand{\website}{\texttt{http://www.numerical.rl.ac.uk/}}
 
 \fancyhead{} % clear all header fields
 \fancyhead[LE,RO]{\Large \textbf{\fullpackagename}}
@@ -677,7 +677,7 @@
 
 \renewcommand{\thesection}{\arabic{section}}
 \renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
-\newcommand{\releasename}{HSL}
+\newcommand{\releasename}{}
 
 %  Specifics
 
@@ -700,7 +700,7 @@
 \ifpdf
 \pdfinfo{
    /Author (Science and Technology Facilities Council)
-   /Title  (\libraryname_\packagename\ - HSL Mathematical Software Library)
+   /Title  (\libraryname_\packagename)
 }
 \fi
 \thispagestyle{plain}
