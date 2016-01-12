@@ -4,3 +4,6 @@
 *.gcna
 *.gcda
 *.a
+galahad/*
+libral_nlls/build/*
+src/data/*
