@@ -1,5 +1,10 @@
 /* expfit.c -- model functions for exponential + background */
 
+#include <math.h>
+#include <stddef.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
+
 struct usertype {
   size_t n;
   double * y;
