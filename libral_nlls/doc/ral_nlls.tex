@@ -309,9 +309,10 @@ of iterations the algorithm is allowed to take before being stopped.  The defaul
 
 \itt{model} \scalarinteger that specifies the model, $m_k(\cdot)$, used.  Possible values are 
 \begin{description}
-  \item{\tt 1} First-order (no Hessian).
-  \item{\tt 2} Second-order (exact Hessian).
-  \item{\tt 3} Barely second-order (Hessian matrix approximated by the identity).
+  \item{\tt 1} Gauss-Newton (no Hessian).
+  \item{\tt 2} Newton (exact Hessian).
+%  \item{\tt 3} Barely second-order (Hessian matrix approximated by the identity).
+  \item{\tt 9} Hybrid method (mixture of Gauss-Newton/Newton as appropriate).
 \end{description}
 The default is {\tt model = 1}.
 
@@ -321,6 +322,7 @@ The default is {\tt model = 1}.
   \item{\tt 1} Powell's dogleg method (approximates the solution).
   \item{\tt 2} The Adachi-Iwata-Nakatsukasa-Takeda (AINT) method.
   \item{\tt 3} The More-Sorensen method.
+  \item{\tt 4} Galahad's DTRS method
 \end{description}
 The default is {\tt nlls\_method = 1}.
 
@@ -329,6 +331,11 @@ The default is {\tt nlls\_method = 1}.
 \itt{stop\_g\_absolute} \scalarreal that specifies the absolute tolerance for convergence.
 
 \itt{stop\_g\_relative} \scalarreal that specifies the relative tolerance for convergence.
+
+\itt{relative\_tr\_radius} \scalarinteger that specifies whether the initial trust region 
+radius should be scaled.
+
+\itt{initial\_radius\_scale} \scalarreal that specifies the scaling parameter for the initial trust region radius, which is only used if {\tt relative\_tr\_radius = 1}.
 
 \itt{initial\_radius} \scalarreal that specifies the initial trust-region radius, $\Delta$.
 
@@ -349,6 +356,29 @@ but keep the trust-region radius unchanged.
 which we can reduce the trust-region radius {\color{red} coded up, but always 
 inactive until a more sophisticated increase/reduction strategy is employed}.
 
+\itt{hybrid\_switch} \scalarreal that specifies the value, if {\tt nlls\_method = 9}, 
+at which we switch to second derivatives.
+
+\itt{exact\_second\_derivatives} {\color{red} logical} that, if {\tt true}, signifies that the
+exact second derivatives are available (and, if {\tt false}, approximates them using a secant method).
+
+\itt{more\_sorensen\_maxits} \scalarinteger that, if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
+
+\itt{more\_sorensen\_shift} \scalarreal that, if {\tt nlls\_method = 3}, specifies the shift to be used in the More-Sorensen method.
+
+\itt{more\_sorensen\_tiny} \scalarreal that, if {\tt nlls\_method = 3}, specifies the value 
+below which we consider numbers to be essentially zero.
+
+\itt{more\_sorensen\_tol} \scalarreal that, if {\tt nlls\_method = 3}, specifies the tolerance
+to be used in the More-Sorensen method.
+
+\itt{hybrid\_tol} \scalarreal that, if \(\|J^T f \| < \mathtt{hybrid\_tol} * 0.5 \|f\|^2\), switches to a (quasi-)Newton method.
+
+\itt{hybrid\_switch\_its} \scalarinteger that sets how many iterates in a row must 
+the condition in the definition of {\tt hybrid\_tol} hold before a switch.
+
+\itt{output\_progress\_vectors} {color{red} logical} that, if true, outputs the progress vectors at the end of the routine.
+
 \end{description}
 
 
@@ -361,6 +391,15 @@ The components are:
 \itt{status} \scalarinteger that gives the exit status of the subroutine.  See Section {\color{red} ???} for details.
 \itt{alloc\_status} \scalarinteger that gives the status of the last attempted allocation/deallocation.
 \itt{iter} \scalarinteger that gives the total number of iterations performed.
+\itt{f\_eval} \scalarinteger that gives the total number of evaluations of the objective function.
+\itt{g\_eval} \scalarinteger that gives the total number of evaluations of the gradient of the objective function.
+\itt{h\_eval} \scalarinteger that gives the total number of evaluations of the Hessian of the objective function.
+\itt{convergence\_normf} \scalarinteger that tells us if the test on the size of \(f\) is satisfied.
+\itt{convergence\_normg} \scalarinteger that tells us if the test on the size of the gradient is satisfied.
+\itt{resvec} \ronearrayreal{iter+1} that holds the vector of residuals
+\itt{gradvec} \ronearrayreal{iter+1} that holds the vector of gradients.
+\itt{obj} \scalarreal that holds the value of the objective function at the best estimate of the solution determined by the algorithm.
+\itt{norm\_g} \scalarreal that holds the gradient of the objective function at the best estimate of the solution determined by the algorithm.
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% Warning and error messages %%%%%%%%%%%%%%%%%%%%%%%%
