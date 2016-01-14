@@ -9,7 +9,7 @@ program nlls_test
   type( NLLS_inform_type )  :: status
   type( NLLS_control_type ) :: options
   type( user_type ), target :: params
-  real(wp), allocatable :: x(:),y(:),z(:)
+  real(wp), allocatable :: w(:),x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
   real(wp), allocatable :: results(:)
   real(wp) :: alpha
@@ -20,7 +20,7 @@ program nlls_test
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
 
-  type( NLLS_workspace ) :: work, work2, work3, work4, work5
+  type( NLLS_workspace ) :: work, work2, work3, work4, work5, work_dtrs
 
   open(unit = 17, file="nlls_test.out")
   options%error = 17
@@ -47,7 +47,7 @@ program nlls_test
      allocate(model_to_test(number_of_models))
      model_to_test = (/ 0, 1, 2, 3, 7, 8, 9 /)
      
-     do nlls_method = 1,3
+     do nlls_method = 1,4
         do model = 1,number_of_models
            allocate( x(n) )
 
@@ -121,8 +121,37 @@ program nlls_test
      !! more_sorensen
      ! ** TODO ** 
 
+     !! solve_dtrs
+     ! ** TODO ** 
+     options%nlls_method = 4
+     n = 2
+     m = 5
+     call setup_workspaces(work_dtrs,n,m,options,info) 
+     allocate(x(m*n),y(n),z(n**2),w(n))
+     ! x -> J, y-> f, x -> hf, w-> d
+     x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
+     y = (/ 1.2_wp, 3.1_wp /)
+     z = 1.0_wp
+
+     alpha = 0.02_wp
+     
+     call solve_dtrs(x,y,z,n,m,alpha,w,& 
+          work_dtrs%calculate_step_ws%solve_dtrs_ws, &
+          options,status)
+
+     if (dot_product(w,w) > alpha**2) then
+        write(*,*) 'dtrs failed'
+        write(*,*) 'Delta = ', alpha, '||d|| = ', dot_product(w,w)
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
+     deallocate(x,y,z,w)
+
      !! solve_LLS 
      ! ** TODO **
+     
+     
+     
 
      !------------!
      !! findbeta !!

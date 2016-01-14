@@ -1630,7 +1630,6 @@ contains
      !       s.t. ||p|| \leq Delta
      !
      ! first, find the matrix H and vector v
-     
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
      ! add any second order information...
@@ -1655,27 +1654,37 @@ contains
      ! <=>
 
      ! we need to get the transformed vector v
-     call mult_J(w%ev,n,n,w%v,w%v_trans)
+     call mult_Jt(w%ev,n,n,w%v,w%v_trans)
 !     w%v_trans(:) = matmul(w%ev,w%v)
 
      ! we've now got the vectors we need, pass to dtrs_solve
      call dtrs_initialize( dtrs_control, dtrs_inform ) 
 
+     dtrs_control%print_level = 3
+
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_control, dtrs_inform )
-     ! todo:: check inform
+     if ( dtrs_inform%status .ne. 0) goto 1010
 
      ! and return the un-transformed vector
-     call mult_Jt(w%ev,n,n,w%d_trans,d)
+     call mult_J(w%ev,n,n,w%d_trans,d)
  !    d = matmul(transpose(w%ev),w%d_trans)
 
      return
      
 1000 continue
      if ( control%print_level > 0 ) then
-        write(control%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
+        write(control%error,'(a)') 'solve_dtrs: error from lapack routine dsyev(x)'
         write(control%error,'(a,i0)') 'info = ', eig_status
      end if
      info%status = -333
+     return
+
+1010 continue
+     if ( control%print_level > 0 ) then
+        write(control%error,'(a)') 'solve_dtrs: error from GALAHED routine DTRS'
+        write(control%error,'(a,i0)') 'info = ', dtrs_inform%status
+     end if
+     info%status = -777
      return
 
    end subroutine solve_dtrs
@@ -3657,7 +3666,6 @@ end module nlls_module
         prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
 
 !  output problem data
-
       IF ( control%problem > 0 ) THEN
         INQUIRE( FILE = control%problem_file, EXIST = problem_file_exists )
         IF ( problem_file_exists ) THEN
