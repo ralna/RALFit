@@ -74,7 +74,7 @@ best = np.zeros(no_tests,dtype = np.int)
 too_many_its = np.zeros(no_tests, dtype = np.int)
 
 for j in range(no_tests):
-    subprocess.call(["mv", "/cutest/sif/"+control_files[j]+".out", \
+    subprocess.call(["mv", "cutest/sif/"+control_files[j]+".out", \
                      "data/"+control_files[j]+".out"])
     data[j] = np.loadtxt("data/"+control_files[j]+".out", dtype = info)
     if control_files[j] == "gsl":
