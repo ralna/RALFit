@@ -1654,8 +1654,6 @@ contains
      ! we've now got the vectors we need, pass to dtrs_solve
      call dtrs_initialize( dtrs_control, dtrs_inform ) 
 
-     dtrs_control%print_level = 3
-
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_control, dtrs_inform )
      if ( dtrs_inform%status .ne. 0) goto 1010
 
