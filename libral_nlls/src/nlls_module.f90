@@ -112,6 +112,7 @@ module nlls_module
 !      1 Powell's dogleg
 !      2 AINT method (of Yuji Nat.)
 !      3 More-Sorensen
+!      4 Galahad's DTRS
 !      ...
 
 !   specify the semi-bandwidth of the band matrix P if required
@@ -240,7 +241,7 @@ module nlls_module
 
 !   use a factorization (dsyev) to find the smallest eigenvalue for the subproblem
 !    solve? (alternative is an iterative method (dsyevx)
-     LOGICAL :: subproblem_eig_fact = .FALSE.
+     LOGICAL :: subproblem_eig_fact = .FALSE. ! undocumented....
      
 
 !   is a retrospective strategy to be used to update the trust-region radius?
@@ -292,9 +293,6 @@ module nlls_module
 
 ! Shall we output progess vectors at termination of the routine?
      logical :: output_progress_vectors = .false.
-
-
-     
 
   END TYPE NLLS_control_type
 
@@ -3764,7 +3762,7 @@ end module nlls_module
         inform%hard_case = .TRUE.
         DO i = 1, n
           IF ( H( i ) == lambda_min ) THEN
-            IF ( ABS( C( i ) ) > epsmch ) THEN
+            IF ( ABS( C( i ) ) > epsmch * c_norm ) THEN
               inform%hard_case = .FALSE.
               c2 = c2 + C( i ) ** 2
             ELSE
