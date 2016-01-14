@@ -2,6 +2,8 @@
 
 module nlls_module
 
+  use RAL_NLLS_DTRS_double
+
   implicit none
 
   integer, parameter :: wp = kind(1.0d0)
@@ -499,6 +501,15 @@ module nlls_module
        integer, allocatable :: iwork(:), ifail(:)
     end type min_eig_symm_work
     
+    type, private :: all_eig_symm_work ! workspace for subroutine all_eig_symm
+       real(wp), allocatable :: work(:)
+    end type all_eig_symm_work
+        
+    type, private :: solve_dtrs_work ! workspace for subroutine dtrs_work
+       real(wp), allocatable :: A(:,:), ev(:,:), ew(:), v(:), v_trans(:), d_trans(:)
+       type( all_eig_symm_work ) :: all_eig_symm_ws
+    end type solve_dtrs_work
+        
     type, private :: more_sorensen_work ! workspace for subroutine more_sorensen
  !      type( solve_spd_work ) :: solve_spd_ws
        real(wp), allocatable :: A(:,:), LtL(:,:), AplusSigma(:,:)
@@ -526,6 +537,7 @@ module nlls_module
        type( AINT_tr_work ) :: AINT_tr_ws
        type( dogleg_work ) :: dogleg_ws
        type( more_sorensen_work ) :: more_sorensen_ws
+       type( solve_dtrs_work ) :: solve_dtrs_ws
     end type calculate_step_work
 
     type :: NLLS_workspace ! all workspaces called from the top level
@@ -1165,6 +1177,8 @@ contains
         call AINT_TR(J,f,hf,n,m,Delta,d,control,info,w%AINT_tr_ws)
      case (3) ! More-Sorensen
         call more_sorensen(J,f,hf,n,m,Delta,d,control,info,w%more_sorensen_ws)
+     case (4) ! Galahad
+        call solve_dtrs(J,f,hf,n,m,Delta,d,w%solve_dtrs_ws,control,info)
      case default
         
         if ( control%print_level > 0 ) then
@@ -1410,7 +1424,7 @@ contains
      info%status = -4
      return
 
-   end SUBROUTINE AINT_tr
+   END SUBROUTINE AINT_tr
 
    subroutine more_sorensen(J,f,hf,n,m,Delta,d,control,info,w)
      ! -----------------------------------------
@@ -1575,8 +1589,97 @@ contains
      return
      
      
-   end SUBROUTINE More_sorensen
+   end subroutine more_sorensen
    
+   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,w,control,info)
+
+     !---------------------------------------------
+     ! solve_dtrs
+     ! Solve the trust-region subproblem using
+     ! the DTRS method from Galahad
+     ! 
+     ! This method needs H to be diagonal, so we need to 
+     ! pre-process
+     !
+     ! main output :: d, the soln to the TR subproblem
+     !--------------------------------------------
+
+     REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     type( solve_dtrs_work ) :: w
+     TYPE( NLLS_control_type ), INTENT( IN ) :: control
+     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: info
+
+     integer :: eig_status
+     TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_control
+     TYPE ( DTRS_inform_type )  :: dtrs_inform
+     
+!     real(wp), allocatable :: A(:,:), v(:)
+!     real(wp), allocatable :: X(:,:), D(:)
+
+     ! The code finds 
+     !  d = arg min_p   w^T p + 0.5 * p^T D p
+     !       s.t. ||p|| \leq Delta
+     !
+     ! where D is diagonal
+     !
+     ! our probem in naturally in the form
+     ! 
+     ! d = arg min_p   v^T p + 0.5 * p^T H p
+     !       s.t. ||p|| \leq Delta
+     !
+     ! first, find the matrix H and vector v
+     
+     ! Set A = J^T J
+     call matmult_inner(J,n,m,w%A)
+     ! add any second order information...
+     ! so A = J^T J + HF
+     w%A = w%A + reshape(hf,(/n,n/))
+
+     ! now form v = J^T f 
+     call mult_Jt(J,n,m,f,w%v)
+
+     ! Now that we have the unprocessed matrices, we need to get an 
+     ! eigendecomposition to make A diagonal
+     !
+     call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,eig_status)
+     if (eig_status .ne. 0) goto 1000
+
+     ! We can now change variables, setting y = Vp, getting
+     ! Vd = arg min_(Vx) v^T p + 0.5 * (Vp)^T D (Vp)
+     !       s.t.  ||x|| \leq Delta
+     ! <=>
+     ! Vd = arg min_(Vx) V^Tv^T (Vp) + 0.5 * (Vp)^T D (Vp)
+     !       s.t.  ||x|| \leq Delta
+     ! <=>
+
+     ! we need to get the transformed vector v
+     call mult_J(w%ev,n,n,w%v,w%v_trans)
+!     w%v_trans(:) = matmul(w%ev,w%v)
+
+     ! we've now got the vectors we need, pass to dtrs_solve
+     call dtrs_initialize( dtrs_control, dtrs_inform ) 
+
+     call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_control, dtrs_inform )
+     ! todo:: check inform
+
+     ! and return the un-transformed vector
+     call mult_Jt(w%ev,n,n,w%d_trans,d)
+ !    d = matmul(transpose(w%ev),w%d_trans)
+
+     return
+     
+1000 continue
+     if ( control%print_level > 0 ) then
+        write(control%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
+        write(control%error,'(a,i0)') 'info = ', eig_status
+     end if
+     info%status = -333
+     return
+
+   end subroutine solve_dtrs
+
 
    SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status,w)
        
@@ -1803,7 +1906,6 @@ contains
        
 
      end subroutine update_trust_region_radius
-   
      
      subroutine test_convergence(normF,normJF,normF0,normJF0,control,info)
        
@@ -1826,7 +1928,6 @@ contains
        
      end subroutine test_convergence
      
-
      subroutine mult_J(J,n,m,x,Jx)
        real(wp), intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
@@ -1954,6 +2055,35 @@ contains
         call dger(n, n, one, x, 1, x, 1, xtx, n)
         
       end subroutine outer_product
+
+      subroutine all_eig_symm(A,n,ew,ev,w,status)
+        ! calculate all the eigenvalues of A (symmetric)
+
+        real(wp), intent(in) :: A(:,:)
+        integer, intent(in) :: n
+        real(wp), intent(out) :: ew(:), ev(:,:)
+        type( all_eig_symm_work ) :: w
+        integer, intent(out) :: status
+
+        real(wp), allocatable :: work
+        real(wp) :: tol
+        integer :: lwork
+        
+        status = 0 
+
+        ! copy the matrix A into the eigenvector array
+        ev(1:n,1:n) = A(1:n,1:n)
+        
+        lwork = size(w%work)
+        ! call dsyev --> all eigs of a symmetric matrix
+        
+        call dsyev('V', & ! both ew's and ev's 
+             'U', & ! upper triangle of A
+             n, ev, n, & ! data about A
+             ew, w%work, lwork, & 
+             status)
+        
+      end subroutine all_eig_symm
 
       subroutine min_eig_symm(A,n,ew,ev,control,status,w)
         ! calculate the leftmost eigenvalue of A
@@ -2268,6 +2398,10 @@ contains
            call setup_workspace_more_sorensen(n,m,&
                 workspace%calculate_step_ws%more_sorensen_ws,control,status)
            if (status > 0) goto 9000
+
+        case (4) ! dtrs (Galahad)
+           call setup_workspace_solve_dtrs(n,m, & 
+                workspace%calculate_step_ws%solve_dtrs_ws, control, status)
 
         end select
 
@@ -2622,6 +2756,101 @@ contains
 
       end subroutine setup_workspace_solve_general
 
+      subroutine setup_workspace_solve_dtrs(n,m,w,control,status)
+        integer, intent(in) :: n,m
+        type( solve_dtrs_work ) :: w
+        type( NLLS_control_type ), intent(in) :: control
+        integer, intent(out) :: status
+        
+        allocate(w%A(n,n),stat = status)
+        if (status > 0) goto 9000
+        allocate(w%ev(n,n),stat = status)
+        if (status > 0) goto 9000
+        allocate(w%v(n),stat = status)
+        if (status > 0) goto 9000
+        allocate(w%v_trans(n),stat = status)
+        if (status > 0) goto 9000
+        allocate(w%ew(n),stat = status)
+        if (status > 0) goto 9000
+        allocate(w%d_trans(n),stat = status)
+        if (status > 0) goto 9000
+
+        call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,control,status)
+        if (status > 0) goto 9010
+        
+        return
+                
+9000    continue
+        ! Allocation errors : solve_dtrs
+        if (control%print_level >= 0) then
+           write(control%error,'(a,a)') &
+                'Error allocating array for subroutine ''solve_dtrs'': ',&
+                'not enough memory.' 
+        end if
+        
+        return
+        
+9010    continue  
+        ! errors : solve_dtrs
+        if (control%print_level >= 0) then
+           write(control%error,'(a,a)') &
+                'Called from routine solve_dtrs' 
+        end if
+        
+        return
+
+      end subroutine setup_workspace_solve_dtrs
+      
+      subroutine setup_workspace_all_eig_symm(n,m,w,control,status)
+        integer, intent(in) :: n,m
+        type( all_eig_symm_work ) :: w
+        type( NLLS_control_type ), intent(in) :: control
+        integer, intent(out) :: status
+
+        real(wp), allocatable :: workquery(:)
+        real(wp) :: A,ew
+        integer :: lapack_status, lwork, eigsout
+
+        lapack_status = 0
+        A = 1.0_wp
+        ew = 1.0_wp
+
+        allocate(workquery(1))
+        call dsyev('V', & ! both ew's and ev's 
+             'U', & ! upper triangle of A
+             n, A, n, & ! data about A
+             ew, workquery, -1, & 
+             lapack_status)  
+        if (lapack_status .ne. 0) goto 9000
+
+        lwork = int(workquery(1))
+        deallocate(workquery)
+        allocate( w%work(lwork), stat = status )
+        if (status > 0) goto 8000
+        
+        return
+        
+8000    continue 
+        ! Allocation errors : all_eig_sym
+        if (control%print_level >= 0) then
+           write(control%error,'(a,a)') &
+                'Error allocating array for subroutine ''all_eig_symm'': ',&
+                'not enough memory.' 
+        end if
+
+9000    continue
+        ! lapack error
+        if (control%print_level >= 0) then
+           write(control%error,'(a,a)') &
+                'Error allocating array for subroutine ''solve_dtrs'': ',&
+                'not enough memory.' 
+        end if
+        
+        return
+
+      end subroutine setup_workspace_all_eig_symm
+
+      
       subroutine setup_workspace_more_sorensen(n,m,w,control,status)
         integer, intent(in) :: n,m
         type( more_sorensen_work ) :: w
@@ -2670,4 +2899,1722 @@ contains
 
 end module nlls_module
 
+!!
+!! Below are the modules that are borrowed from Galahad...
+!!
 
+! THIS VERSION: RAL_NLLS 1.0 - 22/12/2015 AT 14:15 GMT.
+
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*                             *-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*     SYMBOLS  M O D U L E    *-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*                             *-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!
+!  Copyright reserved, Gould/Orban/Toint, for GALAHAD productions
+!  Principal author: Nick Gould
+
+!  History -
+!   extracted from GALAHAD package SYMBOLS, December 22nd, 2015
+
+   MODULE RAL_NLLS_SYMBOLS
+
+!  This module provides the list of all symbolic names that are common to
+!  the RAL_NLLS modules. It is just intended as a dictionary for use in other
+!  modules.
+!
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+!-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+      IMPLICIT NONE
+      PUBLIC :: SYMBOLS_status
+
+!  exit conditions (0 to -99; others will be package specific)
+
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_ok                      = 0
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_allocate          = - 1
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_deallocate        = - 2
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_restrictions      = - 3
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_bad_bounds        = - 4
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_primal_infeasible = - 5
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_dual_infeasible   = - 6
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_unbounded         = - 7
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_no_center         = - 8
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_analysis          = - 9
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_factorization     = - 10
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_solve             = - 11
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_uls_analysis      = - 12
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_uls_factorization = - 13
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_uls_solve         = - 14
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_preconditioner    = - 15
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_ill_conditioned   = - 16
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_tiny_step         = - 17
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_max_iterations    = - 18
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_time_limit        = - 19
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_cpu_limit         =         &
+                                    RAL_NLLS_error_time_limit
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_inertia           = - 20
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_file              = - 21
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_io                = - 22
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_upper_entry       = - 23
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_sort              = - 24
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_input_status      = - 25
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_unknown_solver    = - 26
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_not_yet_implemented     = - 27
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_qp_solve          = - 28
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_unavailable_option      = - 29
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_warning_on_boundary     = - 30
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_call_order        = - 31
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_integer_ws        = - 32
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_real_ws           = - 33
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_pardiso           = - 34
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_wsmp              = - 35
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_mc64              = - 36
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_mc77              = - 37
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_lapack            = - 38
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_permutation       = - 39
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_alter_diagonal    = - 40
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_access_pivots     = - 41
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_access_pert       = - 42
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_direct_access     = - 43
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_f_min             = - 44
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_unknown_precond   = - 45
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_schur_complement  = - 46
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_technical         = - 50
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_reformat          = - 52
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_ah_unordered      = - 53
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_y_unallocated     = - 54
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_z_unallocated     = - 55
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_scale             = - 61
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_presolve          = - 62
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_qpa               = - 63
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_qpb               = - 64
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_qpc               = - 65
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_cqp               = - 66
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_dqp               = - 67
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_mc61              = - 69
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_mc68              = - 70
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_metis             = - 71
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_spral             = - 72
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_warning_repeated_entry  = - 73
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_rif               = - 74
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_ls28              = - 75
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_ls29              = - 76
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_cutest            = - 77
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_evaluation        = - 78
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_optional          = - 79
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_mi35              = - 80
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_spqr              = - 81
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_alive             = - 82
+      INTEGER, PUBLIC, PARAMETER :: RAL_NLLS_error_ccqp              = - 83
+
+   CONTAINS
+
+!-*-  R A L _ N L L S -  S Y M B O L S _ S T A T U S   S U B R O U T I N E  -*-
+
+     SUBROUTINE SYMBOLS_status( status, out, prefix, routine )
+
+!  *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+!  Print details of return codes
+
+!  *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+     INTEGER, INTENT( IN ) :: status, out
+     CHARACTER ( LEN = * ) :: prefix
+     CHARACTER ( LEN = * ) :: routine
+
+     SELECT CASE ( status )
+     CASE( RAL_NLLS_ok )
+
+     CASE( RAL_NLLS_error_allocate )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   allocation error' )" )                                       &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_deallocate )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   deallocation error' )" )                                     &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_restrictions )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+     &        '   one or more restrictions violated' )" )                      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_bad_bounds )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the problem bounds are infeasible' )" )                      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_primal_infeasible )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the problem appears to be (locally) infeasible' )" )         &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_dual_infeasible )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the problem appears to be (locally) dual infeasible' )" )    &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_unbounded )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+     &        '   the problem appears to be unbounded from below' )" )         &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_no_center )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the feasible region has no analytic center' )" )             &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_analysis )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the analysis phase failed' )" )                              &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_factorization )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the factorization failed' )" )                               &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_solve )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the solve phase failed' )" )                                 &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_uls_analysis )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &        '   the unsymmetric analysis phase failed' )" )                 &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_uls_factorization )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the unsymmetric factorization failed' )" )                   &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_uls_solve )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the unsymmetric solve phase failed' )" )                     &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_preconditioner )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the provided preconditioner is flawed' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_ill_conditioned )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A, '   the',   &
+      &       ' problem is too ill conditioned to make further progress' )" )  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_tiny_step )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A, '   the',   &
+      &       ' computed step is too small to make further progress' )" )      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_max_iterations )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the iteration limit has been exceeded' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_time_limit )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the time limit has been exceeded' )" )                       &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_inertia )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the preconditioner has the wrong inertia' )" )               &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_file )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   a file-handling error occurred' )" )                         &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_io )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an input/output error occurred' )" )                         &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_upper_entry )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   there is a matrix entry in the upper triangle' )" )          &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_sort )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occurred when sorting' )" )                         &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_input_status )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   error with input status' )" )                                &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_unknown_solver )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the requested solver is not known' )" )                      &
+         prefix, routine, prefix
+     CASE ( RAL_NLLS_not_yet_implemented )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the requested option has not yet been implemented' )" )      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_qp_solve )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   QP solver failed: check the QP solver status' )" )           &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_unavailable_option )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the requested option is unavailable' )" )                    &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_call_order )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the routine has been called out of order' )" )               &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_integer_ws )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   insufficient integer workspace for factorization' )" )       &
+         prefix, routine, prefix, status
+     CASE( RAL_NLLS_error_real_ws )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   insufficient real workspace for factorization' )" )          &
+         prefix, routine, prefix, status
+     CASE( RAL_NLLS_error_pardiso )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   PARDISO failure: check its return status' )" )               &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_wsmp )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   WSMP failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_mc64 )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   MC64 failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_mc77 )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   MC77 failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_lapack )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   LAPACK failure: check its return status' )" )                &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_permutation )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   input order is not a permutation' )" )                       &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_alter_diagonal )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   it is impossible to alter diagonals with this solver' )" )   &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_access_pivots )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   it is impossible to access the pivots with this solver' )" ) &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_access_pert )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   it is impossible to access the perturbations made with',     &
+      &       ' this solver' )" ) prefix, routine, prefix
+     CASE( RAL_NLLS_error_direct_access )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   a direct-access file error occurred' )" )                    &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_f_min )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the objective value is too small' )" )                       &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_unknown_precond )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the requested preconditioner is not known' )" )              &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_schur_complement )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the requested Schur complement is too large' )" )            &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_technical )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   a technical error has occurred within the linear solver' )" )&
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_reformat )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the matrix storage format has been changed' )" )             &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_ah_unordered )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   the matrix storage format should have been changed' )" )     &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_y_unallocated )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   Y, Y_l or Y_u has not been allocated' )" )                   &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_z_unallocated )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   Z, Z_l or Z_u has not been allocated' )" )                   &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_scale )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occured when scaling the problem' )" )              &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_presolve )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occured when pre/postsolving the problem' )" )      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_qpa )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occured when calling QPA' )" )                      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_qpb )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occured when calling QPB' )" )                      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_qpc )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occured when calling QPC' )" )                      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_cqp )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occured when calling CQP' )" )                      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_dqp )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   an error occured when calling DQP' )" )                      &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_mc61 )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   MC61 failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_mc68 )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   MC68 failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_metis )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   METIS failure: check its return status' )" )                 &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_spral )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   SPRAL failure: check its return status' )" )                 &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_ls28 )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   LS28 failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_ls29 )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   LS29 failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_mi35 )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   MI35 failure: check its return status' )" )                  &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_rif )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   RIF failure: check its return status' )" )                   &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_warning_repeated_entry )
+       WRITE( out, "( /, A,  ' Warning return from ', A, ' -', /, A,           &
+      &       '   the input matrix contains repeated entries' )" )             &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_cutest )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   CUTEst evaluation error: check its return status' )" )       &
+         prefix, routine, prefix
+     CASE( RAL_NLLS_error_evaluation )
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   function evaluation error: check its return status' )" )     &
+         prefix, routine, prefix
+     CASE DEFAULT
+       WRITE( out, "( /, A,  ' Error return from ', A, ' -', /, A,             &
+      &       '   status = ', I0 )" ) prefix, routine, prefix, status
+     END SELECT
+
+     RETURN
+
+!  End of subroutine SYMBOLS_status
+
+     END SUBROUTINE SYMBOLS_status
+
+   END MODULE RAL_NLLS_SYMBOLS
+
+
+! THIS VERSION: RAL_NLLS 1.0 - 22/12/2015 AT 14:15 GMT.
+
+!-*-*-*-*-*-*-*-  R A L _ N L L S _ D T R S  double  M O D U L E  *-*-*-*-*-*-*-
+
+!  Copyright reserved, Gould/Orban/Toint, for GALAHAD productions
+!  Principal author: Nick Gould
+
+!  History -
+!   extracted from GALAHAD package TRS, December 22nd, 2015
+
+   MODULE RAL_NLLS_DTRS_double
+
+!       -----------------------------------------------
+!      |                                               |
+!      | Solve the trust-region subproblem             |
+!      |                                               |
+!      |    minimize     1/2 <x, H x> + <c, x> + f     |
+!      |    subject to      ||x||_2 <= radius          |
+!      |    or              ||x||_2  = radius          |
+!      |                                               |
+!      | where H is diagonal                           |
+!      |                                               |
+!       -----------------------------------------------
+
+      USE RAL_NLLS_SYMBOLS
+
+      IMPLICIT NONE
+
+      PRIVATE
+      PUBLIC :: DTRS_initialize, DTRS_solve
+
+!--------------------
+!   P r e c i s i o n
+!--------------------
+
+      INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+
+!----------------------
+!   P a r a m e t e r s
+!----------------------
+
+      INTEGER, PARAMETER :: history_max = 100
+      INTEGER, PARAMETER :: max_degree = 3
+      INTEGER, PARAMETER :: out = 6
+      REAL ( KIND = wp ), PARAMETER :: zero = 0.0_wp
+      REAL ( KIND = wp ), PARAMETER :: half = 0.5_wp
+      REAL ( KIND = wp ), PARAMETER :: point4 = 0.4_wp
+      REAL ( KIND = wp ), PARAMETER :: one = 1.0_wp
+      REAL ( KIND = wp ), PARAMETER :: two = 2.0_wp
+      REAL ( KIND = wp ), PARAMETER :: three = 3.0_wp
+      REAL ( KIND = wp ), PARAMETER :: four = 4.0_wp
+      REAL ( KIND = wp ), PARAMETER :: six = 6.0_wp
+      REAL ( KIND = wp ), PARAMETER :: sixth = one / six
+      REAL ( KIND = wp ), PARAMETER :: onethird = one / three
+      REAL ( KIND = wp ), PARAMETER :: twothirds = two /three
+      REAL ( KIND = wp ), PARAMETER :: onesixth = one / six
+      REAL ( KIND = wp ), PARAMETER :: threequarters = 0.75_wp
+      REAL ( KIND = wp ), PARAMETER :: ten = 10.0_wp
+      REAL ( KIND = wp ), PARAMETER :: twentyfour = 24.0_wp
+      REAL ( KIND = wp ), PARAMETER :: infinity = half * HUGE( one )
+      REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
+      REAL ( KIND = wp ), PARAMETER :: teneps = ten * epsmch
+      REAL ( KIND = wp ), PARAMETER :: pi = 3.1415926535897931_wp
+      REAL ( KIND = wp ), PARAMETER :: magic = 2.0943951023931953_wp  !! 2 pi/3
+      REAL ( KIND = wp ), PARAMETER :: roots_tol = teneps
+      LOGICAL :: roots_debug = .FALSE.
+
+!--------------------------
+!  Derived type definitions
+!--------------------------
+
+!  - - - - - - - - - - - - - - - - - - - - - - -
+!   control derived type with component defaults
+!  - - - - - - - - - - - - - - - - - - - - - - -
+
+      TYPE, PUBLIC :: DTRS_control_type
+
+!  unit for error messages
+
+        INTEGER :: error = 6
+
+!  unit for monitor output
+
+        INTEGER :: out = 6
+
+!  unit to write problem data into file problem_file
+
+        INTEGER :: problem = 0
+
+!  controls level of diagnostic output
+
+        INTEGER :: print_level = 0
+
+!  maximum degree of Taylor approximant allowed
+
+        INTEGER :: taylor_max_degree = 3
+
+!  lower and upper bounds on the multiplier, if known
+
+        REAL ( KIND = wp ) :: lower = - half * HUGE( one )
+        REAL ( KIND = wp ) :: upper =  HUGE( one )
+
+!  stop when | ||x|| - radius | <=
+!     max( stop_normal * radius, stop_absolute_normal )
+
+        REAL ( KIND = wp ) :: stop_normal = epsmch
+        REAL ( KIND = wp ) :: stop_absolute_normal = epsmch
+
+!  is the solution is REQUIRED to lie on the boundary (i.e., is the constraint
+!  an equality)?
+
+        LOGICAL :: equality_problem= .FALSE.
+
+!  name of file into which to write problem data
+
+        CHARACTER ( LEN = 30 ) :: problem_file =                               &
+         'trs_problem.data' // REPEAT( ' ', 14 )
+
+!  all output lines will be prefixed by
+!    prefix(2:LEN(TRIM(%prefix))-1)
+!  where prefix contains the required string enclosed in quotes,
+!  e.g. "string" or 'string'
+
+        CHARACTER ( LEN = 30 ) :: prefix  = '""                            '
+
+      END TYPE
+
+!  - - - - - - - - - - - - - - - - - - - - - - - -
+!   history derived type with component defaults
+!  - - - - - - - - - - - - - - - - - - - - - - - -
+
+      TYPE, PUBLIC :: DTRS_history_type
+
+!  value of lambda
+
+        REAL ( KIND = wp ) :: lambda = zero
+
+!  corresponding value of ||x(lambda)||_M
+
+        REAL ( KIND = wp ) :: x_norm = zero
+      END TYPE
+
+!  - - - - - - - - - - - - - - - - - - - - - - -
+!   inform derived type with component defaults
+!  - - - - - - - - - - - - - - - - - - - - - - -
+
+      TYPE, PUBLIC :: DTRS_inform_type
+
+!   reported return status:
+!      0 the solution has been found
+!     -3 n and/or Delta is not positive
+!    -16 ill-conditioning has prevented furthr progress
+
+        INTEGER :: status = 0
+
+!  the number of (||x||_M,lambda) pairs in the history
+
+        INTEGER :: len_history = 0
+
+!  the value of the quadratic function
+
+        REAL ( KIND = wp ) :: obj = HUGE( one )
+
+!  the M-norm of x, ||x||_M
+
+        REAL ( KIND = wp ) :: x_norm = zero
+
+!  the Lagrange multiplier corresponding to the trust-region constraint
+
+        REAL ( KIND = wp ) :: multiplier = zero
+
+!  a lower bound max(0,-lambda_1), where lambda_1 is the left-most
+!  eigenvalue of (H,M)
+
+        REAL ( KIND = wp ) :: pole = zero
+
+!  has the hard case occurred?
+
+        LOGICAL :: hard_case = .FALSE.
+
+!  history information
+
+        TYPE ( DTRS_history_type ), DIMENSION( history_max ) :: history
+      END TYPE
+
+!  interface to LAPACK: eigenvalues of a Hessenberg matrix
+
+      INTERFACE HSEQR
+        SUBROUTINE SHSEQR( job, compz, n, ilo, ihi, H, ldh,  WR, WI, Z, ldz,   &
+                           WORK, lwork, info )
+        INTEGER, INTENT( IN ) :: ihi, ilo, ldh, ldz, lwork, n
+        INTEGER, INTENT( OUT ) :: info
+        CHARACTER ( LEN = 1 ), INTENT( IN ) :: compz, job
+        REAL, INTENT( INOUT ) :: H( ldh, * ), Z( ldz, * )
+        REAL, INTENT( OUT ) :: WI( * ), WR( * ), WORK( * )
+        END SUBROUTINE SHSEQR
+
+        SUBROUTINE DHSEQR( job, compz, n, ilo, ihi, H, ldh,  WR, WI, Z, ldz,   &
+                           WORK, lwork, info )
+        INTEGER, INTENT( IN ) :: ihi, ilo, ldh, ldz, lwork, n
+        INTEGER, INTENT( OUT ) :: info
+        CHARACTER ( LEN = 1 ), INTENT( IN ) :: compz, job
+        DOUBLE PRECISION, INTENT( INOUT ) :: H( ldh, * ), Z( ldz, * )
+        DOUBLE PRECISION, INTENT( OUT ) :: WI( * ), WR( * ), WORK( * )
+        END SUBROUTINE DHSEQR
+      END INTERFACE HSEQR
+
+!  interface to BLAS: two norm
+
+     INTERFACE NRM2
+
+       FUNCTION SNRM2( n, X, incx )
+       REAL :: SNRM2
+       INTEGER, INTENT( IN ) :: n, incx
+       REAL, INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
+       END FUNCTION SNRM2
+
+       FUNCTION DNRM2( n, X, incx )
+       DOUBLE PRECISION :: DNRM2
+       INTEGER, INTENT( IN ) :: n, incx
+       DOUBLE PRECISION, INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
+       END FUNCTION DNRM2
+
+     END INTERFACE
+
+    CONTAINS
+
+!-*-*-*-*-*-*-  D T R S _ I N I T I A L I Z E   S U B R O U T I N E   -*-*-*-*-
+
+      SUBROUTINE DTRS_initialize( control, inform )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+!
+!  .  Set initial values for the TRS control parameters  .
+!
+!  Arguments:
+!  =========
+!
+!   control  a structure containing control information. See DTRS_control_type
+!   data     private internal data
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t
+!-----------------------------------------------
+
+      TYPE ( DTRS_CONTROL_TYPE ), INTENT( OUT ) :: control
+      TYPE ( DTRS_inform_type ), INTENT( OUT ) :: inform
+
+      inform%status = RAL_NLLS_ok
+
+!  Set initial control parameter values
+
+      control%stop_normal = epsmch ** 0.75
+      control%stop_absolute_normal = epsmch ** 0.75
+
+      RETURN
+
+!  End of subroutine DTRS_initialize
+
+      END SUBROUTINE DTRS_initialize
+
+!-*-*-*-*-*-*-*-*-  D T R S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-
+
+      SUBROUTINE DTRS_solve( n, radius, f, C, H, X, control, inform )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Solve the trust-region subproblem
+!
+!      minimize     1/2 <x, H x> + <c, x> + f
+!      subject to    ||x||_2 <= radius  or ||x||_2 = radius
+!
+!  where H is diagonal, using a secular iteration
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Arguments:
+!  =========
+!
+!   n - the number of unknowns
+!
+!   radius - the trust-region radius
+!
+!   f - the value of constant term for the quadratic function
+!
+!   C - a vector of values for the linear term c
+!
+!   H -  a vector of values for the diagonal matrix H
+!
+!   X - the required solution vector x
+!
+!   control - a structure containing control information. See DTRS_control_type
+!
+!   inform - a structure containing information. See DTRS_inform_type
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: n
+      REAL ( KIND = wp ), INTENT( IN ) :: radius
+      REAL ( KIND = wp ), INTENT( IN ) :: f
+      REAL ( KIND = wp ), INTENT( IN ), DIMENSION( n ) :: C, H
+      REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
+      TYPE ( DTRS_control_type ), INTENT( IN ) :: control
+      TYPE ( DTRS_inform_type ), INTENT( INOUT ) :: inform
+
+!-----------------------------------------------
+!   L o c a l   V a r i a b l e s
+!-----------------------------------------------
+
+      INTEGER :: i, it, out, nroots, print_level
+      INTEGER :: max_order, n_lambda, i_hard
+      REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda
+      REAL ( KIND = wp ) :: alpha, utx, distx
+      REAL ( KIND = wp ) :: c_norm, c_norm_over_radius, v_norm2, w_norm2
+      REAL ( KIND = wp ) :: beta, z_norm2, root1, root2, root3
+      REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, c2
+      REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max
+      REAL ( KIND = wp ), DIMENSION( 3 ) :: lambda_new
+      REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: x_norm2, pi_beta
+      LOGICAL :: printi, printt, printd, problem_file_exists
+      CHARACTER ( LEN = 1 ) :: region
+
+!  prefix for all output
+
+      CHARACTER ( LEN = LEN( TRIM( control%prefix ) ) - 2 ) :: prefix
+      IF ( LEN( TRIM( control%prefix ) ) > 2 )                                 &
+        prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
+
+!  output problem data
+
+      IF ( control%problem > 0 ) THEN
+        INQUIRE( FILE = control%problem_file, EXIST = problem_file_exists )
+        IF ( problem_file_exists ) THEN
+          OPEN( control%problem, FILE = control%problem_file,                  &
+                FORM = 'FORMATTED', STATUS = 'OLD' )
+          REWIND control%problem
+        ELSE
+          OPEN( control%problem, FILE = control%problem_file,                  &
+                FORM = 'FORMATTED', STATUS = 'NEW' )
+        END IF
+        WRITE( control%problem, * ) n, COUNT( C( : n ) /= zero ),              &
+          COUNT( H( : n ) /= zero )
+        WRITE( control%problem, * ) radius, f
+        DO i = 1, n
+          IF ( C( i ) /= zero ) WRITE( control%problem, * ) i, C( i )
+        END DO
+        DO i = 1, n
+          IF ( H( i ) /= zero ) WRITE( control%problem, * ) i, i, H( i )
+        END DO
+        CLOSE( control%problem )
+      END IF
+
+!  set initial values
+
+      X = zero ; inform%x_norm = zero ; inform%obj = f
+      inform%hard_case = .FALSE.
+      delta_lambda = zero
+
+!  record desired output level
+
+      out = control%out
+      print_level = control%print_level
+      printi = out > 0 .AND. print_level > 0
+      printt = out > 0 .AND. print_level > 1
+      printd = out > 0 .AND. print_level > 2
+
+!  compute the two-norm of c and the extreme eigenvalues of H
+
+      c_norm = TWO_NORM( C )
+      lambda_min = MINVAL( H( : n ) )
+      lambda_max = MAXVAL( H( : n ) )
+
+      IF ( printt ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
+     &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
+          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
+
+      region = 'L'
+      IF ( printt )                                                            &
+        WRITE( out, "( A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )" ) prefix
+      IF ( printi ) WRITE( out, 2030 ) prefix
+
+!  check for the trivial case
+
+      IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
+        IF (  control%equality_problem ) THEN
+          DO i = 1, n
+            IF ( H( i ) == lambda_min ) THEN
+              i_hard = i
+              EXIT
+            END IF
+          END DO
+          X( i_hard ) = one / radius
+          inform%x_norm = radius
+          inform%obj = f + lambda_min * radius ** 2
+          lambda = - lambda_min
+        ELSE
+          lambda = zero
+        END IF
+        IF ( printi ) THEN
+          WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,             &
+          0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
+          WRITE( out, "( A,                                                    &
+       &    ' Normal stopping criteria satisfied' )" ) prefix
+        END IF
+        inform%status = RAL_NLLS_ok
+        GO TO 900
+      END IF
+
+!  construct values lambda_l and lambda_u for which lambda_l <= lambda_optimal
+!   <= lambda_u, and ensure that all iterates satisfy lambda_l <= lambda
+!   <= lambda_u
+
+      c_norm_over_radius = c_norm / radius
+      IF ( control%equality_problem ) THEN
+        lambda_l = MAX( control%lower,  - lambda_min,                          &
+                        c_norm_over_radius - lambda_max )
+        lambda_u = MIN( control%upper,                                         &
+                        c_norm_over_radius - lambda_min )
+      ELSE
+        lambda_l = MAX( control%lower,  zero, - lambda_min,                    &
+                        c_norm_over_radius - lambda_max )
+        lambda_u = MIN( control%upper,                                         &
+                        MAX( zero, c_norm_over_radius - lambda_min ) )
+      END IF
+      lambda = lambda_l
+
+!  check for the "hard case"
+
+      IF ( lambda == - lambda_min ) THEN
+        c2 = zero
+        inform%hard_case = .TRUE.
+        DO i = 1, n
+          IF ( H( i ) == lambda_min ) THEN
+            IF ( ABS( C( i ) ) > epsmch ) THEN
+              inform%hard_case = .FALSE.
+              c2 = c2 + C( i ) ** 2
+            ELSE
+              i_hard = i
+            END IF
+          END IF
+        END DO
+
+!  the hard case may occur
+
+        IF ( inform%hard_case ) THEN
+          DO i = 1, n
+            IF ( H( i ) /= lambda_min ) THEN
+              X( i )  = - C( i ) / ( H( i ) + lambda )
+            ELSE
+              X( i ) = zero
+            END IF
+          END DO
+          inform%x_norm = TWO_NORM( X )
+
+!  the hard case does occur
+
+          IF ( inform%x_norm <= radius ) THEN
+            IF ( inform%x_norm < radius ) THEN
+
+!  compute the step alpha so that X + alpha E_i_hard lies on the trust-region
+!  boundary and gives the smaller value of q
+
+              utx = X( i_hard ) / radius
+              distx = ( radius - inform%x_norm ) *                             &
+                ( ( radius + inform%x_norm ) / radius )
+              alpha = sign( distx / ( abs( utx ) +                             &
+                            sqrt( utx ** 2 + distx / radius ) ), utx )
+
+!  record the optimal values
+
+              X( i_hard ) = X( i_hard ) + alpha
+            END IF
+            inform%x_norm = TWO_NORM( X )
+            inform%obj =                                                       &
+                f + half * ( DOT_PRODUCT( C, X ) - lambda * radius ** 2 )
+            IF ( printi ) THEN
+              WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,         &
+              0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
+              WRITE( out, "( A,                                                &
+           &    ' Hard-case stopping criteria satisfied' )" ) prefix
+            END IF
+            inform%status = RAL_NLLS_ok
+            GO TO 900
+
+!  the hard case didn't occur after all
+
+          ELSE
+            inform%hard_case = .FALSE.
+
+!  compute the first derivative of ||x|(lambda)||^2 - radius^2
+
+            w_norm2 = zero
+            DO i = 1, n
+              IF ( H( i ) /= lambda_min )                                      &
+                w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
+            END DO
+            x_norm2( 1 ) = - two * w_norm2
+
+!  compute the Newton correction
+
+            lambda =                                                           &
+              lambda + ( inform%x_norm ** 2 - radius ** 2 ) / x_norm2( 1 )
+            lambda_l = MAX( lambda_l, lambda )
+          END IF
+
+!  there is a singularity at lambda. Compute the point for which the
+!  sum of squares of the singular terms is equal to radius^2
+
+        ELSE
+          lambda = lambda + SQRT( c2 ) / radius
+          lambda_l = MAX( lambda_l, lambda )
+        END IF
+      END IF
+
+!  the iterates will all be in the L region. Prepare for the main loop
+
+      it = 0
+      max_order = MAX( 1, MIN( max_degree, control%taylor_max_degree ) )
+
+!  start the main loop
+
+      DO
+        it = it + 1
+
+!  if H(lambda) is positive definite, solve  H(lambda) x = - c
+
+        DO i = 1, n
+          X( i )  = - C( i ) / ( H( i ) + lambda )
+        END DO
+
+!  compute the two-norm of x
+
+        inform%x_norm = TWO_NORM( X )
+        x_norm2( 0 ) = inform%x_norm ** 2
+
+!  if the Newton step lies within the trust region, exit
+
+        IF ( lambda == zero .AND. inform%x_norm <= radius ) THEN
+          inform%obj = f + half * DOT_PRODUCT( C, X )
+          inform%status = RAL_NLLS_ok
+          region = 'L'
+          IF ( printi ) THEN
+            WRITE( out, "( A, A2, I4, 2ES22.15 )" ) prefix,                    &
+              region, it, inform%x_norm - radius, lambda
+            WRITE( out, "( A, ' Interior stopping criteria satisfied')" ) prefix
+          END IF
+          GO TO 900
+        END IF
+
+!  the current estimate gives a good approximation to the required root
+
+        IF ( ABS( inform%x_norm - radius ) <=                                  &
+               MAX( control%stop_normal * radius,                              &
+                    control%stop_absolute_normal ) ) THEN
+          IF ( inform%x_norm > radius ) THEN
+            lambda_l = MAX( lambda_l, lambda )
+          ELSE
+            region = 'G'
+            lambda_u = MIN( lambda_u, lambda )
+          END IF
+          IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
+          IF ( printi ) THEN
+            WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,           &
+            it, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
+            WRITE( out, "( A,                                                  &
+         &    ' Normal stopping criteria satisfied' )" ) prefix
+          END IF
+          inform%status = RAL_NLLS_ok
+          EXIT
+        END IF
+
+        lambda_l = MAX( lambda_l, lambda )
+
+!  debug printing
+
+        IF ( printd ) THEN
+          WRITE( out, "( A, 8X, 'lambda', 13X, 'x_norm', 15X, 'radius' )" )    &
+            prefix
+          WRITE( out, "( A, 3ES20.12 )") prefix, lambda, inform%x_norm, radius
+        ELSE IF ( printi ) THEN
+          IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
+          WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region, it,          &
+            ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
+        END IF
+
+!  record, for the future, values of lambda which give small ||x||
+
+        IF ( inform%len_history < history_max ) THEN
+          inform%len_history = inform%len_history + 1
+          inform%history( inform%len_history )%lambda = lambda
+          inform%history( inform%len_history )%x_norm = inform%x_norm
+        END IF
+
+!  a lambda in L has been found. It is now simply a matter of applying
+!  a variety of Taylor-series-based methods starting from this lambda
+
+!  precaution against rounding producing lambda outside L
+
+        IF ( lambda > lambda_u ) THEN
+          inform%status = RAL_NLLS_error_ill_conditioned
+          EXIT
+        END IF
+
+!  compute first derivatives of x^T M x
+
+!  form ||w||^2 = x^T H^-1(lambda) x
+
+        w_norm2 = zero
+        DO i = 1, n
+          w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
+        END DO
+
+!  compute the first derivative of x_norm2 = x^T M x
+
+        x_norm2( 1 ) = - two * w_norm2
+
+!  compute pi_beta = ||x||^beta and its first derivative when beta = - 1
+
+        beta = - one
+        CALL DTRS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
+
+!  compute the Newton correction (for beta = - 1)
+
+        delta_lambda = - ( pi_beta( 0 ) - ( radius ) ** beta ) / pi_beta( 1 )
+
+        n_lambda = 1
+        lambda_new( n_lambda ) = lambda + delta_lambda
+
+        IF ( max_order >= 3 ) THEN
+
+!  compute the second derivative of x^T x
+
+          z_norm2 = zero
+          DO i = 1, n
+            z_norm2 = z_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 4
+          END DO
+          x_norm2( 2 ) = six * z_norm2
+
+!  compute the third derivatives of x^T x
+
+          v_norm2 = zero
+          DO i = 1, n
+            v_norm2 = v_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 5
+          END DO
+          x_norm2( 3 ) = - twentyfour * v_norm2
+
+!  compute pi_beta = ||x||^beta and its derivatives when beta = 2
+
+          beta = two
+          CALL DTRS_pi_derivs( max_order, beta, x_norm2( : max_order ),        &
+                               pi_beta( : max_order ) )
+
+!  compute the "cubic Taylor approximaton" step (beta = 2)
+
+          a_0 = pi_beta( 0 ) - ( radius ) ** beta
+          a_1 = pi_beta( 1 )
+          a_2 = half * pi_beta( 2 )
+          a_3 = sixth * pi_beta( 3 )
+          a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+          IF ( a_max > zero ) THEN
+            a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+            a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+          END IF
+          CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,             &
+                            root1, root2, root3, roots_debug )
+          n_lambda = n_lambda + 1
+          IF ( nroots == 3 ) THEN
+            lambda_new( n_lambda ) = lambda + root3
+          ELSE
+            lambda_new( n_lambda ) = lambda + root1
+          END IF
+
+!  compute pi_beta = ||x||^beta and its derivatives when beta = - 0.4
+
+          beta = - point4
+          CALL DTRS_pi_derivs( max_order, beta, x_norm2( : max_order ),        &
+                               pi_beta( : max_order ) )
+
+!  compute the "cubic Taylor approximaton" step (beta = - 0.4)
+
+          a_0 = pi_beta( 0 ) - ( radius ) ** beta
+          a_1 = pi_beta( 1 )
+          a_2 = half * pi_beta( 2 )
+          a_3 = sixth * pi_beta( 3 )
+          a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+          IF ( a_max > zero ) THEN
+            a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+            a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+          END IF
+          CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,             &
+                            root1, root2, root3, roots_debug )
+          n_lambda = n_lambda + 1
+          IF ( nroots == 3 ) THEN
+            lambda_new( n_lambda ) = lambda + root3
+          ELSE
+            lambda_new( n_lambda ) = lambda + root1
+          END IF
+        END IF
+
+!  record all of the estimates of the optimal lambda
+
+        IF ( printd ) THEN
+          WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
+            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
+            lambda_new( : MIN( 3, n_lambda ) )
+          IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
+            prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+        END IF
+
+!  compute the best Taylor improvement
+
+        lambda_plus = MAXVAL( lambda_new( : n_lambda ) )
+        delta_lambda = lambda_plus - lambda
+        lambda = lambda_plus
+
+!  improve the lower bound if possible
+
+        lambda_l = MAX( lambda_l, lambda_plus )
+
+!  check that the best Taylor improvement is significant
+
+        IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
+          IF ( printi ) WRITE( out, "( A, ' normal exit with no ',             &
+         &                     'significant Taylor improvement' )" ) prefix
+          inform%status = RAL_NLLS_ok
+          EXIT
+        END IF
+
+!  End of main iteration loop
+
+      END DO
+
+!  Record the optimal obective value
+
+      inform%obj = f + half * ( DOT_PRODUCT( C, X ) - lambda * x_norm2( 0 ) )
+
+!  ----
+!  Exit
+!  ----
+
+ 900  CONTINUE
+      inform%multiplier = lambda
+      inform%pole = MAX( zero, - lambda_min )
+      RETURN
+
+! Non-executable statements
+
+ 2030 FORMAT( A, '    it     ||x||-radius             lambda ',                &
+                 '              d_lambda' )
+
+!  End of subroutine DTRS_solve
+
+      END SUBROUTINE DTRS_solve
+
+!-*-*-*-*-*-*-  D T R S _ P I _ D E R I V S   S U B R O U T I N E   -*-*-*-*-*-
+
+      SUBROUTINE DTRS_pi_derivs( max_order, beta, x_norm2, pi_beta )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Compute pi_beta = ||x||^beta and its derivatives
+!
+!  Arguments:
+!  =========
+!
+!  Input -
+!   max_order - maximum order of derivative
+!   beta - power
+!   x_norm2 - (0) value of ||x||^2,
+!             (i) ith derivative of ||x||^2, i = 1, max_order
+!  Output -
+!   pi_beta - (0) value of ||x||^beta,
+!             (i) ith derivative of ||x||^beta, i = 1, max_order
+!
+!  Extracted wholesale from module RAL_NLLS_RQS
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: max_order
+      REAL ( KIND = wp ), INTENT( IN ) :: beta, x_norm2( 0 : max_order )
+      REAL ( KIND = wp ), INTENT( OUT ) :: pi_beta( 0 : max_order )
+
+!-----------------------------------------------
+!   L o c a l   V a r i a b l e
+!-----------------------------------------------
+
+      REAL ( KIND = wp ) :: hbeta
+
+      hbeta = half * beta
+      pi_beta( 0 ) = x_norm2( 0 ) ** hbeta
+      pi_beta( 1 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - one ) ) * x_norm2( 1 )
+      IF ( max_order == 1 ) RETURN
+      pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - two ) ) *             &
+        ( ( hbeta - one ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
+      IF ( max_order == 2 ) RETURN
+      pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - three ) ) *           &
+        ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - one ) *                 &
+          ( three * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +               &
+            ( hbeta - two ) * x_norm2( 1 ) ** 3 ) )
+
+      RETURN
+
+!  End of subroutine DTRS_pi_derivs
+
+      END SUBROUTINE DTRS_pi_derivs
+
+!-*-*-*-*-*  D T R S _ T H E T A _ D E R I V S   S U B R O U T I N E   *-*-*-*-
+
+      SUBROUTINE DTRS_theta_derivs( max_order, beta, lambda, sigma,            &
+                                     theta_beta )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Compute theta_beta = (lambda/sigma)^beta and its derivatives
+!
+!  Arguments:
+!  =========
+!
+!  Input -
+!   max_order - maximum order of derivative
+!   beta - power
+!   lambda, sigma - lambda and sigma
+!  Output -
+!   theta_beta - (0) value of (lambda/sigma)^beta,
+!             (i) ith derivative of (lambda/sigma)^beta, i = 1, max_order
+!
+!  Extracted wholesale from module RAL_NLLS_RQS
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: max_order
+      REAL ( KIND = wp ), INTENT( IN ) :: beta, lambda, sigma
+      REAL ( KIND = wp ), INTENT( OUT ) :: theta_beta( 0 : max_order )
+
+!-----------------------------------------------
+!   L o c a l   V a r i a b l e
+!-----------------------------------------------
+
+      REAL ( KIND = wp ) :: los, oos
+
+      los = lambda / sigma
+      oos = one / sigma
+
+!if ( los <= zero ) write( 6,*) ' l, s ',  lambda, sigma, beta
+      theta_beta( 0 ) = los ** beta
+      theta_beta( 1 ) = beta * ( los ** ( beta - one ) ) * oos
+      IF ( max_order == 1 ) RETURN
+      theta_beta( 2 ) = beta * ( los ** ( beta - two ) ) *                    &
+                        ( beta - one ) * oos ** 2
+      IF ( max_order == 2 ) RETURN
+      theta_beta( 3 ) = beta * ( los ** ( beta - three ) ) *                  &
+                        ( beta - one ) * ( beta - two ) * oos ** 3
+
+      RETURN
+
+!  End of subroutine DTRS_theta_derivs
+
+      END SUBROUTINE DTRS_theta_derivs
+
+!-*-*-*-*-*-   R O O T S _ q u a d r a t i c  S U B R O U T I N E   -*-*-*-*-*-
+
+      SUBROUTINE ROOTS_quadratic( a0, a1, a2, tol, nroots, root1, root2, debug )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Find the number and values of real roots of the quadratic equation
+!
+!                   a2 * x**2 + a1 * x + a0 = 0
+!
+!  where a0, a1 and a2 are real
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!  Dummy arguments
+
+      INTEGER, INTENT( OUT ) :: nroots
+      REAL ( KIND = wp ), INTENT( IN ) :: a2, a1, a0, tol
+      REAL ( KIND = wp ), INTENT( OUT ) :: root1, root2
+      LOGICAL, INTENT( IN ) :: debug
+
+!  Local variables
+
+      REAL ( KIND = wp ) :: rhs, d, p, pprime
+
+      rhs = tol * a1 * a1
+      IF ( ABS( a0 * a2 ) > rhs ) THEN  !  really is quadratic
+        root2 = a1 * a1 - four * a2 * a0
+        IF ( ABS( root2 ) <= ( epsmch * a1 ) ** 2 ) THEN ! numerical double root
+          nroots = 2 ; root1 = -  half * a1 / a2 ; root2 = root1
+        ELSE IF ( root2 < zero ) THEN    ! complex not real roots
+          nroots = 0 ; root1 = zero ; root2 = zero
+        ELSE                             ! distint real roots
+          d = - half * ( a1 + SIGN( SQRT( root2 ), a1 ) )
+          nroots = 2 ; root1 = d / a2 ; root2 = a0 / d
+          IF ( root1 > root2 ) THEN
+            d = root1 ; root1 = root2 ; root2 = d
+          END IF
+        END IF
+      ELSE IF ( a2 == zero ) THEN
+        IF ( a1 == zero ) THEN
+          IF ( a0 == zero ) THEN         ! the function is zero
+            nroots = 1 ; root1 = zero ; root2 = zero
+          ELSE                           ! the function is constant
+            nroots = 0 ; root1 = zero ; root2 = zero
+          END IF
+        ELSE                             ! the function is linear
+          nroots = 1 ; root1 = - a0 / a1 ; root2 = zero
+        END IF
+      ELSE                               ! very ill-conditioned quadratic
+        nroots = 2
+        IF ( - a1 / a2 > zero ) THEN
+          root1 = zero ; root2 = - a1 / a2
+        ELSE
+          root1 = - a1 / a2 ; root2 = zero
+        END IF
+      END IF
+
+!  perfom a Newton iteration to ensure that the roots are accurate
+
+      IF ( nroots >= 1 ) THEN
+        p = ( a2 * root1 + a1 ) * root1 + a0
+        pprime = two * a2 * root1 + a1
+        IF ( pprime /= zero ) THEN
+          IF ( debug ) WRITE( out, 2000 ) 1, root1, p, - p / pprime
+          root1 = root1 - p / pprime
+          p = ( a2 * root1 + a1 ) * root1 + a0
+        END IF
+        IF ( debug ) WRITE( out, 2010 ) 1, root1, p
+        IF ( nroots == 2 ) THEN
+          p = ( a2 * root2 + a1 ) * root2 + a0
+          pprime = two * a2 * root2 + a1
+          IF ( pprime /= zero ) THEN
+            IF ( debug ) WRITE( out, 2000 ) 2, root2, p, - p / pprime
+            root2 = root2 - p / pprime
+            p = ( a2 * root2 + a1 ) * root2 + a0
+          END IF
+          IF ( debug ) WRITE( out, 2010 ) 2, root2, p
+        END IF
+      END IF
+
+      RETURN
+
+!  Non-executable statements
+
+ 2000 FORMAT( ' root ', I1, ': value = ', ES12.4, ' quadratic = ', ES12.4,     &
+              ' delta = ', ES12.4 )
+ 2010 FORMAT( ' root ', I1, ': value = ', ES12.4, ' quadratic = ', ES12.4 )
+
+
+!  End of subroutine ROOTS_quadratic
+
+      END SUBROUTINE ROOTS_quadratic
+
+!-*-*-*-*-*-*-*-   R O O T S _ c u b i c  S U B R O U T I N E   -*-*-*-*-*-*-*-
+
+      SUBROUTINE ROOTS_cubic( a0, a1, a2, a3, tol, nroots, root1, root2,       &
+                              root3, debug )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Find the number and values of real roots of the cubicc equation
+!
+!                a3 * x**3 + a2 * x**2 + a1 * x + a0 = 0
+!
+!  where a0, a1, a2 and a3 are real
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!  Dummy arguments
+
+      INTEGER, INTENT( OUT ) :: nroots
+      REAL ( KIND = wp ), INTENT( IN ) :: a3, a2, a1, a0, tol
+      REAL ( KIND = wp ), INTENT( OUT ) :: root1, root2, root3
+      LOGICAL, INTENT( IN ) :: debug
+
+!  Local variables
+
+      INTEGER :: info, nroots_q
+      REAL ( KIND = wp ) :: a, b, c, d, e, f, p, q, s, t, w, x, y, z
+      REAL ( KIND = wp ) :: c0, c1, c2, b0, b1, pprime, u1, u2
+      REAL ( KIND = wp ) :: H( 3, 3 ), ER( 3 ), EI( 3 ), ZZ( 1, 3 ), WORK( 33 )
+
+!  define method used:
+!    1 = Nonweiler, 2 = Littlewood, 3 = Viete, other = companion matrix
+
+      INTEGER, PARAMETER :: method = 1
+
+!  Check to see if the quartic is actually a cubic
+
+      IF ( a3 == zero ) THEN
+        CALL ROOTS_quadratic( a0, a1, a2, tol, nroots, root1, root2, debug )
+        root3 = infinity
+        RETURN
+      END IF
+
+!  Deflate the polnomial if the trailing coefficient is zero
+
+      IF ( a0 == zero ) THEN
+        root1 = zero
+        CALL ROOTS_quadratic( a1, a2, a3, tol, nroots, root2, root3, debug )
+        nroots = nroots + 1
+        RETURN
+      END IF
+
+!  1. Use Nonweiler's method (CACM 11:4, 1968, pp269)
+
+      IF ( method == 1 ) THEN
+        c0 = a0 / a3
+        c1 = a1 / a3
+        c2 = a2 / a3
+
+        s = c2 / three
+        t = s * c2
+        b = 0.5_wp * ( s * ( twothirds * t - c1 ) + c0 )
+        t = ( t - c1 ) / three
+        c = t * t * t ; d = b * b - c
+
+! 1 real + 2 equal real or 2 complex roots
+
+        IF ( d >= zero ) THEN
+          d = ( SQRT( d ) + ABS( b ) ) ** onethird
+          IF ( d /= zero ) then
+            IF ( b > zero ) then
+              b = - d
+            ELSE
+              b = d
+            END IF
+            c = t / b
+          END IF
+          d = SQRT( threequarters ) * ( b - c )
+          b = b + c ; c = - 0.5 * b - s
+          root1 = b - s
+          IF ( d == zero ) THEN
+            nroots = 3 ; root2 = c ; root3 = c
+          ELSE
+            nroots = 1
+          END IF
+
+! 3 real roots
+
+        ELSE
+          IF ( b == zero ) THEN
+            d = twothirds * ATAN( one )
+          ELSE
+            d = ATAN( SQRT( - d ) / ABS( b ) ) / three
+          END IF
+          IF ( b < zero ) THEN
+            b = two * SQRT( t )
+          ELSE
+            b = - two * SQRT( t )
+          END IF
+          c = COS( d ) * b
+          t = - SQRT( threequarters ) * SIN( d ) * b - half * c
+          d = - t - c - s ; c = c - s ; t = t - s
+          IF ( ABS( c ) > ABS( t ) ) then
+            root3 = c
+          ELSE
+            root3 = t
+            t = c
+          END IF
+          IF ( ABS( d ) > ABS( t ) ) THEN
+            root2 = d
+          ELSE
+            root2 = t
+            t = d
+          END IF
+          root1 = t ; nroots = 3
+        END IF
+
+!  2. Use Littlewood's method
+
+      ELSE IF ( method == 2 ) THEN
+        c2 = a2 / ( three * a3 ) ; c1 = a1 / ( three * a3 ) ; c0 = a0 / a3
+        x = c1 - c2 * c2
+        y = c0 - c2* ( x + x + c1 )
+        z = y ** 2 + four * x ** 3
+
+!  there are three real roots
+
+        IF ( z < zero ) THEN
+          a = - two * SQRT( - x )
+          b = y / ( a * x )
+          y = ATAN2( SQRT( one - b ), SQRT( one + b ) ) * twothirds
+          IF ( c2 < zero ) y = y + magic
+
+!  calculate root which does not involve cancellation
+
+          nroots = 1 ; root1 = a * COS( y ) - c2
+
+!  there may be only one real root
+
+        ELSE
+          a = SQRT( z ) ; b = half * ( ABS( y ) + a ) ; c = b ** onethird
+          IF ( c <= zero ) THEN
+            nroots = 3 ; root1 = - c2 ; root2 = - c2 ; root3 = - c2
+            GO TO 900
+          ELSE
+            nroots = 1
+            c = c - ( c ** 3 - b ) / ( three * c * c )
+            e = c * c + ABS( x )
+            f = one / ( ( x / c ) ** 2 + e )
+            IF ( x >= zero ) THEN
+              x = e / c ; z = y * f
+            ELSE
+              x = a * f ; z = SIGN( one, y ) * e / c
+            END IF
+            IF ( z * c2 >= zero ) THEN
+              root1 = - z - c2
+            ELSE
+              root2 = half * z - c2
+              root3 = half * SQRT( three ) * ABS( x )
+              root1 = - c0 / ( root2 * root2 + root3 * root3 )
+              GO TO 900
+            END IF
+          END IF
+        END IF
+
+!  deflate cubic
+
+        b0 = - c0 / root1
+        IF ( ABS( root1 ** 3 ) <= ABS( c0 ) ) THEN
+          b1 = root1 + three * c2
+        ELSE
+          b1 = ( b0 - three * c1 ) / root1
+        END IF
+        CALL ROOTS_quadratic( b0, b1, one, epsmch, nroots_q,                   &
+                              root2, root3, debug )
+        nroots = nroots + nroots_q
+
+
+!  3. Use Viete's method
+
+      ELSE IF ( method == 3 ) THEN
+        w = a2 / ( three * a3 )
+        p = ( a1 / ( three * a3 ) - w ** 2 ) ** 3
+        q = - half * ( two * w ** 3 - ( a1 * w - a0 ) / a3 )
+        d = p + q ** 2
+
+!  three real roots
+
+        IF ( d < zero ) THEN
+          s = ACOS( MIN( one, MAX( - one, q / SQRT( - p ) ) ) )
+          p = two * ( - p ) ** onesixth
+          nroots = 3
+          root1 = p * COS( onethird * ( s + two * pi ) ) - w
+          root2 = p * COS( onethird * ( s + four * pi ) ) - w
+          root3 = p * COS( onethird * ( s + six * pi ) ) - w
+
+!  one real root
+
+        ELSE
+          d = SQRT( d ) ; u1 = q + d ; u2 = q - d
+          nroots = 1
+          root1 = SIGN( ABS( u1 ) ** onethird, u1 ) +                          &
+                  SIGN( ABS( u2 ) ** onethird, u2 ) - w
+        END IF
+
+!  4. Compute the roots as the eigenvalues of the relevant compainion matrix
+
+      ELSE
+        H( 1, 1 ) = zero ; H( 2, 1 ) = one ; H( 3, 1 ) = zero
+        H( 1, 2 ) = zero ; H( 2, 2 ) = zero ; H( 3, 2 ) = one
+        H( 1, 3 ) = - a0 / a3 ; H( 2, 3 ) = - a1 / a3 ; H( 3, 3 ) = - a2 / a3
+        CALL HSEQR( 'E', 'N', 3, 1, 3, H, 3, ER, EI, ZZ, 1, WORK, 33, info )
+        IF ( info /= 0 ) THEN
+          IF ( debug ) WRITE( out,                                             &
+         &   "( ' ** error return ', I0, ' from HSEQR in ROOTS_cubic' )" ) info
+          nroots = 0
+          RETURN
+        END IF
+
+!  count and record the roots
+
+        nroots = COUNT( ABS( EI ) <= epsmch )
+        IF ( nroots == 1 ) THEN
+          IF (  ABS( EI( 1 ) ) <= epsmch ) THEN
+            root1 = ER( 1 )
+          ELSE IF (  ABS( EI( 2 ) ) <= epsmch ) THEN
+            root1 = ER( 2 )
+          ELSE
+            root1 = ER( 3 )
+          END IF
+        ELSE
+          root1 = ER( 1 ) ;  root2 = ER( 2 ) ;  root3 = ER( 3 )
+        END IF
+      END IF
+
+!  reorder the roots
+
+  900 CONTINUE
+      IF ( nroots == 3 ) THEN
+        IF ( root1 > root2 ) THEN
+          a = root2 ; root2 = root1 ; root1 = a
+        END IF
+        IF ( root2 > root3 ) THEN
+          a = root3
+          IF ( root1 > root3 ) THEN
+            a = root1 ; root1 = root3
+          END IF
+          root3 = root2 ; root2 = a
+        END IF
+        IF ( debug ) WRITE( out, "( ' 3 real roots ' )" )
+      ELSE IF ( nroots == 2 ) THEN
+        IF ( debug ) WRITE( out, "( ' 2 real roots ' )" )
+      ELSE
+        IF ( debug ) WRITE( out, "( ' 1 real root ' )" )
+      END IF
+
+!  perfom a Newton iteration to ensure that the roots are accurate
+
+      p = ( ( a3 * root1 + a2 ) * root1 + a1 ) * root1 + a0
+      pprime = ( three * a3 * root1 + two * a2 ) * root1 + a1
+      IF ( pprime /= zero ) THEN
+        IF ( debug ) WRITE( out, 2000 ) 1, root1, p, - p / pprime
+        root1 = root1 - p / pprime
+        p = ( ( a3 * root1 + a2 ) * root1 + a1 ) * root1 + a0
+      END IF
+      IF ( debug ) WRITE( out, 2010 ) 1, root1, p
+
+      IF ( nroots == 3 ) THEN
+        p = ( ( a3 * root2 + a2 ) * root2 + a1 ) * root2 + a0
+        pprime = ( three * a3 * root2 + two * a2 ) * root2 + a1
+        IF ( pprime /= zero ) THEN
+          IF ( debug ) WRITE( out, 2000 ) 2, root2, p, - p / pprime
+          root2 = root2 - p / pprime
+          p = ( ( a3 * root2 + a2 ) * root2 + a1 ) * root2 + a0
+        END IF
+        IF ( debug ) WRITE( out, 2010 ) 2, root2, p
+
+        p = ( ( a3 * root3 + a2 ) * root3 + a1 ) * root3 + a0
+        pprime = ( three * a3 * root3 + two * a2 ) * root3 + a1
+        IF ( pprime /= zero ) THEN
+          IF ( debug ) WRITE( out, 2000 ) 3, root3, p, - p / pprime
+          root3 = root3 - p / pprime
+          p = ( ( a3 * root3 + a2 ) * root3 + a1 ) * root3 + a0
+        END IF
+        IF ( debug ) WRITE( out, 2010 ) 3, root3, p
+      END IF
+
+      RETURN
+
+!  Non-executable statements
+
+ 2000 FORMAT( ' root ', I1, ': value = ', ES12.4, ' cubic = ', ES12.4,         &
+              ' delta = ', ES12.4 )
+ 2010 FORMAT( ' root ', I1, ': value = ', ES12.4, ' cubic = ', ES12.4 )
+
+
+!  End of subroutine ROOTS_cubic
+
+      END SUBROUTINE ROOTS_cubic
+
+!-*-*-*-*-  G A L A H A D   T W O  _ N O R M   F U N C T I O N   -*-*-*-*-
+
+       FUNCTION TWO_NORM( X )
+
+!  Compute the l_2 norm of the vector X
+
+!  Dummy arguments
+
+       REAL ( KIND = wp ) :: TWO_NORM
+       REAL ( KIND = wp ), INTENT( IN ), DIMENSION( : ) :: X
+
+!  Local variable
+
+       INTEGER :: n
+       n = SIZE( X )
+
+       IF ( n > 0 ) THEN
+         TWO_NORM = NRM2( n, X, 1 )
+       ELSE
+         TWO_NORM = zero
+       END IF
+       RETURN
+
+!  End of function TWO_NORM
+
+       END FUNCTION TWO_NORM
+
+!-*-*-*-*-*-  End of R A L _ N L L S _ D T R S  double  M O D U L E  *-*-*-*-*-
+
+   END MODULE RAL_NLLS_DTRS_double
