@@ -1615,9 +1615,6 @@ contains
      TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_control
      TYPE ( DTRS_inform_type )  :: dtrs_inform
      
-!     real(wp), allocatable :: A(:,:), v(:)
-!     real(wp), allocatable :: X(:,:), D(:)
-
      ! The code finds 
      !  d = arg min_p   w^T p + 0.5 * p^T D p
      !       s.t. ||p|| \leq Delta
@@ -1655,7 +1652,6 @@ contains
 
      ! we need to get the transformed vector v
      call mult_Jt(w%ev,n,n,w%v,w%v_trans)
-!     w%v_trans(:) = matmul(w%ev,w%v)
 
      ! we've now got the vectors we need, pass to dtrs_solve
      call dtrs_initialize( dtrs_control, dtrs_inform ) 
@@ -1667,7 +1663,6 @@ contains
 
      ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
- !    d = matmul(transpose(w%ev),w%d_trans)
 
      return
      
