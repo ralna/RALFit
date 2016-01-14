@@ -14,6 +14,6 @@
 T  		      output_progress_vectors
 F                     exact second derivatives
 44                    summary unit (not + = don't write)
-GN_gltr.out           summary file (max 20 chars)
+GN_DTRS_app.out       summary file (max 20 chars)
 45                    iteration summary (not + = don't write)		    
-GN_gltr_iter.out      iteration summary file (max 20 chars)		      
+GN_DTRS_app_iter.out  iteration summary file (max 20 chars)		      
