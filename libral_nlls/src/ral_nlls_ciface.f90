@@ -22,6 +22,8 @@ module ral_nlls_ciface
      integer(C_INT) :: lls_solver
      real(wp) :: stop_g_absolute
      real(wp) :: stop_g_relative
+     real(wp) :: relative_tr_radius
+     real(wp) :: initial_radius_scale
      real(wp) :: initial_radius
      real(wp) :: maximum_radius
      real(wp) :: eta_successful
@@ -30,51 +32,68 @@ module ral_nlls_ciface
      real(wp) :: radius_increase
      real(wp) :: radius_reduce
      real(wp) :: radius_reduce_max
+     real(wp) :: hybrid_switch
+     logical(c_bool) :: exact_second_derivatives
+     logical(c_bool) :: subproblem_eig_fact
+     integer(c_int) :: more_sorensen_maxits
+     real(wp) :: more_sorensen_shift
+     real(wp) :: more_sorensen_tiny
+     real(wp) :: more_sorensen_tol
+     real(wp) :: hybrid_tol
+     integer(c_int) :: hybrid_switch_its
+     logical(c_bool) :: output_progress_vectors
   end type nlls_control_type
 
   type, bind(C) :: nlls_inform_type 
      integer(C_INT) :: status
+     integer(C_INT) :: alloc_status
+     integer(C_INT) :: iter
+     integer(C_INT) :: f_eval
+     integer(C_INT) :: g_eval
+     integer(C_INT) :: h_eval
+     integer(C_INT) :: convergence_normf
+     real(wp) :: resinf
+     real(wp) :: gradinf
+     real(wp) :: obj
+     real(wp) :: norm_g
   end type nlls_inform_type
 
   abstract interface
-     subroutine c_eval_f_type(fstatus, n, m, x, f, params)
+     integer(c_int) function c_eval_r_type(n, m, params, x, r)
        use, intrinsic :: iso_c_binding
        implicit none
-       integer(c_int), value :: n,m
-       integer(c_int) :: fstatus
-       real(c_double), dimension(*), intent(in) :: x
-       real(c_double), dimension(*), intent(out) :: f
+       integer(c_int), value :: n, m
        type(C_PTR), value :: params
-     end subroutine c_eval_f_type
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(out) :: r
+     end function c_eval_r_type
   end interface
 
   abstract interface
-     subroutine c_eval_j_type(fstatus, n, m, x, j, params)
+     integer(c_int) function c_eval_j_type(n, m, params, x, j)
        use, intrinsic :: iso_c_binding
        implicit none
        integer(c_int), value :: n,m
-       integer(c_int) :: fstatus
+       type(C_PTR), value :: params
        real(c_double), dimension(*), intent(in) :: x
        real(c_double), dimension(*), intent(out) :: j
-       type(C_PTR), value :: params
-     end subroutine c_eval_j_type
+     end function c_eval_j_type
   end interface
 
   abstract interface
-     subroutine c_eval_hf_type(fstatus, n, m, x, f, hf, params)
+     integer(c_int) function c_eval_hf_type(n, m, params, x, f, hf)
        use, intrinsic :: iso_c_binding
        implicit none
        integer(c_int), value :: n,m
-       integer(c_int) :: fstatus
+       type(C_PTR), value :: params
        real(c_double), dimension(*), intent(in) :: x
        real(c_double), dimension(*), intent(in) :: f
        real(c_double), dimension(*), intent(out) :: hf
-       type(C_PTR), value :: params
-     end subroutine c_eval_hf_type
+     end function c_eval_hf_type
   end interface
 
   type, extends(f_params_base_type) :: params_wrapper
-     procedure(c_eval_f_type), nopass, pointer :: f
+     procedure(c_eval_r_type), nopass, pointer :: r
      procedure(c_eval_j_type), nopass, pointer :: j
      procedure(c_eval_hf_type), nopass, pointer :: hf
      type(C_PTR) :: params
@@ -99,6 +118,7 @@ contains
     fcontrol%lls_solver = ccontrol%lls_solver
     fcontrol%stop_g_absolute = ccontrol%stop_g_absolute
     fcontrol%stop_g_relative = ccontrol%stop_g_relative
+    fcontrol%initial_radius_scale = ccontrol%initial_radius_scale
     fcontrol%initial_radius = ccontrol%initial_radius
     fcontrol%maximum_radius = ccontrol%maximum_radius
     fcontrol%eta_successful = ccontrol%eta_successful
@@ -107,6 +127,16 @@ contains
     fcontrol%radius_increase = ccontrol%radius_increase
     fcontrol%radius_reduce = ccontrol%radius_reduce
     fcontrol%radius_reduce_max = ccontrol%radius_reduce_max
+    fcontrol%hybrid_switch = ccontrol%hybrid_switch
+    fcontrol%exact_second_derivatives = ccontrol%exact_second_derivatives
+    fcontrol%subproblem_eig_fact = ccontrol%subproblem_eig_fact
+    fcontrol%more_sorensen_maxits = ccontrol%more_sorensen_maxits
+    fcontrol%more_sorensen_shift = ccontrol%more_sorensen_shift
+    fcontrol%more_sorensen_tiny = ccontrol%more_sorensen_tiny
+    fcontrol%more_sorensen_tol = ccontrol%more_sorensen_tol
+    fcontrol%hybrid_tol = ccontrol%hybrid_tol
+    fcontrol%hybrid_switch_its = ccontrol%hybrid_switch_its
+    fcontrol%output_progress_vectors = ccontrol%output_progress_vectors
 
   end subroutine copy_control_in
 
@@ -116,22 +146,32 @@ contains
     type(nlls_inform_type) , intent(out) :: cinfo
     
     cinfo%status = finfo%status
+    cinfo%alloc_status = finfo%alloc_status
+    cinfo%iter = finfo%iter
+    cinfo%f_eval = finfo%f_eval
+    cinfo%g_eval = finfo%g_eval
+    cinfo%h_eval = finfo%h_eval
+    cinfo%convergence_normf = finfo%convergence_normf
+    cinfo%resinf = maxval(abs(finfo%resvec(:)))
+    cinfo%gradinf = maxval(abs(finfo%gradvec(:)))
+    cinfo%obj = finfo%obj
+    cinfo%norm_g = finfo%norm_g
     
   end subroutine copy_info_out
 
-  subroutine c_eval_f(evalfstatus, n, m, x, f, fparams)
+  subroutine c_eval_r(evalrstatus, n, m, x, f, fparams)
     integer, intent(in) :: n, m 
-    integer, intent(out) :: evalfstatus
+    integer, intent(out) :: evalrstatus
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(out) :: f  
     class(f_params_base_type), intent(in) :: fparams
 
     select type(fparams)
     type is(params_wrapper)
-       call fparams%f(evalfstatus,n,m,x(1:n),f(1:m),fparams%params)
+       evalrstatus =  fparams%r(n,m,fparams%params,x(1:n),f(1:m))
     end select
     
-  end subroutine c_eval_f
+  end subroutine c_eval_r
 
   subroutine c_eval_j(evaljstatus, n, m, x, j, fparams)
     integer, intent(in) :: n, m 
@@ -142,7 +182,7 @@ contains
 
     select type(fparams)
     type is(params_wrapper)
-       call fparams%j(evaljstatus,n,m,x(1:n),j(1:n*m),fparams%params)
+       evaljstatus = fparams%j(n,m,fparams%params,x(1:n),j(1:n*m))
     end select
     
   end subroutine c_eval_j
@@ -157,14 +197,14 @@ contains
 
     select type(fparams)
     type is(params_wrapper)
-       call fparams%hf(evalhstatus,n,m,x(1:n),f(1:m),hf(1:n**2),fparams%params)
+       evalhstatus = fparams%hf(n,m,fparams%params,x(1:n),f(1:m),hf(1:n**2))
     end select
     
   end subroutine c_eval_hf
   
 end module ral_nlls_ciface
 
-subroutine nlls_default_control_d(ccontrol) bind(C)
+subroutine ral_nlls_default_control_d(ccontrol) bind(C)
   use ral_nlls_ciface
   implicit none
 
@@ -192,10 +232,10 @@ subroutine nlls_default_control_d(ccontrol) bind(C)
   ccontrol%radius_reduce_max = fcontrol%radius_reduce_max
 
   
-end subroutine nlls_default_control_d
+end subroutine ral_nlls_default_control_d
 
 subroutine ral_nlls_d(n, m, cx,  &
-                      f, j, hf,  & 
+                      r, j, hf,  & 
                       params,            &
                       cinform, coptions) &
                       bind(C)
@@ -205,7 +245,7 @@ subroutine ral_nlls_d(n, m, cx,  &
 
   integer, INTENT( IN ), value :: n, m
   real( wp ), dimension(*) :: cx
-  type( C_FUNPTR ), value :: f
+  type( C_FUNPTR ), value :: r
   type( C_FUNPTR ), value :: j
   type( C_FUNPTR ), value :: hf
   type( C_PTR ), value :: params
@@ -221,13 +261,13 @@ subroutine ral_nlls_d(n, m, cx,  &
   ! copy data in and associate pointers correctly
   call copy_control_in(coptions, foptions, f_arrays)
 
-  call c_f_procpointer(f, fparams%f)
+  call c_f_procpointer(r, fparams%r)
   call c_f_procpointer(j, fparams%j)
   call c_f_procpointer(hf, fparams%hf)
   fparams%params = params
 
   call f_ral_nlls( n, m, cx, &
-       c_eval_f, c_eval_j,   &
+       c_eval_r, c_eval_j,   &
        c_eval_hf, fparams,   &
        finform, foptions)
 

@@ -15,12 +15,12 @@ struct usertype {
 };
 
 void generate_data_example ( double *x_data, double *y_data, const int m); // prototype
-void eval_F  ( int fstatus, const int n, const int m, 
-	       const double *X, double *f, const void *params);
-void eval_J  ( int fstatus, const int n, const int m, 
-	       const double *X, double *f, const void *params);
-void eval_HF ( int fstatus, const int n, const int m, 
-	       const double *X, const double *f, double *hf, const void *params);
+int eval_F  ( const int n, const int m, const void *params, 
+      const double *X, double *f);
+int eval_J  ( const int n, const int m, const void *params, 
+      const double *X, double *f);
+int eval_HF ( const int n, const int m, const void *params, 
+	       const double *X, const double *f, double *hf);
 
 /* A c driver for the ral_nlls program */
 int main(void) {
@@ -30,8 +30,8 @@ int main(void) {
   const int m = 67;
   
   /* Derived types */
-  struct nlls_control_type options;
-  struct nlls_inform_type status;
+  struct ral_nlls_control options;
+  struct ral_nlls_inform status;
   struct usertype params;
   
   printf("===============\n");
@@ -46,7 +46,7 @@ int main(void) {
   x[0] = 1.0;
   x[1] = 2.0;
 
-  nlls_default_control(&options);
+  ral_nlls_default_control(&options);
   
   options.print_level = 3;
   
@@ -64,8 +64,8 @@ int main(void) {
 }
 
 /* Do a function evaluation */
-void eval_F( int fstatus, const int n, const int m, 
-	      const double *X, double *f, const void *params){
+int eval_F(int n, int m, const void *params, 
+	      const double *X, double *f){
   
   struct usertype *myparams = (struct usertype *) params;
 
@@ -75,12 +75,12 @@ void eval_F( int fstatus, const int n, const int m,
     f[i] = myparams->y_data[i] - exp( X[0] * myparams->x_data[i] + X[1] );
   }
 
-  fstatus = 0;
+  return 0;
 }
 
 /* Evaluate the Jacobian */
-void eval_J( int jstatus, const int n, const int m, 
-	     const double *X, double *J, const void *params){
+int eval_J( const int n, const int m, const void *params, 
+	     const double *X, double *J){
   
   struct usertype *myparams = (struct usertype *) params;
 
@@ -91,13 +91,13 @@ void eval_J( int jstatus, const int n, const int m,
     J[m + i] = - exp( X[0] * myparams->x_data[i] + X[1] );
   }
   
-  jstatus = 0;
+  return 0;
 }
 
 /* Evaluate the Hessian */
-void eval_HF( int hstatus, const int n, const int m, 
+int eval_HF( const int n, const int m, const void *params, 
 	     const double *X, const double *f, 
-	     double *hf, const void *params){
+	     double *hf){
   
   struct usertype *myparams = (struct usertype *) params;
 
@@ -107,7 +107,7 @@ void eval_HF( int hstatus, const int n, const int m,
     hf[i] = 0.0;
   }
   
-  hstatus = 0;
+  return 0;
 }
 
 /* Generate some example data... */
