@@ -682,6 +682,9 @@ contains
        ! This is the first call...allocate arrays, and get initial 
        ! function evaluations
        if ( control%print_level >= 3 )  write( control%out , 3000 ) 
+       ! first, check if n < m
+       if (n > m) goto 4070
+
        call setup_workspaces(w,n,m,control,info%alloc_status)
        if ( info%alloc_status > 0) goto 4000
 
@@ -1131,6 +1134,14 @@ contains
        write(control%error,'(a)') 'No further progress in X'
     end if
     info%status = -700
+    goto 4000
+
+4070 continue
+    ! n > m on entry
+    if (control%print_level > 0) then
+       write(control%error,'(a)') ''
+    end if
+    info%status = -800
     goto 4000
 
 ! convergence 
