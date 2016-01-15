@@ -3,7 +3,7 @@
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 ! For parameters x_1 and x_2, and input data (t_i, y_i)
 module fndef_example
-   use nlls_module, only : params_base_type
+   use ral_nlls_double, only : params_base_type
    implicit none
 
    integer, parameter :: wp = kind(0d0)
@@ -87,7 +87,7 @@ contains
 end module fndef_example
 
 program nlls_example
-   use nlls_module
+   use ral_nlls_double
    use fndef_example
    implicit none
 
