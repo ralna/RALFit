@@ -2,10 +2,12 @@ program nlls_test
   
 ! Test deck for nlls_module
 
-  use nlls_module 
+  use ral_nlls_double
   use example_module
   implicit none
 
+
+  integer, parameter :: wp = kind(1.0d0)
   type( NLLS_inform_type )  :: status
   type( NLLS_control_type ) :: options
   type( user_type ), target :: params

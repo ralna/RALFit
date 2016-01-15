@@ -1,6 +1,6 @@
 module example_module
 
-  use :: nlls_module, only : params_base_type
+  use :: ral_nlls_double, only : params_base_type
   implicit none 
 
   type, extends( params_base_type ) :: user_type

@@ -1,10 +1,12 @@
 ! nlls_module :: a nonlinear least squares solver
 
-module nlls_module
+module ral_nlls_double
 
   use RAL_NLLS_DTRS_double
 
   implicit none
+
+  private
 
   integer, parameter :: wp = kind(1.0d0)
   integer, parameter :: long = selected_int_kind(8)
@@ -430,7 +432,7 @@ module nlls_module
 
   END TYPE NLLS_inform_type
 
-  type params_base_type
+  type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
   
@@ -538,7 +540,7 @@ module nlls_module
        type( solve_dtrs_work ) :: solve_dtrs_ws
     end type calculate_step_work
 
-    type :: NLLS_workspace ! all workspaces called from the top level
+    type, public :: NLLS_workspace ! all workspaces called from the top level
        integer :: first_call = 1
        integer :: iter = 0 
        real(wp) :: normF0, normJF0
@@ -557,6 +559,12 @@ module nlls_module
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
+
+    public :: ral_nlls, ral_nlls_iterate
+    
+    public :: setup_workspaces, solve_dtrs, findbeta, mult_j
+    public :: mult_jt, solve_spd, solve_general, matmult_inner
+    public :: matmult_outer, outer_product, min_eig_symm, max_eig
 
 contains
 
@@ -2908,5 +2916,5 @@ contains
       end subroutine setup_workspace_more_sorensen
       
 
-end module nlls_module
+end module ral_nlls_double
 
