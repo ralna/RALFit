@@ -1,6 +1,7 @@
 \documentclass{spec}
 
 \usepackage{amsfonts,bm,amsmath}
+\usepackage{verbatim}
 % set the release and package names
 
 \newcommand{\libraryname}{RAL}
@@ -9,15 +10,6 @@
 \newcommand{\versionum}{0.5.0}
 \newcommand{\versiondate}{15 January 2016}
 \newcommand{\version}{\versionum}
-\newcommand{\scalarinteger}{is a scalar of type {\tt INTEGER} }
-\newcommand{\scalarlogical}{is a scalar of type {\tt LOGICAL} }
-\newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER} }
-\newcommand{\scalarintegerii}{is an \intentin scalar of type {\tt INTEGER} }
-\newcommand{\scalarreal}{is a scalar of package type\ }
-\newcommand{\ronearrayinteger}[1]{is a rank-1 array of type {\tt INTEGER} and size {\tt #1}}
-\newcommand{\ronearrayreal}[1]{is a rank-1 array of package type and size {\tt #1}\ }
-\newcommand{\ronearrayrealii}[1]{is an \intentin rank-1 array of package type and size {\tt #1}\ }
-\newcommand{\ronearrayrealio}[1]{is an \intentout rank-1 array of package type and size {\tt #1}\ }
 \newcommand{\vx}{ {\bm x} } % macro for a vector x
 \newcommand{\vr}{ {\bm r} } % macro for a vector r
 \newcommand{\vg}{ {\bm g} } % macro for a vector g
@@ -87,18 +79,17 @@ partially supported by EPSRC grant EP/M025179/1.
 
 \subsection{Calling sequences}
 
-Access to the package requires a {\tt USE} statement \\ \\
-\indent\hspace{5mm}{\tt use nlls\_module} 
-% \noindent 
-% If it is required to use more than one module at the same time, the derived
-% types  (see Section~\ref{derived types}) 
-% must be renamed in one of the {\tt USE} statements.
+Functions signatures are defined in a header file
+\begin{verbatim}
+   #include "ral_nlls.h"
+\end{verbatim}
 \medskip
 
-\noindent The user can then call the procedure:
+\noindent The user callable subroutines are:
 \vspace{-0.1cm}
 \begin{description}
-\item {\tt RAL\_NLLS}  solves the non-linear least squares problem (\ref{eq:nlls_problem}).
+   \item {\tt ral\_nlls\_default\_control()} initializes solver options to default values.
+   \item {\tt ral\_nlls()}  solves the non-linear least squares problem (Section~\ref{eq:nlls_problem}).
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% derived types %%%%%%%%%%%%%%%%%%%%%%%%
@@ -110,13 +101,13 @@ module to declare scalars of the types {\tt NLLS\_inform\_type}, and
 {\tt NLLS\_control\_type}.
 The following pseudocode illustrates this.
 \begin{verbatim}
-      use nlls_module
-      ...
-      type (NLLS_inform_type) :: info
-      type (NLLS_control_type) :: control
-      ...
+   #include "ral_nlls.h"
+   ...
+   struct ral_nlls_control control;
+   struct ral_nlls_inform info;
+   ...
 \end{verbatim}
-The components of {\tt NLLS\_control} and {\tt NLLS\_inform} are explained
+The members of these structs are explained
 in Sections~\ref{typecontrol} and \ref{typeinform}. 
 
 
@@ -126,144 +117,133 @@ in Sections~\ref{typecontrol} and \ref{typeinform}.
 \subsubsection{Integer and package types}
 %{\tt INTEGER} denotes default {\tt INTEGER} and 
 %{\tt INTEGER(long)} denotes {\tt INTEGER(kind=selected\_int\_kind(18))}.
-The term {\bf package type} is used to mean
-default real if the single precision version is being used and
-double precision real for the double precision version.
+The term {\bf package type} is used to mean \texttt{float}
+if the single precision version is being used and
+\texttt{double} for the double precision version.
 
 \subsubsection{To solve the non-linear least squares problem}
 \label{sec:factorize}
 
-To solve the non-linear least squares problem a call of the following form should be made:
+To solve the non-linear least squares problem a call of the following 
+subroutine:
 
 \begin{verbatim}
-   call ral_nlls(n, m, X, evalF, eval_J, eval_H, params, info, control)
+   void ral_nlls_d( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
+      ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
+      void *params, struct nlls_inform *status, struct nlls_control *options)
 \end{verbatim}
 
 \begin{description}
-\itt{n} \scalarintegerii that holds the number $n$ of 
+\itt{n} holds the number $n$ of 
 variables to be fitted; i.e., $n$ is the length of the unknown vector $\bm x$.
 
-\itt{m} \scalarintegerii that holds the number $m$ of 
+\itt{m} holds the number $m$ of 
 data points available; i.e., $m$ is the number of functions $f_i$.
 \textbf{Restriction:} \texttt{m},\texttt{n}$>$\texttt{0}
 
-\itt{X} is an \intentinout\  rank-1 array of package type 
-and size {\tt n}.  On entry, it must hold the initial guess for $\bm x$, and on 
+\itt{x} must hold the initial guess for $\bm x$, and on 
 successful exit it holds the solution to the non-linear least squares problem.
 
-\itt{eval\_f} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, returns the vector $\vr(\iter{\vx})$.  
-Further details of the format required are given in Section~\ref{sec::function_eval}.
+\itt{eval\_r} specifies a callback function that, given a point $\iter{\vx}$,
+returns the vector $\vr(\iter{\vx})$. Details of the function signature and
+requirements are are given in Section~\ref{sec::function_eval}.
 
-\itt{eval\_J} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, 
-returns the $m \times n$ Jacobian matrix, $\iter{\vJ}$, of $\vr$ at $\iter{\vx}$.  
-Further details of the format required are given in Section~\ref{sec::function_eval}.
+\itt{eval\_J} specifies a callback function that, given a point $\iter{\vx}$, 
+returns the $m \times n$ Jacobian matrix, $\iter{\vJ}$, of $\vr$ at $\iter{\vx}$. Details of the function signature and requirements are are given in
+Section~\ref{sec::function_eval}.
 
 \itt{eval\_Hf} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$
 and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at $\iter{\vx}$. 
 Further details of the format required are given in Section~\ref{sec::function_eval}.
 
-\itt{params} is an \intentin\ scalar of class {\tt params\_base\_type} that holds parameters to 
-be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}. 
-Further details of its use are given in Section~\ref{sec::function_eval}.
+\itt{params} is a pointer to user data that is passed unaltered to the callback
+functions {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}. 
 
-\itt{info} is an \intentinout\ scalar of type 
-{\tt NLLS\_inform\_type}. Its components provide information about the execution
+\itt{info} provides information about the execution
 of the subroutine, as explained in Section~\ref{typeinform}.
 
-\itt{control}is an \intentin\  scalar  of type {\tt NLLS\_control\_type}
-(see Section~\ref{typecontrol}).
-
+\itt{control} specifies options that control the execution of the subroutine,
+see Section~\ref{typecontrol}.
 
 \end{description}
 
 
-\subsection{The user-supplied function evaluation routines}
+\subsection{User-supplied function evaluation routines}
 \label{sec::function_eval}
-In order to evaluate the function, Jacobian and Hessian at a point, the user must supply
-subroutines that perform this operation that the code {\tt ral\_nlls} will call internally.  
-We recommend that these routines are contained within a module.
+In order to evaluate the function, Jacobian and Hessian at a point, the user
+must supply callback functions that perform this operation that the code
+{\tt ral\_nlls} will call internally.  
 
-In order to pass user-defined data into the evaluation calls, the {\tt params\_base\_type} must be extended to a {\tt user\_type}, as follows:
-\begin{verbatim}
-  module example
+In order to pass user-defined data into the evaluation calls, the parameter
+\texttt{params} is passed unaltered to the callback functions. Typically this
+will be a pointer to a user defined structure that stores the data to be fitted.
 
-    use :: nlls_module, only : params_base_type
-    implicit none
-
-    type, extends( params_base_type ) :: user_type
-       ! code declaring components of user_type 
-    end type user_type
-  
-  contains 
-
-    ! subroutines eval_F, eval_J and eval_HF
-
-  end module example
-\end{verbatim}
-The module should then contain subroutines for evaluating the function, Jacobian, and Hessian.
-The calling sequence of these subroutines much match that described below.
+\subsubsection{For evaluating the function $r(x)$}
+A subroutine must be supplied to calculate $r(x)$ for a given vector $x$. It
+must have the following signature:
 
 \begin{verbatim}
-   eval_f( status, n, m, x, f, params )
+   int eval_r (int n, int m, void const* params, double const* x, double* f);
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
-  A successful call must return {\tt status = 0}, otherwise an error will occur and the 
-  {\tt ral\_nlls} subroutine will  exit.
+   \itt{n, m, params} are passed unchanged as provided in the call to
+      {\tt ral\_nlls}.
 
-  \itt{n, m} are as in the call to {\tt ral\_nlls}.
-
-  \itt{params} is an \intentin scalar of class {\tt params\_base\_type} that holds parameters to be passed to the function.  This should be extended to {\tt user\_type} within the code by using a call of the form
-\begin{verbatim}
-   select type(params)
-   type is(user_type)
-     ! code that accesses components of params that were defined within user_type 
-   end select
-\end{verbatim}
-
-  \itt{x} \ronearrayrealii{n} that holds the current point $\iter{\vx}$.
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx}$.
   
-  \itt{f} \ronearrayrealio{m} that holds the residual function 
-  evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
-  
+   \itt{f} must be set by the routine to hold the residual function 
+      evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
 \end{description}
+\textbf{Return value:} The function should return \texttt{0} on success. A
+non-zero return value will cause the least squares fitting to abort with an
+error code.
+
+
+\subsubsection{For evaluating the function $J = \nabla \vr(\iter{\vx})$}
+A subroutine must be supplied to calculate $J = \nabla \vr(\iter{\vx})$ for a given vector $x$. It must have the following signature:
 
 \begin{verbatim}
-   eval_J( status, n, m, x, J, params )
+   int eval_J (int n, int m, void const* params, double const* x, double* J);
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
-  A successful call must return {\tt status = 0}, otherwise an error will occur 
-  and the {\tt ral\_nlls} subroutine will exit.
+   \itt{n, m, params} are passed unchanged as provided in the call to
+      {\tt ral\_nlls}.
 
-  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_f}.
-
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate
+      $J(\iter{\vx})$.
   
-  \itt{J} \ronearrayrealio{n*m} that holds the Jacobian evaluated at the current point held by columns as a vector.
-  
+   \itt{J} must be set by the routine to hold the Jacobian of the residual
+      function evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
+      \texttt{J[i*m+j]} must be set to hold $\nabla_{x_j} r_i(\iter{\vx})$.
 \end{description}
+\textbf{Return value:} The function should return \texttt{0} on success. A
+non-zero return value will cause the least squares fitting to abort with an
+error code.
+
+\subsubsection{For evaluating the function $HF = \sum_{i=1}^m F_i(x) \nabla^2 F_i(x)$}
+A subroutine must be supplied to calculate $HF = \sum_{i=1}^m F_i(x) \nabla^2 F_i(x)$ for a given vector $x$. It must have the following signature
 
 \begin{verbatim}
-   eval_Hf( status, n, m, x, f, HF, params )
+int eval_HF (int n, int m, void const* params, double const* x, double const* f, double* *HF);
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
-  A successful call must return {\tt status = 0}, otherwise an error will occur and the {\tt ral\_nlls} subroutine 
-  will exit.
+   \itt{n, m, params} are passed unchanged as provided in the call to
+      {\tt ral\_nlls}.
 
-  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_f}.
-
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $F(x)$.
   
-  \itt{f} \ronearrayrealii{m} that holds the residual function
-  evaluated at the current point $\vx_k)$, 
-  as returned by a call to {\tt eval\_f}.
+   \itt{f} holds $F(x)$, as returned by a previous call to \texttt{eval\_F}.
 
-  \itt{HF} \ronearrayrealio{n*n} that holds the matrix $\sum_{i = 1}^m \comp{r}(\iter{\vx})\nabla^2\comp{r}(\iter{\vx})$, held by columns as a vector.
-  
+   \itt{HF} must be set by the routine to holds the matrix
+      $\sum_{i = 1}^m \comp{r}(\iter{\vx})\nabla^2\comp{r}(\iter{\vx})$, held
+      by columns as a vector.
 \end{description}
+\textbf{Return value:} The function should return \texttt{0} on success. A
+non-zero return value will cause the least squares fitting to abort with an
+error code.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -271,23 +251,23 @@ The calling sequence of these subroutines much match that described below.
 \subsection{The control derived data type}
 \label{typecontrol} 
 
-The derived data type {\tt NLLS\_control} 
-is used to hold controlling data. The components  are automatically 
-given default values in the definition of the type.
+The structure of type {\tt struct ral\_nlls\_control} is used to hold
+controlling data. The components must be initialised through a call to
+\texttt{ral\_nlls\_default\_control()}.
 
 \vspace{2mm}
 
 \noindent {\bf Components that control printing}
 \begin{description}
 
-\itt{error} is a scalar of type {\tt INTEGER} with default value {\tt 6} that
-is used as the output stream for error messages. If it is negative, these
+\itt{int error} with default value {\tt 6}
+is used as the Fortran unit number for error messages. If it is negative, these
 messages will be suppressed.  
 
-\itt{out} is a scalar of type {\tt INTEGER} with default value {\tt 6}
-that is used as the output stream for general messages. If it is negative, these messages will be suppressed. 
+\itt{int out} with default value {\tt 6}
+is used as the Fortran unit number for general messages. If it is negative, these messages will be suppressed. 
 
-\itt{print\_level} is a scalar of type {\tt INTEGER} with default value {\tt 0} that 
+\itt{int print\_level} with default value {\tt 0} that 
 controls the level of output required. 
 \begin{description} 
 \item{\tt $\leq$ 0} No informational output will occur.
@@ -302,10 +282,10 @@ The default is {\tt diagnostics\_level} $=$ 0.
 
 \begin{description}
 
-\itt{maxit} \scalarinteger that gives an upper bound on the number
+\itt{int maxit} gives an upper bound on the number
 of iterations the algorithm is allowed to take before being stopped.  The default value is {\tt 100}.
 
-\itt{model} \scalarinteger that specifies the model, $m_k(\cdot)$, used.  Possible values are 
+\itt{int model} specifies the model, $m_k(\cdot)$, used.  Possible values are 
 \begin{description}
   \item{\tt 1} Gauss-Newton (no Hessian).
   \item{\tt 2} Newton (exact Hessian).
@@ -314,7 +294,7 @@ of iterations the algorithm is allowed to take before being stopped.  The defaul
 \end{description}
 The default is {\tt model = 1}.
 
-\itt{nlls\_method} \scalarinteger that specifies the method used to solve 
+\itt{int nlls\_method} specifies the method used to solve 
 (or approximate the solution to) the trust-region sub problem.  Possible values are
 \begin{description}
   \item{\tt 1} Powell's dogleg method (approximates the solution).
@@ -324,74 +304,74 @@ The default is {\tt model = 1}.
 \end{description}
 The default is {\tt nlls\_method = 1}.
 
-\itt{stop\_g\_absolute} \scalarreal that specifies the absolute tolerance for convergence.
+\itt{double stop\_g\_absolute} specifies the absolute tolerance for convergence.
 
-\itt{stop\_g\_relative} \scalarreal that specifies the relative tolerance for convergence.
+\itt{double stop\_g\_relative} specifies the relative tolerance for convergence.
 
-\itt{relative\_tr\_radius} \scalarinteger that specifies whether the initial trust region 
+\itt{double relative\_tr\_radius} specifies whether the initial trust region 
 radius should be scaled.
 
-\itt{initial\_radius\_scale} \scalarreal that specifies the scaling parameter for the initial trust region radius, which is only used if {\tt relative\_tr\_radius = 1}.
+\itt{double initial\_radius\_scale} specifies the scaling parameter for the initial trust region radius, which is only used if {\tt relative\_tr\_radius = 1}.
 
-\itt{initial\_radius} \scalarreal that specifies the initial trust-region radius, $\Delta$.
+\itt{double initial\_radius} specifies the initial trust-region radius, $\Delta$.
 
-\itt{maximum\_radius} \scalarreal that specifies the maximum size permitted for the trust-region radius.
+\itt{double maximum\_radius} specifies the maximum size permitted for the trust-region radius.
 
-\itt{eta\_successful} \scalarreal that specifies the smallest value of $\rho$ such that we accept the step.  
+\itt{double eta\_successful} specifies the smallest value of $\rho$ such that we accept the step.  
 
-\itt{eta\_very\_successful} \scalarreal that specifies the value of $\rho$ after which we increase the trust-region radius.
+\itt{double eta\_very\_successful} specifies the value of $\rho$ after which we increase the trust-region radius.
 
-\itt{eta\_too\_successful} \scalarreal that specifies that value of $\rho$ after which we accept the step, 
+\itt{double eta\_too\_successful} specifies that value of $\rho$ after which we accept the step, 
 but keep the trust-region radius unchanged.
 
-\itt{radius\_increase} \scalarreal that specifies the factor to increase the trust-region radius by.
+\itt{double radius\_increase} specifies the factor to increase the trust-region radius by.
 
-\itt{radius\_reduce} \scalarreal that specifies the factor to decrease the trust-region radius by.
+\itt{double radius\_reduce} specifies the factor to decrease the trust-region radius by.
 
-\itt{hybrid\_switch} \scalarreal that specifies the value, if {\tt nlls\_method = 9}, 
+\itt{double hybrid\_switch} specifies the value, if {\tt nlls\_method = 9}, 
 at which we switch to second derivatives.
 
-\itt{exact\_second\_derivatives} \scalarlogical that, if {\tt true}, signifies that the
+\itt{bool exact\_second\_derivatives} if {\tt true}, signifies that the
 exact second derivatives are available (and, if {\tt false}, approximates them using a secant method).
 
-\itt{more\_sorensen\_maxits} \scalarinteger that, if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
+\itt{int more\_sorensen\_maxits} if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
 
-\itt{more\_sorensen\_shift} \scalarreal that, if {\tt nlls\_method = 3}, specifies the shift to be used in the More-Sorensen method.
+\itt{double more\_sorensen\_shift} if {\tt nlls\_method = 3}, specifies the shift to be used in the More-Sorensen method.
 
-\itt{more\_sorensen\_tiny} \scalarreal that, if {\tt nlls\_method = 3}, specifies the value 
+\itt{double more\_sorensen\_tiny} if {\tt nlls\_method = 3}, specifies the value
 below which we consider numbers to be essentially zero.
 
-\itt{more\_sorensen\_tol} \scalarreal that, if {\tt nlls\_method = 3}, specifies the tolerance
+\itt{double more\_sorensen\_tol} if {\tt nlls\_method = 3}, specifies the tolerance
 to be used in the More-Sorensen method.
 
-\itt{hybrid\_tol} \scalarreal that, if \(\|J^T f \| < \mathtt{hybrid\_tol} * 0.5 \|f\|^2\), switches to a (quasi-)Newton method.
+\itt{double hybrid\_tol} if \(\|J^T f \| < \mathtt{hybrid\_tol} * 0.5 \|f\|^2\), switches to a (quasi-)Newton method.
 
-\itt{hybrid\_switch\_its} \scalarinteger that sets how many iterates in a row must 
+\itt{int hybrid\_switch\_its} sets how many iterates in a row must 
 the condition in the definition of {\tt hybrid\_tol} hold before a switch.
 
-\itt{output\_progress\_vectors} \scalarlogical that, if true, outputs the progress vectors at the end of the routine.
+\itt{bool output\_progress\_vectors} if true, outputs the progress vectors at the end of the routine.
 
 \end{description}
 
 
 \subsection{The derived data type for holding information}
 \label{typeinform} 
-The derived data type {\tt NLLS\_inform\_type} is used
+The structure of type {\tt struct ral\_nlls\_inform\_type} is used
 to hold information from the execution of {\tt ral\_nlls}.
-The components are:
+The members are:
 \begin{description}
-      \itt{status} \scalarinteger that gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.
-\itt{alloc\_status} \scalarinteger that gives the status of the last attempted allocation/deallocation.
-\itt{iter} \scalarinteger that gives the total number of iterations performed.
-\itt{f\_eval} \scalarinteger that gives the total number of evaluations of the objective function.
-\itt{g\_eval} \scalarinteger that gives the total number of evaluations of the gradient of the objective function.
-\itt{h\_eval} \scalarinteger that gives the total number of evaluations of the Hessian of the objective function.
-\itt{convergence\_normf} \scalarinteger that tells us if the test on the size of \(f\) is satisfied.
-\itt{convergence\_normg} \scalarinteger that tells us if the test on the size of the gradient is satisfied.
-\itt{resvec} \ronearrayreal{iter+1} that holds the vector of residuals
-\itt{gradvec} \ronearrayreal{iter+1} that holds the vector of gradients.
-\itt{obj} \scalarreal that holds the value of the objective function at the best estimate of the solution determined by the algorithm.
-\itt{norm\_g} \scalarreal that holds the gradient of the objective function at the best estimate of the solution determined by the algorithm.
+\itt{int status} gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.
+\itt{int alloc\_status} gives the status of the last attempted allocation/deallocation.
+\itt{int iter} gives the total number of iterations performed.
+\itt{int f\_eval} gives the total number of evaluations of the objective function.
+\itt{int g\_eval} gives the total number of evaluations of the gradient of the objective function.
+\itt{int h\_eval} gives the total number of evaluations of the Hessian of the objective function.
+\itt{int convergence\_normf} tells us if the test on the size of \(f\) is satisfied.
+\itt{int convergence\_normg} tells us if the test on the size of the gradient is satisfied.
+%\itt{double *resvec} holds the vector of residuals
+%\itt{double *gradvec} holds the vector of gradients.
+\itt{double obj} holds the value of the objective function at the best estimate of the solution determined by the algorithm.
+\itt{double norm\_g} holds the gradient of the objective function at the best estimate of the solution determined by the algorithm.
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% Warning and error messages %%%%%%%%%%%%%%%%%%%%%%%%
@@ -399,9 +379,9 @@ The components are:
 \hslerrors
 
 A successful return from a subroutine in the package is indicated by 
-{\tt NLLS\_inform$\%$status} having the value zero.  
+{\tt info.status} having the value zero.  
 A non-zero value is associated with an error message that by default will  
-be output on unit {\tt NLLS\_control$\%$error}. 
+be output on the Fortran unit {\tt info.error}. 
 
 Possible values are:
 \begin{description}
@@ -413,13 +393,6 @@ Possible values are:
 
 \hslgeneral
 
-
-\hslio 
-   Error messages on unit {\tt NLLS\_control$\%$error} and warning
-   and diagnostic messages on unit {\tt NLLS\_control$\%$out},
-   respectively. These have default value {\tt 6};
-   printing of these messages is suppressed if the relevant unit number
-   is negative or if {\tt NLLS\_control$\%$print\_level} is negative.
 \hslrestrictions {\tt m$\ge$n$\ge$1}.
 
 \hslmethod 
@@ -428,8 +401,37 @@ Possible values are:
 % todo!
 
 \hslexample
+Consider fitting the function $y(t) = x_1e^{x_2 t}$ to data $(\bm{t}, \bm{y})$
+using a non-linear least squares fit.\\
+The residual function is given by
+$$
+   r_i(\vx; t_i, y_i) = x_1 e^{x_2 t_i} - y_i.
+$$
+We can calculate the Jacobian and Hessian as
+$$
+   J_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
+      e^{x_2 t_i} &
+      t_i x_1 e^{x_2 t_i}
+      \end{array}\right)
+$$
+$$
+   H_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
+      1                 & t_i e^{x_2 t_i}    \\
+      t_i e^{x_2 t_i}   & t_i^2 e^{x_2 t_i}
+   \end{array}\right)
+$$
+Given the data
+\begin{center}
+   \begin{tabular}{l|*{5}{r}}
+      $i$   & 1 & 2 & 3  & 4  & 5 \\
+      \hline
+      $t_i$ & 1 & 2 & 4  & 5  & 8 \\
+      $y_i$ & 3 & 4 & 6 & 11 & 20
+   \end{tabular}
+\end{center}
+and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit.
 
-% todo!
+\verbatiminput{../example/C/nlls_example.c}
 
 
 \end{document}
