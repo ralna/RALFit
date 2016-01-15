@@ -106,6 +106,8 @@ program nlls_example
    params%y(:) = (/ 3.0, 4.0, 6.0, 11.0, 20.0 /)
 
    ! Call fitting routine
+   control%nlls_method = 4 ! FIXME: remove
+   x(:) = (/ 2.5, 0.25 /) ! Initial guess
    call ral_nlls(2, m, x, eval_F, eval_J, eval_HF, params, info, control)
    if(info%status.ne.0) then
       print *, "ral_nlls() returned with error flag ", info%status
