@@ -106,7 +106,7 @@ module nlls_module
 !$$     INTEGER :: norm = 1
 
 
-     INTEGER :: nlls_method = 1
+     INTEGER :: nlls_method = 4
 
 !   specify the method used to solve the trust-region sub problem
 !      1 Powell's dogleg
