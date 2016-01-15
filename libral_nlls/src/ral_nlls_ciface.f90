@@ -1,7 +1,7 @@
 module ral_nlls_ciface
 
   use iso_c_binding
-  use nlls_module, only:          & 
+  use ral_nlls_double, only:          & 
        f_nlls_control_type => nlls_control_type, &
        f_nlls_inform_type  => nlls_inform_type, &
        f_ral_nlls => ral_nlls, & 

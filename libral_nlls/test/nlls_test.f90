@@ -2,10 +2,12 @@ program nlls_test
   
 ! Test deck for nlls_module
 
-  use nlls_module 
+  use ral_nlls_double
   use example_module
   implicit none
 
+
+  integer, parameter :: wp = kind(1.0d0)
   type( NLLS_inform_type )  :: status
   type( NLLS_control_type ) :: options
   type( user_type ), target :: params
@@ -92,6 +94,19 @@ program nlls_test
 
         end do
      end do
+
+     ! now let's check errors on the parameters passed to the routine...
+     
+     ! test n > m
+     n = 100
+     m = 3
+     call  ral_nlls(n, m, X,                         &
+                    eval_F, eval_J, eval_H, params,  &
+                    status, options )
+     if (status%status .ne. -800) then
+        write(*,*) 'Error: wrong error return, n > m'
+        no_errors_main = no_errors_main + 1
+     end if
 
      if (no_errors_main == 0) then
         write(*,*) '*** All (main) tests passed successfully! ***'
