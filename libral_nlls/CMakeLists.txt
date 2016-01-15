@@ -10,4 +10,5 @@ add_library (ral_nlls src/nlls_module.f90 src/ral_nlls_ciface.f90)
 # Tests and examples
 find_package(LAPACK REQUIRED)
 add_subdirectory (test)
-#add_subdirectory (example) # CURRENTLY BROKEN as needs GSL libs
+#add_subdirectory (example/C) # CURRENTLY BROKEN as needs GSL libs
+add_subdirectory (example/Fortran)
