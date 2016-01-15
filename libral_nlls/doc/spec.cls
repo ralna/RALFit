@@ -633,6 +633,7 @@
 
 % PDF details
 \usepackage{ifpdf}
+\usepackage{url}
 
 
 % Page sizes
@@ -655,8 +656,8 @@
 \renewcommand{\headrulewidth}{0.5mm}
 \renewcommand{\footrulewidth}{0.5mm}
 
-\newcommand{\licence}{\textbf{\large All use is subject to licence.}}
-\newcommand{\website}{\texttt{http://www.numerical.rl.ac.uk/}}
+\newcommand{\licence}{\textbf{\large Licence: 2-clause BSD.}}
+\newcommand{\website}{\small \url{http://ccpforge.cse.rl.ac.uk/gf/project/ral_nlls/}}
 
 \fancyhead{} % clear all header fields
 \fancyhead[LE,RO]{\Large \textbf{\fullpackagename}}
