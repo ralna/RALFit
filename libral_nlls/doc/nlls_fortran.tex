@@ -1,6 +1,7 @@
 \documentclass{spec}
 
 \usepackage{amsfonts,bm,amsmath}
+\usepackage{verbatim}
 % set the release and package names
 
 \newcommand{\libraryname}{RAL}
@@ -177,44 +178,23 @@ of the subroutine, as explained in Section~\ref{typeinform}.
 \end{description}
 
 
-\subsection{The user-supplied function evaluation routines}
+\subsection{User-supplied function evaluation routines}
 \label{sec::function_eval}
-In order to evaluate the function, Jacobian and Hessian at a point, the user must supply
-subroutines that perform this operation that the code {\tt ral\_nlls} will call internally.  
-We recommend that these routines are contained within a module.
+In order to evaluate the function, Jacobian and Hessian at a point, the user
+must supply subroutines that perform this operation that the code
+{\tt ral\_nlls} will call internally.  
 
-In order to pass user-defined data into the evaluation calls, the {\tt params\_base\_type} must be extended to a {\tt user\_type}, as follows:
+In order to pass user-defined data into the evaluation calls, {\tt params\_base\_type} may be extended to a {\tt user\_type}, as follows:
 \begin{verbatim}
-  module example
-
-    use :: nlls_module, only : params_base_type
-    implicit none
-
-    type, extends( params_base_type ) :: user_type
-       ! code declaring components of user_type 
-    end type user_type
-  
-  contains 
-
-    ! subroutines eval_F, eval_J and eval_HF
-
-  end module example
+   type, extends( params_base_type ) :: user_type
+      ! code declaring components of user_type 
+   end type user_type
 \end{verbatim}
-The module should then contain subroutines for evaluating the function, Jacobian, and Hessian.
-The calling sequence of these subroutines much match that described below.
+We recommend this type is wrapped in a module with the user-defined routines
+for evaluating the function, Jacobian, and Hessian.
 
-\begin{verbatim}
-   eval_f( status, n, m, x, f, params )
-\end{verbatim}
-
-\begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
-  A successful call must return {\tt status = 0}, otherwise an error will occur and the 
-  {\tt ral\_nlls} subroutine will  exit.
-
-  \itt{n, m} are as in the call to {\tt ral\_nlls}.
-
-  \itt{params} is an \intentin scalar of class {\tt params\_base\_type} that holds parameters to be passed to the function.  This should be extended to {\tt user\_type} within the code by using a call of the form
+The components of the extended type may be used through a \texttt{select type}
+construct:
 \begin{verbatim}
    select type(params)
    type is(user_type)
@@ -222,47 +202,102 @@ The calling sequence of these subroutines much match that described below.
    end select
 \end{verbatim}
 
-  \itt{x} \ronearrayrealii{n} that holds the current point $\iter{\vx}$.
-  
-  \itt{f} \ronearrayrealio{m} that holds the residual function 
-  evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
-  
-\end{description}
+\subsubsection{For evaluating the function $r(x)$}
+A subroutine must be supplied to calculate $r(x)$ for a given vector $x$. It
+must implement the following interface:
 
 \begin{verbatim}
-   eval_J( status, n, m, x, J, params )
+abstract interface
+   subroutine eval_r(n, m, params, x, r, status)
+      integer, intent(in) :: n
+      integer, intent(in) :: m
+      class(params_base_type), intent(in) :: params
+      real(wp), dimension(n), intent(in) :: x
+      real(wp), dimension(m), intent(out) :: r
+      integer, intent(inout) :: status
+   end subroutine eval_F
+end interface
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
-  A successful call must return {\tt status = 0}, otherwise an error will occur 
-  and the {\tt ral\_nlls} subroutine will exit.
+   \itt{n, m, params} are passed unchanged as provided in the call to
+      {\tt ral\_nlls}.
 
-  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_f}.
+      \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx}$.
+  
+   \itt{f} must be set by the routine to hold the residual function 
+      evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
 
-  
-  \itt{J} \ronearrayrealio{n*m} that holds the Jacobian evaluated at the current point held by columns as a vector.
-  
+   \itt{status} is initialised to \texttt{0} before the routine is
+      called. If it is set to a non-zero value by the routine, then on return
+      the {\tt ral\_nlls} subroutine will exit with an error.
 \end{description}
 
+\subsubsection{For evaluating the function $J = \nabla \vr(\iter{\vx})$}
+A subroutine must be supplied to calculate $J = \nabla \vr(\iter{\vx})$ for a given vector $x$. It
+must implement the following interface:
+
 \begin{verbatim}
-   eval_Hf( status, n, m, x, f, HF, params )
+abstract interface
+   subroutine eval_J(n, m, params, x, J, status)
+      integer, intent(in) :: n
+      integer, intent(in) :: m
+      class(params_base_type), intent(in) :: params
+      double precision, dimension(n), intent(in)  :: x
+      double precision, dimension(n*m), intent(out) :: J
+      integer, intent(inout) :: status
+  end subroutine eval_J
+end interface
 \end{verbatim}
 
 \begin{description}
-  \itt{status} \scalarintegerio that reports on the success of the subroutine call.  
-  A successful call must return {\tt status = 0}, otherwise an error will occur and the {\tt ral\_nlls} subroutine 
-  will exit.
+   \itt{n, m, params} are passed unchanged as provided in the call to
+      {\tt ral\_nlls}.
 
-  \itt{n, m, x, \text{and} params} are as in the call to {\tt eval\_f}.
-
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate
+      $J(\iter{\vx})$.
   
-  \itt{f} \ronearrayrealii{m} that holds the residual function
-  evaluated at the current point $\vx_k)$, 
-  as returned by a call to {\tt eval\_f}.
+   \itt{J} must be set by the routine to hold the Jacobian of the residual
+      function evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
+      \texttt{J(i*m+j)} must be set to hold $\nabla_{x_j} r_i(\iter{\vx})$.
+       
+   \itt{status} is initialised to \texttt{0} before the routine is
+      called. If it is set to a non-zero value by the routine, then on return
+      the {\tt ral\_nlls} subroutine will exit with an error.
+\end{description}
 
-  \itt{HF} \ronearrayrealio{n*n} that holds the matrix $\sum_{i = 1}^m \comp{r}(\iter{\vx})\nabla^2\comp{r}(\iter{\vx})$, held by columns as a vector.
+\subsubsection{For evaluating the function $HF = \sum_{i=1}^m F_i(x) \nabla^2 F_i(x)$}
+A subroutine must be supplied to calculate $HF = \sum_{i=1}^m F_i(x) \nabla^2 F_i(x)$ for a given vector $x$. It must implement the following interface:
+
+\begin{verbatim}
+abstract interface
+   subroutine eval_hf_type(n, m, params, x, f, HF, status)
+       integer, intent(in) :: n
+       integer, intent(in) :: m
+       class(params_base_type), intent(in) :: params
+       double precision, dimension(n), intent(in)  :: x
+       double precision, dimension(m), intent(in)  :: f
+       double precision, dimension(n*n), intent(out) :: HF
+       integer, intent(inout) :: status
+     end subroutine eval_hf_type
+end interface
+\end{verbatim}
+
+\begin{description}
+   \itt{n, m, params} are passed unchanged as provided in the call to
+      {\tt ral\_nlls}.
+
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $F(x)$.
   
+   \itt{f} holds $F(x)$, as returned by a previous call to \texttt{eval\_F}.
+
+   \itt{HF} must be set by the routine to holds the matrix
+      $\sum_{i = 1}^m \comp{r}(\iter{\vx})\nabla^2\comp{r}(\iter{\vx})$, held
+      by columns as a vector.
+
+   \itt{status} is initialised to \texttt{0} before the routine is called.
+      If it is set to a non-zero value by the routine, then on return
+      the {\tt ral\_nlls} subroutine will exit with an error.
 \end{description}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -428,8 +463,37 @@ Possible values are:
 % todo!
 
 \hslexample
+Consider fitting the function $y(t) = x_1e^{x_2 t}$ to data $(\bm{t}, \bm{y})$
+using a non-linear least squares fit.\\
+The residual function is given by
+$$
+   r_i(\vx; t_i, y_i) = x_1 e^{x_2 t_i} - y_i.
+$$
+We can calculate the Jacobian and Hessian as
+$$
+   J_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
+      e^{x_2 t_i} &
+      t_i x_1 e^{x_2 t_i}
+      \end{array}\right)
+$$
+$$
+   H_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
+      1                 & t_i e^{x_2 t_i}    \\
+      t_i e^{x_2 t_i}   & t_i^2 e^{x_2 t_i}
+   \end{array}\right)
+$$
+Given the data
+\begin{center}
+   \begin{tabular}{l|*{5}{r}}
+      $i$   & 1 & 2 & 3  & 4  & 5 \\
+      \hline
+      $t_i$ & 1 & 2 & 4  & 5  & 8 \\
+      $y_i$ & 3 & 4 & 6 & 11 & 20
+   \end{tabular}
+\end{center}
+and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit.
 
-% todo!
+\verbatiminput{../example/Fortran/nlls_example.f90}
 
 
 \end{document}
