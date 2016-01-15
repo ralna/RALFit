@@ -1,16 +1,16 @@
 \documentclass{spec}
 
 \usepackage{amsfonts,bm,amsmath}
-\usepackage{color}
 % set the release and package names
 
 \newcommand{\libraryname}{RAL}
 \newcommand{\packagename}{NLLS}
 \newcommand{\fullpackagename}{\libraryname\_\packagename}
-\newcommand{\versionum}{1.0.0}
-\newcommand{\versiondate}{xx xx 20xx}
+\newcommand{\versionum}{0.5.0}
+\newcommand{\versiondate}{15 January 2016}
 \newcommand{\version}{\versionum}
 \newcommand{\scalarinteger}{is a scalar of type {\tt INTEGER} }
+\newcommand{\scalarlogical}{is a scalar of type {\tt LOGICAL} }
 \newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER} }
 \newcommand{\scalarintegerii}{is an \intentin scalar of type {\tt INTEGER} }
 \newcommand{\scalarreal}{is a scalar of package type\ }
@@ -73,12 +73,10 @@ $\|{\iter{\vJ}}^T\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_2$, is sufficiently s
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 \hslattributes
-\hslversions{\versionum\ ({\color{red}\versiondate)}}.
-\hslinterfaces Fortran, MATLAB.
+\hslversions{\versionum\ (\versiondate)}.
 \hslIRDCZ Real (single, double).
-\hslcalls {\tt \color{red} todo}.
 \hsllanguage Fortran 2003 subset (F95+TR155581).  
-\hsldate xxx 2015. 
+\hsldate January 2016. 
 \hslorigin The Numerical Analysis Group, Rutherford Appleton Laboratory.
 \hslremark The development of this package was 
 partially supported by EPSRC grant EP/M025179/1.
@@ -147,26 +145,26 @@ variables to be fitted; i.e., $n$ is the length of the unknown vector $\bm x$.
 
 \itt{m} \scalarintegerii that holds the number $m$ of 
 data points available; i.e., $m$ is the number of functions $f_i$.
-\textcolor{blue}{restrictions on n and m?}
+\textbf{Restriction:} \texttt{m},\texttt{n}$>$\texttt{0}
 
 \itt{X} is an \intentinout\  rank-1 array of package type 
 and size {\tt n}.  On entry, it must hold the initial guess for $\bm x$, and on 
 successful exit it holds the solution to the non-linear least squares problem.
 
 \itt{eval\_f} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, returns the vector $\vr(\iter{\vx})$.  
-Further details of the format required are given in Section {\color{red}xxx}
+Further details of the format required are given in Section~\ref{sec::function_eval}.
 
 \itt{eval\_J} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, 
 returns the $m \times n$ Jacobian matrix, $\iter{\vJ}$, of $\vr$ at $\iter{\vx}$.  
-Further details of the format required are given in Section {\color{red}xxx}
+Further details of the format required are given in Section~\ref{sec::function_eval}.
 
 \itt{eval\_Hf} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$
 and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at $\iter{\vx}$. 
-Further details of the format required are given in Section {\color{red}xxx}
+Further details of the format required are given in Section~\ref{sec::function_eval}.
 
 \itt{params} is an \intentin\ scalar of class {\tt params\_base\_type} that holds parameters to 
 be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}. 
-Further details of its use are given in Section {\color{red}xxx}
+Further details of its use are given in Section~\ref{sec::function_eval}.
 
 \itt{info} is an \intentinout\ scalar of type 
 {\tt NLLS\_inform\_type}. Its components provide information about the execution
@@ -293,8 +291,8 @@ that is used as the output stream for general messages. If it is negative, these
 controls the level of output required. 
 \begin{description} 
 \item{\tt $\leq$ 0} No informational output will occur.
-\item{\tt = 1} As 0, plus {\color{red} gives a one-line summary for each iteration}.
-\item{\tt = 2} As 1, plus {\color{red} gives a summary of the inner iteration for each iteration}.
+\item{\tt = 1} As 0, plus gives a one-line summary for each iteration.
+\item{\tt = 2} As 1, plus gives a summary of the inner iteration for each iteration.
 \item{\tt > 3} As 3, and gives increasingly verbose (debugging) output.
 \end{description}
 The default is {\tt diagnostics\_level} $=$ 0.
@@ -326,8 +324,6 @@ The default is {\tt model = 1}.
 \end{description}
 The default is {\tt nlls\_method = 1}.
 
-\itt{lls\_solver} \scalarinteger that specifies the method that is used to solve the linear least-squares problem {\color{red} as yet unused}
-
 \itt{stop\_g\_absolute} \scalarreal that specifies the absolute tolerance for convergence.
 
 \itt{stop\_g\_relative} \scalarreal that specifies the relative tolerance for convergence.
@@ -352,14 +348,10 @@ but keep the trust-region radius unchanged.
 
 \itt{radius\_reduce} \scalarreal that specifies the factor to decrease the trust-region radius by.
 
-\itt{radius\_reduce\_max} \scalarreal that specifies the smallest factor by 
-which we can reduce the trust-region radius {\color{red} coded up, but always 
-inactive until a more sophisticated increase/reduction strategy is employed}.
-
 \itt{hybrid\_switch} \scalarreal that specifies the value, if {\tt nlls\_method = 9}, 
 at which we switch to second derivatives.
 
-\itt{exact\_second\_derivatives} {\color{red} logical} that, if {\tt true}, signifies that the
+\itt{exact\_second\_derivatives} \scalarlogical that, if {\tt true}, signifies that the
 exact second derivatives are available (and, if {\tt false}, approximates them using a secant method).
 
 \itt{more\_sorensen\_maxits} \scalarinteger that, if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
@@ -377,7 +369,7 @@ to be used in the More-Sorensen method.
 \itt{hybrid\_switch\_its} \scalarinteger that sets how many iterates in a row must 
 the condition in the definition of {\tt hybrid\_tol} hold before a switch.
 
-\itt{output\_progress\_vectors} {color{red} logical} that, if true, outputs the progress vectors at the end of the routine.
+\itt{output\_progress\_vectors} \scalarlogical that, if true, outputs the progress vectors at the end of the routine.
 
 \end{description}
 
@@ -388,7 +380,7 @@ The derived data type {\tt NLLS\_inform\_type} is used
 to hold information from the execution of {\tt ral\_nlls}.
 The components are:
 \begin{description}
-\itt{status} \scalarinteger that gives the exit status of the subroutine.  See Section {\color{red} ???} for details.
+      \itt{status} \scalarinteger that gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.
 \itt{alloc\_status} \scalarinteger that gives the status of the last attempted allocation/deallocation.
 \itt{iter} \scalarinteger that gives the total number of iterations performed.
 \itt{f\_eval} \scalarinteger that gives the total number of evaluations of the objective function.
@@ -428,7 +420,7 @@ Possible values are:
    respectively. These have default value {\tt 6};
    printing of these messages is suppressed if the relevant unit number
    is negative or if {\tt NLLS\_control$\%$print\_level} is negative.
-\hslrestrictions {\tt m$\ge$n$\ge$1}.  \textcolor{blue}{do you check this? Error code?}
+\hslrestrictions {\tt m$\ge$n$\ge$1}.
 
 \hslmethod 
 \label{method}
