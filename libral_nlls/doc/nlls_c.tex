@@ -32,10 +32,10 @@
 \min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_2^2,
 \label{eq:nlls_problem}
 \end{equation}
-where $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is the non-linear residual of 
+where $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is the non-linear residual of
 some data that needs fitting.
 % the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
-% ($m>n$).  
+% ($m>n$).
 % The $n$ variables that are fitted are $\vx=(x_1,x_2,...,x_n)^T$.
 % \textcolor{blue}{Some confusion: the $y_i$ don't appear again.}
 
@@ -45,8 +45,8 @@ At each point, $\iter{\vx}$, a quadratic model of the function
 F(\iter{\vx}) \approx \iter{m}(\vx) := {\iter{\vg}}^T \vx + \frac{1}{2} {\vx}^T \iter{\vH} \vx.
 \]
 is built.
-The `ideal' values in this model are $\iter{\vg} = {\iter{\vJ}}^T\vr(\iter{\vx})$ and 
-$\iter{\vH} = {\iter{\vJ}}^T\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \nabla^2 \comp{r}(\iter{\vx})$, 
+The `ideal' values in this model are $\iter{\vg} = {\iter{\vJ}}^T\vr(\iter{\vx})$ and
+$\iter{\vH} = {\iter{\vJ}}^T\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \nabla^2 \comp{r}(\iter{\vx})$,
 where $\iter{\vJ}$ denotes the $m \times n$ Jacobian of $\vr(\vx)$ at the point $\iter{\vx}$
 and $\iter{\vH}$ is the Hessian at $\iter{\vx}$.
 
@@ -54,13 +54,13 @@ Once the model has been formed, a trust-region sub-problem of the form
 \[
 \vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,
 \]
-is solved, 
-where $\Delta$ is the trust region radius and $B$ is a given symmetric positive definite matrix. 
+is solved,
+where $\Delta$ is the trust region radius and $B$ is a given symmetric positive definite matrix.
 The quantity
 \[\rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \vd)}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \vd)}\]
 is then calculated.
-If this is sufficiently large, the point is accepted and  $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \vd$; if not, the trust-region radius, $\Delta$, 
-is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one -- 
+If this is sufficiently large, the point is accepted and  $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \vd$; if not, the trust-region radius, $\Delta$,
+is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one --
 the trust-region radius is increased.
 
 This process continues until either the residual, $\|\vr(\iter{\vx})\|_2$, or a measure of the gradient,
@@ -71,10 +71,10 @@ $\|{\iter{\vJ}}^T\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_2$, is sufficiently s
 \hslattributes
 \hslversions{\versionum\ (\versiondate)}.
 \hslIRDCZ Real (single, double).
-\hsllanguage Fortran 2003 subset (F95+TR155581).  
-\hsldate January 2016. 
+\hsllanguage Fortran 2003 subset (F95+TR155581).
+\hsldate January 2016.
 \hslorigin The Numerical Analysis Group, Rutherford Appleton Laboratory.
-\hslremark The development of this package was 
+\hslremark The development of this package was
 partially supported by EPSRC grant EP/M025179/1.
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -92,7 +92,7 @@ Functions signatures are defined in a header file
 \noindent The user callable subroutines are:
 \vspace{-0.1cm}
 \begin{description}
-   \item[\texttt{ral\_nlls\_default\_control()}] initializes solver options to default values.
+   \item[\texttt{ral\_nlls\_default\_options()}] initializes solver options to default values.
    \item[\texttt{ral\_nlls()}]  solves the non-linear least squares problem (Section~\ref{eq:nlls_problem}).
    \item[\texttt{ral\_nlls\_init\_workspace()}] initialises a workspace for use with \texttt{ral\_nlls\_iterate()}.
    \item[\texttt{ral\_nlls\_iterate()}] performs a single iteration of the solver algorithm.
@@ -104,36 +104,36 @@ Functions signatures are defined in a header file
 \hsltypes
 \label{derived types}
 For each problem, the user must employ the derived types defined by the
-module to declare scalars of the types {\tt NLLS\_inform\_type}, and
-{\tt NLLS\_control\_type}.
+module to declare scalars of the types {\tt struct ral\_nlls\_options}, and
+{\tt ral\_nlls\_inform}.
 The following pseudocode illustrates this.
 \begin{verbatim}
    #include "ral_nlls.h"
    ...
-   struct ral_nlls_control control;
+   struct ral_nlls_options options;
    struct ral_nlls_inform info;
    ...
 \end{verbatim}
 The members of these structs are explained
-in Sections~\ref{typecontrol} and \ref{typeinform}. 
+in Sections~\ref{typeoptions} and \ref{typeinform}.
 
 
 %%%%%%%%%%%%%%%%%%%%%% argument lists %%%%%%%%%%%%%%%%%%%%%%%%
 \hslarguments
 
 \subsubsection{Integer and package types}
-%{\tt INTEGER} denotes default {\tt INTEGER} and 
+%{\tt INTEGER} denotes default {\tt INTEGER} and
 %{\tt INTEGER(long)} denotes {\tt INTEGER(kind=selected\_int\_kind(18))}.
 The term {\bf package type} is used to mean \texttt{float}
 if the single precision version is being used and
 \texttt{double} for the double precision version.
 
-\subsubsection{To initialise members of \texttt{struct nlls\_control} to default values}
+\subsubsection{To initialise members of \texttt{struct nlls\_options} to default values}
 
-To initialise the value of \texttt{struct nlls\_control}, the user \textbf{must} make a
+To initialise the value of \texttt{struct nlls\_options}, the user \textbf{must} make a
 call to the following suboutine (failure to do so will result in undefined behaviour):
 \begin{verbatim}
-   void ral_nlls_default_control(struct ral_nlls_control *options);
+   void ral_nlls_default_options(struct ral_nlls_options *options);
 \end{verbatim}
 
 \begin{description}
@@ -143,46 +143,46 @@ call to the following suboutine (failure to do so will result in undefined behav
 \subsubsection{To solve the non-linear least squares problem}
 \label{sec:solve}
 
-To solve the non-linear least squares problem make a call of the following 
+To solve the non-linear least squares problem make a call of the following
 subroutine:
 
 \begin{verbatim}
    void ral_nlls( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
       ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
-      void* params, struct nlls_inform* status, struct nlls_control const* options)
+      void* params, struct nlls_inform* status, struct nlls_options const* options)
 \end{verbatim}
 
 \begin{description}
-\itt{n} holds the number $n$ of 
+\itt{n} holds the number $n$ of
 variables to be fitted; i.e., $n$ is the length of the unknown vector $\bm x$.
 
-\itt{m} holds the number $m$ of 
+\itt{m} holds the number $m$ of
 data points available; i.e., $m$ is the number of functions $f_i$.
 \textbf{Restriction:} \texttt{m},\texttt{n}$>$\texttt{0}
 
-\itt{x} must hold the initial guess for $\bm x$, and on 
+\itt{x} must hold the initial guess for $\bm x$, and on
 successful exit it holds the solution to the non-linear least squares problem.
 
 \itt{eval\_r} specifies a callback function that, given a point $\iter{\vx}$,
 returns the vector $\vr(\iter{\vx})$. Details of the function signature and
 requirements are are given in Section~\ref{sec::function_eval}.
 
-\itt{eval\_j} specifies a callback function that, given a point $\iter{\vx}$, 
+\itt{eval\_j} specifies a callback function that, given a point $\iter{\vx}$,
 returns the $m \times n$ Jacobian matrix, $\iter{\vJ}$, of $\vr$ at $\iter{\vx}$. Details of the function signature and requirements are are given in
 Section~\ref{sec::function_eval}.
 
 \itt{eval\_hf} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$
-and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at $\iter{\vx}$. 
+and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at $\iter{\vx}$.
 Further details of the format required are given in Section~\ref{sec::function_eval}.
 
 \itt{params} is a pointer to user data that is passed unaltered to the callback
-functions {\tt eval\_r}, {\tt eval\_J}, and {\tt eval\_Hf}. 
+functions {\tt eval\_r}, {\tt eval\_J}, and {\tt eval\_Hf}.
 
 \itt{info} provides information about the execution
 of the subroutine, as explained in Section~\ref{typeinform}.
 
-\itt{control} specifies options that control the execution of the subroutine,
-see Section~\ref{typecontrol}.
+\itt{options} specifies options that control the execution of the subroutine,
+see Section~\ref{typeoptions}.
 
 \end{description}
 
@@ -207,13 +207,13 @@ a time by making a call of the following form:
 \begin{verbatim}
    void ral_nlls_iterate( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
       ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
-      void* params, struct nlls_inform* status, struct nlls_control const* options,
+      void* params, struct nlls_inform* status, struct nlls_options const* options,
       void* workspace)
 \end{verbatim}
 
 \begin{description}
 
-\item[\normalfont \texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{info} and \texttt{control}] are as described in Section~\ref{sec:solve}.
+\item[\normalfont \texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{info} and \texttt{options}] are as described in Section~\ref{sec:solve}.
 
 \itt{X} is an array of size {\tt n}. On the first call, it must hold the initial guess for
 $\bm x$. On return it holds the value of $\bm x$ at the current iterate, and
@@ -241,7 +241,7 @@ by a call to the following subroutine:
 \label{sec::function_eval}
 In order to evaluate the function, Jacobian and Hessian at a point, the user
 must supply callback functions that perform this operation that the code
-{\tt ral\_nlls} will call internally.  
+{\tt ral\_nlls} will call internally.
 
 In order to pass user-defined data into the evaluation calls, the parameter
 \texttt{params} is passed unaltered to the callback functions. Typically this
@@ -260,8 +260,8 @@ must have the following signature:
       {\tt ral\_nlls}.
 
    \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx}$.
-  
-   \itt{r} must be set by the routine to hold the residual function 
+
+   \itt{r} must be set by the routine to hold the residual function
       evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
 \end{description}
 \textbf{Return value:} The function should return \texttt{0} on success. A
@@ -282,7 +282,7 @@ A subroutine must be supplied to calculate $J = \nabla \vr(\iter{\vx})$ for a gi
 
    \itt{x} holds the current point $\iter{\vx}$ at which to evaluate
       $J(\iter{\vx})$.
-  
+
    \itt{J} must be set by the routine to hold the Jacobian of the residual
       function evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
       \texttt{J[i*m+j]} must be set to hold $\nabla_{x_j} r_i(\iter{\vx})$.
@@ -303,7 +303,7 @@ int eval_hf (int n, int m, void const* params, double const* x, double const* r,
       {\tt ral\_nlls}.
 
    \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $rx)$.
-  
+
    \itt{r} holds $\vr(x)$, as returned by a previous call to \texttt{eval\_r}.
 
    \itt{HF} must be set by the routine to holds the matrix
@@ -317,12 +317,12 @@ error code.
 
 
 
-\subsection{The control derived data type}
-\label{typecontrol} 
+\subsection{The options derived data type}
+\label{typeoptions}
 
-The structure of type {\tt struct ral\_nlls\_control} is used to hold
+The structure of type {\tt struct ral\_nlls\_options} is used to hold
 controlling data. The components must be initialised through a call to
-\texttt{ral\_nlls\_default\_control()}.
+\texttt{ral\_nlls\_default\_options()}.
 
 \vspace{2mm}
 
@@ -331,14 +331,14 @@ controlling data. The components must be initialised through a call to
 
 \itt{int error} with default value {\tt 6}
 is used as the Fortran unit number for error messages. If it is negative, these
-messages will be suppressed.  
+messages will be suppressed.
 
 \itt{int out} with default value {\tt 6}
-is used as the Fortran unit number for general messages. If it is negative, these messages will be suppressed. 
+is used as the Fortran unit number for general messages. If it is negative, these messages will be suppressed.
 
-\itt{int print\_level} with default value {\tt 0} that 
-controls the level of output required. 
-\begin{description} 
+\itt{int print\_level} with default value {\tt 0} that
+controls the level of output required.
+\begin{description}
 \item{\tt $\leq$ 0} No informational output will occur.
 \item{\tt = 1} As 0, plus gives a one-line summary for each iteration.
 \item{\tt = 2} As 1, plus gives a summary of the inner iteration for each iteration.
@@ -354,7 +354,7 @@ The default is {\tt diagnostics\_level} $=$ 0.
 \itt{int maxit} gives an upper bound on the number
 of iterations the algorithm is allowed to take before being stopped.  The default value is {\tt 100}.
 
-\itt{int model} specifies the model, $m_k(\cdot)$, used.  Possible values are 
+\itt{int model} specifies the model, $m_k(\cdot)$, used.  Possible values are
 \begin{description}
   \item{\tt 1} Gauss-Newton (no Hessian).
   \item{\tt 2} Newton (exact Hessian).
@@ -363,7 +363,7 @@ of iterations the algorithm is allowed to take before being stopped.  The defaul
 \end{description}
 The default is {\tt model = 1}.
 
-\itt{int nlls\_method} specifies the method used to solve 
+\itt{int nlls\_method} specifies the method used to solve
 (or approximate the solution to) the trust-region sub problem.  Possible values are
 \begin{description}
   \item{\tt 1} Powell's dogleg method (approximates the solution).
@@ -377,7 +377,7 @@ The default is {\tt nlls\_method = 1}.
 
 \itt{double stop\_g\_relative} specifies the relative tolerance for convergence.
 
-\itt{double relative\_tr\_radius} specifies whether the initial trust region 
+\itt{double relative\_tr\_radius} specifies whether the initial trust region
 radius should be scaled.
 
 \itt{double initial\_radius\_scale} specifies the scaling parameter for the initial trust region radius, which is only used if {\tt relative\_tr\_radius = 1}.
@@ -386,18 +386,18 @@ radius should be scaled.
 
 \itt{double maximum\_radius} specifies the maximum size permitted for the trust-region radius.
 
-\itt{double eta\_successful} specifies the smallest value of $\rho$ such that we accept the step.  
+\itt{double eta\_successful} specifies the smallest value of $\rho$ such that we accept the step.
 
 \itt{double eta\_very\_successful} specifies the value of $\rho$ after which we increase the trust-region radius.
 
-\itt{double eta\_too\_successful} specifies that value of $\rho$ after which we accept the step, 
+\itt{double eta\_too\_successful} specifies that value of $\rho$ after which we accept the step,
 but keep the trust-region radius unchanged.
 
 \itt{double radius\_increase} specifies the factor to increase the trust-region radius by.
 
 \itt{double radius\_reduce} specifies the factor to decrease the trust-region radius by.
 
-\itt{double hybrid\_switch} specifies the value, if {\tt nlls\_method = 9}, 
+\itt{double hybrid\_switch} specifies the value, if {\tt nlls\_method = 9},
 at which we switch to second derivatives.
 
 \itt{bool exact\_second\_derivatives} if {\tt true}, signifies that the
@@ -415,7 +415,7 @@ to be used in the More-Sorensen method.
 
 \itt{double hybrid\_tol} if \(\|J^T f \| < \mathtt{hybrid\_tol} * 0.5 \|f\|^2\), switches to a (quasi-)Newton method.
 
-\itt{int hybrid\_switch\_its} sets how many iterates in a row must 
+\itt{int hybrid\_switch\_its} sets how many iterates in a row must
 the condition in the definition of {\tt hybrid\_tol} hold before a switch.
 
 \itt{bool output\_progress\_vectors} if true, outputs the progress vectors at the end of the routine.
@@ -424,8 +424,8 @@ the condition in the definition of {\tt hybrid\_tol} hold before a switch.
 
 
 \subsection{The derived data type for holding information}
-\label{typeinform} 
-The structure of type {\tt struct ral\_nlls\_inform\_type} is used
+\label{typeinform}
+The structure of type {\tt struct ral\_nlls\_inform} is used
 to hold information from the execution of {\tt ral\_nlls}.
 The members are:
 \begin{description}
@@ -447,10 +447,10 @@ The members are:
 
 \hslerrors
 
-A successful return from a subroutine in the package is indicated by 
-{\tt info.status} having the value zero.  
-A non-zero value is associated with an error message that by default will  
-be output on the Fortran unit {\tt info.error}. 
+A successful return from a subroutine in the package is indicated by
+{\tt info.status} having the value zero.
+A non-zero value is associated with an error message that by default will
+be output on the Fortran unit {\tt info.error}.
 
 Possible values are:
 \begin{description}
@@ -464,7 +464,7 @@ Possible values are:
 
 \hslrestrictions {\tt m$\ge$n$\ge$1}.
 
-\hslmethod 
+\hslmethod
 \label{method}
 
 % todo!
