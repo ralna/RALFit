@@ -222,6 +222,8 @@ subroutine ral_nlls_default_control_d(ccontrol) bind(C)
   ccontrol%lls_solver = fcontrol%lls_solver
   ccontrol%stop_g_absolute = fcontrol%stop_g_absolute
   ccontrol%stop_g_relative = fcontrol%stop_g_relative
+  ccontrol%relative_tr_radius = fcontrol%relative_tr_radius
+  ccontrol%initial_radius_scale = fcontrol%initial_radius_scale
   ccontrol%initial_radius = fcontrol%initial_radius
   ccontrol%maximum_radius = fcontrol%maximum_radius
   ccontrol%eta_successful = fcontrol%eta_successful
@@ -230,8 +232,16 @@ subroutine ral_nlls_default_control_d(ccontrol) bind(C)
   ccontrol%radius_increase = fcontrol%radius_increase
   ccontrol%radius_reduce = fcontrol%radius_reduce
   ccontrol%radius_reduce_max = fcontrol%radius_reduce_max
-
-  
+  ccontrol%hybrid_switch = fcontrol%hybrid_switch
+  ccontrol%exact_second_derivatives = fcontrol%exact_second_derivatives
+  ccontrol%subproblem_eig_fact = fcontrol%subproblem_eig_fact
+  ccontrol%more_sorensen_maxits = fcontrol%more_sorensen_maxits
+  ccontrol%more_sorensen_shift = fcontrol%more_sorensen_shift
+  ccontrol%more_sorensen_tiny = fcontrol%more_sorensen_tiny
+  ccontrol%more_sorensen_tol = fcontrol%more_sorensen_tol
+  ccontrol%hybrid_tol = fcontrol%hybrid_tol
+  ccontrol%hybrid_switch_its = fcontrol%hybrid_switch_its
+  ccontrol%output_progress_vectors = fcontrol%output_progress_vectors
 end subroutine ral_nlls_default_control_d
 
 subroutine ral_nlls_d(n, m, cx,  &

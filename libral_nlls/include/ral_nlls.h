@@ -32,6 +32,7 @@ struct ral_nlls_control_d {
   int lls_solver; /* which lls solver to use? */
   ral_nllspkgtype_d_ stop_g_absolute; /* absolute stopping tolerance */
   ral_nllspkgtype_d_ stop_g_relative; /* relative stopping tolerance */
+  ral_nllspkgtype_d_ relative_tr_radius; /* ??? */
   ral_nllspkgtype_d_ initial_radius_scale; /* ??? */
   ral_nllspkgtype_d_ initial_radius; /* initial trust region radius */
   ral_nllspkgtype_d_ maximum_radius; /* maximux trust region radius */
