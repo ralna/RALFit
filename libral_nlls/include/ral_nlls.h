@@ -107,8 +107,9 @@ void nlls_solve_d( int n, int m,
 		   ral_nlls_eval_j_type eval_j,
 		   ral_nlls_eval_hf_type eval_hf,
 		   void const* params, 
-		   struct ral_nlls_inform *status,
-		   struct ral_nlls_options const* options);
+		   struct ral_nlls_options const* options,
+		   struct ral_nlls_inform *status
+         );
 /* Initialise a workspace for use with ral_nlls_iterate_d() */
 void ral_nlls_init_workspace_d(void **w);
 /* Perform a single iteration */
@@ -116,13 +117,14 @@ void ral_nlls_iterate_d(
       int n,
       int m, 
       ral_nllspkgtype_d_ X[],
+      void *w,
       ral_nlls_eval_r_type eval_r,
       ral_nlls_eval_j_type eval_j,
       ral_nlls_eval_hf_type eval_hf,
       void const* params, 
-      struct ral_nlls_inform *status,
       struct ral_nlls_options const* options,
-      void *w);
+      struct ral_nlls_inform *status
+      );
 /* Free memory from a workspace */
 void ral_nlls_free_workspace_d(void **w);
 

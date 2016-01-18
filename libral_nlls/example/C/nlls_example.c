@@ -70,24 +70,23 @@ int main(void) {
       .y = (double []) { 3.0, 4.0, 6.0, 11.0, 20.0 }
    };
 
-   // Initialize control values
-   struct ral_nlls_options control;
-   ral_nlls_default_options(&control);
-   control.nlls_method = 4; // FIXME: remove
+   // Initialize options values
+   struct ral_nlls_options options;
+   ral_nlls_default_options(&options);
 
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
-   struct ral_nlls_inform info;
-   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &info, &control);
-   if(info.status != 0) {
-      printf("ral_nlls() returned with error flag %d\n", info.status);
+   struct ral_nlls_inform inform;
+   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform);
+   if(inform.status != 0) {
+      printf("ral_nlls() returned with error flag %d\n", inform.status);
       return 1; // Error
    }
 
    // Print result
    printf ("Found a local optimum at x = %e %e\n", x[0], x[1]);
-   printf ("Took %d iterations\n", info.iter);
-   printf ("     %d function evaluations\n", info.f_eval);
-   printf ("     %d gradient evaluations\n", info.g_eval);
-   printf ("     %d hessian evaluations\n", info.h_eval);
+   printf ("Took %d iterations\n", inform.iter);
+   printf ("     %d function evaluations\n", inform.f_eval);
+   printf ("     %d gradient evaluations\n", inform.g_eval);
+   printf ("     %d hessian evaluations\n", inform.h_eval);
 }

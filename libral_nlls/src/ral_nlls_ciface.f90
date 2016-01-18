@@ -248,7 +248,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%output_progress_vectors = foptions%output_progress_vectors
 end subroutine ral_nlls_default_options_d
 
-subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, cinform, coptions) bind(C)
+subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform) bind(C)
   use ral_nlls_ciface
   implicit none
 
@@ -261,8 +261,8 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, cinform, coptions) bind(C)
   TYPE( nlls_inform )  :: cinform
   TYPE( nlls_options ) :: coptions
   type( params_wrapper ) :: fparams
-  TYPE( f_nlls_inform ) :: finform
   TYPE( f_nlls_options ) :: foptions
+  TYPE( f_nlls_inform ) :: finform
 
   logical :: f_arrays
 
@@ -311,20 +311,20 @@ subroutine ral_nlls_free_workspace_d(cw)
    cw = C_NULL_PTR
 end subroutine ral_nlls_free_workspace_d
 
-subroutine ral_nlls_iterate_d(n, m, cx, r, j, hf, params, cinform, coptions, &
-      cw) bind(C)
+subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
+      cinform) bind(C)
   use ral_nlls_ciface
   implicit none
 
   integer( C_INT) , INTENT( IN ), value :: n, m
   real( wp ), dimension(*) :: cx
+  type( C_PTR), value :: cw
   type( C_FUNPTR ), value :: r
   type( C_FUNPTR ), value :: j
   type( C_FUNPTR ), value :: hf
   type( C_PTR ), value :: params
-  TYPE( nlls_inform )  :: cinform
   TYPE( nlls_options ) :: coptions
-  type( C_PTR), value :: cw
+  TYPE( nlls_inform )  :: cinform
 
   type( params_wrapper ) :: fparams
   TYPE( f_nlls_inform) :: finform

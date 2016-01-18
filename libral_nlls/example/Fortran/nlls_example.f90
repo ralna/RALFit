@@ -105,7 +105,6 @@ program nlls_example
    params%y(:) = (/ 3.0, 4.0, 6.0, 11.0, 20.0 /)
 
    ! Call fitting routine
-   options%nlls_method = 4 ! FIXME: remove
    x(:) = (/ 2.5, 0.25 /) ! Initial guess
    call nlls_solve(2, m, x, eval_r, eval_J, eval_HF, params, options, inform)
    if(inform%status.ne.0) then
