@@ -543,7 +543,7 @@ module ral_nlls_double
     type, public :: NLLS_workspace ! all workspaces called from the top level
        integer :: first_call = 1
        integer :: iter = 0 
-       real(wp) :: normF0, normJF0
+       real(wp) :: normF0, normJF0, normF
        real(wp) :: normJFold, normJF_Newton
        real(wp) :: Delta
        logical :: use_second_derivatives = .false.
@@ -726,6 +726,7 @@ contains
 
        normF = norm2(w%f)
        w%normF0 = normF
+       w%normF = normF
 
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
@@ -736,11 +737,11 @@ contains
 
        if (control%model == 9) then
           ! make this relative....
-          w%hybrid_tol = control%hybrid_tol * ( normJF/(0.5*(normF**2)) )
+          w%hybrid_tol = control%hybrid_tol * ( normJF/(0.5*(w%normF**2)) )
        end if
        
        ! save some data 
-       info%obj = 0.5 * ( normF**2 )
+       info%obj = 0.5 * ( w%normF**2 )
        info%norm_g = normJF
 
        if (control%output_progress_vectors) then
@@ -834,7 +835,7 @@ contains
        !                                                          !
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-       call calculate_rho(normF,normFnew,md,rho)
+       call calculate_rho(w%normF,normFnew,md,rho)
        if (rho > control%eta_successful) success = .true.
        
        !++++++++++++++++++++++!
@@ -870,7 +871,7 @@ contains
           call mult_Jt(w%J,n,m,w%fnew,w%g)
           w%g = -w%g
        
-          normF = normFnew
+          w%normF = normFnew
           normJF = norm2(w%g)
           
           decrease_grad: if (normJF > w%normJFold) then
@@ -1000,7 +1001,7 @@ contains
              w%use_second_derivatives = .false.
           end if
        else
-          FunctionValue = 0.5 * (normF**2)
+          FunctionValue = 0.5 * (w%normF**2)
           if ( normJf/FunctionValue < w%hybrid_tol ) then 
              w%hybrid_count = w%hybrid_count + 1
              if (w%hybrid_count == control%hybrid_switch_its) then
@@ -1028,7 +1029,7 @@ contains
     end select
 
     ! update the stats 
-    info%obj = 0.5*(normF**2)
+    info%obj = 0.5*(w%normF**2)
     info%norm_g = normJF
     if (control%output_progress_vectors) then
        w%resvec (w%iter + 1) = info%obj
@@ -1040,12 +1041,12 @@ contains
     end if
     
     if (control%print_level >=3) write(control%out,3010) info%obj
-    if (control%print_level >=3) write(control%out,3060) normJF/normF
+    if (control%print_level >=3) write(control%out,3060) normJF/w%normF
 
     !++++++++++++++++++!
     ! Test convergence !
     !++++++++++++++++++!
-    call test_convergence(normF,normJF,w%normF0,w%normJF0,control,info)
+    call test_convergence(w%normF,normJF,w%normF0,w%normJF0,control,info)
     if (info%convergence_normf == 1) goto 5000 ! <----converged!!
     if (info%convergence_normg == 1) goto 5010 ! <----converged!!
 
