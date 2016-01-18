@@ -152,8 +152,10 @@ contains
     cinfo%g_eval = finfo%g_eval
     cinfo%h_eval = finfo%h_eval
     cinfo%convergence_normf = finfo%convergence_normf
-    cinfo%resinf = maxval(abs(finfo%resvec(:)))
-    cinfo%gradinf = maxval(abs(finfo%gradvec(:)))
+    if(allocated(finfo%resvec)) &
+       cinfo%resinf = maxval(abs(finfo%resvec(:)))
+    if(allocated(finfo%gradvec)) &
+       cinfo%gradinf = maxval(abs(finfo%gradvec(:)))
     cinfo%obj = finfo%obj
     cinfo%norm_g = finfo%norm_g
     
