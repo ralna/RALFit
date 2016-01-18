@@ -675,7 +675,7 @@ contains
       
     integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, normJF, normF, normFnew, md, Jmax, JtJdiag
+    real(wp) :: rho, normJF, normFnew, md, Jmax, JtJdiag
     real(wp) :: FunctionValue, hybrid_tol
     logical :: success, calculate_svd_J
     real(wp) :: s1, sn
@@ -724,9 +724,8 @@ contains
           end if
        end if
 
-       normF = norm2(w%f)
-       w%normF0 = normF
-       w%normF = normF
+       w%normF = norm2(w%f)
+       w%normF0 = w%normF
 
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
@@ -946,7 +945,7 @@ contains
 
        if ( control%model == 9) w%normJFold = normJF
 
-       normF = normFnew
+       w%normF = normFnew
        normJF = norm2(w%g)
        
     end if
