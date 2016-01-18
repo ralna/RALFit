@@ -121,16 +121,28 @@ The term {\bf package type} is used to mean \texttt{float}
 if the single precision version is being used and
 \texttt{double} for the double precision version.
 
+\subsubsection{To initialise members of \texttt{struct nlls\_control} to default values}
+
+To initialise the value of \texttt{struct nlls\_control}, the user \textbf{must} make a
+call to the following suboutine (failure to do so will result in undefined behaviour):
+\begin{verbatim}
+   void ral_nlls_default_control(struct ral_nlls_control *options);
+\end{verbatim}
+
+\begin{description}
+   \itt{*options} will be initialised to default values on return.
+\end{description}
+
 \subsubsection{To solve the non-linear least squares problem}
-\label{sec:factorize}
+\label{sec:solve}
 
 To solve the non-linear least squares problem a call of the following 
 subroutine:
 
 \begin{verbatim}
-   void ral_nlls_d( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
+   void ral_nlls( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
       ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
-      void *params, struct nlls_inform *status, struct nlls_control *options)
+      void* params, struct nlls_inform* status, struct nlls_control const* options)
 \end{verbatim}
 
 \begin{description}
@@ -165,6 +177,56 @@ of the subroutine, as explained in Section~\ref{typeinform}.
 \itt{control} specifies options that control the execution of the subroutine,
 see Section~\ref{typecontrol}.
 
+\end{description}
+
+\subsubsection{To initialise a workspace for use with \texttt{ral\_nlls\_iterate()}}
+
+Prior to the first call of \texttt{ral\_nlls\_iterate()}, the workspace must be
+initialised by a call to the following subroutine:
+\begin{verbatim}
+   void ral_nlls_init_workspace(void **workspace);
+\end{verbatim}
+
+\begin{description}
+   \itt{*workspace} will, on return, be allocated and initialised using Fortran intrinsics.
+      To avoid a memory leak, it must be freed through a call to \texttt{ral\_nlls\_free\_workspace()}.
+\end{description}
+
+\subsection{To iterate once}
+\label{sec:iterate}
+Alternatively, the user may step through the solution process one iteration at
+a time by making a call of the following form:
+
+\begin{verbatim}
+   void ral_nlls_iterate( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
+      ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
+      void* params, struct nlls_inform* status, struct nlls_control const* options,
+      void* workspace)
+\end{verbatim}
+
+\begin{description}
+
+\item[\texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{info} and \texttt{control}] are as described in Section~\ref{sec:solve}.
+
+\itt{X} is an array of size {\tt n}. On the first call, it must hold the initial guess for
+$\bm x$. On return it holds the value of $\bm x$ at the current iterate, and
+must be passed unaltered to any subsequent call to \texttt{ral\_nlls\_iterate()}.
+
+\itt{w} is workspace allocated and initialised through a previous call to
+\texttt{ral\_nlls\_init\_workspace()}.
+
+\end{description}
+
+\subsubsection{To free a workspace when it is no longer required}
+
+Memory allocated during the call to \texttt{ral\_nlls\_init\_workspace()} may be freed
+by a call to the following subroutine:
+\begin{verbatim}
+   void ral_nlls_free_workspace(void **workspace);
+\end{verbatim}
+
+\begin{description}
+   \itt{*workspace} is the workspace to be freed. On exit it will be set to \texttt{NULL}.
 \end{description}
 
 

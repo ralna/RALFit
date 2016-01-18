@@ -89,7 +89,7 @@ partially supported by EPSRC grant EP/M025179/1.
 \subsection{Calling sequences}
 
 Access to the package requires a {\tt USE} statement \\ \\
-\indent\hspace{5mm}{\tt use nlls\_module} 
+\indent\hspace{5mm}{\tt use ral\_nlls\_double} 
 % \noindent 
 % If it is required to use more than one module at the same time, the derived
 % types  (see Section~\ref{derived types}) 
@@ -132,7 +132,7 @@ default real if the single precision version is being used and
 double precision real for the double precision version.
 
 \subsubsection{To solve the non-linear least squares problem}
-\label{sec:factorize}
+\label{sec:solve}
 
 To solve the non-linear least squares problem a call of the following form should be made:
 
@@ -177,6 +177,33 @@ of the subroutine, as explained in Section~\ref{typeinform}.
 
 \end{description}
 
+\subsection{To iterate once}
+\label{sec:iterate}
+Alternatively, the user may step through the solution process one iteration at
+a time by making a call of the following form:
+
+\begin{verbatim}
+   call ral_nlls_iterate(n, m, X, eval_F, eval_J, eval_HF, params, info, control, w)
+\end{verbatim}
+
+\begin{description}
+
+\item[\texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{info} and \texttt{control}] are as described in Section~\ref{sec:solve}.
+
+\itt{X} is an \intentinout\  rank-1 array of package type 
+and size {\tt n}.  On the first call, it must hold the initial guess for
+$\bm x$. On return it holds the value of $\bm x$ at the current iterate, and
+must be passed unaltered to any subsequent call to \texttt{ral\_nlls\_iterate()}.
+
+\itt{w} is an \intentinout\ scalar of type \texttt{nlls\_workspace}. It is used
+to store the current state of the iteration and should not be altered by the
+user.
+
+\end{description}
+
+The user may use the components \texttt{info\%convergence\_normf} and
+\texttt{info\%convergence\_normg} to determine whether the iteration has
+converged.
 
 \subsection{User-supplied function evaluation routines}
 \label{sec::function_eval}
