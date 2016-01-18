@@ -22,7 +22,7 @@ program nlls_test
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
 
-  type( NLLS_workspace ) :: work, work2, work3, work4, work5, work_dtrs
+  type( NLLS_workspace ) :: work
 
   open(unit = 17, file="nlls_test.out")
   options%error = 17
@@ -141,7 +141,7 @@ program nlls_test
      options%nlls_method = 4
      n = 2
      m = 5
-     call setup_workspaces(work_dtrs,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,info) 
      allocate(x(m*n),y(n),z(n**2),w(n))
      ! x -> J, y-> f, x -> hf, w-> d
      x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
@@ -151,7 +151,7 @@ program nlls_test
      alpha = 0.02_wp
      
      call solve_dtrs(x,y,z,n,m,alpha,w,& 
-          work_dtrs%calculate_step_ws%solve_dtrs_ws, &
+          work%calculate_step_ws%solve_dtrs_ws, &
           options,status)
 
      if (dot_product(w,w) > alpha**2) then
@@ -161,6 +161,7 @@ program nlls_test
      end if
      
      deallocate(x,y,z,w)
+     call remove_workspaces(work,options)
 
      !! solve_LLS 
      ! ** TODO **
@@ -272,13 +273,14 @@ program nlls_test
      end if
 
      deallocate(A,B,x,y,z)
+     call remove_workspaces(work,options)
 
 !!!!!!
      ! Setup workspace for n = 2
      ! use this for max_eig, solve_spd
      options%nlls_method = 2
      options%model = 2
-     call setup_workspaces(work3,2,2,options,info) 
+     call setup_workspaces(work,2,2,options,info) 
 !!!!!!
 
      !-----------------!
@@ -291,7 +293,7 @@ program nlls_test
      z = (/ 1.0, 1.0 /)
      y = (/ 6.0, 3.0 /)
 
-     call solve_general(A,y,x,n,info,work3%calculate_step_ws%AINT_tr_ws%solve_general_ws)
+     call solve_general(A,y,x,n,info,work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
      if (info .ne. 0) then
         write(*,*) 'Error: info = ', info, ' returned from solve_spd'
         no_errors_helpers = no_errors_helpers + 1
@@ -301,7 +303,8 @@ program nlls_test
      end if
 
      deallocate(A,x,y,z)
-
+     call remove_workspaces(work,options)
+     
      !---------------!
      !! matrix_norm !!
      !---------------!
@@ -399,14 +402,11 @@ program nlls_test
         select case (i)
         case (1)
            options%subproblem_eig_fact = .TRUE.
-           call setup_workspaces(work4,4,4,options,info) 
         case (2)
            options%subproblem_eig_fact = .FALSE.
-           call setup_workspaces(work5,4,4,options,info) 
         end select
+        call setup_workspaces(work,4,4,options,info) 
         
-
-
         options%nlls_method = 2 ! revert...
         
         A = reshape( (/-5.0,  1.0, 0.0, 0.0, &
@@ -414,14 +414,9 @@ program nlls_test
           0.0,  0.0, 4.0, 2.0, & 
           0.0,  0.0, 2.0, 4.0/), shape(A))
 
-        select case (i)
-        case (1)
-           call min_eig_symm(A,n,alpha,x,options,info, & 
-                work4%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
-        case (2)
-           call min_eig_symm(A,n,alpha,x,options,info, & 
-                work5%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
-        end select
+        call min_eig_symm(A,n,alpha,x,options,info, & 
+             work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
+
 
         if ( (abs( alpha + 6.0 ) > 1e-12).or.(info .ne. 0) ) then
            write(*,*) 'error :: max_eig test failed -- wrong eig found'
@@ -434,7 +429,7 @@ program nlls_test
      end do
           
      deallocate(A,x)
-
+     call remove_workspaces(work,options)
 
 
      !-----------!
@@ -445,6 +440,8 @@ program nlls_test
      ! make sure max_eig gets called
 
      allocate(x(n),A(n,n), B(n,n))
+     call setup_workspaces(work,n,m,options,info) 
+     
      A = reshape( (/1.0, 2.0, 3.0, 4.0, &
           2.0, 4.0, 6.0, 8.0, &
           3.0, 6.0, 9.0, 12.0, & 
@@ -464,10 +461,13 @@ program nlls_test
      end if
 
      deallocate(A,B,x)
+     call remove_workspaces(work,options)
 
      ! check the 'hard' case...
      n = 4
      allocate(x(n),A(n,n), B(n,n))
+     call setup_workspaces(work,n,m,options,info) 
+
      A = 0.0_wp  
      A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
      A(1,3) = A(3,1); A(1,4) = A(4,1); A(2,3) = A(3,2); A(2,4) = A(4,2)
@@ -509,8 +509,10 @@ program nlls_test
      end if
 
      deallocate(A,B,C,x,y,results)
+     call remove_workspaces(work,options)
 
-     call setup_workspaces(work2,1,1,options,info)  !todo: deallocation routine
+     
+     call setup_workspaces(work,1,1,options,info)  !todo: deallocation routine
      ! check the error return
      n = 2
      allocate(x(n), A(n,n), B(n,n))
@@ -522,21 +524,21 @@ program nlls_test
      B(2,2) = 1.0_wp
 
      call max_eig(A,B,n,alpha,x,info,C,options, & 
-                  work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+                  work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
      if (info .ne. 1) then
         write(*,*) 'error :: all complex part of max_eig test failed'
         no_errors_helpers = no_errors_helpers + 1
      end if
 
      call max_eig(A,B,n+1,alpha,x,info,C, options, & 
-                  work2%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+                  work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
      if (info .ne. 2) then
         write(*,*) 'error :: even part of max_eig test failed'
         no_errors_helpers = no_errors_helpers + 1
      end if
 
      deallocate(A,B,x)
-
+     call remove_workspaces(work,options)
      ! Report back results....
 
      if (no_errors_helpers == 0) then

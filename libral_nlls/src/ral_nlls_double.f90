@@ -560,7 +560,7 @@ module ral_nlls_double
        type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
 
-    public :: nlls_solve, nlls_iterate
+    public :: nlls_solve, nlls_iterate, remove_workspaces
     
     public :: setup_workspaces, solve_dtrs, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
@@ -1174,6 +1174,18 @@ contains
 !  End of subroutine RAL_NLLS_iterate
 
   end subroutine nlls_iterate
+
+
+  subroutine ral_nlls_finalize(w,options)
+    
+    type( nlls_workspace ) :: w
+    type( nlls_options ) :: options
+    
+    w%first_call = 1
+
+    call remove_workspaces(w,options)   
+    
+  end subroutine ral_nlls_finalize
 
 
   SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,options,inform,w)
@@ -2450,6 +2462,67 @@ contains
 
       end subroutine setup_workspaces
 
+      subroutine remove_workspaces(workspace,options)
+        
+        type( NLLS_workspace ), intent(out) :: workspace
+        type( nlls_options ), intent(in) :: options
+
+        workspace%first_call = 0
+
+        if (.not. options%exact_second_derivatives) then
+           deallocate(workspace%y)
+           deallocate(workspace%y_sharp)
+           deallocate(workspace%g_old)
+           deallocate(workspace%g_mixed)
+        end if
+
+        if( options%output_progress_vectors ) then 
+           deallocate(workspace%resvec)
+           deallocate(workspace%gradvec)
+        end if
+
+        if( options%model == 8 ) then 
+           deallocate(workspace%fNewton )
+           deallocate(workspace%JNewton )
+           deallocate(workspace%XNewton ) 
+        end if
+                
+        deallocate(workspace%J ) 
+        deallocate(workspace%f ) 
+        deallocate(workspace%fnew ) 
+        deallocate(workspace%hf ) 
+        deallocate(workspace%d ) 
+        deallocate(workspace%g ) 
+        deallocate(workspace%Xnew ) 
+        
+        select case (options%nlls_method)
+        
+        case (1) ! use the dogleg method
+           call remove_workspace_dogleg(workspace%calculate_step_ws%dogleg_ws, & 
+                options)
+
+        case(2) ! use the AINT method
+           call remove_workspace_AINT_tr(workspace%calculate_step_ws%AINT_tr_ws, & 
+                options)
+           
+        case(3) ! More-Sorensen 
+           call remove_workspace_more_sorensen(&
+                workspace%calculate_step_ws%more_sorensen_ws,options)
+
+        case (4) ! dtrs (Galahad)
+           call remove_workspace_solve_dtrs(& 
+                workspace%calculate_step_ws%solve_dtrs_ws, options)
+
+        end select
+
+! evaluate model in the main routine...       
+        call remove_workspace_evaluate_model(workspace%evaluate_model_ws,options)
+
+        return
+
+      end subroutine remove_workspaces
+
+
       subroutine setup_workspace_dogleg(n,m,w,options,status)
         integer, intent(in) :: n, m 
         type( dogleg_work ), intent(out) :: w
@@ -2500,6 +2573,26 @@ contains
 
       end subroutine setup_workspace_dogleg
 
+      subroutine remove_workspace_dogleg(w,options)
+        type( dogleg_work ), intent(out) :: w
+        type( nlls_options ), intent(in) :: options
+
+        deallocate(w%d_sd ) 
+        deallocate(w%d_gn )
+        deallocate(w%ghat )
+        deallocate(w%Jg )
+        
+        ! deallocate space for 
+        !   solve_LLS
+        call remove_workspace_solve_LLS(w%solve_LLS_ws,options)
+        ! deallocate space for 
+        !   evaluate_model
+        call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
+
+        return
+
+      end subroutine remove_workspace_dogleg
+
       subroutine setup_workspace_solve_LLS(n,m,w,options,status)
         integer, intent(in) :: n, m 
         type( solve_LLS_work ) :: w 
@@ -2528,7 +2621,19 @@ contains
         return
 
       end subroutine setup_workspace_solve_LLS
-      
+
+      subroutine remove_workspace_solve_LLS(w,options)
+        type( solve_LLS_work ) :: w 
+        type( nlls_options ), intent(in) :: options
+        
+        deallocate( w%temp)
+        deallocate( w%work ) 
+        deallocate( w%Jlls ) 
+        
+        return
+                
+      end subroutine remove_workspace_solve_LLS
+
       subroutine setup_workspace_evaluate_model(n,m,w,options,status)
         integer, intent(in) :: n, m        
         type( evaluate_model_work ) :: w
@@ -2552,6 +2657,17 @@ contains
         
         return
       end subroutine setup_workspace_evaluate_model
+
+      subroutine remove_workspace_evaluate_model(w,options)
+        type( evaluate_model_work ) :: w
+        type( nlls_options ), intent(in) :: options
+        
+        deallocate( w%Jd ) 
+        deallocate( w%Hd ) 
+        
+        return
+
+      end subroutine remove_workspace_evaluate_model
 
       subroutine setup_workspace_AINT_tr(n,m,w,options,status)
         integer, intent(in) :: n, m 
@@ -2614,6 +2730,32 @@ contains
         
       end subroutine setup_workspace_AINT_tr
 
+      subroutine remove_workspace_AINT_tr(w,options)
+        type( AINT_tr_work ) :: w
+        type( nlls_options ), intent(in) :: options
+        
+        deallocate(w%A)
+        deallocate(w%v)
+        deallocate(w%B)
+        deallocate(w%p0)
+        deallocate(w%p1)
+        deallocate(w%M0)
+        deallocate(w%M1)
+        deallocate(w%y)
+        deallocate(w%gtg)
+        deallocate(w%q)
+        deallocate(w%LtL)
+        ! setup space for max_eig
+        call remove_workspace_max_eig(w%max_eig_ws,options)
+        call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
+        ! setup space for the solve routine
+        if ((options%model .ne. 1).and.(options%model .ne. 3)) then
+           call remove_workspace_solve_general(w%solve_general_ws,options)
+        end if
+
+        return
+        
+      end subroutine remove_workspace_AINT_tr
 
       subroutine setup_workspace_min_eig_symm(n,m,w,options,status)
         integer, intent(in) :: n, m 
@@ -2689,6 +2831,24 @@ contains
         return
 
       end subroutine setup_workspace_min_eig_symm
+ 
+      subroutine remove_workspace_min_eig_symm(w,options)
+        type( min_eig_symm_work) :: w
+        type( nlls_options ), intent(in) :: options
+        
+        deallocate(w%A)        
+
+        if (options%subproblem_eig_fact) then 
+           deallocate(w%ew)
+        else
+           deallocate( w%iwork )
+           deallocate( w%ifail ) 
+        end if
+        deallocate( w%work ) 
+
+        return
+
+      end subroutine remove_workspace_min_eig_symm
       
       subroutine setup_workspace_max_eig(n,m,w,options,status)
         integer, intent(in) :: n, m 
@@ -2751,6 +2911,22 @@ contains
 
       end subroutine setup_workspace_max_eig
 
+     subroutine remove_workspace_max_eig(w,options)
+        type( max_eig_work) :: w
+        type( nlls_options ), intent(in) :: options
+        
+        deallocate( w%alphaR)
+        deallocate( w%alphaI )
+        deallocate( w%beta ) 
+        deallocate( w%vr ) 
+        deallocate( w%ew_array ) 
+        deallocate( w%work ) 
+        deallocate( w%nullindex ) 
+        deallocate( w%vecisreal )
+
+        return
+        
+      end subroutine remove_workspace_max_eig
 
       subroutine setup_workspace_solve_general(n, m, w, options, status)
         integer, intent(in) :: n, m 
@@ -2774,8 +2950,18 @@ contains
         end if
         
         return
-
+        
       end subroutine setup_workspace_solve_general
+
+      subroutine remove_workspace_solve_general(w, options)
+        type( solve_general_work ) :: w
+        type( nlls_options ), intent(in) :: options
+        
+        deallocate( w%A ) 
+        deallocate( w%ipiv ) 
+        return
+
+      end subroutine remove_workspace_solve_general
 
       subroutine setup_workspace_solve_dtrs(n,m,w,options,status)
         integer, intent(in) :: n,m
@@ -2821,6 +3007,23 @@ contains
         return
 
       end subroutine setup_workspace_solve_dtrs
+
+      subroutine remove_workspace_solve_dtrs(w,options)
+        type( solve_dtrs_work ) :: w
+        type( nlls_options ), intent(in) :: options
+
+        deallocate(w%A)
+        deallocate(w%ev)
+        deallocate(w%v)
+        deallocate(w%v_trans)
+        deallocate(w%ew)
+        deallocate(w%d_trans)
+
+        call remove_workspace_all_eig_symm(w%all_eig_symm_ws,options)
+        
+        return
+
+      end subroutine remove_workspace_solve_dtrs
       
       subroutine setup_workspace_all_eig_symm(n,m,w,options,status)
         integer, intent(in) :: n,m
@@ -2871,6 +3074,13 @@ contains
 
       end subroutine setup_workspace_all_eig_symm
 
+      subroutine remove_workspace_all_eig_symm(w,options)
+        type( all_eig_symm_work ) :: w
+        type( nlls_options ), intent(in) :: options
+
+        deallocate( w%work ) 
+
+      end subroutine remove_workspace_all_eig_symm
       
       subroutine setup_workspace_more_sorensen(n,m,w,options,status)
         integer, intent(in) :: n,m
@@ -2916,6 +3126,23 @@ contains
 
 
       end subroutine setup_workspace_more_sorensen
+      
+      subroutine remove_workspace_more_sorensen(w,options)
+        type( more_sorensen_work ) :: w
+        type( nlls_options ), intent(in) :: options
+
+        deallocate(w%A)
+        deallocate(w%LtL)
+        deallocate(w%v)
+        deallocate(w%q)
+        deallocate(w%y1)
+        deallocate(w%AplusSigma)
+
+        call remove_workspace_min_eig_symm(w%min_eig_symm_ws,options)
+        
+        return
+
+      end subroutine remove_workspace_more_sorensen
       
 
 end module ral_nlls_double
