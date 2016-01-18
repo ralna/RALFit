@@ -88,8 +88,11 @@ Functions signatures are defined in a header file
 \noindent The user callable subroutines are:
 \vspace{-0.1cm}
 \begin{description}
-   \item {\tt ral\_nlls\_default\_control()} initializes solver options to default values.
-   \item {\tt ral\_nlls()}  solves the non-linear least squares problem (Section~\ref{eq:nlls_problem}).
+   \item[\texttt{ral\_nlls\_default\_control()}] initializes solver options to default values.
+   \item[\texttt{ral\_nlls()}]  solves the non-linear least squares problem (Section~\ref{eq:nlls_problem}).
+   \item[\texttt{ral\_nlls\_init\_workspace()}] initialises a workspace for use with \texttt{ral\_nlls\_iterate()}.
+   \item[\texttt{ral\_nlls\_iterate()}] performs a single iteration of the solver algorithm.
+   \item[\texttt{ral\_nlls\_free\_workspace()}] frees memory allocated by a call to \texttt{ral\_nlls\_init\_workspace()}.
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% derived types %%%%%%%%%%%%%%%%%%%%%%%%
@@ -206,7 +209,7 @@ a time by making a call of the following form:
 
 \begin{description}
 
-\item[\texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{info} and \texttt{control}] are as described in Section~\ref{sec:solve}.
+\item[\normalfont \texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{info} and \texttt{control}] are as described in Section~\ref{sec:solve}.
 
 \itt{X} is an array of size {\tt n}. On the first call, it must hold the initial guess for
 $\bm x$. On return it holds the value of $\bm x$ at the current iterate, and
