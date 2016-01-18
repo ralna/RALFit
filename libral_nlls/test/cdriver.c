@@ -30,7 +30,7 @@ int main(void) {
   const int m = 67;
   
   /* Derived types */
-  struct ral_nlls_control options;
+  struct ral_nlls_options options;
   struct ral_nlls_inform status;
   struct usertype params;
   
@@ -46,11 +46,11 @@ int main(void) {
   x[0] = 1.0;
   x[1] = 2.0;
 
-  ral_nlls_default_control(&options);
+  ral_nlls_default_options(&options);
   
   options.print_level = 3;
   
-  ral_nlls(n, m, x,
+  nlls_solve(n, m, x,
 	   eval_F, eval_J, eval_HF, &params,
 	   &status, &options);
 

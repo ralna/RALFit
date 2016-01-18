@@ -1,18 +1,18 @@
 module ral_nlls_ciface
 
   use iso_c_binding
-  use ral_nlls_double, only:          &
-       f_nlls_control_type => nlls_control_type, &
-       f_nlls_inform_type  => nlls_inform_type, &
-       f_nlls_workspace    => nlls_workspace, &
-       f_ral_nlls => ral_nlls, &
-       f_ral_nlls_iterate => ral_nlls_iterate, &
-       f_params_base_type => params_base_type
+  use ral_nlls_double, only:                       &
+       f_nlls_options      => nlls_options,        &
+       f_nlls_inform       => nlls_inform,         &
+       f_nlls_workspace    => nlls_workspace,      &
+       f_nlls_solve        => nlls_solve,          & 
+       f_nlls_iterate      => nlls_iterate,        &
+       f_params_base_type  => params_base_type
   implicit none
 
   integer, parameter :: wp = C_DOUBLE
 
-  type, bind(C) :: nlls_control_type
+  type, bind(C) :: nlls_options
      integer(C_INT) :: f_arrays ! true (!=0) or false (==0)
 
      integer(C_INT) :: error
@@ -44,9 +44,9 @@ module ral_nlls_ciface
      real(wp) :: hybrid_tol
      integer(c_int) :: hybrid_switch_its
      logical(c_bool) :: output_progress_vectors
-  end type nlls_control_type
+  end type nlls_options
 
-  type, bind(C) :: nlls_inform_type
+  type, bind(C) :: nlls_inform 
      integer(C_INT) :: status
      integer(C_INT) :: alloc_status
      integer(C_INT) :: iter
@@ -58,7 +58,7 @@ module ral_nlls_ciface
      real(wp) :: gradinf
      real(wp) :: obj
      real(wp) :: norm_g
-  end type nlls_inform_type
+  end type nlls_inform
 
   abstract interface
      integer(c_int) function c_eval_r_type(n, m, params, x, r)
@@ -103,50 +103,50 @@ module ral_nlls_ciface
 
 contains
 
+  
+  subroutine copy_options_in(coptions, foptions, f_arrays)
 
-  subroutine copy_control_in(ccontrol, fcontrol, f_arrays);
-
-    type( nlls_control_type ), intent(in) :: ccontrol
-    type( f_nlls_control_type ), intent(out) :: fcontrol
+    type( nlls_options ), intent(in) :: coptions
+    type( f_nlls_options ), intent(out) :: foptions
     logical, intent(out) :: f_arrays
 
-    f_arrays = (ccontrol%f_arrays .ne. 0)
-    fcontrol%error = ccontrol%error
-    fcontrol%out = ccontrol%out
-    fcontrol%print_level = ccontrol%print_level
-    fcontrol%maxit = ccontrol%maxit
-    fcontrol%model = ccontrol%model
-    fcontrol%nlls_method = ccontrol%nlls_method
-    fcontrol%lls_solver = ccontrol%lls_solver
-    fcontrol%stop_g_absolute = ccontrol%stop_g_absolute
-    fcontrol%stop_g_relative = ccontrol%stop_g_relative
-    fcontrol%initial_radius_scale = ccontrol%initial_radius_scale
-    fcontrol%initial_radius = ccontrol%initial_radius
-    fcontrol%maximum_radius = ccontrol%maximum_radius
-    fcontrol%eta_successful = ccontrol%eta_successful
-    fcontrol%eta_very_successful = ccontrol%eta_very_successful
-    fcontrol%eta_too_successful = ccontrol%eta_too_successful
-    fcontrol%radius_increase = ccontrol%radius_increase
-    fcontrol%radius_reduce = ccontrol%radius_reduce
-    fcontrol%radius_reduce_max = ccontrol%radius_reduce_max
-    fcontrol%hybrid_switch = ccontrol%hybrid_switch
-    fcontrol%exact_second_derivatives = ccontrol%exact_second_derivatives
-    fcontrol%subproblem_eig_fact = ccontrol%subproblem_eig_fact
-    fcontrol%more_sorensen_maxits = ccontrol%more_sorensen_maxits
-    fcontrol%more_sorensen_shift = ccontrol%more_sorensen_shift
-    fcontrol%more_sorensen_tiny = ccontrol%more_sorensen_tiny
-    fcontrol%more_sorensen_tol = ccontrol%more_sorensen_tol
-    fcontrol%hybrid_tol = ccontrol%hybrid_tol
-    fcontrol%hybrid_switch_its = ccontrol%hybrid_switch_its
-    fcontrol%output_progress_vectors = ccontrol%output_progress_vectors
+    f_arrays = (coptions%f_arrays .ne. 0)
+    foptions%error = coptions%error
+    foptions%out = coptions%out
+    foptions%print_level = coptions%print_level
+    foptions%maxit = coptions%maxit
+    foptions%model = coptions%model
+    foptions%nlls_method = coptions%nlls_method
+    foptions%lls_solver = coptions%lls_solver
+    foptions%stop_g_absolute = coptions%stop_g_absolute
+    foptions%stop_g_relative = coptions%stop_g_relative
+    foptions%initial_radius_scale = coptions%initial_radius_scale
+    foptions%initial_radius = coptions%initial_radius
+    foptions%maximum_radius = coptions%maximum_radius
+    foptions%eta_successful = coptions%eta_successful
+    foptions%eta_very_successful = coptions%eta_very_successful
+    foptions%eta_too_successful = coptions%eta_too_successful
+    foptions%radius_increase = coptions%radius_increase
+    foptions%radius_reduce = coptions%radius_reduce
+    foptions%radius_reduce_max = coptions%radius_reduce_max
+    foptions%hybrid_switch = coptions%hybrid_switch
+    foptions%exact_second_derivatives = coptions%exact_second_derivatives
+    foptions%subproblem_eig_fact = coptions%subproblem_eig_fact
+    foptions%more_sorensen_maxits = coptions%more_sorensen_maxits
+    foptions%more_sorensen_shift = coptions%more_sorensen_shift
+    foptions%more_sorensen_tiny = coptions%more_sorensen_tiny
+    foptions%more_sorensen_tol = coptions%more_sorensen_tol
+    foptions%hybrid_tol = coptions%hybrid_tol
+    foptions%hybrid_switch_its = coptions%hybrid_switch_its
+    foptions%output_progress_vectors = coptions%output_progress_vectors
 
-  end subroutine copy_control_in
+  end subroutine copy_options_in
 
   subroutine copy_info_out(finfo,cinfo)
 
-    type(f_nlls_inform_type), intent(in) :: finfo
-    type(nlls_inform_type) , intent(out) :: cinfo
-
+    type(f_nlls_inform), intent(in) :: finfo
+    type(nlls_inform) , intent(out) :: cinfo
+    
     cinfo%status = finfo%status
     cinfo%alloc_status = finfo%alloc_status
     cinfo%iter = finfo%iter
@@ -208,47 +208,47 @@ contains
 
 end module ral_nlls_ciface
 
-subroutine ral_nlls_default_control_d(ccontrol) bind(C)
+subroutine ral_nlls_default_options_d(coptions) bind(C)
   use ral_nlls_ciface
   implicit none
 
-  type(nlls_control_type), intent(out) :: ccontrol
-  type(f_nlls_control_type) :: fcontrol
+  type(nlls_options), intent(out) :: coptions
+  type(f_nlls_options) :: foptions
 
 
-  ccontrol%f_arrays = 0 ! (false) default to C style arrays
-  ccontrol%error = fcontrol%error
-  ccontrol%out = fcontrol%out
-  ccontrol%print_level = fcontrol%print_level
-  ccontrol%maxit = fcontrol%maxit
-  ccontrol%model = fcontrol%model
-  ccontrol%nlls_method = fcontrol%nlls_method
-  ccontrol%lls_solver = fcontrol%lls_solver
-  ccontrol%stop_g_absolute = fcontrol%stop_g_absolute
-  ccontrol%stop_g_relative = fcontrol%stop_g_relative
-  ccontrol%relative_tr_radius = fcontrol%relative_tr_radius
-  ccontrol%initial_radius_scale = fcontrol%initial_radius_scale
-  ccontrol%initial_radius = fcontrol%initial_radius
-  ccontrol%maximum_radius = fcontrol%maximum_radius
-  ccontrol%eta_successful = fcontrol%eta_successful
-  ccontrol%eta_very_successful = fcontrol%eta_very_successful
-  ccontrol%eta_too_successful = fcontrol%eta_too_successful
-  ccontrol%radius_increase = fcontrol%radius_increase
-  ccontrol%radius_reduce = fcontrol%radius_reduce
-  ccontrol%radius_reduce_max = fcontrol%radius_reduce_max
-  ccontrol%hybrid_switch = fcontrol%hybrid_switch
-  ccontrol%exact_second_derivatives = fcontrol%exact_second_derivatives
-  ccontrol%subproblem_eig_fact = fcontrol%subproblem_eig_fact
-  ccontrol%more_sorensen_maxits = fcontrol%more_sorensen_maxits
-  ccontrol%more_sorensen_shift = fcontrol%more_sorensen_shift
-  ccontrol%more_sorensen_tiny = fcontrol%more_sorensen_tiny
-  ccontrol%more_sorensen_tol = fcontrol%more_sorensen_tol
-  ccontrol%hybrid_tol = fcontrol%hybrid_tol
-  ccontrol%hybrid_switch_its = fcontrol%hybrid_switch_its
-  ccontrol%output_progress_vectors = fcontrol%output_progress_vectors
-end subroutine ral_nlls_default_control_d
+  coptions%f_arrays = 0 ! (false) default to C style arrays
+  coptions%error = foptions%error
+  coptions%out = foptions%out
+  coptions%print_level = foptions%print_level
+  coptions%maxit = foptions%maxit
+  coptions%model = foptions%model
+  coptions%nlls_method = foptions%nlls_method
+  coptions%lls_solver = foptions%lls_solver
+  coptions%stop_g_absolute = foptions%stop_g_absolute
+  coptions%stop_g_relative = foptions%stop_g_relative
+  coptions%relative_tr_radius = foptions%relative_tr_radius
+  coptions%initial_radius_scale = foptions%initial_radius_scale
+  coptions%initial_radius = foptions%initial_radius
+  coptions%maximum_radius = foptions%maximum_radius
+  coptions%eta_successful = foptions%eta_successful
+  coptions%eta_very_successful = foptions%eta_very_successful
+  coptions%eta_too_successful = foptions%eta_too_successful
+  coptions%radius_increase = foptions%radius_increase
+  coptions%radius_reduce = foptions%radius_reduce
+  coptions%radius_reduce_max = foptions%radius_reduce_max
+  coptions%hybrid_switch = foptions%hybrid_switch
+  coptions%exact_second_derivatives = foptions%exact_second_derivatives
+  coptions%subproblem_eig_fact = foptions%subproblem_eig_fact
+  coptions%more_sorensen_maxits = foptions%more_sorensen_maxits
+  coptions%more_sorensen_shift = foptions%more_sorensen_shift
+  coptions%more_sorensen_tiny = foptions%more_sorensen_tiny
+  coptions%more_sorensen_tol = foptions%more_sorensen_tol
+  coptions%hybrid_tol = foptions%hybrid_tol
+  coptions%hybrid_switch_its = foptions%hybrid_switch_its
+  coptions%output_progress_vectors = foptions%output_progress_vectors
+end subroutine ral_nlls_default_options_d
 
-subroutine ral_nlls_d(n, m, cx, r, j, hf,  params, cinform, coptions) bind(C)
+subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, cinform, coptions) bind(C)
   use ral_nlls_ciface
   implicit none
 
@@ -258,32 +258,31 @@ subroutine ral_nlls_d(n, m, cx, r, j, hf,  params, cinform, coptions) bind(C)
   type( C_FUNPTR ), value :: j
   type( C_FUNPTR ), value :: hf
   type( C_PTR ), value :: params
-  TYPE( nlls_inform_type )  :: cinform
-  TYPE( nlls_control_type ) :: coptions
-
+  TYPE( nlls_inform )  :: cinform
+  TYPE( nlls_options ) :: coptions
   type( params_wrapper ) :: fparams
-  TYPE( f_nlls_inform_type ) :: finform
-  TYPE( f_nlls_control_type ) :: foptions
+  TYPE( f_nlls_inform ) :: finform
+  TYPE( f_nlls_options ) :: foptions
 
   logical :: f_arrays
 
   ! copy data in and associate pointers correctly
-  call copy_control_in(coptions, foptions, f_arrays)
+  call copy_options_in(coptions, foptions, f_arrays)
 
   call c_f_procpointer(r, fparams%r)
   call c_f_procpointer(j, fparams%j)
   call c_f_procpointer(hf, fparams%hf)
   fparams%params = params
 
-  call f_ral_nlls( n, m, cx, &
+  call f_nlls_solve( n, m, cx, &
        c_eval_r, c_eval_j,   &
        c_eval_hf, fparams,   &
-       finform, foptions)
+       foptions,finform)
 
   ! Copy data out
    call copy_info_out(finform, cinform)
-
-end subroutine ral_nlls_d
+  
+end subroutine nlls_solve_d
 
 subroutine ral_nlls_init_workspace_d(cw)
    use ral_nlls_ciface
@@ -323,19 +322,19 @@ subroutine ral_nlls_iterate_d(n, m, cx, r, j, hf, params, cinform, coptions, &
   type( C_FUNPTR ), value :: j
   type( C_FUNPTR ), value :: hf
   type( C_PTR ), value :: params
-  TYPE( nlls_inform_type )  :: cinform
-  TYPE( nlls_control_type ) :: coptions
+  TYPE( nlls_inform )  :: cinform
+  TYPE( nlls_options ) :: coptions
   type( C_PTR), value :: cw
 
   type( params_wrapper ) :: fparams
-  TYPE( f_nlls_inform_type ) :: finform
+  TYPE( f_nlls_inform) :: finform
   TYPE( f_nlls_workspace ), pointer :: fw
-  TYPE( f_nlls_control_type ) :: foptions
+  TYPE( f_nlls_options) :: foptions
 
   logical :: f_arrays
 
   ! copy data in and associate pointers correctly
-  call copy_control_in(coptions, foptions, f_arrays)
+  call copy_options_in(coptions, foptions, f_arrays)
 
   call c_f_procpointer(r, fparams%r)
   call c_f_procpointer(j, fparams%j)
@@ -343,10 +342,10 @@ subroutine ral_nlls_iterate_d(n, m, cx, r, j, hf, params, cinform, coptions, &
   call c_f_pointer(cw, fw)
   fparams%params = params
 
-  call f_ral_nlls_iterate( n, m, cx, &
+  call f_nlls_iterate( n, m, cx, fw, &
        c_eval_r, c_eval_j,   &
        c_eval_hf, fparams,   &
-       finform, foptions, fw)
+       finform, foptions)
 
   ! Copy data out
   call copy_info_out(finform, cinform)

@@ -99,7 +99,7 @@ Access to the package requires a {\tt USE} statement \\ \\
 \noindent The user can then call the procedure:
 \vspace{-0.1cm}
 \begin{description}
-\item {\tt RAL\_NLLS}  solves the non-linear least squares problem (\ref{eq:nlls_problem}).
+\item {\tt NLLS\_SOLVE}  solves the non-linear least squares problem (\ref{eq:nlls_problem}).
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% derived types %%%%%%%%%%%%%%%%%%%%%%%%
@@ -107,17 +107,17 @@ Access to the package requires a {\tt USE} statement \\ \\
 \hsltypes
 \label{derived types}
 For each problem, the user must employ the derived types defined by the
-module to declare scalars of the types {\tt NLLS\_inform\_type}, and
-{\tt NLLS\_control\_type}.
+module to declare scalars of the types {\tt NLLS\_inform}, and
+{\tt NLLS\_options}.
 The following pseudocode illustrates this.
 \begin{verbatim}
       use nlls_module
       ...
-      type (NLLS_inform_type) :: info
-      type (NLLS_control_type) :: control
+      type (NLLS_inform) :: inform
+      type (NLLS_options) :: options
       ...
 \end{verbatim}
-The components of {\tt NLLS\_control} and {\tt NLLS\_inform} are explained
+The components of {\tt NLLS\_options} and {\tt NLLS\_inform} are explained
 in Sections~\ref{typecontrol} and \ref{typeinform}. 
 
 
@@ -137,7 +137,7 @@ double precision real for the double precision version.
 To solve the non-linear least squares problem a call of the following form should be made:
 
 \begin{verbatim}
-   call ral_nlls(n, m, X, evalF, eval_J, eval_H, params, info, control)
+   call nlls_solve(n, m, X, eval_r, eval_J, eval_Hf, params, options, inform)
 \end{verbatim}
 
 \begin{description}
@@ -152,7 +152,7 @@ data points available; i.e., $m$ is the number of functions $f_i$.
 and size {\tt n}.  On entry, it must hold the initial guess for $\bm x$, and on 
 successful exit it holds the solution to the non-linear least squares problem.
 
-\itt{eval\_f} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, returns the vector $\vr(\iter{\vx})$.  
+\itt{eval\_r} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, returns the vector $\vr(\iter{\vx})$.  
 Further details of the format required are given in Section~\ref{sec::function_eval}.
 
 \itt{eval\_J} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$, 
@@ -164,15 +164,15 @@ and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at
 Further details of the format required are given in Section~\ref{sec::function_eval}.
 
 \itt{params} is an \intentin\ scalar of class {\tt params\_base\_type} that holds parameters to 
-be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_hf}. 
+be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_Hf}. 
 Further details of its use are given in Section~\ref{sec::function_eval}.
 
-\itt{info} is an \intentinout\ scalar of type 
-{\tt NLLS\_inform\_type}. Its components provide information about the execution
-of the subroutine, as explained in Section~\ref{typeinform}.
-
-\itt{control}is an \intentin\  scalar  of type {\tt NLLS\_control\_type}
+\itt{options}is an \intentin\  scalar  of type {\tt NLLS\_options}
 (see Section~\ref{typecontrol}).
+
+\itt{inform} is an \intentinout\ scalar of type 
+{\tt NLLS\_inform}. Its components provide information about the execution
+of the subroutine, as explained in Section~\ref{typeinform}.
 
 
 \end{description}
@@ -242,22 +242,22 @@ abstract interface
       real(wp), dimension(n), intent(in) :: x
       real(wp), dimension(m), intent(out) :: r
       integer, intent(inout) :: status
-   end subroutine eval_F
+   end subroutine eval_r
 end interface
 \end{verbatim}
 
 \begin{description}
    \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt ral\_nlls}.
+      {\tt nlls\_solve}.
 
-      \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx}$.
+      \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx})$.
   
-   \itt{f} must be set by the routine to hold the residual function 
+   \itt{r} must be set by the routine to hold the residual function 
       evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
 
    \itt{status} is initialised to \texttt{0} before the routine is
       called. If it is set to a non-zero value by the routine, then on return
-      the {\tt ral\_nlls} subroutine will exit with an error.
+      the {\tt nlls\_solve} subroutine will exit with an error.
 \end{description}
 
 \subsubsection{For evaluating the function $J = \nabla \vr(\iter{\vx})$}
@@ -279,7 +279,7 @@ end interface
 
 \begin{description}
    \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt ral\_nlls}.
+      {\tt nlls\_solve}.
 
    \itt{x} holds the current point $\iter{\vx}$ at which to evaluate
       $J(\iter{\vx})$.
@@ -293,38 +293,38 @@ end interface
       the {\tt ral\_nlls} subroutine will exit with an error.
 \end{description}
 
-\subsubsection{For evaluating the function $HF = \sum_{i=1}^m F_i(x) \nabla^2 F_i(x)$}
-A subroutine must be supplied to calculate $HF = \sum_{i=1}^m F_i(x) \nabla^2 F_i(x)$ for a given vector $x$. It must implement the following interface:
+\subsubsection{For evaluating the function $HF = \sum_{i=1}^m \vr_i(x) \nabla^2 \vr_i(x)$}
+A subroutine must be supplied to calculate $HF = \sum_{i=1}^m \vr_i(x) \nabla^2 \vr_i(x)$ for a given vector $x$. It must implement the following interface:
 
 \begin{verbatim}
 abstract interface
-   subroutine eval_hf_type(n, m, params, x, f, HF, status)
+   subroutine eval_Hf_type(n, m, params, x, r, HF, status)
        integer, intent(in) :: n
        integer, intent(in) :: m
        class(params_base_type), intent(in) :: params
        double precision, dimension(n), intent(in)  :: x
-       double precision, dimension(m), intent(in)  :: f
-       double precision, dimension(n*n), intent(out) :: HF
+       double precision, dimension(m), intent(in)  :: r
+       double precision, dimension(n*n), intent(out) :: Hf
        integer, intent(inout) :: status
-     end subroutine eval_hf_type
+     end subroutine eval_Hf_type
 end interface
 \end{verbatim}
 
 \begin{description}
    \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt ral\_nlls}.
+      {\tt nlls\_solve}.
 
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $F(x)$.
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(x)$.
   
-   \itt{f} holds $F(x)$, as returned by a previous call to \texttt{eval\_F}.
+   \itt{r} holds $\vr(x)$, as returned by a previous call to \texttt{eval\_r}.
 
-   \itt{HF} must be set by the routine to holds the matrix
+   \itt{Hf} must be set by the routine to holds the matrix
       $\sum_{i = 1}^m \comp{r}(\iter{\vx})\nabla^2\comp{r}(\iter{\vx})$, held
       by columns as a vector.
 
    \itt{status} is initialised to \texttt{0} before the routine is called.
       If it is set to a non-zero value by the routine, then on return
-      the {\tt ral\_nlls} subroutine will exit with an error.
+      the {\tt nlls\_solve} subroutine will exit with an error.
 \end{description}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -333,7 +333,7 @@ end interface
 \subsection{The control derived data type}
 \label{typecontrol} 
 
-The derived data type {\tt NLLS\_control} 
+The derived data type {\tt NLLS\_options} 
 is used to hold controlling data. The components  are automatically 
 given default values in the definition of the type.
 
@@ -438,8 +438,8 @@ the condition in the definition of {\tt hybrid\_tol} hold before a switch.
 
 \subsection{The derived data type for holding information}
 \label{typeinform} 
-The derived data type {\tt NLLS\_inform\_type} is used
-to hold information from the execution of {\tt ral\_nlls}.
+The derived data type {\tt NLLS\_inform} is used
+to hold information from the execution of {\tt nlls\_solve}.
 The components are:
 \begin{description}
       \itt{status} \scalarinteger that gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.

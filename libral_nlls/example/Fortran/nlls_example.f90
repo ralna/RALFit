@@ -91,8 +91,8 @@ program nlls_example
    use fndef_example
    implicit none
 
-   type(nlls_control_type) :: control
-   type(nlls_inform_type) :: info
+   type(nlls_options) :: options
+   type(nlls_inform) :: inform
 
    integer :: m
    real(wp), dimension(2) :: x
@@ -105,19 +105,19 @@ program nlls_example
    params%y(:) = (/ 3.0, 4.0, 6.0, 11.0, 20.0 /)
 
    ! Call fitting routine
-   control%nlls_method = 4 ! FIXME: remove
+   options%nlls_method = 4 ! FIXME: remove
    x(:) = (/ 2.5, 0.25 /) ! Initial guess
-   call ral_nlls(2, m, x, eval_r, eval_J, eval_HF, params, info, control)
-   if(info%status.ne.0) then
-      print *, "ral_nlls() returned with error flag ", info%status
+   call nlls_solve(2, m, x, eval_r, eval_J, eval_HF, params, options, inform)
+   if(inform%status.ne.0) then
+      print *, "ral_nlls() returned with error flag ", inform%status
       stop
    endif
 
    ! Print result
    print *, "Found a local optimum at x = ", x
-   print *, "Residuals = ", info%resvec(:)
-   print *, "Took ", info%iter, " iterations"
-   print *, "     ", info%f_eval, " function evaluations"
-   print *, "     ", info%g_eval, " gradient evaluations"
-   print *, "     ", info%h_eval, " hessian evaluations"
+   print *, "Residuals = ", inform%resvec(:)
+   print *, "Took ", inform%iter, " iterations"
+   print *, "     ", inform%f_eval, " function evaluations"
+   print *, "     ", inform%g_eval, " gradient evaluations"
+   print *, "     ", inform%h_eval, " hessian evaluations"
 end program nlls_example
