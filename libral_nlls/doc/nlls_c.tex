@@ -111,7 +111,7 @@ The following pseudocode illustrates this.
    #include "ral_nlls.h"
    ...
    struct ral_nlls_options options;
-   struct ral_nlls_inform info;
+   struct ral_nlls_inform inform;
    ...
 \end{verbatim}
 The members of these structs are explained
@@ -149,7 +149,7 @@ subroutine:
 \begin{verbatim}
    void ral_nlls( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
       ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
-      void* params, struct nlls_inform* status, struct nlls_options const* options)
+      void* params, struct nlls_options const* options, struct nlls_inform* inform)
 \end{verbatim}
 
 \begin{description}
@@ -178,7 +178,7 @@ Further details of the format required are given in Section~\ref{sec::function_e
 \itt{params} is a pointer to user data that is passed unaltered to the callback
 functions {\tt eval\_r}, {\tt eval\_J}, and {\tt eval\_Hf}.
 
-\itt{info} provides information about the execution
+\itt{inform} provides information about the execution
 of the subroutine, as explained in Section~\ref{typeinform}.
 
 \itt{options} specifies options that control the execution of the subroutine,
@@ -205,15 +205,14 @@ Alternatively, the user may step through the solution process one iteration at
 a time by making a call of the following form:
 
 \begin{verbatim}
-   void ral_nlls_iterate( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
-      ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
-      void* params, struct nlls_inform* status, struct nlls_options const* options,
-      void* workspace)
+   void ral_nlls_iterate( int n, int m, double X[], void* workspace,
+      ral_nlls_eval_r_type eval_r, ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
+      void* params, struct nlls_options const* options, struct nlls_inform* inform)
 \end{verbatim}
 
 \begin{description}
 
-\item[\normalfont \texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{info} and \texttt{options}] are as described in Section~\ref{sec:solve}.
+\item[\normalfont \texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{options} and \texttt{inform}] are as described in Section~\ref{sec:solve}.
 
 \itt{X} is an array of size {\tt n}. On the first call, it must hold the initial guess for
 $\bm x$. On return it holds the value of $\bm x$ at the current iterate, and
@@ -448,9 +447,9 @@ The members are:
 \hslerrors
 
 A successful return from a subroutine in the package is indicated by
-{\tt info.status} having the value zero.
+{\tt inform.status} having the value zero.
 A non-zero value is associated with an error message that by default will
-be output on the Fortran unit {\tt info.error}.
+be output on the Fortran unit {\tt inform.error}.
 
 Possible values are:
 \begin{description}
