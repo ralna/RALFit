@@ -10,17 +10,17 @@ extern "C" {
 #ifndef ral_nlls_h
 #define ral_nlls_h
 
-#ifndef ral_nlls_control_type
-#define ral_nlls_default_control ral_nlls_default_control_d
-#define ral_nlls_control ral_nlls_control_d
+#ifndef ral_nlls_options_type
+#define ral_nlls_default_options ral_nlls_default_options_d
+#define ral_nlls_options ral_nlls_options_d
 #define ral_nlls_inform ral_nlls_inform_d
-#define ral_nlls ral_nlls_d
+#define nlls_solve nlls_solve_d
 #endif
 
 typedef double ral_nllspkgtype_d_;
 
 /* Derived type to hold control parameters for ral_nlls */
-struct ral_nlls_control_d {
+struct ral_nlls_options_d {
   int f_arrays; /* Use 1-based indexing if true(!=0) else 0-based */
   
   int error; /* Fortran output stream for error messages */
@@ -69,7 +69,7 @@ struct ral_nlls_inform_d {
 };
 
 /* Set default values of control */
-void ral_nlls_default_control_d( struct ral_nlls_control_d *options );
+void ral_nlls_default_options_d( struct ral_nlls_options_d *options );
 
 /* define the eval_f_type */
 typedef int (*ral_nlls_eval_r_type) (
@@ -98,14 +98,14 @@ typedef int (*ral_nlls_eval_hf_type) (
                );
 
 /* Perform the nlls solve */
-void ral_nlls_d( int n, int m, 
-		 ral_nllspkgtype_d_ X[],
-		 ral_nlls_eval_r_type eval_r,
-		 ral_nlls_eval_j_type eval_j,
-		 ral_nlls_eval_hf_type eval_hf,
-		 void const* params, 
-		 struct ral_nlls_inform *status,
-		 struct ral_nlls_control const* options);
+void nlls_solve_d( int n, int m, 
+		   ral_nllspkgtype_d_ X[],
+		   ral_nlls_eval_r_type eval_r,
+		   ral_nlls_eval_j_type eval_j,
+		   ral_nlls_eval_hf_type eval_hf,
+		   void const* params, 
+		   struct ral_nlls_inform *status,
+		   struct ral_nlls_options const* options);
 
 #endif
 

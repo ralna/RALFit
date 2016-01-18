@@ -24,7 +24,7 @@ module ral_nlls_double
   real (kind = wp), parameter :: sixteenth = 0.0625
 
   
-  TYPE, PUBLIC :: NLLS_control_type
+  TYPE, PUBLIC :: NLLS_options
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! P R I N T I N G   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -296,13 +296,13 @@ module ral_nlls_double
 ! Shall we output progess vectors at termination of the routine?
      logical :: output_progress_vectors = .false.
 
-  END TYPE NLLS_control_type
+  END TYPE nlls_options
 
 !  - - - - - - - - - - - - - - - - - - - - - - - 
 !   inform derived type with component defaults
 !  - - - - - - - - - - - - - - - - - - - - - - - 
 
-  TYPE, PUBLIC :: NLLS_inform_type
+  TYPE, PUBLIC :: nlls_inform
      
 !  return status
 !   1 -- maximum number of iterations reached
@@ -430,7 +430,7 @@ module ral_nlls_double
 
 !$$     REAL ( KIND = wp ) :: clock_solve = 0.0
 
-  END TYPE NLLS_inform_type
+  END TYPE nlls_inform
 
   type, public :: params_base_type
      ! deliberately empty
@@ -560,7 +560,7 @@ module ral_nlls_double
        type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
 
-    public :: ral_nlls, ral_nlls_iterate
+    public :: nlls_solve, nlls_iterate
     
     public :: setup_workspaces, solve_dtrs, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
@@ -569,10 +569,10 @@ module ral_nlls_double
 contains
 
 
-  SUBROUTINE RAL_NLLS( n, m, X,                   & 
-                       eval_F, eval_J, eval_HF,   & 
-                       params,                    &
-                       info, control )
+  SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
+                         eval_F, eval_J, eval_HF,   & 
+                         params,                    &
+                         options, inform )
     
 !  -----------------------------------------------------------------------------
 !  RAL_NLLS, a fortran subroutine for finding a first-order critical
@@ -587,8 +587,8 @@ contains
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( NLLS_inform_type ), INTENT( OUT ) :: info
-    TYPE( NLLS_control_type ), INTENT( IN ) :: control
+    TYPE( NLLS_inform ), INTENT( OUT ) :: inform
+    TYPE( NLLS_options ), INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
     procedure( eval_hf_type ) :: eval_HF
@@ -600,51 +600,52 @@ contains
     
 !!$    write(*,*) 'Controls in:'
 !!$    write(*,*) control
-!!$    write(*,*) 'error = ',control%error
-!!$    write(*,*) 'out = ', control%out
-!!$    write(*,*) 'print_level = ', control%print_level
-!!$    write(*,*) 'maxit = ', control%maxit
-!!$    write(*,*) 'model = ', control%model
-!!$    write(*,*) 'nlls_method = ', control%nlls_method
-!!$    write(*,*) 'lls_solver = ', control%lls_solver
-!!$    write(*,*) 'stop_g_absolute = ', control%stop_g_absolute
-!!$    write(*,*) 'stop_g_relative = ', control%stop_g_relative     
-!!$    write(*,*) 'initial_radius = ', control%initial_radius
-!!$    write(*,*) 'maximum_radius = ', control%maximum_radius
-!!$    write(*,*) 'eta_successful = ', control%eta_successful
-!!$    write(*,*) 'eta_very_successful = ',control%eta_very_successful
-!!$    write(*,*) 'eta_too_successful = ',control%eta_too_successful
-!!$    write(*,*) 'radius_increase = ',control%radius_increase
-!!$    write(*,*) 'radius_reduce = ',control%radius_reduce
-!!$    write(*,*) 'radius_reduce_max = ',control%radius_reduce_max
-!!$    write(*,*) 'hybrid_switch = ',control%hybrid_switch
-!!$    write(*,*) 'subproblem_eig_fact = ',control%subproblem_eig_fact
-!!$    write(*,*) 'more_sorensen_maxits = ',control%more_sorensen_maxits
-!!$    write(*,*) 'more_sorensen_shift = ',control%more_sorensen_shift
-!!$    write(*,*) 'more_sorensen_tiny = ',control%more_sorensen_tiny
-!!$    write(*,*) 'more_sorensen_tol = ',control%more_sorensen_tol
-!!$    write(*,*) 'hybrid_tol = ', control%hybrid_tol
-!!$    write(*,*) 'hybrid_switch_its = ', control%hybrid_switch_its
-!!$    write(*,*) 'output_progress_vectors = ',control%output_progress_vectors
+!!$    write(*,*) 'error = ',options%error
+!!$    write(*,*) 'out = ', options%out
+!!$    write(*,*) 'print_level = ', options%print_level
+!!$    write(*,*) 'maxit = ', options%maxit
+!!$    write(*,*) 'model = ', options%model
+!!$    write(*,*) 'nlls_method = ', options%nlls_method
+!!$    write(*,*) 'lls_solver = ', options%lls_solver
+!!$    write(*,*) 'stop_g_absolute = ', options%stop_g_absolute
+!!$    write(*,*) 'stop_g_relative = ', options%stop_g_relative     
+!!$    write(*,*) 'initial_radius = ', options%initial_radius
+!!$    write(*,*) 'maximum_radius = ', options%maximum_radius
+!!$    write(*,*) 'eta_successful = ', options%eta_successful
+!!$    write(*,*) 'eta_very_successful = ',options%eta_very_successful
+!!$    write(*,*) 'eta_too_successful = ',options%eta_too_successful
+!!$    write(*,*) 'radius_increase = ',options%radius_increase
+!!$    write(*,*) 'radius_reduce = ',options%radius_reduce
+!!$    write(*,*) 'radius_reduce_max = ',options%radius_reduce_max
+!!$    write(*,*) 'hybrid_switch = ',options%hybrid_switch
+!!$    write(*,*) 'subproblem_eig_fact = ',options%subproblem_eig_fact
+!!$    write(*,*) 'more_sorensen_maxits = ',options%more_sorensen_maxits
+!!$    write(*,*) 'more_sorensen_shift = ',options%more_sorensen_shift
+!!$    write(*,*) 'more_sorensen_tiny = ',options%more_sorensen_tiny
+!!$    write(*,*) 'more_sorensen_tol = ',options%more_sorensen_tol
+!!$    write(*,*) 'hybrid_tol = ', options%hybrid_tol
+!!$    write(*,*) 'hybrid_switch_its = ', options%hybrid_switch_its
+!!$    write(*,*) 'output_progress_vectors = ',options%output_progress_vectors
 
-    main_loop: do i = 1,control%maxit
+    main_loop: do i = 1,options%maxit
        
-       call ral_nlls_iterate(n, m, X,                   & 
-                             eval_F, eval_J, eval_HF,   & 
-                             params,                    &
-                             info, control, w )
+       call nlls_iterate(n, m, X,                   & 
+                         w, &
+                         eval_F, eval_J, eval_HF,   & 
+                         params,                    &
+                         inform, options)
        ! test the returns to see if we've converged
-       if (info%status .ne. 0) then 
+       if (inform%status .ne. 0) then 
           return 
-       elseif ((info%convergence_normf == 1).or.(info%convergence_normg == 1)) then
+       elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
           return
        end if
        
      end do main_loop
     
      ! If we reach here, then we're over maxits     
-     if (control%print_level > 0 ) write(control%out,1040) 
-     info%status = -1
+     if (options%print_level > 0 ) write(options%out,1040) 
+     inform%status = -1
     
      RETURN
 
@@ -656,17 +657,18 @@ contains
 
 !  End of subroutine RAL_NLLS
 
-  END SUBROUTINE RAL_NLLS
+   END SUBROUTINE NLLS_SOLVE
   
-  subroutine ral_nlls_iterate(n, m, X,                   & 
-                              eval_F, eval_J, eval_HF,   & 
-                              params,                    &
-                              info, control, w )
+  subroutine nlls_iterate(n, m, X,                   & 
+                          w,                         & 
+                          eval_F, eval_J, eval_HF,   & 
+                          params,                    &
+                          inform, options)
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( NLLS_inform_type ), INTENT( OUT ) :: info
-    TYPE( NLLS_control_type ), INTENT( IN ) :: control
+    TYPE( nlls_inform ), INTENT( OUT ) :: inform
+    TYPE( nlls_options ), INTENT( IN ) :: options
     type( NLLS_workspace ), INTENT( INOUT ) :: w
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
@@ -689,21 +691,21 @@ contains
     if (w%first_call == 1) then
        ! This is the first call...allocate arrays, and get initial 
        ! function evaluations
-       if ( control%print_level >= 3 )  write( control%out , 3000 ) 
+       if ( options%print_level >= 3 )  write( options%out , 3000 ) 
        ! first, check if n < m
        if (n > m) goto 4070
 
-       call setup_workspaces(w,n,m,control,info%alloc_status)
-       if ( info%alloc_status > 0) goto 4000
+       call setup_workspaces(w,n,m,options,inform%alloc_status)
+       if ( inform%alloc_status > 0) goto 4000
 
        call eval_F(fstatus, n, m, X, w%f, params)
-       info%f_eval = info%f_eval + 1
+       inform%f_eval = inform%f_eval + 1
        if (fstatus > 0) goto 4020
        call eval_J(jstatus, n, m, X, w%J, params)
-       info%g_eval = info%g_eval + 1
+       inform%g_eval = inform%g_eval + 1
        if (jstatus > 0) goto 4010
 
-       if (control%relative_tr_radius == 1) then 
+       if (options%relative_tr_radius == 1) then 
           ! first, let's get diag(J^TJ)
           Jmax = 0.0
           do i = 1, n
@@ -711,16 +713,16 @@ contains
              JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
              if (JtJdiag > Jmax) Jmax = JtJdiag
           end do
-          w%Delta = control%initial_radius_scale * (Jmax**2)
-          if (control%print_level .ge. 3) write(control%out,3110) w%Delta
+          w%Delta = options%initial_radius_scale * (Jmax**2)
+          if (options%print_level .ge. 3) write(options%out,3110) w%Delta
        else
-          w%Delta = control%initial_radius
+          w%Delta = options%initial_radius
        end if
               
        if ( calculate_svd_J ) then
-          call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
-          if ((svdstatus .ne. 0).and.(control%print_level .ge. 3)) then 
-             write( control%out, 3000 ) svdstatus
+          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+          if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
+             write( options%out, 3000 ) svdstatus
           end if
        end if
 
@@ -732,29 +734,29 @@ contains
        w%g = -w%g
        normJF = norm2(w%g)
        w%normJF0 = normJF
-       if (control%model == 8 .or. control%model == 9) w%normJFold = normJF
+       if (options%model == 8 .or. options%model == 9) w%normJFold = normJF
 
-       if (control%model == 9) then
+       if (options%model == 9) then
           ! make this relative....
-          w%hybrid_tol = control%hybrid_tol * ( normJF/(0.5*(w%normF**2)) )
+          w%hybrid_tol = options%hybrid_tol * ( normJF/(0.5*(w%normF**2)) )
        end if
        
        ! save some data 
-       info%obj = 0.5 * ( w%normF**2 )
-       info%norm_g = normJF
+       inform%obj = 0.5 * ( w%normF**2 )
+       inform%norm_g = normJF
 
-       if (control%output_progress_vectors) then
-          w%resvec(1) = info%obj
-          w%gradvec(1) = info%norm_g
+       if (options%output_progress_vectors) then
+          w%resvec(1) = inform%obj
+          w%gradvec(1) = inform%norm_g
        end if
        
-       select case (control%model)
+       select case (options%model)
        case (1) ! first-order
           w%hf(1:n**2) = zero
        case (2) ! second order
-          if ( control%exact_second_derivatives ) then
+          if ( options%exact_second_derivatives ) then
              call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-             info%h_eval = info%h_eval + 1
+             inform%h_eval = inform%h_eval + 1
              if (hfstatus > 0) goto 4030
           else
              ! S_0 = 0 (see Dennis, Gay and Welsch)
@@ -768,9 +770,9 @@ contains
           w%hf(1:n**2) = zero
        case (8) ! hybrid II
           ! always second order for first call...
-                    if ( control%exact_second_derivatives ) then
+                    if ( options%exact_second_derivatives ) then
              call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-             info%h_eval = info%h_eval + 1
+             inform%h_eval = inform%h_eval + 1
              if (hfstatus > 0) goto 4030
           else
              ! S_0 = 0 (see Dennis, Gay and Welsch)
@@ -790,8 +792,8 @@ contains
 
 
     w%iter = w%iter + 1
-    if ( control%print_level >= 3 )  write( control%out , 3030 ) w%iter
-    info%iter = w%iter
+    if ( options%print_level >= 3 )  write( options%out , 3030 ) w%iter
+    inform%iter = w%iter
     
     rho  = -one ! intialize rho as a negative value
     success = .false.
@@ -806,16 +808,16 @@ contains
        !    d                                      !   
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,control,info,& 
+       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,options,inform,& 
             w%calculate_step_ws)
-       if (info%status .ne. 0) goto 4000
+       if (inform%status .ne. 0) goto 4000
        
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
        w%Xnew = X + w%d
        call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
-       info%f_eval = info%f_eval + 1
+       inform%f_eval = inform%f_eval + 1
        if (fstatus > 0) goto 4020
        normFnew = norm2(w%fnew)
        
@@ -824,7 +826,7 @@ contains
        !      md :=   m_k(d)        !
        ! evaluated at the new step  !
        !++++++++++++++++++++++++++++!
-       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,control,w%evaluate_model_ws)
+       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,options,w%evaluate_model_ws)
        
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
@@ -835,19 +837,19 @@ contains
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
        call calculate_rho(w%normF,normFnew,md,rho)
-       if (rho > control%eta_successful) success = .true.
+       if (rho > options%eta_successful) success = .true.
        
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
-       call update_trust_region_radius(rho,control,w%Delta)
+       call update_trust_region_radius(rho,options,w%Delta)
        
        !+++++++++++++++++++++++!
        ! Add tests for model=8 !
        !+++++++++++++++++++++++!
-       model8_success: if ( success .and. (control%model == 8) ) then
+       model8_success: if ( success .and. (options%model == 8) ) then
 
-          if (.not. control%exact_second_derivatives) then 
+          if (.not. options%exact_second_derivatives) then 
              ! first, let's save some old values...
              w%g_old = w%g
              ! g_mixed = J_k^T r_{k+1}
@@ -856,12 +858,12 @@ contains
 
           ! evaluate J and hf at the new point
           call eval_J(jstatus, n, m, w%Xnew, w%J, params)
-          info%g_eval = info%g_eval + 1
+          inform%g_eval = inform%g_eval + 1
           if (jstatus > 0) goto 4010
           if ( calculate_svd_J ) then
-             call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
-             if ((svdstatus .ne. 0).and.(control%print_level > 3)) then 
-                write( control%out, 3000 ) svdstatus
+             call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+             if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
+                write( options%out, 3000 ) svdstatus
              end if
           end if
           
@@ -917,9 +919,9 @@ contains
     X(:) = w%Xnew(:)
     w%f(:) = w%fnew(:)
     
-    if ( control%model .ne. 8 ) then 
+    if ( options%model .ne. 8 ) then 
        
-       if (.not. control%exact_second_derivatives) then 
+       if (.not. options%exact_second_derivatives) then 
           ! first, let's save some old values...
           ! g_old = -J_k^T r_k
           w%g_old = w%g
@@ -930,12 +932,12 @@ contains
 
        ! evaluate J and hf at the new point
        call eval_J(jstatus, n, m, X, w%J, params)
-       info%g_eval = info%g_eval + 1
+       inform%g_eval = inform%g_eval + 1
        if (jstatus > 0) goto 4010
        if ( calculate_svd_J ) then
-          call get_svd_J(n,m,w%J,s1,sn,control,svdstatus)
-          if ((svdstatus .ne. 0).and.(control%print_level > 3)) then 
-             write( control%out, 3000 ) svdstatus
+          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+          if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
+             write( options%out, 3000 ) svdstatus
           end if
        end if
        
@@ -943,7 +945,7 @@ contains
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
 
-       if ( control%model == 9) w%normJFold = normJF
+       if ( options%model == 9) w%normJFold = normJF
 
        w%normF = normFnew
        normJF = norm2(w%g)
@@ -951,23 +953,23 @@ contains
     end if
 
     ! setup the vectors needed if second derivatives are not available
-    if (.not. control%exact_second_derivatives) then 
+    if (.not. options%exact_second_derivatives) then 
        
        w%y       = w%g_old   - w%g
        w%y_sharp = w%g_mixed - w%g
 
     end if
 
-    select case (control%model) ! only update hessians than change..
+    select case (options%model) ! only update hessians than change..
     case (1) ! first-order
        continue
     case (2) ! second order
        call apply_second_order_info(hfstatus,n,m, & 
             X,w%f,w%hf,eval_Hf, &
             w%d, w%y, w%y_sharp,  &
-            params,control,info)
+            params,options,inform)
 !       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!       info%h_eval = info%h_eval + 1
+!       inform%h_eval = inform%h_eval + 1
        if (hfstatus > 0) goto 4030
     case (3) ! barely second order (identity hessian)
        continue
@@ -978,34 +980,34 @@ contains
           call apply_second_order_info(hfstatus,n,m, &
                X,w%f,w%hf,eval_Hf, &
                w%d, w%y, w%y_sharp,  &
-               params,control,info)
+               params,options,inform)
 !          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!          info%h_eval = info%h_eval + 1
+!          inform%h_eval = inform%h_eval + 1
           if (hfstatus > 0) goto 4030
        end if
     case (8)       
        call apply_second_order_info(hfstatus,n,m,&
             X,w%f,w%hf,eval_Hf, &
             w%d, w%y, w%y_sharp,  &
-            params,control,info)
+            params,options,inform)
 !       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!       info%h_eval = info%h_eval + 1
+!       inform%h_eval = inform%h_eval + 1
        if (hfstatus > 0) goto 4030
     case (9)
        ! First, check if we need to switch methods
        if (w%use_second_derivatives) then 
           if (normJf > w%normJFold) then 
              ! switch to Gauss-Newton             
-             if (control%print_level .ge. 3) write(control%out,3120) 
+             if (options%print_level .ge. 3) write(options%out,3120) 
              w%use_second_derivatives = .false.
           end if
        else
           FunctionValue = 0.5 * (w%normF**2)
           if ( normJf/FunctionValue < w%hybrid_tol ) then 
              w%hybrid_count = w%hybrid_count + 1
-             if (w%hybrid_count == control%hybrid_switch_its) then
+             if (w%hybrid_count == options%hybrid_switch_its) then
                 ! use (Quasi-)Newton
-                if (control%print_level .ge. 3) write(control%out,3130) 
+                if (options%print_level .ge. 3) write(options%out,3130) 
                 w%use_second_derivatives = .true.
                 w%hybrid_count = 0
              end if
@@ -1018,9 +1020,9 @@ contains
           call apply_second_order_info(hfstatus,n,m, &
                X,w%f,w%hf,eval_Hf, &
                w%d, w%y, w%y_sharp,  &
-               params,control,info)
+               params,options,inform)
 !          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
- !         info%h_eval = info%h_eval + 1
+ !         inform%h_eval = inform%h_eval + 1
           if (hfstatus > 0) goto 4030
        else 
           w%hf(1:n**2) = zero
@@ -1028,28 +1030,28 @@ contains
     end select
 
     ! update the stats 
-    info%obj = 0.5*(w%normF**2)
-    info%norm_g = normJF
-    if (control%output_progress_vectors) then
-       w%resvec (w%iter + 1) = info%obj
-       w%gradvec(w%iter + 1) = info%norm_g
+    inform%obj = 0.5*(w%normF**2)
+    inform%norm_g = normJF
+    if (options%output_progress_vectors) then
+       w%resvec (w%iter + 1) = inform%obj
+       w%gradvec(w%iter + 1) = inform%norm_g
     end if
     
-    if ( (control%model == 7) .and. (normJF < control%hybrid_switch) ) then
+    if ( (options%model == 7) .and. (normJF < options%hybrid_switch) ) then
        w%use_second_derivatives = .true.
     end if
     
-    if (control%print_level >=3) write(control%out,3010) info%obj
-    if (control%print_level >=3) write(control%out,3060) normJF/w%normF
+    if (options%print_level >=3) write(options%out,3010) inform%obj
+    if (options%print_level >=3) write(options%out,3060) normJF/w%normF
 
     !++++++++++++++++++!
     ! Test convergence !
     !++++++++++++++++++!
-    call test_convergence(w%normF,normJF,w%normF0,w%normJF0,control,info)
-    if (info%convergence_normf == 1) goto 5000 ! <----converged!!
-    if (info%convergence_normg == 1) goto 5010 ! <----converged!!
+    call test_convergence(w%normF,normJF,w%normF0,w%normJF0,options,inform)
+    if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
+    if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
 
-    if (control%print_level > 2 ) write(control%out,3100) rho
+    if (options%print_level > 2 ) write(options%out,3100) rho
 
 ! Non-executable statements
 
@@ -1074,22 +1076,22 @@ contains
 4000 continue
     ! generic end of algorithm
         ! all (final) exits should pass through here...
-    if (control%output_progress_vectors) then
-       if(.not. allocated(info%resvec)) then 
-          allocate(info%resvec(w%iter + 1), stat = astatus)
+    if (options%output_progress_vectors) then
+       if(.not. allocated(inform%resvec)) then 
+          allocate(inform%resvec(w%iter + 1), stat = astatus)
           if (astatus > 0) then
-             info%status = -9999
+             inform%status = -9999
              return
           end if
-          info%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
+          inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
        end if
-       if(.not. allocated(info%gradvec)) then 
-          allocate(info%gradvec(w%iter + 1), stat = astatus)
+       if(.not. allocated(inform%gradvec)) then 
+          allocate(inform%gradvec(w%iter + 1), stat = astatus)
           if (astatus > 0) then
-             info%status = -9999
+             inform%status = -9999
              return
           end if
-          info%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
+          inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
        end if
     end if
 
@@ -1097,73 +1099,73 @@ contains
 
 4010 continue
     ! Error in eval_J
-    if (control%print_level > 0) then
-       write(control%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
+    if (options%print_level > 0) then
+       write(options%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
     end if
-    info%status = -2
+    inform%status = -2
     goto 4000
 
 4020 continue
     ! Error in eval_J
-    if (control%print_level > 0) then
-       write(control%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
+    if (options%print_level > 0) then
+       write(options%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
     end if
-    info%status = -2
+    inform%status = -2
     goto 4000
 
 4030 continue
     ! Error in eval_HF
-    if (control%print_level > 0) then
-       write(control%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
+    if (options%print_level > 0) then
+       write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
     end if
-    info%status = -2
+    inform%status = -2
     goto 4000
 
 4040 continue 
     ! unsupported choice of model
-    if (control%print_level > 0) then
-       write(control%error,'(a,i0,a)') 'Error: the choice of control%model = ', &
-            control%model, ' is not supported'
+    if (options%print_level > 0) then
+       write(options%error,'(a,i0,a)') 'Error: the choice of options%model = ', &
+            options%model, ' is not supported'
     end if
-    info%status = -3
+    inform%status = -3
    goto 4000
 
 4050 continue 
     ! max tr reductions exceeded
-    if (control%print_level > 0) then
-       write(control%error,'(a)') 'Error: maximum tr reductions reached'
+    if (options%print_level > 0) then
+       write(options%error,'(a)') 'Error: maximum tr reductions reached'
     end if
-    info%status = -500
+    inform%status = -500
     goto 4000
 
 4060 continue 
     ! x makes no progress
-    if (control%print_level > 0) then
-       write(control%error,'(a)') 'No further progress in X'
+    if (options%print_level > 0) then
+       write(options%error,'(a)') 'No further progress in X'
     end if
-    info%status = -700
+    inform%status = -700
     goto 4000
 
 4070 continue
     ! n > m on entry
-    if (control%print_level > 0) then
-       write(control%error,'(a)') ''
+    if (options%print_level > 0) then
+       write(options%error,'(a)') ''
     end if
-    info%status = -800
+    inform%status = -800
     goto 4000
 
 ! convergence 
 5000 continue
     ! convegence test satisfied
-    if (control%print_level > 2) then
-       write(control%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
+    if (options%print_level > 2) then
+       write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
             w%iter
     end if
     goto 4000
 
 5010 continue
-    if (control%print_level > 2) then
-       write(control%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
+    if (options%print_level > 2) then
+       write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
             w%iter
     end if
     goto 4000
@@ -1171,10 +1173,10 @@ contains
 
 !  End of subroutine RAL_NLLS_iterate
 
-  end subroutine ral_nlls_iterate
+  end subroutine nlls_iterate
 
 
-  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,control,info,w)
+  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,options,inform,w)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -1183,25 +1185,25 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
-     TYPE( NLLS_control_type ), INTENT( IN ) :: control
-     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: info
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      TYPE( calculate_step_work ) :: w
-     select case (control%nlls_method)
+     select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
-        call dogleg(J,f,hf,g,n,m,Delta,d,control,info,w%dogleg_ws)
+        call dogleg(J,f,hf,g,n,m,Delta,d,options,inform,w%dogleg_ws)
      case (2) ! The AINT method
-        call AINT_TR(J,f,hf,n,m,Delta,d,control,info,w%AINT_tr_ws)
+        call AINT_TR(J,f,hf,n,m,Delta,d,options,inform,w%AINT_tr_ws)
      case (3) ! More-Sorensen
-        call more_sorensen(J,f,hf,n,m,Delta,d,control,info,w%more_sorensen_ws)
+        call more_sorensen(J,f,hf,n,m,Delta,d,options,inform,w%more_sorensen_ws)
      case (4) ! Galahad
-        call solve_dtrs(J,f,hf,n,m,Delta,d,w%solve_dtrs_ws,control,info)
+        call solve_dtrs(J,f,hf,n,m,Delta,d,w%solve_dtrs_ws,options,inform)
      case default
         
-        if ( control%print_level > 0 ) then
-           write(control%error,'(a)') 'Error: unknown value of control%nlls_method'
-           write(control%error,'(a,i0)') 'control%nlls_method = ', control%nlls_method
-           info%status = -110 ! fix me
+        if ( options%print_level > 0 ) then
+           write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
+           write(options%error,'(a,i0)') 'options%nlls_method = ', options%nlls_method
+           inform%status = -110 ! fix me
         end if
 
      end select
@@ -1209,7 +1211,7 @@ contains
    END SUBROUTINE calculate_step
 
 
-   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,control,info,w)
+   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,options,inform,w)
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
@@ -1217,8 +1219,8 @@ contains
      REAL(wp), intent(in) :: J(:), hf(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
-     TYPE( NLLS_control_type ), INTENT( IN ) :: control
-     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: info
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      TYPE( dogleg_work ) :: w
      
      real(wp) :: alpha, beta
@@ -1232,16 +1234,16 @@ contains
      w%d_sd = alpha * g;
 
      ! Solve the linear problem...
-     select case (control%model)
+     select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,control%lls_solver,w%d_gn,slls_status,w%solve_LLS_ws)
+        call solve_LLS(J,f,n,m,options%lls_solver,w%d_gn,slls_status,w%solve_LLS_ws)
         if ( slls_status .ne. 0 ) goto 1000
      case default
-        if (control%print_level> 0) then
-           write(control%error,'(a)') 'Error: model not supported in dogleg'
+        if (options%print_level> 0) then
+           write(options%error,'(a)') 'Error: model not supported in dogleg'
         end if
-        info%status = -3
+        inform%status = -3
         return
      end select
      
@@ -1260,27 +1262,27 @@ contains
      
 1000 continue 
      ! bad error return from solve_LLS
-     if ( control%print_level > 0 ) then
-        write(control%out,'(a,a)') 'Unexpected error in solving a linear least squares ', &
+     if ( options%print_level > 0 ) then
+        write(options%out,'(a,a)') 'Unexpected error in solving a linear least squares ', &
                                    'problem in dogleg'
-        write(control%out,'(a,i0)') 'dposv returned info = ', slls_status
+        write(options%out,'(a,i0)') 'dposv returned info = ', slls_status
      end if
-     info%status = -700
+     inform%status = -700
      return
 
 1010 continue
-          if ( control%print_level > 0 ) then
-        write(control%out,'(a,a)') 'Unexpected error in finding beta ', &
+          if ( options%print_level > 0 ) then
+        write(options%out,'(a,a)') 'Unexpected error in finding beta ', &
                                    'in dogleg'
-        write(control%out,'(a,i0)') 'dogleg returned info = ', fb_status
+        write(options%out,'(a,i0)') 'dogleg returned info = ', fb_status
      end if
-     info%status = -701
+     inform%status = -701
      return
 
      
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,control,info,w)
+   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,options,inform,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
@@ -1290,8 +1292,8 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
-     TYPE( NLLS_control_type ), INTENT( IN ) :: control
-     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: info
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( AINT_tr_work ) :: w
         
      integer :: solve_status, find_status
@@ -1326,7 +1328,7 @@ contains
         w%B(i,i) = 1.0
      end do
      
-     select case (control%model)
+     select case (options%model)
      case (1,3)
         call solve_spd(w%A,-w%v,w%LtL,w%p0,n,solve_status)!,w%solve_spd_ws)
         if (solve_status .ne. 0) goto 1010
@@ -1340,7 +1342,7 @@ contains
      if (norm_p0 < Delta) then
         keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
-        call evaluate_model(f,J,hf,w%p0,obj_p0,m,n,control,w%evaluate_model_ws)
+        call evaluate_model(f,J,hf,w%p0,obj_p0,m,n,options,w%evaluate_model_ws)
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -1353,7 +1355,7 @@ contains
      w%M1(n+1:2*n,1:n) = -w%B
      w%M1(1:n,n+1:2*n) = -w%B
      
-     call max_eig(w%M0,w%M1,2*n,lam, w%y, eig_info, y_hardcase,  control, w%max_eig_ws)
+     call max_eig(w%M0,w%M1,2*n,lam, w%y, eig_info, y_hardcase,  options, w%max_eig_ws)
      if ( eig_info > 0 ) goto 1030
 
      if (norm2(w%y(1:n)) < tau) then
@@ -1363,7 +1365,7 @@ contains
         call matmult_outer( matmul(w%B,y_hardcase), size_hard(2), n, w%M1(1:n,1:n))
         w%M0(1:n,1:n) = w%A(:,:) + lam*w%B(:,:) + w%M1(1:n,1:n)
         ! solve Hq + g = 0 for q
-        select case (control%model) 
+        select case (options%model) 
         case (1,3)
            call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,solve_status)!,w%solve_spd_ws)
         case default
@@ -1384,7 +1386,7 @@ contains
         w%p1(:) = w%q(:) + eta * y_hardcase(:,1)
         
      else 
-        select case (control%model)
+        select case (options%model)
         case (1,3)
            call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,solve_status)!,w%solve_spd_ws)
         case default
@@ -1395,7 +1397,7 @@ contains
      end if
      
      ! get obj_p1 : the value of the model at p1
-     call evaluate_model(f,J,hf,w%p1,obj_p1,m,n,control,w%evaluate_model_ws)
+     call evaluate_model(f,J,hf,w%p1,obj_p1,m,n,options,w%evaluate_model_ws)
 
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
@@ -1408,42 +1410,42 @@ contains
 
 1010 continue 
      ! bad error return from solve_spd
-     if ( control%print_level >= 0 ) then 
-        write(control%error,'(a)') 'Error in solving a linear system in AINT_TR'
-        write(control%error,'(a,i0)') 'dposv returned info = ', solve_status
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
+        write(options%error,'(a,i0)') 'dposv returned info = ', solve_status
      end if
-     info%status = -4
+     inform%status = -4
      return
      
 1020 continue
      ! bad error return from solve_general
-     if ( control%print_level >= 0 ) then 
-        write(control%error,'(a)') 'Error in solving a linear system in AINT_TR'
-        write(control%error,'(a,i0)') 'dgexv returned info = ', solve_status
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
+        write(options%error,'(a,i0)') 'dgexv returned info = ', solve_status
      end if
-     info%status = -4
+     inform%status = -4
      return
      
 1030 continue
      ! bad error return from max_eig
-     if ( control%print_level >= 0 ) then 
-        write(control%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
-        write(control%error,'(a,i0)') 'dggev returned info = ', eig_info
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
+        write(options%error,'(a,i0)') 'dggev returned info = ', eig_info
      end if
-     info%status = -4
+     inform%status = -4
      return
 
 1040 continue
      ! no valid beta found
-     if ( control%print_level >= 0 ) then 
-        write(control%error,'(a)') 'No valid beta found'
+     if ( options%print_level >= 0 ) then 
+        write(options%error,'(a)') 'No valid beta found'
      end if
-     info%status = -4
+     inform%status = -4
      return
 
    END SUBROUTINE AINT_tr
 
-   subroutine more_sorensen(J,f,hf,n,m,Delta,d,control,info,w)
+   subroutine more_sorensen(J,f,hf,n,m,Delta,d,options,inform,w)
      ! -----------------------------------------
      ! more_sorensen
      ! Solve the trust-region subproblem using 
@@ -1458,11 +1460,11 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
-     TYPE( NLLS_control_type ), INTENT( IN ) :: control
-     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: info
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( more_sorensen_work ) :: w
 
-     ! parameters...make these control?
+     ! parameters...make these options?
      real(wp) :: nd, nq
 
      real(wp) :: sigma, alpha
@@ -1489,17 +1491,17 @@ contains
         ! A is symmetric positive definite....
         sigma = zero
      else
-        call min_eig_symm(w%A,n,sigma,w%y1,control,mineig_status,w%min_eig_symm_ws) 
+        call min_eig_symm(w%A,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
         if (mineig_status .ne. 0) goto 1060 
-        sigma = -(sigma - control%more_sorensen_shift)
+        sigma = -(sigma - options%more_sorensen_shift)
         no_shifts = 1
 100     call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
         if ( test_pd .ne. 0 ) then
            no_shifts = no_shifts + 1
            if ( no_shifts == 10 ) goto 3000
-           sigma =  sigma + (10**no_shifts) * control%more_sorensen_shift
-           if (control%print_level >=3) write(control%out,2000) sigma
+           sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
+           if (options%print_level >=3) write(options%out,2000) sigma
            goto 100 
         end if
      end if
@@ -1507,10 +1509,10 @@ contains
      nd = norm2(d)
      if (nd .le. Delta) then
         ! we're within the tr radius from the start!
-        if ( abs(sigma) < control%more_sorensen_tiny ) then
+        if ( abs(sigma) < options%more_sorensen_tiny ) then
            ! we're good....exit
            goto 1050
-        else if ( abs( nd - Delta ) < control%more_sorensen_tiny ) then
+        else if ( abs( nd - Delta ) < options%more_sorensen_tiny ) then
            ! also good...exit
            goto 1050              
         end if
@@ -1522,8 +1524,8 @@ contains
      end if
 
      ! now, we're not in the trust region initally, so iterate....
-     do i = 1, control%more_sorensen_maxits
-        if ( abs(nd - Delta) <= control%more_sorensen_tol * Delta) then
+     do i = 1, options%more_sorensen_maxits
+        if ( abs(nd - Delta) <= options%more_sorensen_tol * Delta) then
            goto 1020 ! converged!
         end if
         
@@ -1547,40 +1549,40 @@ contains
      
 1020 continue
      ! Converged!
-     if ( control%print_level >= 3 ) then
-        write(control%error,'(a,i0)') 'More-Sorensen converged at iteration ', i
+     if ( options%print_level >= 3 ) then
+        write(options%error,'(a,i0)') 'More-Sorensen converged at iteration ', i
      end if
      return
      
 1040 continue
      ! maxits reached, not converged
-     if ( control%print_level > 0 ) then
-        write(control%error,'(a)') 'Maximum iterations reached in More-Sorensen'
-        write(control%error,'(a)') 'without convergence'
+     if ( options%print_level > 0 ) then
+        write(options%error,'(a)') 'Maximum iterations reached in More-Sorensen'
+        write(options%error,'(a)') 'without convergence'
      end if
-     info%status = -100 ! fix me
+     inform%status = -100 ! fix me
      return
 
 1050 continue
-     if ( control%print_level >= 3 ) then
-        write(control%error,'(a)') 'More-Sorensen: first point within trust region'
+     if ( options%print_level >= 3 ) then
+        write(options%error,'(a)') 'More-Sorensen: first point within trust region'
      end if
      return
 
 1060 continue
-     if ( control%print_level > 0 ) then
-        write(control%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
-        write(control%error,'(a,i0)') 'info = ', mineig_status
+     if ( options%print_level > 0 ) then
+        write(options%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
+        write(options%error,'(a,i0)') 'info = ', mineig_status
      end if
-     info%status = -333
+     inform%status = -333
 
      return
 
 1070 continue
-     if ( control%print_level >= 3 ) then
-        write(control%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
+     if ( options%print_level >= 3 ) then
+        write(options%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
      end if
-     info%status = -200
+     inform%status = -200
 
      return
      
@@ -1588,27 +1590,27 @@ contains
 
 3000 continue 
      ! bad error return from solve_spd
-     if ( control%print_level > 0 ) then
-        write(control%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
-        write(control%out,'(a,i0)') 'dposv returned info = ', test_pd
+     if ( options%print_level > 0 ) then
+        write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
+        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     info%status = -500
+     inform%status = -500
      return
      
 2010 continue 
      ! bad error return from solve_spd
-     if ( control%print_level > 0 ) then
-        write(control%out,'(a,a)') 'Unexpected error in solving a linear system ', &
+     if ( options%print_level > 0 ) then
+        write(options%out,'(a,a)') 'Unexpected error in solving a linear system ', &
                                    'in More_sorensen loop'
-        write(control%out,'(a,i0)') 'dposv returned info = ', test_pd
+        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     info%status = -600
+     inform%status = -600
      return
      
      
    end subroutine more_sorensen
    
-   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,w,control,info)
+   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,w,options,inform)
 
      !---------------------------------------------
      ! solve_dtrs
@@ -1625,11 +1627,11 @@ contains
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      type( solve_dtrs_work ) :: w
-     TYPE( NLLS_control_type ), INTENT( IN ) :: control
-     TYPE( NLLS_inform_type ), INTENT( INOUT ) :: info
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
      integer :: eig_status
-     TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_control
+     TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_options
      TYPE ( DTRS_inform_type )  :: dtrs_inform
      
      ! The code finds 
@@ -1671,9 +1673,9 @@ contains
      call mult_Jt(w%ev,n,n,w%v,w%v_trans)
 
      ! we've now got the vectors we need, pass to dtrs_solve
-     call dtrs_initialize( dtrs_control, dtrs_inform ) 
+     call dtrs_initialize( dtrs_options, dtrs_inform ) 
 
-     call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_control, dtrs_inform )
+     call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
      if ( dtrs_inform%status .ne. 0) goto 1010
 
      ! and return the un-transformed vector
@@ -1682,19 +1684,19 @@ contains
      return
      
 1000 continue
-     if ( control%print_level > 0 ) then
-        write(control%error,'(a)') 'solve_dtrs: error from lapack routine dsyev(x)'
-        write(control%error,'(a,i0)') 'info = ', eig_status
+     if ( options%print_level > 0 ) then
+        write(options%error,'(a)') 'solve_dtrs: error from lapack routine dsyev(x)'
+        write(options%error,'(a,i0)') 'info = ', eig_status
      end if
-     info%status = -333
+     inform%status = -333
      return
 
 1010 continue
-     if ( control%print_level > 0 ) then
-        write(control%error,'(a)') 'solve_dtrs: error from GALAHED routine DTRS'
-        write(control%error,'(a,i0)') 'info = ', dtrs_inform%status
+     if ( options%print_level > 0 ) then
+        write(options%error,'(a)') 'solve_dtrs: error from GALAHED routine DTRS'
+        write(options%error,'(a,i0)') 'info = ', dtrs_inform%status
      end if
-     info%status = -777
+     inform%status = -777
      return
 
    end subroutine solve_dtrs
@@ -1760,7 +1762,7 @@ contains
      END SUBROUTINE findbeta
 
      
-     subroutine evaluate_model(f,J,hf,d,md,m,n,control,w)
+     subroutine evaluate_model(f,J,hf,d,md,m,n,options,w)
 ! --------------------------------------------------
 ! Input:
 ! f = f(x_k), J = J(x_k), 
@@ -1780,7 +1782,7 @@ contains
        real(wp), intent(in) :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
        integer, intent(in) :: m,n
        real(wp), intent(out) :: md  ! m_k(d)
-       TYPE( NLLS_control_type ), INTENT( IN ) :: control
+       TYPE( nlls_options ), INTENT( IN ) :: options
        type( evaluate_model_work ) :: w
        
        !Jd = J*d
@@ -1789,7 +1791,7 @@ contains
        ! First, get the base 
        ! 0.5 (f^T f + f^T J d + d^T' J ^T J d )
        md = 0.5 * norm2(f + w%Jd)**2
-       select case (control%model)
+       select case (options%model)
        case (1) ! first-order (no Hessian)
           ! nothing to do here...
           continue
@@ -1839,7 +1841,7 @@ contains
      subroutine apply_second_order_info(status,n,m,&
           X,f,hf,eval_Hf,&
           d, y, y_sharp, & 
-          params,control,info)
+          params,options,inform)
        integer, intent(out) :: status
        integer, intent(in)  :: n, m 
        real(wp), intent(in) :: X(:), f(:)
@@ -1847,17 +1849,17 @@ contains
        real(wp), intent(in) :: d(:), y(:), y_sharp(:)
        procedure( eval_hf_type ) :: eval_Hf
        class( params_base_type ) :: params
-       type( NLLS_control_type ), intent(in) :: control
-       type( NLLS_inform_type ), intent(inout) :: info
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(inout) :: inform
        
        real(wp), allocatable :: Sks(:), ysharpSks(:)
 
        real(wp) :: yts, alpha
        integer :: i,j
 
-       if (control%exact_second_derivatives) then
+       if (options%exact_second_derivatives) then
           call eval_HF(status, n, m, X, f, hf, params)
-          info%h_eval = info%h_eval + 1
+          inform%h_eval = inform%h_eval + 1
        else
 
           yts = dot_product(d,y)
@@ -1887,30 +1889,30 @@ contains
 
      end subroutine apply_second_order_info
 
-     subroutine update_trust_region_radius(rho,control,Delta)
+     subroutine update_trust_region_radius(rho,options,Delta)
        
        real(wp), intent(inout) :: rho ! ratio of actual to predicted reduction
-       type( NLLS_control_type ), intent(in) :: control
+       type( nlls_options ), intent(in) :: options
        real(wp), intent(inout) :: Delta ! trust region size
        
-       if (rho < control%eta_successful) then
+       if (rho < options%eta_successful) then
           ! unsuccessful....reduce Delta
-          Delta = max( control%radius_reduce, control%radius_reduce_max) * Delta
-          if (control%print_level > 2) write(control%out,3010) Delta     
-       else if (rho < control%eta_very_successful) then 
+          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+          if (options%print_level > 2) write(options%out,3010) Delta     
+       else if (rho < options%eta_very_successful) then 
           ! doing ok...retain status quo
-          if (control%print_level > 2) write(control%out,3020) Delta 
-       else if (rho < control%eta_too_successful ) then
+          if (options%print_level > 2) write(options%out,3020) Delta 
+       else if (rho < options%eta_too_successful ) then
           ! more than very successful -- increase delta
-          Delta = min(control%maximum_radius, control%radius_increase * Delta )
-          if (control%print_level > 2) write(control%out,3030) Delta
-       else if (rho >= control%eta_too_successful) then
+          Delta = min(options%maximum_radius, options%radius_increase * Delta )
+          if (options%print_level > 2) write(options%out,3030) Delta
+       else if (rho >= options%eta_too_successful) then
           ! too successful....accept step, but don't change Delta
-          if (control%print_level > 2) write(control%out,3040) Delta 
+          if (options%print_level > 2) write(options%out,3040) Delta 
        else
           ! just incase (NaNs and the like...)
-          if (control%print_level > 2) write(control%out,3010) Delta 
-          Delta = max( control%radius_reduce, control%radius_reduce_max) * Delta
+          if (options%print_level > 2) write(options%out,3010) Delta 
+          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
           rho = -one ! set to be negative, so that the logic works....
        end if 
 
@@ -1926,21 +1928,21 @@ contains
 
      end subroutine update_trust_region_radius
      
-     subroutine test_convergence(normF,normJF,normF0,normJF0,control,info)
+     subroutine test_convergence(normF,normJF,normF0,normJF0,options,inform)
        
        real(wp), intent(in) :: normF, normJf, normF0, normJF0
-       type( NLLS_control_type ), intent(in) :: control
-       type( NLLS_inform_type ), intent(inout) :: info
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(inout) :: inform
 
-       if ( normF <= max(control%stop_g_absolute, &
-            control%stop_g_relative * normF0) ) then
-          info%convergence_normf = 1
+       if ( normF <= max(options%stop_g_absolute, &
+            options%stop_g_relative * normF0) ) then
+          inform%convergence_normf = 1
           return
        end if
        
-       if ( (normJF/normF) <= max(control%stop_g_absolute, &
-            control%stop_g_relative * (normJF0/normF0)) ) then
-          info%convergence_normg = 1
+       if ( (normJF/normF) <= max(options%stop_g_absolute, &
+            options%stop_g_relative * (normJF0/normF0)) ) then
+          inform%convergence_normg = 1
        end if
           
        return
@@ -2104,14 +2106,14 @@ contains
         
       end subroutine all_eig_symm
 
-      subroutine min_eig_symm(A,n,ew,ev,control,status,w)
+      subroutine min_eig_symm(A,n,ew,ev,options,status,w)
         ! calculate the leftmost eigenvalue of A
         
         real(wp), intent(in) :: A(:,:)
         integer, intent(in) :: n
         real(wp), intent(out) :: ew, ev(:)
         integer, intent(out) :: status
-        type( NLLS_control_type ), INTENT( IN ) :: control
+        type( nlls_options ), INTENT( IN ) :: options
         type( min_eig_symm_work ) :: w
 
         real(wp) :: tol, dlamch
@@ -2126,7 +2128,7 @@ contains
         ! ease of understanding for now.
 
         lwork = size(w%work)
-        if ( control%subproblem_eig_fact ) then
+        if ( options%subproblem_eig_fact ) then
            ! call dsyev --> all eigs of a symmetric matrix
            call dsyev('V', & ! both ew's and ev's 
                 'U', & ! upper triangle of A
@@ -2162,14 +2164,14 @@ contains
                       
       end subroutine min_eig_symm
 
-      subroutine max_eig(A,B,n,ew,ev,status,nullevs,control,w)
+      subroutine max_eig(A,B,n,ew,ev,status,nullevs,options,w)
         
         real(wp), intent(inout) :: A(:,:), B(:,:)
         integer, intent(in) :: n 
         real(wp), intent(out) :: ew, ev(:)
         integer, intent(out) :: status
         real(wp), intent(out), allocatable :: nullevs(:,:)
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         type( max_eig_work ) :: w
         
         integer :: lwork, maxindex(1), no_null, halfn
@@ -2226,16 +2228,16 @@ contains
         return 
 
 1000    continue 
-        if ( control%print_level >=0 ) then
-           write(control%error,'(a)') 'Error, all eigs are imaginary'
+        if ( options%print_level >=0 ) then
+           write(options%error,'(a)') 'Error, all eigs are imaginary'
         end if
         status = 1 ! Eigs imaginary error
         
         return
 
 1010    continue
-        if (control%print_level >= 0 ) then 
-           write(control%error,'(a)') 'error : non-even sized matrix sent to max eig'
+        if (options%print_level >= 0 ) then 
+           write(options%error,'(a)') 'error : non-even sized matrix sent to max eig'
         end if
         status = 2
 
@@ -2260,11 +2262,11 @@ contains
                 
       end subroutine shift_matrix
 
-      subroutine get_svd_J(n,m,J,s1,sn,control,status)
+      subroutine get_svd_J(n,m,J,s1,sn,options,status)
         integer, intent(in) :: n,m 
         real(wp), intent(in) :: J(:)
         real(wp), intent(out) :: s1, sn
-        type( NLLS_control_type ) :: control
+        type( nlls_options ) :: options
         integer, intent(out) :: status
 
         character :: jobu(1), jobvt(1)
@@ -2293,8 +2295,8 @@ contains
         ! call the real thing....
         call dgesvd( JOBU, JOBVT, n, m, Jcopy, n, S, S, 1, S, 1, & 
              work, lwork, status )
-        if ( (status .ne. 0) .and. (control%print_level > 3) ) then 
-           write(control%out,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
+        if ( (status .ne. 0) .and. (options%print_level > 3) ) then 
+           write(options%out,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
                                         status
            s1 = -1.0
            sn = -1.0
@@ -2302,8 +2304,8 @@ contains
         else
            s1 = S(1)
            sn = S(n)
-           write(control%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
-           write(control%out,'(a,es12.4)') 'k(J) = ', s1/sn
+           write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
+           write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
         end if
 
       end subroutine get_svd_J
@@ -2314,10 +2316,10 @@ contains
 !! W O R K S P A C E   S E T U P   S U B R O U T I N E S !!
 !!                                                       !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine setup_workspaces(workspace,n,m,control,status)
+      subroutine setup_workspaces(workspace,n,m,options,status)
         
         type( NLLS_workspace ), intent(out) :: workspace
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(in) :: n,m
         integer, intent(out) :: status
 
@@ -2325,7 +2327,7 @@ contains
         
         workspace%first_call = 0
 
-        if (.not. control%exact_second_derivatives) then
+        if (.not. options%exact_second_derivatives) then
            if (.not. allocated(workspace%y)) then
               allocate(workspace%y(n), stat = status)
               if (status > 0) goto 9000
@@ -2345,18 +2347,18 @@ contains
 
         end if
 
-        if( control%output_progress_vectors ) then 
+        if( options%output_progress_vectors ) then 
            if (.not. allocated(workspace%resvec)) then
-              allocate(workspace%resvec(control%maxit+1), stat = status)
+              allocate(workspace%resvec(options%maxit+1), stat = status)
               if (status > 0) goto 9000
            end if
            if (.not. allocated(workspace%gradvec)) then
-              allocate(workspace%gradvec(control%maxit+1), stat = status)
+              allocate(workspace%gradvec(options%maxit+1), stat = status)
               if (status > 0) goto 9000
            end if
         end if
 
-        if( control%model == 8 ) then 
+        if( options%model == 8 ) then 
            if (.not. allocated(workspace%fNewton)) then
               allocate(workspace%fNewton(m), stat = status)
               if (status > 0) goto 9000
@@ -2401,31 +2403,31 @@ contains
         end if
 
 
-        select case (control%nlls_method)
+        select case (options%nlls_method)
         
         case (1) ! use the dogleg method
            call setup_workspace_dogleg(n,m,workspace%calculate_step_ws%dogleg_ws, & 
-                control, status)
+                options, status)
            if (status > 0) goto 9000
 
         case(2) ! use the AINT method
            call setup_workspace_AINT_tr(n,m,workspace%calculate_step_ws%AINT_tr_ws, & 
-                control, status)
+                options, status)
            if (status > 0) goto 9010
            
         case(3) ! More-Sorensen 
            call setup_workspace_more_sorensen(n,m,&
-                workspace%calculate_step_ws%more_sorensen_ws,control,status)
+                workspace%calculate_step_ws%more_sorensen_ws,options,status)
            if (status > 0) goto 9000
 
         case (4) ! dtrs (Galahad)
            call setup_workspace_solve_dtrs(n,m, & 
-                workspace%calculate_step_ws%solve_dtrs_ws, control, status)
+                workspace%calculate_step_ws%solve_dtrs_ws, options, status)
 
         end select
 
 ! evaluate model in the main routine...       
-        call setup_workspace_evaluate_model(n,m,workspace%evaluate_model_ws,control,status)
+        call setup_workspace_evaluate_model(n,m,workspace%evaluate_model_ws,options,status)
         if (status > 0) goto 9010
 
         return
@@ -2433,11 +2435,11 @@ contains
 ! Error statements
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating local array: ',&
                 'not enough memory.' 
-           write(control%error,'(a,i0)') 'status = ', status
+           write(options%error,'(a,i0)') 'status = ', status
  
         end if
         return
@@ -2448,10 +2450,10 @@ contains
 
       end subroutine setup_workspaces
 
-      subroutine setup_workspace_dogleg(n,m,w,control,status)
+      subroutine setup_workspace_dogleg(n,m,w,options,status)
         integer, intent(in) :: n, m 
         type( dogleg_work ), intent(out) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(inout) :: status
 
         allocate(w%d_sd(n),stat = status)
@@ -2464,11 +2466,11 @@ contains
         if (status > 0) goto 9000
         ! setup space for 
         !   solve_LLS
-        call setup_workspace_solve_LLS(n,m,w%solve_LLS_ws,control,status)
+        call setup_workspace_solve_LLS(n,m,w%solve_LLS_ws,options,status)
         if (status > 0 ) goto 9010
         ! setup space for 
         !   evaluate_model
-        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,control,status)
+        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,status)
         if (status > 0 ) goto 9010
 
         return
@@ -2476,11 +2478,11 @@ contains
         ! Error statements
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''dogleg'': ',&
                 'not enough memory.' 
-           write(control%error,'(a,i0)') 'status = ', status
+           write(options%error,'(a,i0)') 'status = ', status
  
         end if
         
@@ -2488,8 +2490,8 @@ contains
 
 9010    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a)') &
                 'Called from subroutine ''dogleg'': '
         end if
 
@@ -2498,10 +2500,10 @@ contains
 
       end subroutine setup_workspace_dogleg
 
-      subroutine setup_workspace_solve_LLS(n,m,w,control,status)
+      subroutine setup_workspace_solve_LLS(n,m,w,options,status)
         integer, intent(in) :: n, m 
         type( solve_LLS_work ) :: w 
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(inout) :: status
         integer :: lwork
         
@@ -2517,8 +2519,8 @@ contains
         
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''solve_LLS'': ',&
                 'not enough memory.' 
         end if
@@ -2527,10 +2529,10 @@ contains
 
       end subroutine setup_workspace_solve_LLS
       
-      subroutine setup_workspace_evaluate_model(n,m,w,control,status)
+      subroutine setup_workspace_evaluate_model(n,m,w,options,status)
         integer, intent(in) :: n, m        
         type( evaluate_model_work ) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
         
         allocate( w%Jd(m), stat = status )
@@ -2542,8 +2544,8 @@ contains
 
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''evaluate_model'': ',&
                 'not enough memory.' 
         end if
@@ -2551,10 +2553,10 @@ contains
         return
       end subroutine setup_workspace_evaluate_model
 
-      subroutine setup_workspace_AINT_tr(n,m,w,control,status)
+      subroutine setup_workspace_AINT_tr(n,m,w,options,status)
         integer, intent(in) :: n, m 
         type( AINT_tr_work ) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
         
         allocate(w%A(n,n),stat = status)
@@ -2580,13 +2582,13 @@ contains
         allocate(w%LtL(n,n),stat = status)
         if (status > 0) goto 9000
         ! setup space for max_eig
-        call setup_workspace_max_eig(n,m,w%max_eig_ws,control,status)
+        call setup_workspace_max_eig(n,m,w%max_eig_ws,options,status)
         if (status > 0) goto 9010
-        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,control,status)
+        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,status)
         if (status > 0) goto 9010
         ! setup space for the solve routine
-        if ((control%model .ne. 1).and.(control%model .ne. 3)) then
-           call setup_workspace_solve_general(n,m,w%solve_general_ws,control,status)
+        if ((options%model .ne. 1).and.(options%model .ne. 3)) then
+           call setup_workspace_solve_general(n,m,w%solve_general_ws,options,status)
            if (status > 0 ) goto 9010
         end if
 
@@ -2594,8 +2596,8 @@ contains
         
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''AINT_tr'': ',&
                 'not enough memory.' 
         end if
@@ -2604,8 +2606,8 @@ contains
 
 9010    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a)') &
                 'Called from subroutine ''solve_LLS'': '
         end if
         return
@@ -2613,10 +2615,10 @@ contains
       end subroutine setup_workspace_AINT_tr
 
 
-      subroutine setup_workspace_min_eig_symm(n,m,w,control,status)
+      subroutine setup_workspace_min_eig_symm(n,m,w,options,status)
         integer, intent(in) :: n, m 
         type( min_eig_symm_work) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
         
         real(wp), allocatable :: workquery(:)
@@ -2629,7 +2631,7 @@ contains
         if (status > 0) goto 9000
         lapack_status = 0
         
-        if (control%subproblem_eig_fact) then 
+        if (options%subproblem_eig_fact) then 
            allocate(w%ew(n), stat = status)
            if (status > 0) goto 9000
            
@@ -2669,8 +2671,8 @@ contains
         
 9000    continue
         ! Allocation errors : min_eig_symm
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''min_eig_symm'': ',&
                 'not enough memory.' 
         end if
@@ -2679,8 +2681,8 @@ contains
 
 9020    continue
         ! Error return from lapack routine
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for lapack subroutine: ',&
                 'not enough memory.' 
         end if
@@ -2688,10 +2690,10 @@ contains
 
       end subroutine setup_workspace_min_eig_symm
       
-      subroutine setup_workspace_max_eig(n,m,w,control,status)
+      subroutine setup_workspace_max_eig(n,m,w,options,status)
         integer, intent(in) :: n, m 
         type( max_eig_work) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
         real(wp), allocatable :: workquery(:)
         integer :: lapack_status, lwork
@@ -2730,8 +2732,8 @@ contains
         
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''AINT_tr'': ',&
                 'not enough memory.' 
         end if
@@ -2740,8 +2742,8 @@ contains
 
 9020    continue
         ! Error return from lapack routine
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for lapack subroutine: ',&
                 'not enough memory.' 
         end if
@@ -2750,10 +2752,10 @@ contains
       end subroutine setup_workspace_max_eig
 
 
-      subroutine setup_workspace_solve_general(n, m, w, control, status)
+      subroutine setup_workspace_solve_general(n, m, w, options, status)
         integer, intent(in) :: n, m 
         type( solve_general_work ) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
         
         allocate( w%A(n,n), stat = status)
@@ -2765,8 +2767,8 @@ contains
         
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''solve_general'': ',&
                 'not enough memory.' 
         end if
@@ -2775,10 +2777,10 @@ contains
 
       end subroutine setup_workspace_solve_general
 
-      subroutine setup_workspace_solve_dtrs(n,m,w,control,status)
+      subroutine setup_workspace_solve_dtrs(n,m,w,options,status)
         integer, intent(in) :: n,m
         type( solve_dtrs_work ) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
         
         allocate(w%A(n,n),stat = status)
@@ -2794,15 +2796,15 @@ contains
         allocate(w%d_trans(n),stat = status)
         if (status > 0) goto 9000
 
-        call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,control,status)
+        call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,status)
         if (status > 0) goto 9010
         
         return
                 
 9000    continue
         ! Allocation errors : solve_dtrs
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''solve_dtrs'': ',&
                 'not enough memory.' 
         end if
@@ -2811,8 +2813,8 @@ contains
         
 9010    continue  
         ! errors : solve_dtrs
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Called from routine solve_dtrs' 
         end if
         
@@ -2820,10 +2822,10 @@ contains
 
       end subroutine setup_workspace_solve_dtrs
       
-      subroutine setup_workspace_all_eig_symm(n,m,w,control,status)
+      subroutine setup_workspace_all_eig_symm(n,m,w,options,status)
         integer, intent(in) :: n,m
         type( all_eig_symm_work ) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
 
         real(wp), allocatable :: workquery(:)
@@ -2851,16 +2853,16 @@ contains
         
 8000    continue 
         ! Allocation errors : all_eig_sym
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''all_eig_symm'': ',&
                 'not enough memory.' 
         end if
 
 9000    continue
         ! lapack error
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''solve_dtrs'': ',&
                 'not enough memory.' 
         end if
@@ -2870,10 +2872,10 @@ contains
       end subroutine setup_workspace_all_eig_symm
 
       
-      subroutine setup_workspace_more_sorensen(n,m,w,control,status)
+      subroutine setup_workspace_more_sorensen(n,m,w,options,status)
         integer, intent(in) :: n,m
         type( more_sorensen_work ) :: w
-        type( NLLS_control_type ), intent(in) :: control
+        type( nlls_options ), intent(in) :: options
         integer, intent(out) :: status
         allocate(w%A(n,n),stat = status)
         if (status > 0) goto 9000
@@ -2888,15 +2890,15 @@ contains
         allocate(w%AplusSigma(n,n),stat = status)
         if (status > 0) goto 9000
 
-        call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,control,status)
+        call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,status)
         if (status > 0) goto 9010
         
         return
         
 9000    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a,a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a)') &
                 'Error allocating array for subroutine ''more_sorensen'': ',&
                 'not enough memory.' 
         end if
@@ -2905,8 +2907,8 @@ contains
         
 9010    continue
         ! Allocation errors : dogleg
-        if (control%print_level >= 0) then
-           write(control%error,'(a)') &
+        if (options%print_level >= 0) then
+           write(options%error,'(a)') &
                 'Called from subroutine ''dogleg'': '
         end if
 

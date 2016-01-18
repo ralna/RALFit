@@ -2,15 +2,15 @@ module ral_nlls_ciface
 
   use iso_c_binding
   use ral_nlls_double, only:          & 
-       f_nlls_control_type => nlls_control_type, &
-       f_nlls_inform_type  => nlls_inform_type, &
-       f_ral_nlls => ral_nlls, & 
+       f_nlls_options => nlls_options, &
+       f_nlls_inform  => nlls_inform, &
+       f_nlls_solve => nlls_solve, & 
        f_params_base_type => params_base_type
   implicit none
 
   integer, parameter :: wp = C_DOUBLE
 
-  type, bind(C) :: nlls_control_type
+  type, bind(C) :: nlls_options
      integer(C_INT) :: f_arrays ! true (!=0) or false (==0)
 
      integer(C_INT) :: error
@@ -42,9 +42,9 @@ module ral_nlls_ciface
      real(wp) :: hybrid_tol
      integer(c_int) :: hybrid_switch_its
      logical(c_bool) :: output_progress_vectors
-  end type nlls_control_type
+  end type nlls_options
 
-  type, bind(C) :: nlls_inform_type 
+  type, bind(C) :: nlls_inform 
      integer(C_INT) :: status
      integer(C_INT) :: alloc_status
      integer(C_INT) :: iter
@@ -56,7 +56,7 @@ module ral_nlls_ciface
      real(wp) :: gradinf
      real(wp) :: obj
      real(wp) :: norm_g
-  end type nlls_inform_type
+  end type nlls_inform
 
   abstract interface
      integer(c_int) function c_eval_r_type(n, m, params, x, r)
@@ -102,10 +102,10 @@ module ral_nlls_ciface
 contains
 
   
-  subroutine copy_control_in(ccontrol, fcontrol, f_arrays);
+  subroutine copy_options_in(ccontrol, fcontrol, f_arrays);
 
-    type( nlls_control_type ), intent(in) :: ccontrol
-    type( f_nlls_control_type ), intent(out) :: fcontrol
+    type( nlls_options ), intent(in) :: ccontrol
+    type( f_nlls_options ), intent(out) :: fcontrol
     logical, intent(out) :: f_arrays
 
     f_arrays = (ccontrol%f_arrays .ne. 0)
@@ -138,12 +138,12 @@ contains
     fcontrol%hybrid_switch_its = ccontrol%hybrid_switch_its
     fcontrol%output_progress_vectors = ccontrol%output_progress_vectors
 
-  end subroutine copy_control_in
+  end subroutine copy_options_in
 
   subroutine copy_info_out(finfo,cinfo)
 
-    type(f_nlls_inform_type), intent(in) :: finfo
-    type(nlls_inform_type) , intent(out) :: cinfo
+    type(f_nlls_inform), intent(in) :: finfo
+    type(nlls_inform) , intent(out) :: cinfo
     
     cinfo%status = finfo%status
     cinfo%alloc_status = finfo%alloc_status
@@ -206,12 +206,12 @@ contains
   
 end module ral_nlls_ciface
 
-subroutine ral_nlls_default_control_d(ccontrol) bind(C)
+subroutine ral_nlls_default_options_d(ccontrol) bind(C)
   use ral_nlls_ciface
   implicit none
 
-  type(nlls_control_type), intent(out) :: ccontrol
-  type(f_nlls_control_type) :: fcontrol
+  type(nlls_options), intent(out) :: ccontrol
+  type(f_nlls_options) :: fcontrol
 
   
   ccontrol%f_arrays = 0 ! (false) default to C style arrays
@@ -244,13 +244,13 @@ subroutine ral_nlls_default_control_d(ccontrol) bind(C)
   ccontrol%hybrid_tol = fcontrol%hybrid_tol
   ccontrol%hybrid_switch_its = fcontrol%hybrid_switch_its
   ccontrol%output_progress_vectors = fcontrol%output_progress_vectors
-end subroutine ral_nlls_default_control_d
+end subroutine ral_nlls_default_options_d
 
-subroutine ral_nlls_d(n, m, cx,  &
-                      r, j, hf,  & 
-                      params,            &
-                      cinform, coptions) &
-                      bind(C)
+subroutine nlls_solve_d(n, m, cx,  &
+                        r, j, hf,  & 
+                        params,            &
+                        cinform, coptions) &
+                        bind(C)
 
   use ral_nlls_ciface 
   implicit none
@@ -261,30 +261,30 @@ subroutine ral_nlls_d(n, m, cx,  &
   type( C_FUNPTR ), value :: j
   type( C_FUNPTR ), value :: hf
   type( C_PTR ), value :: params
-  TYPE( nlls_inform_type )  :: cinform
-  TYPE( nlls_control_type ) :: coptions
+  TYPE( nlls_inform )  :: cinform
+  TYPE( nlls_options ) :: coptions
   
   type( params_wrapper ) :: fparams
-  TYPE( f_nlls_inform_type ) :: finform
-  TYPE( f_nlls_control_type ) :: foptions
+  TYPE( f_nlls_inform ) :: finform
+  TYPE( f_nlls_options ) :: foptions
 
   logical :: f_arrays
   
   ! copy data in and associate pointers correctly
-  call copy_control_in(coptions, foptions, f_arrays)
+  call copy_options_in(coptions, foptions, f_arrays)
 
   call c_f_procpointer(r, fparams%r)
   call c_f_procpointer(j, fparams%j)
   call c_f_procpointer(hf, fparams%hf)
   fparams%params = params
 
-  call f_ral_nlls( n, m, cx, &
+  call f_nlls_solve( n, m, cx, &
        c_eval_r, c_eval_j,   &
        c_eval_hf, fparams,   &
-       finform, foptions)
+       foptions,finform)
 
   ! Copy data out
    call copy_info_out(finform, cinform)
   
-end subroutine ral_nlls_d
+ end subroutine nlls_solve_d
 

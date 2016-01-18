@@ -71,14 +71,14 @@ int main(void) {
    };
 
    // Initialize control values
-   struct ral_nlls_control control;
-   ral_nlls_default_control(&control);
+   struct ral_nlls_options control;
+   ral_nlls_default_options(&control);
    control.nlls_method = 4; // FIXME: remove
 
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
    struct ral_nlls_inform info;
-   ral_nlls(2, m, x, eval_r, eval_J, eval_HF, &params, &info, &control);
+   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &info, &control);
    if(info.status != 0) {
       printf("ral_nlls() returned with error flag %d\n", info.status);
       return 1; // Error

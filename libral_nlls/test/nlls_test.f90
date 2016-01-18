@@ -8,8 +8,8 @@ program nlls_test
 
 
   integer, parameter :: wp = kind(1.0d0)
-  type( NLLS_inform_type )  :: status
-  type( NLLS_control_type ) :: options
+  type( NLLS_inform )  :: status
+  type( NLLS_options ) :: options
   type( user_type ), target :: params
   real(wp), allocatable :: w(:),x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
@@ -66,25 +66,25 @@ program nlls_test
 
            call generate_data_example(params%x_values,params%y_values,m)
 
-           call ral_nlls(n, m, X,                         &
+           call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H, params,  &
-                status, options )
+                options, status )
            if (( nlls_method == 1).and.( options%model > 1)) then
               if ( status%status .ne. -3 ) then
-                 write(*,*) 'incorrect error return from ral_nlls:'
+                 write(*,*) 'incorrect error return from nlls_solve:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', options%model
                  no_errors_main = no_errors_main + 1
               end if
            else if ( options%model == 0 ) then
               if ( status%status .ne. -3 ) then
-                 write(*,*) 'incorrect error return from ral_nlls:'
+                 write(*,*) 'incorrect error return from nlls_solve:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', options%model
                  no_errors_main = no_errors_main + 1
               end if
            else if ( status%status .ne. 0 ) then
-              write(*,*) 'ral_nlls failed to converge:'
+              write(*,*) 'nlls_solve failed to converge:'
               write(*,*) 'NLLS_METHOD = ', nlls_method
               write(*,*) 'MODEL = ', options%model
               no_errors_main = no_errors_main + 1
@@ -100,9 +100,9 @@ program nlls_test
      ! test n > m
      n = 100
      m = 3
-     call  ral_nlls(n, m, X,                         &
+     call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
-                    status, options )
+                    options, status )
      if (status%status .ne. -800) then
         write(*,*) 'Error: wrong error return, n > m'
         no_errors_main = no_errors_main + 1
