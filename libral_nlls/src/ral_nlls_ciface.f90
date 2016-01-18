@@ -1,10 +1,12 @@
 module ral_nlls_ciface
 
   use iso_c_binding
-  use ral_nlls_double, only:          & 
+  use ral_nlls_double, only:          &
        f_nlls_control_type => nlls_control_type, &
        f_nlls_inform_type  => nlls_inform_type, &
-       f_ral_nlls => ral_nlls, & 
+       f_nlls_workspace    => nlls_workspace, &
+       f_ral_nlls => ral_nlls, &
+       f_ral_nlls_iterate => ral_nlls_iterate, &
        f_params_base_type => params_base_type
   implicit none
 
@@ -44,7 +46,7 @@ module ral_nlls_ciface
      logical(c_bool) :: output_progress_vectors
   end type nlls_control_type
 
-  type, bind(C) :: nlls_inform_type 
+  type, bind(C) :: nlls_inform_type
      integer(C_INT) :: status
      integer(C_INT) :: alloc_status
      integer(C_INT) :: iter
@@ -101,7 +103,7 @@ module ral_nlls_ciface
 
 contains
 
-  
+
   subroutine copy_control_in(ccontrol, fcontrol, f_arrays);
 
     type( nlls_control_type ), intent(in) :: ccontrol
@@ -144,7 +146,7 @@ contains
 
     type(f_nlls_inform_type), intent(in) :: finfo
     type(nlls_inform_type) , intent(out) :: cinfo
-    
+
     cinfo%status = finfo%status
     cinfo%alloc_status = finfo%alloc_status
     cinfo%iter = finfo%iter
@@ -158,25 +160,25 @@ contains
        cinfo%gradinf = maxval(abs(finfo%gradvec(:)))
     cinfo%obj = finfo%obj
     cinfo%norm_g = finfo%norm_g
-    
+
   end subroutine copy_info_out
 
   subroutine c_eval_r(evalrstatus, n, m, x, f, fparams)
-    integer, intent(in) :: n, m 
+    integer, intent(in) :: n, m
     integer, intent(out) :: evalrstatus
     double precision, dimension(*), intent(in) :: x
-    double precision, dimension(*), intent(out) :: f  
+    double precision, dimension(*), intent(out) :: f
     class(f_params_base_type), intent(in) :: fparams
 
     select type(fparams)
     type is(params_wrapper)
        evalrstatus =  fparams%r(n,m,fparams%params,x(1:n),f(1:m))
     end select
-    
+
   end subroutine c_eval_r
 
   subroutine c_eval_j(evaljstatus, n, m, x, j, fparams)
-    integer, intent(in) :: n, m 
+    integer, intent(in) :: n, m
     integer, intent(out) :: evaljstatus
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(out) :: j
@@ -186,11 +188,11 @@ contains
     type is(params_wrapper)
        evaljstatus = fparams%j(n,m,fparams%params,x(1:n),j(1:n*m))
     end select
-    
+
   end subroutine c_eval_j
 
   subroutine c_eval_hf(evalhstatus, n, m, x, f, hf, fparams)
-    integer, intent(in) :: n, m 
+    integer, intent(in) :: n, m
     integer, intent(out) :: evalhstatus
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(in) :: f
@@ -201,9 +203,9 @@ contains
     type is(params_wrapper)
        evalhstatus = fparams%hf(n,m,fparams%params,x(1:n),f(1:m),hf(1:n**2))
     end select
-    
+
   end subroutine c_eval_hf
-  
+
 end module ral_nlls_ciface
 
 subroutine ral_nlls_default_control_d(ccontrol) bind(C)
@@ -213,7 +215,7 @@ subroutine ral_nlls_default_control_d(ccontrol) bind(C)
   type(nlls_control_type), intent(out) :: ccontrol
   type(f_nlls_control_type) :: fcontrol
 
-  
+
   ccontrol%f_arrays = 0 ! (false) default to C style arrays
   ccontrol%error = fcontrol%error
   ccontrol%out = fcontrol%out
@@ -246,16 +248,11 @@ subroutine ral_nlls_default_control_d(ccontrol) bind(C)
   ccontrol%output_progress_vectors = fcontrol%output_progress_vectors
 end subroutine ral_nlls_default_control_d
 
-subroutine ral_nlls_d(n, m, cx,  &
-                      r, j, hf,  & 
-                      params,            &
-                      cinform, coptions) &
-                      bind(C)
-
-  use ral_nlls_ciface 
+subroutine ral_nlls_d(n, m, cx, r, j, hf,  params, cinform, coptions) bind(C)
+  use ral_nlls_ciface
   implicit none
 
-  integer, INTENT( IN ), value :: n, m
+  integer( C_INT ) , INTENT( IN ), value :: n, m
   real( wp ), dimension(*) :: cx
   type( C_FUNPTR ), value :: r
   type( C_FUNPTR ), value :: j
@@ -263,13 +260,13 @@ subroutine ral_nlls_d(n, m, cx,  &
   type( C_PTR ), value :: params
   TYPE( nlls_inform_type )  :: cinform
   TYPE( nlls_control_type ) :: coptions
-  
+
   type( params_wrapper ) :: fparams
   TYPE( f_nlls_inform_type ) :: finform
   TYPE( f_nlls_control_type ) :: foptions
 
   logical :: f_arrays
-  
+
   ! copy data in and associate pointers correctly
   call copy_control_in(coptions, foptions, f_arrays)
 
@@ -285,6 +282,73 @@ subroutine ral_nlls_d(n, m, cx,  &
 
   ! Copy data out
    call copy_info_out(finform, cinform)
-  
+
 end subroutine ral_nlls_d
 
+subroutine ral_nlls_init_workspace_d(cw)
+   use ral_nlls_ciface
+   implicit none
+
+   type(c_ptr) :: cw
+
+   type(f_nlls_workspace), pointer :: fw
+
+   allocate(fw)
+   cw = c_loc(fw)
+end subroutine ral_nlls_init_workspace_d
+
+subroutine ral_nlls_free_workspace_d(cw)
+   use ral_nlls_ciface
+   implicit none
+
+   type(c_ptr) :: cw
+
+   type(f_nlls_workspace), pointer :: fw
+
+   if(c_associated(cw)) return ! Nothing to do
+
+   call c_f_pointer(cw, fw)
+   deallocate(fw)
+   cw = C_NULL_PTR
+end subroutine ral_nlls_free_workspace_d
+
+subroutine ral_nlls_iterate_d(n, m, cx, r, j, hf, params, cinform, coptions, &
+      cw) bind(C)
+  use ral_nlls_ciface
+  implicit none
+
+  integer( C_INT) , INTENT( IN ), value :: n, m
+  real( wp ), dimension(*) :: cx
+  type( C_FUNPTR ), value :: r
+  type( C_FUNPTR ), value :: j
+  type( C_FUNPTR ), value :: hf
+  type( C_PTR ), value :: params
+  TYPE( nlls_inform_type )  :: cinform
+  TYPE( nlls_control_type ) :: coptions
+  type( C_PTR), value :: cw
+
+  type( params_wrapper ) :: fparams
+  TYPE( f_nlls_inform_type ) :: finform
+  TYPE( f_nlls_workspace ), pointer :: fw
+  TYPE( f_nlls_control_type ) :: foptions
+
+  logical :: f_arrays
+
+  ! copy data in and associate pointers correctly
+  call copy_control_in(coptions, foptions, f_arrays)
+
+  call c_f_procpointer(r, fparams%r)
+  call c_f_procpointer(j, fparams%j)
+  call c_f_procpointer(hf, fparams%hf)
+  call c_f_pointer(cw, fw)
+  fparams%params = params
+
+  call f_ral_nlls_iterate( n, m, cx, &
+       c_eval_r, c_eval_j,   &
+       c_eval_hf, fparams,   &
+       finform, foptions, fw)
+
+  ! Copy data out
+  call copy_info_out(finform, cinform)
+
+end subroutine ral_nlls_iterate_d

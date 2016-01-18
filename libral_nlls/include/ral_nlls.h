@@ -15,6 +15,9 @@ extern "C" {
 #define ral_nlls_control ral_nlls_control_d
 #define ral_nlls_inform ral_nlls_inform_d
 #define ral_nlls ral_nlls_d
+#define ral_nlls_init_workspace ral_nlls_init_workspace_d
+#define ral_nlls_iterate ral_nlls_iterate_d
+#define ral_nlls_free_workspace ral_nlls_free_workspace_d
 #endif
 
 typedef double ral_nllspkgtype_d_;
@@ -73,39 +76,55 @@ void ral_nlls_default_control_d( struct ral_nlls_control_d *options );
 
 /* define the eval_f_type */
 typedef int (*ral_nlls_eval_r_type) (
-			     int n, 
-			     int m,
-			     const void *params,
-			     const ral_nllspkgtype_d_ *x, 
-			     ral_nllspkgtype_d_ *f
+              int n, 
+              int m,
+              const void *params,
+              const ral_nllspkgtype_d_ *x, 
+              ral_nllspkgtype_d_ *f
               );
   
 typedef int (*ral_nlls_eval_j_type) (
-			     int n, 
-			     int m,
+              int n, 
+              int m,
               const void *params,
-			     const ral_nllspkgtype_d_ *x, 
-			     ral_nllspkgtype_d_ *j
-			     );
+              const ral_nllspkgtype_d_ *x, 
+              ral_nllspkgtype_d_ *j
+              );
 
 typedef int (*ral_nlls_eval_hf_type) (
-			      int n, 
-			      int m,
-			      const void *params,
-			      const ral_nllspkgtype_d_ *x, 
-			      const ral_nllspkgtype_d_ *f,
-			      ral_nllspkgtype_d_ *hf
+               int n, 
+               int m,
+               const void *params,
+               const ral_nllspkgtype_d_ *x, 
+               const ral_nllspkgtype_d_ *f,
+               ral_nllspkgtype_d_ *hf
                );
 
 /* Perform the nlls solve */
 void ral_nlls_d( int n, int m, 
-		 ral_nllspkgtype_d_ X[],
-		 ral_nlls_eval_r_type eval_r,
-		 ral_nlls_eval_j_type eval_j,
-		 ral_nlls_eval_hf_type eval_hf,
-		 void const* params, 
-		 struct ral_nlls_inform *status,
-		 struct ral_nlls_control const* options);
+       ral_nllspkgtype_d_ X[],
+       ral_nlls_eval_r_type eval_r,
+       ral_nlls_eval_j_type eval_j,
+       ral_nlls_eval_hf_type eval_hf,
+       void const* params, 
+       struct ral_nlls_inform *status,
+       struct ral_nlls_control const* options);
+/* Initialise a workspace for use with ral_nlls_iterate_d() */
+void ral_nlls_init_workspace_d(void **w);
+/* Perform a single iteration */
+void ral_nlls_iterate_d(
+      int n,
+      int m, 
+      ral_nllspkgtype_d_ X[],
+      ral_nlls_eval_r_type eval_r,
+      ral_nlls_eval_j_type eval_j,
+      ral_nlls_eval_hf_type eval_hf,
+      void const* params, 
+      struct ral_nlls_inform *status,
+      struct ral_nlls_control const* options,
+      void *w);
+/* Free memory from a workspace */
+void ral_nlls_free_workspace_d(void **w);
 
 #endif
 
