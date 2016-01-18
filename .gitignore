@@ -25,3 +25,5 @@ libral_nlls/test/comparison_tests/data/*
 /libral_nlls/doc/*.log
 /libral_nlls/doc/*.aux
 *.swp
+*~
+*#
