@@ -2317,8 +2317,10 @@ contains
         else
            s1 = S(1)
            sn = S(n)
-           write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
-           write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
+           if (options%print_level > 3) then 
+              write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
+              write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
+           end if
         end if
 
       end subroutine get_svd_J
