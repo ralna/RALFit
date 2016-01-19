@@ -12,8 +12,8 @@
 2.0E-0                hybrid_tol
 1                     hybrid_switch_its
 T  		      output_progress_vectors
-F                     exact second derivatives
+T                     exact second derivatives
 44                    summary unit (not + = don't write)
-GN_DTRS_app.out       summary file (max 20 chars)
+GN_DTRS_ex.out        summary file (max 20 chars)
 45                    iteration summary (not + = don't write)		    
-GN_DTRS_app_iter.out  iteration summary file (max 20 chars)		      
+GN_DTRS_ex_iter.out   iteration summary file (max 20 chars)		      
