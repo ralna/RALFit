@@ -16,6 +16,7 @@ program nlls_test
   real(wp), allocatable :: results(:)
   real(wp) :: alpha
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
+  integer :: total_errors
   integer :: nlls_method, model
   logical :: test_all, test_subs
 
@@ -100,6 +101,7 @@ program nlls_test
      ! test n > m
      n = 100
      m = 3
+
      call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status )
@@ -554,12 +556,17 @@ program nlls_test
 
   
 close(unit = 17)
-  
-
+no_errors_helpers = 1
  if (no_errors_helpers + no_errors_main == 0) then
     write(*,*) ' '
     write(*,*) '**************************************'
     write(*,*) '*** All tests passed successfully! ***'
     write(*,*) '**************************************'
+!    stop 0    ! needed for talking with ctest
+ else 
+!    stop 1    ! needed for talking with ctest
   end if
+  
+
+
 end program nlls_test
