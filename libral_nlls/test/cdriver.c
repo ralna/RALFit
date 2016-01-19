@@ -52,7 +52,7 @@ int main(void) {
   
   nlls_solve(n, m, x,
 	   eval_F, eval_J, eval_HF, &params,
-	   &status, &options);
+	     &options, &status );
 
   int i;
   printf("\nX = \n");
