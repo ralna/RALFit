@@ -83,7 +83,8 @@ module ral_nlls_double
 !      5  secant second-order (limited-memory BFGS, with %lbfgs_vectors history)
 !      6  secant second-order (limited-memory SR1, with %lbfgs_vectors history)
 !      7  hybrid (Gauss-Newton until gradient small, then Newton)
-!      8  hybrid (using Madsen, Nielsen and Tingleff's method)    
+!      8  hybrid (Newton first, then Gauss-Newton)
+!      9  hybrid (using Madsen, Nielsen and Tingleff's method)    
  
      INTEGER :: model = 9
 
@@ -770,7 +771,7 @@ contains
           w%hf(1:n**2) = zero
        case (8) ! hybrid II
           ! always second order for first call...
-                    if ( options%exact_second_derivatives ) then
+          if ( options%exact_second_derivatives ) then
              call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
              inform%h_eval = inform%h_eval + 1
              if (hfstatus > 0) goto 4030
