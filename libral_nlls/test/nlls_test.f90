@@ -508,7 +508,8 @@ program nlls_test
         end if
      end if
 
-     deallocate(A,B,C,x,y,results)
+     deallocate(A,B,C,x,y)
+     if (allocated(results)) deallocate(results)
      call remove_workspaces(work,options)
 
      
