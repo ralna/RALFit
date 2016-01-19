@@ -466,7 +466,7 @@ program nlls_test
      n = 4
      m = 4
      allocate(x(n),A(n,n), B(n,n))
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,2,2,options,info) 
 
      A = 0.0_wp  
      A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
