@@ -118,9 +118,12 @@ program nlls_test
   no_errors_helpers = 0
   
   if ( test_subs ) then 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !! Test the helper subroutines !!
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+     !###############################!
+     !###############################!
+     !! Test the helper subroutines !!
+     !###############################!
+     !###############################!
 
      write(*,*) '============================='
      write(*,*) '=--Testing the subroutines--='
@@ -154,7 +157,7 @@ program nlls_test
           work%calculate_step_ws%solve_dtrs_ws, &
           options,status)
 
-     if (dot_product(w,w) > alpha**2) then
+     if ( abs(dot_product(w,w) - alpha**2) > 1e-12) then
         write(*,*) 'dtrs failed'
         write(*,*) 'Delta = ', alpha, '||d|| = ', dot_product(w,w)
         no_errors_helpers = no_errors_helpers + 1
@@ -166,8 +169,7 @@ program nlls_test
      !! solve_LLS 
      ! ** TODO **
      
-     
-     
+         
 
      !------------!
      !! findbeta !!
@@ -263,7 +265,7 @@ program nlls_test
      z = (/ 1.0, 1.0 /)
      y = (/ 5.0, 3.0 /)
 
-     call solve_spd(A,y,B,x,n,info)!,work%calculate_step_ws%AINT_tr_ws%solve_spd_ws)
+     call solve_spd(A,y,B,x,n,info)
      if (info .ne. 0) then
         write(*,*) 'Error: info = ', info, ' returned from solve_spd'
         no_errors_helpers = no_errors_helpers + 1
@@ -273,22 +275,19 @@ program nlls_test
      end if
 
      deallocate(A,B,x,y,z)
-     call remove_workspaces(work,options)
-
-!!!!!!
-     ! Setup workspace for n = 2
-     ! use this for max_eig, solve_spd
-     options%nlls_method = 2
-     options%model = 2
-     call setup_workspaces(work,2,2,options,info) 
-!!!!!!
 
      !-----------------!
      !! solve_general !!
      !-----------------!
-
+     
      n = 2
+     m =2
+     options%nlls_method = 2
+     options%model = 2
+
+     call setup_workspaces(work,2,2,options,info) 
      allocate(A(n,n),x(2),y(2),z(2))
+
      A = reshape((/ 4.0, 1.0, 2.0, 2.0 /),shape(A))
      z = (/ 1.0, 1.0 /)
      y = (/ 6.0, 3.0 /)
@@ -405,7 +404,7 @@ program nlls_test
         case (2)
            options%subproblem_eig_fact = .FALSE.
         end select
-        call setup_workspaces(work,4,4,options,info) 
+        call setup_workspaces(work,n,m,options,info) 
         
         options%nlls_method = 2 ! revert...
         
@@ -426,11 +425,11 @@ program nlls_test
            no_errors_helpers = no_errors_helpers + 1
         end if
         
+        call remove_workspaces(work,options)
+        
      end do
           
      deallocate(A,x)
-     call remove_workspaces(work,options)
-
 
      !-----------!
      !! max_eig !!
@@ -465,8 +464,9 @@ program nlls_test
 
      ! check the 'hard' case...
      n = 4
+     m = 4
      allocate(x(n),A(n,n), B(n,n))
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,2,2,options,info) 
 
      A = 0.0_wp  
      A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
@@ -485,6 +485,7 @@ program nlls_test
         y = shape(C)
         if ((y(1) .ne. 2) .or. (y(2) .ne. n)) then
            write(*,*) 'error :: hard case of max_eig test failed - wrong shape C returned'
+           write(*,*) 'y(1) = ', y(1), 'y(2) = ', y(2)
            no_errors_helpers = no_errors_helpers + 1 
         else
            allocate(results(n))
@@ -508,9 +509,11 @@ program nlls_test
         end if
      end if
 
-     deallocate(A,B,C,x,y,results)
+     deallocate(A,B,C,x,y)
+     if (allocated(results)) deallocate(results)
      call remove_workspaces(work,options)
 
+     
      
      call setup_workspaces(work,1,1,options,info)  !todo: deallocation routine
      ! check the error return

@@ -1,4 +1,4 @@
-! nlls_module :: a nonlinear least squares solver
+! ral_nlls_double :: a nonlinear least squares solver
 
 module ral_nlls_double
 
@@ -83,7 +83,8 @@ module ral_nlls_double
 !      5  secant second-order (limited-memory BFGS, with %lbfgs_vectors history)
 !      6  secant second-order (limited-memory SR1, with %lbfgs_vectors history)
 !      7  hybrid (Gauss-Newton until gradient small, then Newton)
-!      8  hybrid (using Madsen, Nielsen and Tingleff's method)    
+!      8  hybrid (Newton first, then Gauss-Newton)
+!      9  hybrid (using Madsen, Nielsen and Tingleff's method)    
  
      INTEGER :: model = 9
 
@@ -770,7 +771,7 @@ contains
           w%hf(1:n**2) = zero
        case (8) ! hybrid II
           ! always second order for first call...
-                    if ( options%exact_second_derivatives ) then
+          if ( options%exact_second_derivatives ) then
              call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
              inform%h_eval = inform%h_eval + 1
              if (hfstatus > 0) goto 4030
@@ -2316,8 +2317,10 @@ contains
         else
            s1 = S(1)
            sn = S(n)
-           write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
-           write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
+           if (options%print_level > 3) then 
+              write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
+              write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
+           end if
         end if
 
       end subroutine get_svd_J
@@ -2469,31 +2472,25 @@ contains
 
         workspace%first_call = 0
 
-        if (.not. options%exact_second_derivatives) then
-           deallocate(workspace%y)
-           deallocate(workspace%y_sharp)
-           deallocate(workspace%g_old)
-           deallocate(workspace%g_mixed)
-        end if
-
-        if( options%output_progress_vectors ) then 
-           deallocate(workspace%resvec)
-           deallocate(workspace%gradvec)
-        end if
-
-        if( options%model == 8 ) then 
-           deallocate(workspace%fNewton )
-           deallocate(workspace%JNewton )
-           deallocate(workspace%XNewton ) 
-        end if
+        if(allocated(workspace%y)) deallocate(workspace%y)
+        if(allocated(workspace%y_sharp)) deallocate(workspace%y_sharp)
+        if(allocated(workspace%g_old)) deallocate(workspace%g_old)
+        if(allocated(workspace%g_mixed)) deallocate(workspace%g_mixed)
+        
+        if(allocated(workspace%resvec)) deallocate(workspace%resvec)
+        if(allocated(workspace%gradvec)) deallocate(workspace%gradvec)
+        
+        if(allocated(workspace%fNewton)) deallocate(workspace%fNewton )
+        if(allocated(workspace%JNewton)) deallocate(workspace%JNewton )
+        if(allocated(workspace%XNewton)) deallocate(workspace%XNewton ) 
                 
-        deallocate(workspace%J ) 
-        deallocate(workspace%f ) 
-        deallocate(workspace%fnew ) 
-        deallocate(workspace%hf ) 
-        deallocate(workspace%d ) 
-        deallocate(workspace%g ) 
-        deallocate(workspace%Xnew ) 
+        if(allocated(workspace%J)) deallocate(workspace%J ) 
+        if(allocated(workspace%f)) deallocate(workspace%f ) 
+        if(allocated(workspace%fnew)) deallocate(workspace%fnew ) 
+        if(allocated(workspace%hf)) deallocate(workspace%hf ) 
+        if(allocated(workspace%d)) deallocate(workspace%d ) 
+        if(allocated(workspace%g)) deallocate(workspace%g ) 
+        if(allocated(workspace%Xnew)) deallocate(workspace%Xnew ) 
         
         select case (options%nlls_method)
         
@@ -2577,10 +2574,10 @@ contains
         type( dogleg_work ), intent(out) :: w
         type( nlls_options ), intent(in) :: options
 
-        deallocate(w%d_sd ) 
-        deallocate(w%d_gn )
-        deallocate(w%ghat )
-        deallocate(w%Jg )
+        if(allocated( w%d_sd )) deallocate(w%d_sd ) 
+        if(allocated( w%d_gn )) deallocate(w%d_gn )
+        if(allocated( w%ghat )) deallocate(w%ghat )
+        if(allocated( w%Jg )) deallocate(w%Jg )
         
         ! deallocate space for 
         !   solve_LLS
@@ -2626,9 +2623,9 @@ contains
         type( solve_LLS_work ) :: w 
         type( nlls_options ), intent(in) :: options
         
-        deallocate( w%temp)
-        deallocate( w%work ) 
-        deallocate( w%Jlls ) 
+        if(allocated( w%temp )) deallocate( w%temp)
+        if(allocated( w%work )) deallocate( w%work ) 
+        if(allocated( w%Jlls )) deallocate( w%Jlls ) 
         
         return
                 
@@ -2662,8 +2659,8 @@ contains
         type( evaluate_model_work ) :: w
         type( nlls_options ), intent(in) :: options
         
-        deallocate( w%Jd ) 
-        deallocate( w%Hd ) 
+        if(allocated( w%Jd )) deallocate( w%Jd ) 
+        if(allocated( w%Hd )) deallocate( w%Hd ) 
         
         return
 
@@ -2734,17 +2731,17 @@ contains
         type( AINT_tr_work ) :: w
         type( nlls_options ), intent(in) :: options
         
-        deallocate(w%A)
-        deallocate(w%v)
-        deallocate(w%B)
-        deallocate(w%p0)
-        deallocate(w%p1)
-        deallocate(w%M0)
-        deallocate(w%M1)
-        deallocate(w%y)
-        deallocate(w%gtg)
-        deallocate(w%q)
-        deallocate(w%LtL)
+        if(allocated( w%A )) deallocate(w%A)
+        if(allocated( w%v )) deallocate(w%v)
+        if(allocated( w%B )) deallocate(w%B)
+        if(allocated( w%p0 )) deallocate(w%p0)
+        if(allocated( w%p1 )) deallocate(w%p1)
+        if(allocated( w%M0 )) deallocate(w%M0)
+        if(allocated( w%M1 )) deallocate(w%M1)
+        if(allocated( w%y )) deallocate(w%y)
+        if(allocated( w%gtg )) deallocate(w%gtg)
+        if(allocated( w%q )) deallocate(w%q)
+        if(allocated( w%LtL )) deallocate(w%LtL)
         ! setup space for max_eig
         call remove_workspace_max_eig(w%max_eig_ws,options)
         call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
@@ -2836,15 +2833,15 @@ contains
         type( min_eig_symm_work) :: w
         type( nlls_options ), intent(in) :: options
         
-        deallocate(w%A)        
+        if(allocated( w%A )) deallocate(w%A)        
 
         if (options%subproblem_eig_fact) then 
-           deallocate(w%ew)
+           if(allocated( w%ew )) deallocate(w%ew)
         else
-           deallocate( w%iwork )
-           deallocate( w%ifail ) 
+           if(allocated( w%iwork )) deallocate( w%iwork )
+           if(allocated( w%ifail )) deallocate( w%ifail ) 
         end if
-        deallocate( w%work ) 
+        if(allocated( w%work )) deallocate( w%work ) 
 
         return
 
@@ -2915,14 +2912,14 @@ contains
         type( max_eig_work) :: w
         type( nlls_options ), intent(in) :: options
         
-        deallocate( w%alphaR)
-        deallocate( w%alphaI )
-        deallocate( w%beta ) 
-        deallocate( w%vr ) 
-        deallocate( w%ew_array ) 
-        deallocate( w%work ) 
-        deallocate( w%nullindex ) 
-        deallocate( w%vecisreal )
+        if(allocated( w%alphaR )) deallocate( w%alphaR)
+        if(allocated( w%alphaI )) deallocate( w%alphaI )
+        if(allocated( w%beta )) deallocate( w%beta ) 
+        if(allocated( w%vr )) deallocate( w%vr ) 
+        if(allocated( w%ew_array )) deallocate( w%ew_array ) 
+        if(allocated( w%work )) deallocate( w%work ) 
+        if(allocated( w%nullindex )) deallocate( w%nullindex ) 
+        if(allocated( w%vecisreal )) deallocate( w%vecisreal )
 
         return
         
@@ -2957,8 +2954,8 @@ contains
         type( solve_general_work ) :: w
         type( nlls_options ), intent(in) :: options
         
-        deallocate( w%A ) 
-        deallocate( w%ipiv ) 
+        if(allocated( w%A )) deallocate( w%A ) 
+        if(allocated( w%ipiv )) deallocate( w%ipiv ) 
         return
 
       end subroutine remove_workspace_solve_general
@@ -3012,12 +3009,12 @@ contains
         type( solve_dtrs_work ) :: w
         type( nlls_options ), intent(in) :: options
 
-        deallocate(w%A)
-        deallocate(w%ev)
-        deallocate(w%v)
-        deallocate(w%v_trans)
-        deallocate(w%ew)
-        deallocate(w%d_trans)
+        if(allocated( w%A )) deallocate(w%A)
+        if(allocated( w%ev )) deallocate(w%ev)
+        if(allocated( w%v )) deallocate(w%v)
+        if(allocated( w%v_trans )) deallocate(w%v_trans)
+        if(allocated( w%ew )) deallocate(w%ew)
+        if(allocated( w%d_trans )) deallocate(w%d_trans)
 
         call remove_workspace_all_eig_symm(w%all_eig_symm_ws,options)
         
@@ -3078,7 +3075,7 @@ contains
         type( all_eig_symm_work ) :: w
         type( nlls_options ), intent(in) :: options
 
-        deallocate( w%work ) 
+        if(allocated( w%work )) deallocate( w%work ) 
 
       end subroutine remove_workspace_all_eig_symm
       
@@ -3131,12 +3128,12 @@ contains
         type( more_sorensen_work ) :: w
         type( nlls_options ), intent(in) :: options
 
-        deallocate(w%A)
-        deallocate(w%LtL)
-        deallocate(w%v)
-        deallocate(w%q)
-        deallocate(w%y1)
-        deallocate(w%AplusSigma)
+        if(allocated( w%A )) deallocate(w%A)
+        if(allocated( w%LtL )) deallocate(w%LtL)
+        if(allocated( w%v )) deallocate(w%v)
+        if(allocated( w%q )) deallocate(w%q)
+        if(allocated( w%y1 )) deallocate(w%y1)
+        if(allocated( w%AplusSigma )) deallocate(w%AplusSigma)
 
         call remove_workspace_min_eig_symm(w%min_eig_symm_ws,options)
         
