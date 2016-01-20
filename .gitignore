@@ -7,6 +7,7 @@
 galahad/*
 libral_nlls/build/*
 libral_nlls/build_cov/*
+libral_nlls/debug/*
 src/data/*
 cutest/sif/*
 libral_nlls/doc/ral_nlls.aux
