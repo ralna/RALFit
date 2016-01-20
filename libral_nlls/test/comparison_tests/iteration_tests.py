@@ -97,9 +97,9 @@ local_iterates = np.zeros(no_tests, dtype = np.int)
 for i in range(0,no_probs):
     for j in range (0,no_tests):
         if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
-            all_iterates[j][i] = 9999
+            all_iterates[j][i] = -9999 
         local_iterates[j] = all_iterates[j][i]
-    minvalue = local_iterates.min()
+    minvalue = np.absolute(local_iterates).min()
     if (minvalue == 9999) or (minvalue == 1000): continue
     minima = np.where( local_iterates == minvalue )
     if minima[0].shape[0] == 1:
