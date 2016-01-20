@@ -29,11 +29,17 @@ except:
 short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
 
 # setup the datatype that we'll store the results in
-info = np.dtype({'names' :   ['pname','n','m','status','iter','res','grad'],
-                 'formats' : ['S10' ,int ,int,int,     int,   float,float]})
+info = np.dtype({'names' :   ['pname','n','m','status','iter',
+                              'func','jac','hess',
+                              'res','grad','ratio'],
+                 'formats' : ['S10' ,int ,int,int,int,
+                              int, int, int,
+                              float,float,float]})
 
 # get the list of problems...
-problems = np.loadtxt("cutest/sif/sif_names.txt", dtype = str)
+#prob_list = "nist"
+prob_list = "names_nist_first"
+problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
 
 no_probs = len(problems)
 
