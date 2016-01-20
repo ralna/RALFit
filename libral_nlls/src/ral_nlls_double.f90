@@ -391,6 +391,10 @@ module ral_nlls_double
 
      REAL ( KIND = wp ) :: norm_g = HUGE( one )
 
+! the norm of the gradient, scaled by the norm of the residual
+     
+     REAL ( KIND = wp ) :: scaled_g = HUGE( one ) 
+
 !  the total CPU time spent in the package
 
 !$$     REAL :: cpu_total = 0.0
@@ -745,6 +749,7 @@ contains
        ! save some data 
        inform%obj = 0.5 * ( w%normF**2 )
        inform%norm_g = normJF
+       inform%scaled_g = normJf/w%normF
 
        if (options%output_progress_vectors) then
           w%resvec(1) = inform%obj
@@ -1033,6 +1038,7 @@ contains
     ! update the stats 
     inform%obj = 0.5*(w%normF**2)
     inform%norm_g = normJF
+    inform%scaled_g = normJf/w%normF
     if (options%output_progress_vectors) then
        w%resvec (w%iter + 1) = inform%obj
        w%gradvec(w%iter + 1) = inform%norm_g
