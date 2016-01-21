@@ -7,7 +7,7 @@ set(CMAKE_C_FLAGS "-g -O2 -std=c99")
 
 # Main libral_nlls library
 include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
-add_library (ral_nlls src/ral_nlls_double.f90 src/ral_nlls_dtrs_double.f90 src/ral_nlls_symbols.f90 src/ral_nlls_ciface.f90)
+add_library (ral_nlls src/ral_nlls_double.f90 src/ral_nlls_internal.f90 src/ral_nlls_dtrs_double.f90 src/ral_nlls_symbols.f90 src/ral_nlls_ciface.f90)
 
 # Tests and examples
 find_package(LAPACK REQUIRED)

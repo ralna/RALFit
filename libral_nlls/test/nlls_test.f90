@@ -3,6 +3,7 @@ program nlls_test
 ! Test deck for nlls_module
 
   use ral_nlls_double
+  use ral_nlls_internal
   use example_module
   implicit none
 

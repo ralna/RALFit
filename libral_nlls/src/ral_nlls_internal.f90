@@ -1,9 +1,9 @@
 ! ral_nlls_double :: a nonlinear least squares solver
 
-module ral_nlls_double
+module ral_nlls_internal
 
   use RAL_NLLS_DTRS_double
-
+  
   implicit none
 
   private
@@ -565,634 +565,637 @@ module ral_nlls_double
        type ( evaluate_model_work ) :: evaluate_model_ws
     end type NLLS_workspace
 
-    public :: nlls_solve, nlls_iterate, remove_workspaces
+!    public :: nlls_solve, nlls_iterate, remove_workspaces
     
     public :: setup_workspaces, solve_dtrs, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
     public :: matmult_outer, outer_product, min_eig_symm, max_eig
+    public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
+    public :: update_trust_region_radius, apply_second_order_info
+    public :: test_convergence, calculate_rho
 
 contains
 
 
-  SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
-                         eval_F, eval_J, eval_HF,   & 
-                         params,                    &
-                         options, inform )
-    
-!  -----------------------------------------------------------------------------
-!  RAL_NLLS, a fortran subroutine for finding a first-order critical
-!   point (most likely, a local minimizer) of the nonlinear least-squares 
-!   objective function 1/2 ||F(x)||_2^2.
-
-!  Authors: RAL NA Group (Iain Duff, Nick Gould, Jonathan Hogg, Tyrone Rees, 
-!                         Jennifer Scott)
-!  -----------------------------------------------------------------------------
-
-!   Dummy arguments
-
-    INTEGER, INTENT( IN ) :: n, m
-    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( NLLS_inform ), INTENT( OUT ) :: inform
-    TYPE( NLLS_options ), INTENT( IN ) :: options
-    procedure( eval_f_type ) :: eval_F
-    procedure( eval_j_type ) :: eval_J
-    procedure( eval_hf_type ) :: eval_HF
-    class( params_base_type ) :: params
-      
-    integer  :: i
-    
-    type ( NLLS_workspace ) :: w
-    
-!!$    write(*,*) 'Controls in:'
-!!$    write(*,*) control
-!!$    write(*,*) 'error = ',options%error
-!!$    write(*,*) 'out = ', options%out
-!!$    write(*,*) 'print_level = ', options%print_level
-!!$    write(*,*) 'maxit = ', options%maxit
-!!$    write(*,*) 'model = ', options%model
-!!$    write(*,*) 'nlls_method = ', options%nlls_method
-!!$    write(*,*) 'lls_solver = ', options%lls_solver
-!!$    write(*,*) 'stop_g_absolute = ', options%stop_g_absolute
-!!$    write(*,*) 'stop_g_relative = ', options%stop_g_relative     
-!!$    write(*,*) 'initial_radius = ', options%initial_radius
-!!$    write(*,*) 'maximum_radius = ', options%maximum_radius
-!!$    write(*,*) 'eta_successful = ', options%eta_successful
-!!$    write(*,*) 'eta_very_successful = ',options%eta_very_successful
-!!$    write(*,*) 'eta_too_successful = ',options%eta_too_successful
-!!$    write(*,*) 'radius_increase = ',options%radius_increase
-!!$    write(*,*) 'radius_reduce = ',options%radius_reduce
-!!$    write(*,*) 'radius_reduce_max = ',options%radius_reduce_max
-!!$    write(*,*) 'hybrid_switch = ',options%hybrid_switch
-!!$    write(*,*) 'subproblem_eig_fact = ',options%subproblem_eig_fact
-!!$    write(*,*) 'more_sorensen_maxits = ',options%more_sorensen_maxits
-!!$    write(*,*) 'more_sorensen_shift = ',options%more_sorensen_shift
-!!$    write(*,*) 'more_sorensen_tiny = ',options%more_sorensen_tiny
-!!$    write(*,*) 'more_sorensen_tol = ',options%more_sorensen_tol
-!!$    write(*,*) 'hybrid_tol = ', options%hybrid_tol
-!!$    write(*,*) 'hybrid_switch_its = ', options%hybrid_switch_its
-!!$    write(*,*) 'output_progress_vectors = ',options%output_progress_vectors
-
-    main_loop: do i = 1,options%maxit
-       
-       call nlls_iterate(n, m, X,                   & 
-                         w, &
-                         eval_F, eval_J, eval_HF,   & 
-                         params,                    &
-                         inform, options)
-       ! test the returns to see if we've converged
-       if (inform%status .ne. 0) then 
-          return 
-       elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
-          return
-       end if
-       
-     end do main_loop
-    
-     ! If we reach here, then we're over maxits     
-     if (options%print_level > 0 ) write(options%out,1040) 
-     inform%status = -1
-    
-     RETURN
-
-! Non-executable statements
-
-! print level > 0
-
-1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
-
-!  End of subroutine RAL_NLLS
-
-   END SUBROUTINE NLLS_SOLVE
-  
-  subroutine nlls_iterate(n, m, X,                   & 
-                          w,                         & 
-                          eval_F, eval_J, eval_HF,   & 
-                          params,                    &
-                          inform, options)
-
-    INTEGER, INTENT( IN ) :: n, m
-    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( nlls_inform ), INTENT( OUT ) :: inform
-    TYPE( nlls_options ), INTENT( IN ) :: options
-    type( NLLS_workspace ), INTENT( INOUT ) :: w
-    procedure( eval_f_type ) :: eval_F
-    procedure( eval_j_type ) :: eval_J
-    procedure( eval_hf_type ) :: eval_HF
-    class( params_base_type ) :: params
-      
-    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
-    integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, normJF, normFnew, md, Jmax, JtJdiag
-    real(wp) :: FunctionValue, hybrid_tol
-    logical :: success, calculate_svd_J
-    real(wp) :: s1, sn
-    
-    ! todo: make max_tr_decrease a control variable
-
-    ! Perform a single iteration of the RAL_NLLS loop
-    
-    calculate_svd_J = .true. ! todo :: make a control variable 
-
-    if (w%first_call == 1) then
-       ! This is the first call...allocate arrays, and get initial 
-       ! function evaluations
-       if ( options%print_level >= 3 )  write( options%out , 3000 ) 
-       ! first, check if n < m
-       if (n > m) goto 4070
-
-       call setup_workspaces(w,n,m,options,inform%alloc_status)
-       if ( inform%alloc_status > 0) goto 4000
-
-       call eval_F(fstatus, n, m, X, w%f, params)
-       inform%f_eval = inform%f_eval + 1
-       if (fstatus > 0) goto 4020
-       call eval_J(jstatus, n, m, X, w%J, params)
-       inform%g_eval = inform%g_eval + 1
-       if (jstatus > 0) goto 4010
-
-       if (options%relative_tr_radius == 1) then 
-          ! first, let's get diag(J^TJ)
-          Jmax = 0.0
-          do i = 1, n
-             ! note:: assumes column-storage of J
-             JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
-             if (JtJdiag > Jmax) Jmax = JtJdiag
-          end do
-          w%Delta = options%initial_radius_scale * (Jmax**2)
-          if (options%print_level .ge. 3) write(options%out,3110) w%Delta
-       else
-          w%Delta = options%initial_radius
-       end if
-              
-       if ( calculate_svd_J ) then
-          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
-          if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
-             write( options%out, 3000 ) svdstatus
-          end if
-       end if
-
-       w%normF = norm2(w%f)
-       w%normF0 = w%normF
-
-       !    g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g)
-       w%g = -w%g
-       normJF = norm2(w%g)
-       w%normJF0 = normJF
-       if (options%model == 8 .or. options%model == 9) w%normJFold = normJF
-
-       if (options%model == 9) then
-          ! make this relative....
-          w%hybrid_tol = options%hybrid_tol * ( normJF/(0.5*(w%normF**2)) )
-       end if
-       
-       ! save some data 
-       inform%obj = 0.5 * ( w%normF**2 )
-       inform%norm_g = normJF
-       inform%scaled_g = normJf/w%normF
-
-       if (options%output_progress_vectors) then
-          w%resvec(1) = inform%obj
-          w%gradvec(1) = inform%norm_g
-       end if
-       
-       select case (options%model)
-       case (1) ! first-order
-          w%hf(1:n**2) = zero
-       case (2) ! second order
-          if ( options%exact_second_derivatives ) then
-             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-             inform%h_eval = inform%h_eval + 1
-             if (hfstatus > 0) goto 4030
-          else
-             ! S_0 = 0 (see Dennis, Gay and Welsch)
-             w%hf(1:n**2) = zero
-          end if
-       case (3) ! barely second order (identity hessian)
-          w%hf(1:n**2) = zero
-          w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
-       case (7) ! hybrid
-          ! first call, so always first-derivatives only
-          w%hf(1:n**2) = zero
-       case (8) ! hybrid II
-          ! always second order for first call...
-          if ( options%exact_second_derivatives ) then
-             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-             inform%h_eval = inform%h_eval + 1
-             if (hfstatus > 0) goto 4030
-          else
-             ! S_0 = 0 (see Dennis, Gay and Welsch)
-             w%hf(1:n**2) = zero
-          end if
-          w%use_second_derivatives = .true.
-       case (9) ! hybrid (MNT)
-          ! use first-order method initially
-          w%hf(1:n**2) = zero
-          w%use_second_derivatives = .false.
-       case default
-          goto 4040 ! unsupported model -- return to user
-       end select
-       
-       
-    end if
-
-
-    w%iter = w%iter + 1
-    if ( options%print_level >= 3 )  write( options%out , 3030 ) w%iter
-    inform%iter = w%iter
-    
-    rho  = -one ! intialize rho as a negative value
-    success = .false.
-    no_reductions = 0
-
-    do while (.not. success) ! loop until successful
-       no_reductions = no_reductions + 1
-       if (no_reductions > max_tr_decrease+1) goto 4050
-
-       !+++++++++++++++++++++++++++++++++++++++++++!
-       ! Calculate the step                        !
-       !    d                                      !   
-       ! that the model thinks we should take next !
-       !+++++++++++++++++++++++++++++++++++++++++++!
-       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,options,inform,& 
-            w%calculate_step_ws)
-       if (inform%status .ne. 0) goto 4000
-       
-       !++++++++++++++++++!
-       ! Accept the step? !
-       !++++++++++++++++++!
-       w%Xnew = X + w%d
-       call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
-       inform%f_eval = inform%f_eval + 1
-       if (fstatus > 0) goto 4020
-       normFnew = norm2(w%fnew)
-       
-       !++++++++++++++++++++++++++++!
-       ! Get the value of the model !
-       !      md :=   m_k(d)        !
-       ! evaluated at the new step  !
-       !++++++++++++++++++++++++++++!
-       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,options,w%evaluate_model_ws)
-       
-       !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
-       ! Calculate the quantity                                   ! 
-       !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
-       !         --------------------------   ------------------- !
-       !             m_k(0)  - m_k(d)         predicted_reduction !
-       !                                                          !
-       ! if model is good, rho should be close to one             !
-       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-       call calculate_rho(w%normF,normFnew,md,rho)
-       if (rho > options%eta_successful) success = .true.
-       
-       !++++++++++++++++++++++!
-       ! Update the TR radius !
-       !++++++++++++++++++++++!
-       call update_trust_region_radius(rho,options,w%Delta)
-       
-       !+++++++++++++++++++++++!
-       ! Add tests for model=8 !
-       !+++++++++++++++++++++++!
-       model8_success: if ( success .and. (options%model == 8) ) then
-
-          if (.not. options%exact_second_derivatives) then 
-             ! first, let's save some old values...
-             w%g_old = w%g
-             ! g_mixed = J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
-          end if
-
-          ! evaluate J and hf at the new point
-          call eval_J(jstatus, n, m, w%Xnew, w%J, params)
-          inform%g_eval = inform%g_eval + 1
-          if (jstatus > 0) goto 4010
-          if ( calculate_svd_J ) then
-             call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
-             if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
-                write( options%out, 3000 ) svdstatus
-             end if
-          end if
-          
-
-          ! g = -J^Tf
-          call mult_Jt(w%J,n,m,w%fnew,w%g)
-          w%g = -w%g
-       
-          w%normF = normFnew
-          normJF = norm2(w%g)
-          
-          decrease_grad: if (normJF > w%normJFold) then
-             ! no reduction in residual...
-             which_time_round: if (w%use_second_derivatives) then
-                w%use_second_derivatives = .false.
-                w%hf(1:n**2) = zero
-                w%normJF_Newton = normJF
-                success = .false.
-                ! copy current vectors....
-                ! (maybe streamline for production?!)
-                w%fNewton(:) = w%fnew(:)
-                w%JNewton(:) = w%J(:)
-                w%XNewton(:) = w%Xnew(:)
-             else  
-                ! Gauss-Newton gave no benefit either....
-                w%use_second_derivatives = .true.
-                Newton_better: if ( w%normJF_Newton < normJF ) then
-                   ! Newton values were better...replace
-                   w%fnew(:) = w%fNewton(:)
-                   w%J(:) = w%JNewton(:)
-                   w%Xnew(:) = w%XNewton(:)
-                   w%normJFold = w%normJF_Newton
-                   normJF = w%normJF_Newton
-                else
-                   w%normJFold = normJF
-                end if Newton_better
-                success = .true.
-             end if which_time_round
-          else 
-             w%normJFold = normJF
-          end if decrease_grad
-                 
-       end if model8_success
-
-       if (.not. success) then
-          ! finally, check d makes progress
-          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
-       end if
-    end do
-    ! if we reach here, a successful step has been found
-    
-    ! update X and f
-    X(:) = w%Xnew(:)
-    w%f(:) = w%fnew(:)
-    
-    if ( options%model .ne. 8 ) then 
-       
-       if (.not. options%exact_second_derivatives) then 
-          ! first, let's save some old values...
-          ! g_old = -J_k^T r_k
-          w%g_old = w%g
-          ! g_mixed = -J_k^T r_{k+1}
-          call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
-          w%g_mixed = -w%g_mixed
-       end if
-
-       ! evaluate J and hf at the new point
-       call eval_J(jstatus, n, m, X, w%J, params)
-       inform%g_eval = inform%g_eval + 1
-       if (jstatus > 0) goto 4010
-       if ( calculate_svd_J ) then
-          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
-          if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
-             write( options%out, 3000 ) svdstatus
-          end if
-       end if
-       
-       ! g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g)
-       w%g = -w%g
-
-       if ( options%model == 9) w%normJFold = normJF
-
-       w%normF = normFnew
-       normJF = norm2(w%g)
-       
-    end if
-
-    ! setup the vectors needed if second derivatives are not available
-    if (.not. options%exact_second_derivatives) then 
-       
-       w%y       = w%g_old   - w%g
-       w%y_sharp = w%g_mixed - w%g
-
-    end if
-
-    select case (options%model) ! only update hessians than change..
-    case (1) ! first-order
-       continue
-    case (2) ! second order
-       call apply_second_order_info(hfstatus,n,m, & 
-            X,w%f,w%hf,eval_Hf, &
-            w%d, w%y, w%y_sharp,  &
-            params,options,inform)
-!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!       inform%h_eval = inform%h_eval + 1
-       if (hfstatus > 0) goto 4030
-    case (3) ! barely second order (identity hessian)
-       continue
-    case (7) ! hybrid method
-       if ( w%use_second_derivatives ) then 
-          ! hybrid switch turned on....
-          
-          call apply_second_order_info(hfstatus,n,m, &
-               X,w%f,w%hf,eval_Hf, &
-               w%d, w%y, w%y_sharp,  &
-               params,options,inform)
-!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!          inform%h_eval = inform%h_eval + 1
-          if (hfstatus > 0) goto 4030
-       end if
-    case (8)       
-       call apply_second_order_info(hfstatus,n,m,&
-            X,w%f,w%hf,eval_Hf, &
-            w%d, w%y, w%y_sharp,  &
-            params,options,inform)
-!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!       inform%h_eval = inform%h_eval + 1
-       if (hfstatus > 0) goto 4030
-    case (9)
-       ! First, check if we need to switch methods
-       if (w%use_second_derivatives) then 
-          if (normJf > w%normJFold) then 
-             ! switch to Gauss-Newton             
-             if (options%print_level .ge. 3) write(options%out,3120) 
-             w%use_second_derivatives = .false.
-          end if
-       else
-          FunctionValue = 0.5 * (w%normF**2)
-          if ( normJf/FunctionValue < w%hybrid_tol ) then 
-             w%hybrid_count = w%hybrid_count + 1
-             if (w%hybrid_count == options%hybrid_switch_its) then
-                ! use (Quasi-)Newton
-                if (options%print_level .ge. 3) write(options%out,3130) 
-                w%use_second_derivatives = .true.
-                w%hybrid_count = 0
-             end if
-          else 
-             w%hybrid_count = 0
-          end if
-       end if
-
-       if (w%use_second_derivatives) then 
-          call apply_second_order_info(hfstatus,n,m, &
-               X,w%f,w%hf,eval_Hf, &
-               w%d, w%y, w%y_sharp,  &
-               params,options,inform)
-!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
- !         inform%h_eval = inform%h_eval + 1
-          if (hfstatus > 0) goto 4030
-       else 
-          w%hf(1:n**2) = zero
-       end if
-    end select
-
-    ! update the stats 
-    inform%obj = 0.5*(w%normF**2)
-    inform%norm_g = normJF
-    inform%scaled_g = normJf/w%normF
-    if (options%output_progress_vectors) then
-       w%resvec (w%iter + 1) = inform%obj
-       w%gradvec(w%iter + 1) = inform%norm_g
-    end if
-    
-    if ( (options%model == 7) .and. (normJF < options%hybrid_switch) ) then
-       w%use_second_derivatives = .true.
-    end if
-    
-    if (options%print_level >=3) write(options%out,3010) inform%obj
-    if (options%print_level >=3) write(options%out,3060) normJF/w%normF
-
-    !++++++++++++++++++!
-    ! Test convergence !
-    !++++++++++++++++++!
-    call test_convergence(w%normF,normJF,w%normF0,w%normJF0,options,inform)
-    if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
-    if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
-
-    if (options%print_level > 2 ) write(options%out,3100) rho
-
-! Non-executable statements
-
-! print level > 0
-
-!1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
-
-! print level > 1
-
-! print level > 2
-3000 FORMAT(/,'* Running RAL_NLLS *')
-3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
-3030 FORMAT('== Starting iteration ',i0,' ==')
-3060 FORMAT('||J''f||/||f|| = ',ES12.4)
-
-!3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
-3100 FORMAT('Step was successful -- rho =', ES12.4)
-3110 FORMAT('Initial trust region radius taken as ', ES12.4)
-3120 FORMAT('** Switching to Gauss-Newton **')
-3130 FORMAT('** Switching to (Quasi-)Newton **')
-! error returns
-4000 continue
-    ! generic end of algorithm
-        ! all (final) exits should pass through here...
-    if (options%output_progress_vectors) then
-       if(.not. allocated(inform%resvec)) then 
-          allocate(inform%resvec(w%iter + 1), stat = astatus)
-          if (astatus > 0) then
-             inform%status = -9999
-             return
-          end if
-          inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
-       end if
-       if(.not. allocated(inform%gradvec)) then 
-          allocate(inform%gradvec(w%iter + 1), stat = astatus)
-          if (astatus > 0) then
-             inform%status = -9999
-             return
-          end if
-          inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
-       end if
-    end if
-
-    return
-
-4010 continue
-    ! Error in eval_J
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
-    end if
-    inform%status = -2
-    goto 4000
-
-4020 continue
-    ! Error in eval_J
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
-    end if
-    inform%status = -2
-    goto 4000
-
-4030 continue
-    ! Error in eval_HF
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
-    end if
-    inform%status = -2
-    goto 4000
-
-4040 continue 
-    ! unsupported choice of model
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0,a)') 'Error: the choice of options%model = ', &
-            options%model, ' is not supported'
-    end if
-    inform%status = -3
-   goto 4000
-
-4050 continue 
-    ! max tr reductions exceeded
-    if (options%print_level > 0) then
-       write(options%error,'(a)') 'Error: maximum tr reductions reached'
-    end if
-    inform%status = -500
-    goto 4000
-
-4060 continue 
-    ! x makes no progress
-    if (options%print_level > 0) then
-       write(options%error,'(a)') 'No further progress in X'
-    end if
-    inform%status = -700
-    goto 4000
-
-4070 continue
-    ! n > m on entry
-    if (options%print_level > 0) then
-       write(options%error,'(a)') ''
-    end if
-    inform%status = -800
-    goto 4000
-
-! convergence 
-5000 continue
-    ! convegence test satisfied
-    if (options%print_level > 2) then
-       write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
-            w%iter
-    end if
-    goto 4000
-
-5010 continue
-    if (options%print_level > 2) then
-       write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
-            w%iter
-    end if
-    goto 4000
-
-
-!  End of subroutine RAL_NLLS_iterate
-
-  end subroutine nlls_iterate
-
-
-  subroutine ral_nlls_finalize(w,options)
-    
-    type( nlls_workspace ) :: w
-    type( nlls_options ) :: options
-    
-    w%first_call = 1
-
-    call remove_workspaces(w,options)   
-    
-  end subroutine ral_nlls_finalize
+!!$  SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
+!!$                         eval_F, eval_J, eval_HF,   & 
+!!$                         params,                    &
+!!$                         options, inform )
+!!$    
+!!$!  -----------------------------------------------------------------------------
+!!$!  RAL_NLLS, a fortran subroutine for finding a first-order critical
+!!$!   point (most likely, a local minimizer) of the nonlinear least-squares 
+!!$!   objective function 1/2 ||F(x)||_2^2.
+!!$
+!!$!  Authors: RAL NA Group (Iain Duff, Nick Gould, Jonathan Hogg, Tyrone Rees, 
+!!$!                         Jennifer Scott)
+!!$!  -----------------------------------------------------------------------------
+!!$
+!!$!   Dummy arguments
+!!$
+!!$    INTEGER, INTENT( IN ) :: n, m
+!!$    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
+!!$    TYPE( NLLS_inform ), INTENT( OUT ) :: inform
+!!$    TYPE( NLLS_options ), INTENT( IN ) :: options
+!!$    procedure( eval_f_type ) :: eval_F
+!!$    procedure( eval_j_type ) :: eval_J
+!!$    procedure( eval_hf_type ) :: eval_HF
+!!$    class( params_base_type ) :: params
+!!$      
+!!$    integer  :: i
+!!$    
+!!$    type ( NLLS_workspace ) :: w
+!!$    
+!!$  !  write(*,*) 'Controls in:'
+!!$  !  write(*,*) control
+!!$  !  write(*,*) 'error = ',options%error
+!!$  !  write(*,*) 'out = ', options%out
+!!$  !  write(*,*) 'print_level = ', options%print_level
+!!$  !  write(*,*) 'maxit = ', options%maxit
+!!$  !  write(*,*) 'model = ', options%model
+!!$  !  write(*,*) 'nlls_method = ', options%nlls_method
+!!$  !  write(*,*) 'lls_solver = ', options%lls_solver
+!!$  !  write(*,*) 'stop_g_absolute = ', options%stop_g_absolute
+!!$  !  write(*,*) 'stop_g_relative = ', options%stop_g_relative     
+!!$  !  write(*,*) 'initial_radius = ', options%initial_radius
+!!$  !  write(*,*) 'maximum_radius = ', options%maximum_radius
+!!$  !  write(*,*) 'eta_successful = ', options%eta_successful
+!!$  !  write(*,*) 'eta_very_successful = ',options%eta_very_successful
+!!$  !  write(*,*) 'eta_too_successful = ',options%eta_too_successful
+!!$  !  write(*,*) 'radius_increase = ',options%radius_increase
+!!$  !  write(*,*) 'radius_reduce = ',options%radius_reduce
+!!$  !  write(*,*) 'radius_reduce_max = ',options%radius_reduce_max
+!!$  !  write(*,*) 'hybrid_switch = ',options%hybrid_switch
+!!$  !  write(*,*) 'subproblem_eig_fact = ',options%subproblem_eig_fact
+!!$  !  write(*,*) 'more_sorensen_maxits = ',options%more_sorensen_maxits
+!!$  !  write(*,*) 'more_sorensen_shift = ',options%more_sorensen_shift
+!!$  !  write(*,*) 'more_sorensen_tiny = ',options%more_sorensen_tiny
+!!$  !  write(*,*) 'more_sorensen_tol = ',options%more_sorensen_tol
+!!$  !  write(*,*) 'hybrid_tol = ', options%hybrid_tol
+!!$  !  write(*,*) 'hybrid_switch_its = ', options%hybrid_switch_its
+!!$  !  write(*,*) 'output_progress_vectors = ',options%output_progress_vectors
+!!$
+!!$    main_loop: do i = 1,options%maxit
+!!$       
+!!$       call nlls_iterate(n, m, X,                   & 
+!!$                         w, &
+!!$                         eval_F, eval_J, eval_HF,   & 
+!!$                         params,                    &
+!!$                         inform, options)
+!!$       ! test the returns to see if we've converged
+!!$       if (inform%status .ne. 0) then 
+!!$          return 
+!!$       elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
+!!$          return
+!!$       end if
+!!$       
+!!$     end do main_loop
+!!$    
+!!$     ! If we reach here, then we're over maxits     
+!!$     if (options%print_level > 0 ) write(options%out,1040) 
+!!$     inform%status = -1
+!!$    
+!!$     RETURN
+!!$
+!!$! Non-executable statements
+!!$
+!!$! print level > 0
+!!$
+!!$1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+!!$
+!!$!  End of subroutine RAL_NLLS
+!!$
+!!$   END SUBROUTINE NLLS_SOLVE
+!!$  
+!!$  subroutine nlls_iterate(n, m, X,                   & 
+!!$                          w,                         & 
+!!$                          eval_F, eval_J, eval_HF,   & 
+!!$                          params,                    &
+!!$                          inform, options)
+!!$
+!!$    INTEGER, INTENT( IN ) :: n, m
+!!$    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
+!!$    TYPE( nlls_inform ), INTENT( OUT ) :: inform
+!!$    TYPE( nlls_options ), INTENT( IN ) :: options
+!!$    type( NLLS_workspace ), INTENT( INOUT ) :: w
+!!$    procedure( eval_f_type ) :: eval_F
+!!$    procedure( eval_j_type ) :: eval_J
+!!$    procedure( eval_hf_type ) :: eval_HF
+!!$    class( params_base_type ) :: params
+!!$      
+!!$    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
+!!$    integer :: i, no_reductions, max_tr_decrease = 100
+!!$    real(wp) :: rho, normJF, normFnew, md, Jmax, JtJdiag
+!!$    real(wp) :: FunctionValue, hybrid_tol
+!!$    logical :: success, calculate_svd_J
+!!$    real(wp) :: s1, sn
+!!$    
+!!$    ! todo: make max_tr_decrease a control variable
+!!$
+!!$    ! Perform a single iteration of the RAL_NLLS loop
+!!$    
+!!$    calculate_svd_J = .true. ! todo :: make a control variable 
+!!$
+!!$    if (w%first_call == 1) then
+!!$       ! This is the first call...allocate arrays, and get initial 
+!!$       ! function evaluations
+!!$       if ( options%print_level >= 3 )  write( options%out , 3000 ) 
+!!$       ! first, check if n < m
+!!$       if (n > m) goto 4070
+!!$
+!!$       call setup_workspaces(w,n,m,options,inform%alloc_status)
+!!$       if ( inform%alloc_status > 0) goto 4000
+!!$
+!!$       call eval_F(fstatus, n, m, X, w%f, params)
+!!$       inform%f_eval = inform%f_eval + 1
+!!$       if (fstatus > 0) goto 4020
+!!$       call eval_J(jstatus, n, m, X, w%J, params)
+!!$       inform%g_eval = inform%g_eval + 1
+!!$       if (jstatus > 0) goto 4010
+!!$
+!!$       if (options%relative_tr_radius == 1) then 
+!!$          ! first, let's get diag(J^TJ)
+!!$          Jmax = 0.0
+!!$          do i = 1, n
+!!$             ! note:: assumes column-storage of J
+!!$             JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
+!!$             if (JtJdiag > Jmax) Jmax = JtJdiag
+!!$          end do
+!!$          w%Delta = options%initial_radius_scale * (Jmax**2)
+!!$          if (options%print_level .ge. 3) write(options%out,3110) w%Delta
+!!$       else
+!!$          w%Delta = options%initial_radius
+!!$       end if
+!!$              
+!!$       if ( calculate_svd_J ) then
+!!$          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+!!$          if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
+!!$             write( options%out, 3000 ) svdstatus
+!!$          end if
+!!$       end if
+!!$
+!!$       w%normF = norm2(w%f)
+!!$       w%normF0 = w%normF
+!!$
+!!$       !    g = -J^Tf
+!!$       call mult_Jt(w%J,n,m,w%f,w%g)
+!!$       w%g = -w%g
+!!$       normJF = norm2(w%g)
+!!$       w%normJF0 = normJF
+!!$       if (options%model == 8 .or. options%model == 9) w%normJFold = normJF
+!!$
+!!$       if (options%model == 9) then
+!!$          ! make this relative....
+!!$          w%hybrid_tol = options%hybrid_tol * ( normJF/(0.5*(w%normF**2)) )
+!!$       end if
+!!$       
+!!$       ! save some data 
+!!$       inform%obj = 0.5 * ( w%normF**2 )
+!!$       inform%norm_g = normJF
+!!$       inform%scaled_g = normJf/w%normF
+!!$
+!!$       if (options%output_progress_vectors) then
+!!$          w%resvec(1) = inform%obj
+!!$          w%gradvec(1) = inform%norm_g
+!!$       end if
+!!$       
+!!$       select case (options%model)
+!!$       case (1) ! first-order
+!!$          w%hf(1:n**2) = zero
+!!$       case (2) ! second order
+!!$          if ( options%exact_second_derivatives ) then
+!!$             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!!$             inform%h_eval = inform%h_eval + 1
+!!$             if (hfstatus > 0) goto 4030
+!!$          else
+!!$             ! S_0 = 0 (see Dennis, Gay and Welsch)
+!!$             w%hf(1:n**2) = zero
+!!$          end if
+!!$       case (3) ! barely second order (identity hessian)
+!!$          w%hf(1:n**2) = zero
+!!$          w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
+!!$       case (7) ! hybrid
+!!$          ! first call, so always first-derivatives only
+!!$          w%hf(1:n**2) = zero
+!!$       case (8) ! hybrid II
+!!$          ! always second order for first call...
+!!$          if ( options%exact_second_derivatives ) then
+!!$             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!!$             inform%h_eval = inform%h_eval + 1
+!!$             if (hfstatus > 0) goto 4030
+!!$          else
+!!$             ! S_0 = 0 (see Dennis, Gay and Welsch)
+!!$             w%hf(1:n**2) = zero
+!!$          end if
+!!$          w%use_second_derivatives = .true.
+!!$       case (9) ! hybrid (MNT)
+!!$          ! use first-order method initially
+!!$          w%hf(1:n**2) = zero
+!!$          w%use_second_derivatives = .false.
+!!$       case default
+!!$          goto 4040 ! unsupported model -- return to user
+!!$       end select
+!!$       
+!!$       
+!!$    end if
+!!$
+!!$
+!!$    w%iter = w%iter + 1
+!!$    if ( options%print_level >= 3 )  write( options%out , 3030 ) w%iter
+!!$    inform%iter = w%iter
+!!$    
+!!$    rho  = -one ! intialize rho as a negative value
+!!$    success = .false.
+!!$    no_reductions = 0
+!!$
+!!$    do while (.not. success) ! loop until successful
+!!$       no_reductions = no_reductions + 1
+!!$       if (no_reductions > max_tr_decrease+1) goto 4050
+!!$
+!!$       !+++++++++++++++++++++++++++++++++++++++++++!
+!!$       ! Calculate the step                        !
+!!$       !    d                                      !   
+!!$       ! that the model thinks we should take next !
+!!$       !+++++++++++++++++++++++++++++++++++++++++++!
+!!$       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,options,inform,& 
+!!$            w%calculate_step_ws)
+!!$       if (inform%status .ne. 0) goto 4000
+!!$       
+!!$       !++++++++++++++++++!
+!!$       ! Accept the step? !
+!!$       !++++++++++++++++++!
+!!$       w%Xnew = X + w%d
+!!$       call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
+!!$       inform%f_eval = inform%f_eval + 1
+!!$       if (fstatus > 0) goto 4020
+!!$       normFnew = norm2(w%fnew)
+!!$       
+!!$       !++++++++++++++++++++++++++++!
+!!$       ! Get the value of the model !
+!!$       !      md :=   m_k(d)        !
+!!$       ! evaluated at the new step  !
+!!$       !++++++++++++++++++++++++++++!
+!!$       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,options,w%evaluate_model_ws)
+!!$       
+!!$       !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+!!$       ! Calculate the quantity                                   ! 
+!!$       !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
+!!$       !         --------------------------   ------------------- !
+!!$       !             m_k(0)  - m_k(d)         predicted_reduction !
+!!$       !                                                          !
+!!$       ! if model is good, rho should be close to one             !
+!!$       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!!$       call calculate_rho(w%normF,normFnew,md,rho)
+!!$       if (rho > options%eta_successful) success = .true.
+!!$       
+!!$       !++++++++++++++++++++++!
+!!$       ! Update the TR radius !
+!!$       !++++++++++++++++++++++!
+!!$       call update_trust_region_radius(rho,options,w%Delta)
+!!$       
+!!$       !+++++++++++++++++++++++!
+!!$       ! Add tests for model=8 !
+!!$       !+++++++++++++++++++++++!
+!!$       model8_success: if ( success .and. (options%model == 8) ) then
+!!$
+!!$          if (.not. options%exact_second_derivatives) then 
+!!$             ! first, let's save some old values...
+!!$             w%g_old = w%g
+!!$             ! g_mixed = J_k^T r_{k+1}
+!!$             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
+!!$          end if
+!!$
+!!$          ! evaluate J and hf at the new point
+!!$          call eval_J(jstatus, n, m, w%Xnew, w%J, params)
+!!$          inform%g_eval = inform%g_eval + 1
+!!$          if (jstatus > 0) goto 4010
+!!$          if ( calculate_svd_J ) then
+!!$             call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+!!$             if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
+!!$                write( options%out, 3000 ) svdstatus
+!!$             end if
+!!$          end if
+!!$          
+!!$
+!!$          ! g = -J^Tf
+!!$          call mult_Jt(w%J,n,m,w%fnew,w%g)
+!!$          w%g = -w%g
+!!$       
+!!$          w%normF = normFnew
+!!$          normJF = norm2(w%g)
+!!$          
+!!$          decrease_grad: if (normJF > w%normJFold) then
+!!$             ! no reduction in residual...
+!!$             which_time_round: if (w%use_second_derivatives) then
+!!$                w%use_second_derivatives = .false.
+!!$                w%hf(1:n**2) = zero
+!!$                w%normJF_Newton = normJF
+!!$                success = .false.
+!!$                ! copy current vectors....
+!!$                ! (maybe streamline for production?!)
+!!$                w%fNewton(:) = w%fnew(:)
+!!$                w%JNewton(:) = w%J(:)
+!!$                w%XNewton(:) = w%Xnew(:)
+!!$             else  
+!!$                ! Gauss-Newton gave no benefit either....
+!!$                w%use_second_derivatives = .true.
+!!$                Newton_better: if ( w%normJF_Newton < normJF ) then
+!!$                   ! Newton values were better...replace
+!!$                   w%fnew(:) = w%fNewton(:)
+!!$                   w%J(:) = w%JNewton(:)
+!!$                   w%Xnew(:) = w%XNewton(:)
+!!$                   w%normJFold = w%normJF_Newton
+!!$                   normJF = w%normJF_Newton
+!!$                else
+!!$                   w%normJFold = normJF
+!!$                end if Newton_better
+!!$                success = .true.
+!!$             end if which_time_round
+!!$          else 
+!!$             w%normJFold = normJF
+!!$          end if decrease_grad
+!!$                 
+!!$       end if model8_success
+!!$
+!!$       if (.not. success) then
+!!$          ! finally, check d makes progress
+!!$          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
+!!$       end if
+!!$    end do
+!!$    ! if we reach here, a successful step has been found
+!!$    
+!!$    ! update X and f
+!!$    X(:) = w%Xnew(:)
+!!$    w%f(:) = w%fnew(:)
+!!$    
+!!$    if ( options%model .ne. 8 ) then 
+!!$       
+!!$       if (.not. options%exact_second_derivatives) then 
+!!$          ! first, let's save some old values...
+!!$          ! g_old = -J_k^T r_k
+!!$          w%g_old = w%g
+!!$          ! g_mixed = -J_k^T r_{k+1}
+!!$          call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
+!!$          w%g_mixed = -w%g_mixed
+!!$       end if
+!!$
+!!$       ! evaluate J and hf at the new point
+!!$       call eval_J(jstatus, n, m, X, w%J, params)
+!!$       inform%g_eval = inform%g_eval + 1
+!!$       if (jstatus > 0) goto 4010
+!!$       if ( calculate_svd_J ) then
+!!$          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+!!$          if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
+!!$             write( options%out, 3000 ) svdstatus
+!!$          end if
+!!$       end if
+!!$       
+!!$       ! g = -J^Tf
+!!$       call mult_Jt(w%J,n,m,w%f,w%g)
+!!$       w%g = -w%g
+!!$
+!!$       if ( options%model == 9) w%normJFold = normJF
+!!$
+!!$       w%normF = normFnew
+!!$       normJF = norm2(w%g)
+!!$       
+!!$    end if
+!!$
+!!$    ! setup the vectors needed if second derivatives are not available
+!!$    if (.not. options%exact_second_derivatives) then 
+!!$       
+!!$       w%y       = w%g_old   - w%g
+!!$       w%y_sharp = w%g_mixed - w%g
+!!$
+!!$    end if
+!!$
+!!$    select case (options%model) ! only update hessians than change..
+!!$    case (1) ! first-order
+!!$       continue
+!!$    case (2) ! second order
+!!$       call apply_second_order_info(hfstatus,n,m, & 
+!!$            X,w%f,w%hf,eval_Hf, &
+!!$            w%d, w%y, w%y_sharp,  &
+!!$            params,options,inform)
+!!$!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!!$!       inform%h_eval = inform%h_eval + 1
+!!$       if (hfstatus > 0) goto 4030
+!!$    case (3) ! barely second order (identity hessian)
+!!$       continue
+!!$    case (7) ! hybrid method
+!!$       if ( w%use_second_derivatives ) then 
+!!$          ! hybrid switch turned on....
+!!$          
+!!$          call apply_second_order_info(hfstatus,n,m, &
+!!$               X,w%f,w%hf,eval_Hf, &
+!!$               w%d, w%y, w%y_sharp,  &
+!!$               params,options,inform)
+!!$!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!!$!          inform%h_eval = inform%h_eval + 1
+!!$          if (hfstatus > 0) goto 4030
+!!$       end if
+!!$    case (8)       
+!!$       call apply_second_order_info(hfstatus,n,m,&
+!!$            X,w%f,w%hf,eval_Hf, &
+!!$            w%d, w%y, w%y_sharp,  &
+!!$            params,options,inform)
+!!$!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!!$!       inform%h_eval = inform%h_eval + 1
+!!$       if (hfstatus > 0) goto 4030
+!!$    case (9)
+!!$       ! First, check if we need to switch methods
+!!$       if (w%use_second_derivatives) then 
+!!$          if (normJf > w%normJFold) then 
+!!$             ! switch to Gauss-Newton             
+!!$             if (options%print_level .ge. 3) write(options%out,3120) 
+!!$             w%use_second_derivatives = .false.
+!!$          end if
+!!$       else
+!!$          FunctionValue = 0.5 * (w%normF**2)
+!!$          if ( normJf/FunctionValue < w%hybrid_tol ) then 
+!!$             w%hybrid_count = w%hybrid_count + 1
+!!$             if (w%hybrid_count == options%hybrid_switch_its) then
+!!$                ! use (Quasi-)Newton
+!!$                if (options%print_level .ge. 3) write(options%out,3130) 
+!!$                w%use_second_derivatives = .true.
+!!$                w%hybrid_count = 0
+!!$             end if
+!!$          else 
+!!$             w%hybrid_count = 0
+!!$          end if
+!!$       end if
+!!$
+!!$       if (w%use_second_derivatives) then 
+!!$          call apply_second_order_info(hfstatus,n,m, &
+!!$               X,w%f,w%hf,eval_Hf, &
+!!$               w%d, w%y, w%y_sharp,  &
+!!$               params,options,inform)
+!!$!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+!!$ !         inform%h_eval = inform%h_eval + 1
+!!$          if (hfstatus > 0) goto 4030
+!!$       else 
+!!$          w%hf(1:n**2) = zero
+!!$       end if
+!!$    end select
+!!$
+!!$    ! update the stats 
+!!$    inform%obj = 0.5*(w%normF**2)
+!!$    inform%norm_g = normJF
+!!$    inform%scaled_g = normJf/w%normF
+!!$    if (options%output_progress_vectors) then
+!!$       w%resvec (w%iter + 1) = inform%obj
+!!$       w%gradvec(w%iter + 1) = inform%norm_g
+!!$    end if
+!!$    
+!!$    if ( (options%model == 7) .and. (normJF < options%hybrid_switch) ) then
+!!$       w%use_second_derivatives = .true.
+!!$    end if
+!!$    
+!!$    if (options%print_level >=3) write(options%out,3010) inform%obj
+!!$    if (options%print_level >=3) write(options%out,3060) normJF/w%normF
+!!$
+!!$    !++++++++++++++++++!
+!!$    ! Test convergence !
+!!$    !++++++++++++++++++!
+!!$    call test_convergence(w%normF,normJF,w%normF0,w%normJF0,options,inform)
+!!$    if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
+!!$    if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
+!!$
+!!$    if (options%print_level > 2 ) write(options%out,3100) rho
+!!$
+!!$! Non-executable statements
+!!$
+!!$! print level > 0
+!!$
+!!$!1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+!!$
+!!$! print level > 1
+!!$
+!!$! print level > 2
+!!$3000 FORMAT(/,'* Running RAL_NLLS *')
+!!$3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
+!!$3030 FORMAT('== Starting iteration ',i0,' ==')
+!!$3060 FORMAT('||J''f||/||f|| = ',ES12.4)
+!!$
+!!$!3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
+!!$3100 FORMAT('Step was successful -- rho =', ES12.4)
+!!$3110 FORMAT('Initial trust region radius taken as ', ES12.4)
+!!$3120 FORMAT('** Switching to Gauss-Newton **')
+!!$3130 FORMAT('** Switching to (Quasi-)Newton **')
+!!$! error returns
+!!$4000 continue
+!!$    ! generic end of algorithm
+!!$        ! all (final) exits should pass through here...
+!!$    if (options%output_progress_vectors) then
+!!$       if(.not. allocated(inform%resvec)) then 
+!!$          allocate(inform%resvec(w%iter + 1), stat = astatus)
+!!$          if (astatus > 0) then
+!!$             inform%status = -9999
+!!$             return
+!!$          end if
+!!$          inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
+!!$       end if
+!!$       if(.not. allocated(inform%gradvec)) then 
+!!$          allocate(inform%gradvec(w%iter + 1), stat = astatus)
+!!$          if (astatus > 0) then
+!!$             inform%status = -9999
+!!$             return
+!!$          end if
+!!$          inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
+!!$       end if
+!!$    end if
+!!$
+!!$    return
+!!$
+!!$4010 continue
+!!$    ! Error in eval_J
+!!$    if (options%print_level > 0) then
+!!$       write(options%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
+!!$    end if
+!!$    inform%status = -2
+!!$    goto 4000
+!!$
+!!$4020 continue
+!!$    ! Error in eval_J
+!!$    if (options%print_level > 0) then
+!!$       write(options%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
+!!$    end if
+!!$    inform%status = -2
+!!$    goto 4000
+!!$
+!!$4030 continue
+!!$    ! Error in eval_HF
+!!$    if (options%print_level > 0) then
+!!$       write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
+!!$    end if
+!!$    inform%status = -2
+!!$    goto 4000
+!!$
+!!$4040 continue 
+!!$    ! unsupported choice of model
+!!$    if (options%print_level > 0) then
+!!$       write(options%error,'(a,i0,a)') 'Error: the choice of options%model = ', &
+!!$            options%model, ' is not supported'
+!!$    end if
+!!$    inform%status = -3
+!!$   goto 4000
+!!$
+!!$4050 continue 
+!!$    ! max tr reductions exceeded
+!!$    if (options%print_level > 0) then
+!!$       write(options%error,'(a)') 'Error: maximum tr reductions reached'
+!!$    end if
+!!$    inform%status = -500
+!!$    goto 4000
+!!$
+!!$4060 continue 
+!!$    ! x makes no progress
+!!$    if (options%print_level > 0) then
+!!$       write(options%error,'(a)') 'No further progress in X'
+!!$    end if
+!!$    inform%status = -700
+!!$    goto 4000
+!!$
+!!$4070 continue
+!!$    ! n > m on entry
+!!$    if (options%print_level > 0) then
+!!$       write(options%error,'(a)') ''
+!!$    end if
+!!$    inform%status = -800
+!!$    goto 4000
+!!$
+!!$! convergence 
+!!$5000 continue
+!!$    ! convegence test satisfied
+!!$    if (options%print_level > 2) then
+!!$       write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
+!!$            w%iter
+!!$    end if
+!!$    goto 4000
+!!$
+!!$5010 continue
+!!$    if (options%print_level > 2) then
+!!$       write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
+!!$            w%iter
+!!$    end if
+!!$    goto 4000
+!!$
+!!$
+!!$!  End of subroutine RAL_NLLS_iterate
+!!$
+!!$  end subroutine nlls_iterate
+!!$
+!!$
+!!$  subroutine ral_nlls_finalize(w,options)
+!!$    
+!!$    type( nlls_workspace ) :: w
+!!$    type( nlls_options ) :: options
+!!$    
+!!$    w%first_call = 1
+!!$
+!!$    call remove_workspaces(w,options)   
+!!$    
+!!$  end subroutine ral_nlls_finalize
 
 
   SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,options,inform,w)
@@ -3148,5 +3151,5 @@ contains
       end subroutine remove_workspace_more_sorensen
       
 
-end module ral_nlls_double
+end module ral_nlls_internal
 
