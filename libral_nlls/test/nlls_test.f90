@@ -50,23 +50,26 @@ program nlls_test
      number_of_models = 7
      allocate(model_to_test(number_of_models))
      model_to_test = (/ 0, 1, 2, 3, 7, 8, 9 /)
+
+     
+     allocate( x(n) )
+
+     ! Get params for the function evaluations
+     allocate(params%x_values(m))
+     allocate(params%y_values(m))
+     
+     call generate_data_example(params%x_values,params%y_values,m)
+     
      
      do nlls_method = 1,4
         do model = 1,number_of_models
-           allocate( x(n) )
-
+     
            X(1) = 1.0 
            X(2) = 2.0
 
            options%print_level = 0
            options%nlls_method = nlls_method
            options%model = model_to_test(model)
-
-           ! Get params for the function evaluations
-           allocate(params%x_values(m))
-           allocate(params%y_values(m))
-
-           call generate_data_example(params%x_values,params%y_values,m)
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H, params,  &
@@ -92,8 +95,6 @@ program nlls_test
               no_errors_main = no_errors_main + 1
            end if
 
-           deallocate(x,params%x_values,params%y_values)
-
         end do
      end do
 
@@ -102,7 +103,6 @@ program nlls_test
      ! test n > m
      n = 100
      m = 3
-
      call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status )
@@ -110,13 +110,31 @@ program nlls_test
         write(*,*) 'Error: wrong error return, n > m'
         no_errors_main = no_errors_main + 1
      end if
+     n = 2
+     m = 67
+     
+    ! test for unsupported method
+     options%nlls_method = 3125
+     call nlls_solve(n, m, X,                   &
+                    eval_F, eval_J, eval_H, params, &
+                    options, status)
+     if ( status%status .ne. -5 ) then 
+        write(*,*) 'Error: unsupported method passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     options%nlls_method = 4
 
      if (no_errors_main == 0) then
         write(*,*) '*** All (main) tests passed successfully! ***'
      else
         write(*,*) 'There were ', no_errors_main,' errors'
      end if
+
+     deallocate(x,params%x_values,params%y_values)
+     
   end if
+
+  
 
   no_errors_helpers = 0
   
