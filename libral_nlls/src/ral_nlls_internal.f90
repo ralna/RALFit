@@ -676,8 +676,8 @@ contains
      select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,options%lls_solver,w%d_gn,slls_status,w%solve_LLS_ws)
-        if ( slls_status .ne. 0 ) goto 1000
+        call solve_LLS(J,f,n,m,options%lls_solver,w%d_gn,inform,options,w%solve_LLS_ws)
+        if ( inform%status .ne. 0 ) goto 1000
      case default
         if (options%print_level> 0) then
            write(options%error,'(a)') 'Error: model not supported in dogleg'
@@ -702,13 +702,8 @@ contains
 1000 continue 
      ! bad error return from solve_LLS
      if ( options%print_level > 0 ) then
-        write(options%out,'(a,a)') 'Unexpected error in solving a linear least squares ', &
-                                   'problem in dogleg'
-        write(options%out,'(a,i0)') 'dgels returned info = ', slls_status
+        write(options%out,'(a,a)') 'Routine called from subroutine dogleg'
      end if
-     inform%status = ERROR%DOGLEG_LLS
-     inform%external_return = slls_status
-     inform%external_name = 'lapack_dgels'
      return
 
 1010 continue
@@ -1163,7 +1158,7 @@ contains
    end subroutine solve_dtrs
 
 
-   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,status,w)
+   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,inform,options,w)
        
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
@@ -1173,11 +1168,13 @@ contains
        REAL(wp), DIMENSION(:), INTENT(IN) :: f
        INTEGER, INTENT(IN) :: method, n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
-       INTEGER, INTENT(OUT) :: status
+       type(NLLS_inform), INTENT(INOUT) :: inform
+       type(NLLS_options), INTENT(IN) :: options
 
        character(1) :: trans = 'N'
        integer :: nrhs = 1, lwork, lda, ldb
        type( solve_LLS_work ) :: w
+       
        
        lda = m
        ldb = max(m,n)
@@ -1186,8 +1183,16 @@ contains
        
        w%Jlls(:) = J(:)
 
-       call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, status)
-       
+       call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
+            inform%external_return)
+       if (inform%external_return .ne. 0 ) then
+          if ( options%print_level > 0 ) then
+             write(options%out,'(a,a)') 'Unexpected error in solving a LLS problem'
+             write(options%out,'(a,i0)') 'dgels returned info = ', inform%external_return
+          end if
+          return
+       end if
+
        d_gn = -w%temp(1:n)
               
      END SUBROUTINE solve_LLS
