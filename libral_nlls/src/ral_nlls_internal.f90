@@ -38,7 +38,6 @@ module ral_nlls_internal
      INTEGER :: DOGLEG_LLS = -700  ! <-- change
      INTEGER :: DOGLEG_BETA = -701 ! <-- change
      ! AINT errors
-     INTEGER :: AINT_SPD_SOLVE = -4 ! <-- change
      INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
      INTEGER :: AINT_EIG = -4 ! <-- change
      INTEGER :: AINT_BETA = -4 ! <-- change
@@ -47,7 +46,6 @@ module ral_nlls_internal
      INTEGER :: MS_MINEIG = -333 ! <- change
      INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
      INTEGER :: MS_NO_ALPHA = -200 ! <- CHANGE
-     INTEGER :: MS_SPD = -500    !<--change
      INTEGER :: MS_SPD_LOOP = -600    !<--change
      ! DTRS errors
      INTEGER :: DTRS_EIG = -333 ! <- CHANGE
