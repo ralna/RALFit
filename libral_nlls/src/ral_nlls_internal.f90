@@ -38,7 +38,6 @@ module ral_nlls_internal
      INTEGER :: DOGLEG_BETA = -701 ! <-- change
      ! AINT errors
      INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
-!     INTEGER :: AINT_EIG = -4 ! <-- change
      INTEGER :: AINT_EIG_IMAG = -21
      INTEGER :: AINT_EIG_ODD = -22
      INTEGER :: AINT_BETA = -4 ! <-- change
@@ -1123,8 +1122,8 @@ contains
      ! Now that we have the unprocessed matrices, we need to get an 
      ! eigendecomposition to make A diagonal
      !
-     call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,eig_status)
-     if (eig_status .ne. 0) goto 1000
+     call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,options,inform)
+     if (inform%status .ne. 0) goto 1000
 
      ! We can now change variables, setting y = Vp, getting
      ! Vd = arg min_(Vx) v^T p + 0.5 * (Vp)^T D (Vp)
@@ -1150,12 +1149,8 @@ contains
      
 1000 continue
      if ( options%print_level > 0 ) then
-        write(options%error,'(a)') 'solve_dtrs: error from lapack routine dsyev(x)'
-        write(options%error,'(a,i0)') 'info = ', eig_status
+        write(options%error,'(a)') 'subroutine called from solve_dtrs'
      end if
-     inform%status = ERROR%DTRS_EIG
-     inform%external_return = eig_status
-     inform%external_name = 'lapack_dsyev'
      return
 
 1010 continue
@@ -1567,21 +1562,20 @@ contains
         
       end subroutine outer_product
 
-      subroutine all_eig_symm(A,n,ew,ev,w,status)
+      subroutine all_eig_symm(A,n,ew,ev,w,options,inform)
         ! calculate all the eigenvalues of A (symmetric)
 
         real(wp), intent(in) :: A(:,:)
         integer, intent(in) :: n
         real(wp), intent(out) :: ew(:), ev(:,:)
         type( all_eig_symm_work ) :: w
-        integer, intent(out) :: status
+        type( nlls_options), intent(in) :: options
+        type( nlls_inform ), intent(inout) :: inform
 
         real(wp), allocatable :: work
         real(wp) :: tol
         integer :: lwork
         
-        status = 0 
-
         ! copy the matrix A into the eigenvector array
         ev(1:n,1:n) = A(1:n,1:n)
         
@@ -1592,7 +1586,16 @@ contains
              'U', & ! upper triangle of A
              n, ev, n, & ! data about A
              ew, w%work, lwork, & 
-             status)
+             inform%external_return)
+        if (inform%external_return .ne. 0) then
+           inform%status = ERROR%FROM_EXTERNAL
+           inform%external_name = 'lapack_dsyev'
+           if ( options%print_level > 0 ) then
+              write(options%out,'(a,a)') 'Unexpected error in solving an eigenproblem'
+              write(options%out,'(a,i0)') 'dsyev returned info = ', inform%external_return
+           end if
+           return
+        end if
         
       end subroutine all_eig_symm
 

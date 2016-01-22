@@ -178,8 +178,13 @@ program nlls_test
      call solve_dtrs(x,y,z,n,m,alpha,w,& 
           work%calculate_step_ws%solve_dtrs_ws, &
           options,status)
-
-     if ( abs(dot_product(w,w) - alpha**2) > 1e-12) then
+     
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'DTRS test failed, status = ', status%status
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
+     if ( abs(dot_product(w,w) - alpha**2) > 1e-12 ) then
         write(*,*) 'dtrs failed'
         write(*,*) 'Delta = ', alpha, '||d|| = ', dot_product(w,w)
         no_errors_helpers = no_errors_helpers + 1
