@@ -35,7 +35,6 @@ module ral_nlls_internal
      INTEGER :: N_GT_M = -800  ! <-- change
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -3  ! <-- change
-     INTEGER :: DOGLEG_LLS = -700  ! <-- change
      INTEGER :: DOGLEG_BETA = -701 ! <-- change
      ! AINT errors
      INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
