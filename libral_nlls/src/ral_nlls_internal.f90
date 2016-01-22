@@ -37,7 +37,7 @@ module ral_nlls_internal
      INTEGER :: DOGLEG_MODEL = -3  ! <-- change
      INTEGER :: DOGLEG_BETA = -701 ! <-- change
      ! AINT errors
-     INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
+!     INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
      INTEGER :: AINT_EIG_IMAG = -21
      INTEGER :: AINT_EIG_ODD = -22
      INTEGER :: AINT_BETA = -4 ! <-- change
@@ -766,8 +766,8 @@ contains
         call solve_spd(w%A,-w%v,w%LtL,w%p0,n,options,inform)
         if (inform%status .ne. 0) goto 1000
      case default
-       call solve_general(w%A,-w%v,w%p0,n,solve_status,w%solve_general_ws)
-       if (solve_status .ne. 0) goto 1020
+       call solve_general(w%A,-w%v,w%p0,n,options,inform,w%solve_general_ws)
+       if (inform%status .ne. 0) goto 1000
      end select
           
      call matrix_norm(w%p0,w%B,norm_p0)
@@ -803,8 +803,8 @@ contains
            call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,options,inform)
            if (inform%status .ne. 0) goto 1000
         case default
-          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_general_ws)
-          if (solve_status .ne. 0) goto 1020
+          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,options,inform,w%solve_general_ws)
+          if (inform%status .ne. 0) goto 1000
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
         ! (I think..) and inside...fix
@@ -826,8 +826,8 @@ contains
            call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,options,inform)
            if (inform%status .ne. 0) goto 1000
         case default
-           call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_general_ws)
-           if (solve_status .ne. 0) goto 1020
+           call solve_general(w%A + lam*w%B,-w%v,w%p1,n,options,inform,w%solve_general_ws)
+           if (inform%status .ne. 0) goto 1000
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
         ! and inside...fix
@@ -851,18 +851,7 @@ contains
         write(options%error,'(a)') 'Routine called from subroutine AINT_TR'
      end if
      return
-     
-1020 continue
-     ! bad error return from solve_general
-     if ( options%print_level >= 0 ) then 
-        write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
-        write(options%error,'(a,i0)') 'dgexv returned info = ', solve_status
-     end if
-     inform%status = ERROR%AINT_GENERAL_SOLVE
-     inform%external_return = solve_status
-     inform%external_name = 'lapack_dgexv'
-     return
-     
+         
 1030 continue
      ! bad error return from max_eig
      if ( options%print_level >= 0 ) then 
@@ -1489,20 +1478,30 @@ contains
         
       end subroutine solve_spd
 
-      subroutine solve_general(A,b,x,n,status,w)
+      subroutine solve_general(A,b,x,n,options,inform,w)
         REAL(wp), intent(in) :: A(:,:)
         REAL(wp), intent(in) :: b(:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
-        integer, intent(out) :: status
+        type( nlls_options ), intent(in) :: options
+        type( nlls_inform ), intent(inout) :: inform
         type( solve_general_work ) :: w
         
         ! A wrapper for the lapack subroutine dposv.f
         ! NOTE: A would be destroyed
         w%A(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dgesv( n, 1, w%A, n, w%ipiv, x, n, status)
-        
+        call dgesv( n, 1, w%A, n, w%ipiv, x, n, inform%external_return)
+        if (inform%external_return .ne. 0 ) then
+           inform%status = ERROR%FROM_EXTERNAL
+           inform%external_name = 'lapack_dgesv'
+           if ( options%print_level > 0 ) then
+              write(options%out,'(a,a)') 'Unexpected error in solving genral matrix system'
+              write(options%out,'(a,i0)') 'dgesv returned info = ', inform%external_return
+           end if
+           return
+        end if
+                
       end subroutine solve_general
 
       subroutine matrix_norm(x,A,norm_A_x)

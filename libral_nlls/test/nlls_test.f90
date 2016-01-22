@@ -319,8 +319,9 @@ program nlls_test
      z = (/ 1.0, 1.0 /)
      y = (/ 6.0, 3.0 /)
 
-     call solve_general(A,y,x,n,info,work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
-     if (info .ne. 0) then
+     call solve_general(A,y,x,n,options,status,& 
+          work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
+     if (status%status .ne. 0) then
         write(*,*) 'Error: info = ', info, ' returned from solve_general'
         no_errors_helpers = no_errors_helpers + 1
      else if (norm2(x-z) > 1e-12) then
