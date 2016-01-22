@@ -118,10 +118,11 @@ program nlls_test
      call nlls_solve(n, m, X,                   &
                     eval_F, eval_J, eval_H, params, &
                     options, status)
-     if ( status%status .ne. -5 ) then 
+     if ( status%status .ne. ERROR%UNSUPPORTED_METHOD ) then 
         write(*,*) 'Error: unsupported method passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
+     status%status = 0
      options%nlls_method = 4
 
      if (no_errors_main == 0) then
