@@ -353,8 +353,8 @@ contains
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
-       call update_trust_region_radius(rho,options,w%Delta)
-       
+       call update_trust_region_radius(rho,options,inform,w%Delta)       
+       if (inform%status .ne. 0) goto 4000
        !+++++++++++++++++++++++!
        ! Add tests for model=8 !
        !+++++++++++++++++++++++!

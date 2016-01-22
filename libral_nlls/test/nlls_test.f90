@@ -125,6 +125,18 @@ program nlls_test
      status%status = 0
      options%nlls_method = 4
 
+     ! test for unsupported tr strategy
+     options%tr_update_strategy = 323
+     call nlls_solve(n, m, X,                   &
+                    eval_F, eval_J, eval_H, params, &
+                    options, status)
+     if ( status%status .ne. ERROR%BAD_TR_STRATEGY ) then 
+        write(*,*) 'Error: unsupported TR strategy passedd and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+     options%tr_update_strategy = 1
+     
      if (no_errors_main == 0) then
         write(*,*) '*** All (main) tests passed successfully! ***'
      else

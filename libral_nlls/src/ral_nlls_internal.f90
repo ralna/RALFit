@@ -33,6 +33,7 @@ module ral_nlls_internal
      INTEGER :: MAX_TR_REDUCTIONS = -500
      INTEGER :: X_NO_PROGRESS = -700 ! <-- change
      INTEGER :: N_GT_M = -800  ! <-- change
+     INTEGER :: BAD_TR_STRATEGY = -900
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -3  ! <-- change
      INTEGER :: DOGLEG_BETA = -701 ! <-- change
@@ -237,6 +238,11 @@ module ral_nlls_internal
      REAL ( KIND = wp ) :: radius_increase = two
      REAL ( KIND = wp ) :: radius_reduce = half
      REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
+
+! Trust region update strategy
+!    1 - usual step function
+!    2 - continuous method of Hans Bruun Nielsen (IMM-REP-1999-05)
+     integer :: tr_update_strategy = 1
        
 !   the smallest value the objective function may take before the problem
 !    is marked as unbounded
@@ -1317,32 +1323,42 @@ contains
 
      end subroutine apply_second_order_info
 
-     subroutine update_trust_region_radius(rho,options,Delta)
+     subroutine update_trust_region_radius(rho,options,inform,Delta)
        
        real(wp), intent(inout) :: rho ! ratio of actual to predicted reduction
        type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(inout) :: inform
        real(wp), intent(inout) :: Delta ! trust region size
        
-       if (rho < options%eta_successful) then
-          ! unsuccessful....reduce Delta
-          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
-          if (options%print_level > 2) write(options%out,3010) Delta     
-       else if (rho < options%eta_very_successful) then 
-          ! doing ok...retain status quo
-          if (options%print_level > 2) write(options%out,3020) Delta 
-       else if (rho < options%eta_too_successful ) then
-          ! more than very successful -- increase delta
-          Delta = min(options%maximum_radius, options%radius_increase * Delta )
-          if (options%print_level > 2) write(options%out,3030) Delta
-       else if (rho >= options%eta_too_successful) then
-          ! too successful....accept step, but don't change Delta
-          if (options%print_level > 2) write(options%out,3040) Delta 
-       else
-          ! just incase (NaNs and the like...)
-          if (options%print_level > 2) write(options%out,3010) Delta 
-          Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
-          rho = -one ! set to be negative, so that the logic works....
-       end if 
+       select case(options%tr_update_strategy)
+       case(1)
+          if (rho < options%eta_successful) then
+             ! unsuccessful....reduce Delta
+             Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+             if (options%print_level > 2) write(options%out,3010) Delta     
+          else if (rho < options%eta_very_successful) then 
+             ! doing ok...retain status quo
+             if (options%print_level > 2) write(options%out,3020) Delta 
+          else if (rho < options%eta_too_successful ) then
+             ! more than very successful -- increase delta
+             Delta = min(options%maximum_radius, options%radius_increase * Delta )
+             if (options%print_level > 2) write(options%out,3030) Delta
+          else if (rho >= options%eta_too_successful) then
+             ! too successful....accept step, but don't change Delta
+             if (options%print_level > 2) write(options%out,3040) Delta 
+          else
+             ! just incase (NaNs and the like...)
+             if (options%print_level > 2) write(options%out,3010) Delta 
+             Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+             rho = -one ! set to be negative, so that the logic works....
+          end if
+       case default
+          if (options%print_level > 0) then 
+             write(options%error,'(a)') 'Unsupported trust region update strategy chosen'
+          end if
+          inform%status = ERROR%BAD_TR_STRATEGY
+          return          
+       end select
 
        return
        
