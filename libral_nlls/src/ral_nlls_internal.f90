@@ -47,8 +47,7 @@ module ral_nlls_internal
      INTEGER :: MS_NO_ALPHA = -200 ! <- CHANGE
      INTEGER :: MS_SPD_LOOP = -600    !<--change
      ! DTRS errors
-     INTEGER :: DTRS_EIG = -333 ! <- CHANGE
-     INTEGER :: DTRS_GALAHAD = -777 ! <-- CHANGE
+
   END TYPE NLLS_ERROR
 
   type(NLLS_ERROR) :: ERROR
@@ -1140,7 +1139,16 @@ contains
      call dtrs_initialize( dtrs_options, dtrs_inform ) 
 
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
-     if ( dtrs_inform%status .ne. 0) goto 1010
+     if ( dtrs_inform%status .ne. 0) then
+        inform%external_return = dtrs_inform%status
+        inform%external_name = 'galahad_dtrs'
+        inform%status = ERROR%FROM_EXTERNAL
+        if ( options%print_level > 0 ) then
+           write(options%out,'(a,a)') 'Unexpected error in solve_dtrs'
+           write(options%out,'(a,i0)') 'dtrs returned info = ', inform%external_return
+        end if
+        return
+     end if
 
      ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
@@ -1153,15 +1161,15 @@ contains
      end if
      return
 
-1010 continue
-     if ( options%print_level > 0 ) then
-        write(options%error,'(a)') 'solve_dtrs: error from GALAHAD routine DTRS'
-        write(options%error,'(a,i0)') 'info = ', dtrs_inform%status
-     end if
-     inform%status = ERROR%DTRS_GALAHAD
-     inform%external_return = dtrs_inform%status
-     inform%external_name = 'galahad_dtrs'
-     return
+!!$1010 continue
+!!$     if ( options%print_level > 0 ) then
+!!$        write(options%error,'(a)') 'solve_dtrs: error from GALAHAD routine DTRS'
+!!$        write(options%error,'(a,i0)') 'info = ', dtrs_inform%status
+!!$     end if
+!!$     inform%status = ERROR%DTRS_GALAHAD
+!!$     inform%external_return = dtrs_inform%status
+!!$     inform%external_name = 'galahad_dtrs'
+!!$     return
 
    end subroutine solve_dtrs
 
