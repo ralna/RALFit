@@ -935,8 +935,8 @@ contains
         inform%status = 0
         inform%external_return = 0
         inform%external_name = REPEAT( ' ', 80 )
-        call min_eig_symm(w%A,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
-        if (mineig_status .ne. 0) goto 1060 
+        call min_eig_symm(w%A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws) 
+        if (inform%status .ne. 0) goto 1000
         sigma = -(sigma - options%more_sorensen_shift)
         no_shifts = 1
 100     continue
@@ -1599,13 +1599,13 @@ contains
         
       end subroutine all_eig_symm
 
-      subroutine min_eig_symm(A,n,ew,ev,options,status,w)
+      subroutine min_eig_symm(A,n,ew,ev,options,inform,w)
         ! calculate the leftmost eigenvalue of A
         
         real(wp), intent(in) :: A(:,:)
         integer, intent(in) :: n
         real(wp), intent(out) :: ew, ev(:)
-        integer, intent(out) :: status
+        type( nlls_inform ), intent(inout) :: inform
         type( nlls_options ), INTENT( IN ) :: options
         type( min_eig_symm_work ) :: w
 
@@ -1614,7 +1614,6 @@ contains
 
         tol = 2*dlamch('S')!1e-15
         
-        status = 0
         w%A(1:n,1:n) = A(1:n,1:n) ! copy A, as workspace for dsyev(x)
         ! note that dsyevx (but not dsyev) only destroys the lower (or upper) part of A
         ! so we could possibly reduce memory use here...leaving for 
@@ -1627,12 +1626,18 @@ contains
                 'U', & ! upper triangle of A
                 n, w%A, n, & ! data about A
                 w%ew, w%work, lwork, & 
-                status)
-           
+                inform%external_return)
+           if (inform%external_return .ne. 0) then
+              inform%status = ERROR%FROM_EXTERNAL
+              inform%external_name = 'lapack_dsyev'
+              if ( options%print_level > 0 ) then
+                 write(options%out,'(a,a)') 'Unexpected error in an eigenvalue calculation'
+                 write(options%out,'(a,i0)') 'dsyev returned info = ', inform%external_return
+              end if
+           end if
            minindex = minloc(w%ew)
            ew = w%ew(minindex(1))
            ev = w%A(1:n,minindex(1))
-           
         else
            ! call dsyevx --> selected eigs of a symmetric matrix
            call dsyevx( 'V',& ! get both ew's and ev's
@@ -1647,14 +1652,19 @@ contains
                 n, & ! ldz (the eigenvector array)
                 w%work, lwork, w%iwork, &  ! workspace
                 w%ifail, & ! array containing indicies of non-converging ews
-                status)
-
+                inform%external_return)
+           if (inform%external_return .ne. 0) then
+              inform%status = ERROR%FROM_EXTERNAL
+              inform%external_name = 'lapack_dsyevx'
+              if ( options%print_level > 0 ) then
+                 write(options%out,'(a,a)') 'Unexpected error in an eigenvalue calculation'
+                 write(options%out,'(a,i0)') 'dsyevx returned info = ', inform%external_return
+              end if
+           end if
         end if
            
-        ! let the calling subroutine handle the errors
-        
         return
-                      
+        
       end subroutine min_eig_symm
 
       subroutine max_eig(A,B,n,ew,ev,status,nullevs,options,w)

@@ -435,11 +435,11 @@ program nlls_test
           0.0,  0.0, 4.0, 2.0, & 
           0.0,  0.0, 2.0, 4.0/), shape(A))
 
-        call min_eig_symm(A,n,alpha,x,options,info, & 
+        call min_eig_symm(A,n,alpha,x,options,status, & 
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
 
 
-        if ( (abs( alpha + 6.0 ) > 1e-12).or.(info .ne. 0) ) then
+        if ( (abs( alpha + 6.0 ) > 1e-12).or.(status%status .ne. 0) ) then
            write(*,*) 'error :: max_eig test failed -- wrong eig found'
            no_errors_helpers = no_errors_helpers + 1 
         elseif ( norm2(matmul(A,x) - alpha*x) > 1e-12 ) then
