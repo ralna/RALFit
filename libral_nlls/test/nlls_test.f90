@@ -286,9 +286,9 @@ program nlls_test
      z = (/ 1.0, 1.0 /)
      y = (/ 5.0, 3.0 /)
 
-     call solve_spd(A,y,B,x,n,info)
-     if (info .ne. 0) then
-        write(*,*) 'Error: info = ', info, ' returned from solve_spd'
+     call solve_spd(A,y,B,x,n,options,status)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: info = ', status%status, ' returned from solve_spd'
         no_errors_helpers = no_errors_helpers + 1
      else if (norm2(x-z) > 1e-12) then
         write(*,*) 'Error: incorrect value returned from solve_spd'
@@ -315,10 +315,10 @@ program nlls_test
 
      call solve_general(A,y,x,n,info,work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
      if (info .ne. 0) then
-        write(*,*) 'Error: info = ', info, ' returned from solve_spd'
+        write(*,*) 'Error: info = ', info, ' returned from solve_general'
         no_errors_helpers = no_errors_helpers + 1
      else if (norm2(x-z) > 1e-12) then
-        write(*,*) 'Error: incorrect value returned from solve_spd'
+        write(*,*) 'Error: incorrect value returned from solve_general'
         no_errors_helpers = no_errors_helpers + 1
      end if
 

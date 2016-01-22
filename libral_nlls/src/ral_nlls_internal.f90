@@ -45,6 +45,7 @@ module ral_nlls_internal
      ! More-Sorensen errors
      INTEGER :: MS_MAXITS = -100 ! <-- change
      INTEGER :: MS_MINEIG = -333 ! <- change
+     INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
      INTEGER :: MS_NO_ALPHA = -200 ! <- CHANGE
      INTEGER :: MS_SPD = -500    !<--change
      INTEGER :: MS_SPD_LOOP = -600    !<--change
@@ -766,8 +767,8 @@ contains
      
      select case (options%model)
      case (1,3)
-        call solve_spd(w%A,-w%v,w%LtL,w%p0,n,solve_status)!,w%solve_spd_ws)
-        if (solve_status .ne. 0) goto 1010
+        call solve_spd(w%A,-w%v,w%LtL,w%p0,n,options,inform)
+        if (inform%status .ne. 0) goto 1000
      case default
        call solve_general(w%A,-w%v,w%p0,n,solve_status,w%solve_general_ws)
        if (solve_status .ne. 0) goto 1020
@@ -803,8 +804,8 @@ contains
         ! solve Hq + g = 0 for q
         select case (options%model) 
         case (1,3)
-           call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,solve_status)!,w%solve_spd_ws)
-           if (solve_status .ne. 0) goto 1010
+           call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,options,inform)
+           if (inform%status .ne. 0) goto 1000
         case default
           call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_general_ws)
           if (solve_status .ne. 0) goto 1020
@@ -826,8 +827,8 @@ contains
      else 
         select case (options%model)
         case (1,3)
-           call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,solve_status)!,w%solve_spd_ws)
-           if (solve_status .ne. 0) goto 1010
+           call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,options,inform)
+           if (inform%status .ne. 0) goto 1000
         case default
            call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_general_ws)
            if (solve_status .ne. 0) goto 1020
@@ -848,15 +849,11 @@ contains
 
      return
 
-1010 continue 
-     ! bad error return from solve_spd
+1000 continue 
+     ! bad error return from external subroutine
      if ( options%print_level >= 0 ) then 
-        write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
-        write(options%error,'(a,i0)') 'dposv returned info = ', solve_status
+        write(options%error,'(a)') 'Routine called from subroutine AINT_TR'
      end if
-     inform%status = ERROR%AINT_SPD_SOLVE
-     inform%external_return = solve_status
-     inform%external_name = 'lapack_dposv'
      return
      
 1020 continue
@@ -932,18 +929,27 @@ contains
      call mult_Jt(J,n,m,f,w%v)
           
      ! d = -A\v
-     call solve_spd(w%A,-w%v,w%LtL,d,n,test_pd)!,w%solve_spd_ws)
-     if (test_pd .eq. 0) then
+     call solve_spd(w%A,-w%v,w%LtL,d,n,options,inform)
+     if (inform%status .eq. 0) then
         ! A is symmetric positive definite....
         sigma = zero
      else
+        ! reset the error calls -- handled in the code....
+        inform%status = 0
+        inform%external_return = 0
+        inform%external_name = REPEAT( ' ', 80 )
         call min_eig_symm(w%A,n,sigma,w%y1,options,mineig_status,w%min_eig_symm_ws) 
         if (mineig_status .ne. 0) goto 1060 
         sigma = -(sigma - options%more_sorensen_shift)
         no_shifts = 1
-100     call shift_matrix(w%A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
-        if ( test_pd .ne. 0 ) then
+100     continue
+        call shift_matrix(w%A,sigma,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,options,inform)
+        if ( inform%status .ne. 0 ) then
+           ! reset the error calls -- handled in the code....
+           inform%status = 0
+           inform%external_return = 0
+           inform%external_name = REPEAT( ' ', 80 )
            no_shifts = no_shifts + 1
            if ( no_shifts == 10 ) goto 3000
            sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
@@ -984,8 +990,8 @@ contains
         sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
         
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,test_pd)
-        if (test_pd .ne. 0)  goto 2010 ! shouldn't happen...
+        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,options,inform)
+        if (inform%status .ne. 0)  goto 1000 ! shouldn't happen...
         
         nd = norm2(d)
 
@@ -993,6 +999,13 @@ contains
      
      goto 1040
      
+1000 continue
+     ! bad error return from solve_LLS
+     if ( options%print_level > 0 ) then
+        write(options%out,'(a,a)') 'Routine called from subroutine more_sorensen'
+     end if
+     return
+
 1020 continue
      ! Converged!
      if ( options%print_level >= 3 ) then
@@ -1036,28 +1049,34 @@ contains
      
 2000 format('Non-spd system in more_sorensen. Increasing sigma to ',es12.4)
 
-3000 continue 
-     ! bad error return from solve_spd
-     if ( options%print_level > 0 ) then
-        write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
-        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
+3000 continue
+     ! too many shifts
+     if ( options%print_level > 0 ) then 
+        write(options%out,'(a)') 'Too many shifts in More-Sorensen'
+        inform%status = ERROR%MS_TOO_MANY_SHIFTS
      end if
-     inform%status = ERROR%MS_SPD
-     inform%external_return = test_pd
-     inform%external_name = 'lapack_dposv'
-     return
+!!$3000 continue 
+!!$     ! bad error return from solve_spd
+!!$     if ( options%print_level > 0 ) then
+!!$        write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
+!!$        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
+!!$     end if
+!!$     inform%status = ERROR%MS_SPD
+!!$     inform%external_return = test_pd
+!!$     inform%external_name = 'lapack_dposv'
+!!$     return
      
-2010 continue 
-     ! bad error return from solve_spd
-     if ( options%print_level > 0 ) then
-        write(options%out,'(a,a)') 'Unexpected error in solving a linear system ', &
-                                   'in More_sorensen loop'
-        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
-     end if
-     inform%status = ERROR%MS_SPD_LOOP
-     inform%external_return = test_pd
-     inform%external_name = 'lapack_dposv'
-     return
+!!$2010 continue 
+!!$     ! bad error return from solve_spd
+!!$     if ( options%print_level > 0 ) then
+!!$        write(options%out,'(a,a)') 'Unexpected error in solving a linear system ', &
+!!$                                   'in More_sorensen loop'
+!!$        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
+!!$     end if
+!!$     inform%status = ERROR%MS_SPD_LOOP
+!!$     inform%external_return = test_pd
+!!$     inform%external_name = 'lapack_dposv'
+!!$     return
      
      
    end subroutine more_sorensen
@@ -1186,6 +1205,8 @@ contains
        call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
             inform%external_return)
        if (inform%external_return .ne. 0 ) then
+          inform%status = ERROR%FROM_EXTERNAL
+          inform%external_name = 'lapack_dgels'
           if ( options%print_level > 0 ) then
              write(options%out,'(a,a)') 'Unexpected error in solving a LLS problem'
              write(options%out,'(a,i0)') 'dgels returned info = ', inform%external_return
@@ -1445,21 +1466,30 @@ contains
 
       end subroutine mult_Jt
 
-      subroutine solve_spd(A,b,LtL,x,n,status)
+      subroutine solve_spd(A,b,LtL,x,n,options,inform)
         REAL(wp), intent(in) :: A(:,:)
         REAL(wp), intent(in) :: b(:)
         REAL(wp), intent(out) :: LtL(:,:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
-        integer, intent(out) :: status
+        type( nlls_inform), intent(inout) :: inform
+        type( nlls_options), intent(in) :: options
 
         ! A wrapper for the lapack subroutine dposv.f
         ! get workspace for the factors....
-        status = 0
         LtL(1:n,1:n) = A(1:n,1:n)
         x(1:n) = b(1:n)
-        call dposv('L', n, 1, LtL, n, x, n, status)
-           
+        call dposv('L', n, 1, LtL, n, x, n, inform%external_return)
+        if (inform%external_return .ne. 0) then
+           inform%status = ERROR%FROM_EXTERNAL
+           inform%external_name = 'lapack_dposv'
+           if ( options%print_level > 0 ) then
+              write(options%out,'(a,a)') 'Unexpected error in solving a LLS problem'
+              write(options%out,'(a,i0)') 'dposv returned info = ', inform%external_return
+           end if
+           return
+        end if
+        
       end subroutine solve_spd
 
       subroutine solve_general(A,b,x,n,status,w)
