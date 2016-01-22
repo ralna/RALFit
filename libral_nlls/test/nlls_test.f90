@@ -292,7 +292,7 @@ program nlls_test
      z = (/ 1.0, 1.0 /)
      y = (/ 5.0, 3.0 /)
 
-     call solve_spd(A,y,B,x,n,options,status)
+     call solve_spd(A,y,B,x,n,status)
      if (status%status .ne. 0) then
         write(*,*) 'Error: info = ', status%status, ' returned from solve_spd'
         no_errors_helpers = no_errors_helpers + 1
@@ -319,7 +319,7 @@ program nlls_test
      z = (/ 1.0, 1.0 /)
      y = (/ 6.0, 3.0 /)
 
-     call solve_general(A,y,x,n,options,status,& 
+     call solve_general(A,y,x,n,status,& 
           work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: info = ', info, ' returned from solve_general'

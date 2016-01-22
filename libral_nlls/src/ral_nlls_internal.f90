@@ -673,7 +673,7 @@ contains
      select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,options%lls_solver,w%d_gn,inform,options,w%solve_LLS_ws)
+        call solve_LLS(J,f,n,m,options%lls_solver,w%d_gn,inform,w%solve_LLS_ws)
         if ( inform%status .ne. 0 ) goto 1000
      case default
         if (options%print_level> 0) then
@@ -763,10 +763,10 @@ contains
      
      select case (options%model)
      case (1,3)
-        call solve_spd(w%A,-w%v,w%LtL,w%p0,n,options,inform)
+        call solve_spd(w%A,-w%v,w%LtL,w%p0,n,inform)
         if (inform%status .ne. 0) goto 1000
      case default
-        call solve_general(w%A,-w%v,w%p0,n,options,inform,w%solve_general_ws)
+        call solve_general(w%A,-w%v,w%p0,n,inform,w%solve_general_ws)
         if (inform%status .ne. 0) goto 1000
      end select
           
@@ -800,10 +800,10 @@ contains
         ! solve Hq + g = 0 for q
         select case (options%model) 
         case (1,3)
-           call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,options,inform)
+           call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,inform)
            if (inform%status .ne. 0) goto 1000
         case default
-          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,options,inform,w%solve_general_ws)
+          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,inform,w%solve_general_ws)
           if (inform%status .ne. 0) goto 1000
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
@@ -823,10 +823,10 @@ contains
      else 
         select case (options%model)
         case (1,3)
-           call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,options,inform)
+           call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,inform)
            if (inform%status .ne. 0) goto 1000
         case default
-           call solve_general(w%A + lam*w%B,-w%v,w%p1,n,options,inform,w%solve_general_ws)
+           call solve_general(w%A + lam*w%B,-w%v,w%p1,n,inform,w%solve_general_ws)
            if (inform%status .ne. 0) goto 1000
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
@@ -908,7 +908,7 @@ contains
      call mult_Jt(J,n,m,f,w%v)
           
      ! d = -A\v
-     call solve_spd(w%A,-w%v,w%LtL,d,n,options,inform)
+     call solve_spd(w%A,-w%v,w%LtL,d,n,inform)
      if (inform%status .eq. 0) then
         ! A is symmetric positive definite....
         sigma = zero
@@ -923,7 +923,7 @@ contains
         no_shifts = 1
 100     continue
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,options,inform)
+        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
         if ( inform%status .ne. 0 ) then
            ! reset the error calls -- handled in the code....
            inform%status = 0
@@ -969,7 +969,7 @@ contains
         sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
         
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,options,inform)
+        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
         if (inform%status .ne. 0) goto 1000
         ! ^^^ this shouldn't happen
         
@@ -1084,7 +1084,7 @@ contains
      ! Now that we have the unprocessed matrices, we need to get an 
      ! eigendecomposition to make A diagonal
      !
-     call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,options,inform)
+     call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,inform)
      if (inform%status .ne. 0) goto 1000
 
      ! We can now change variables, setting y = Vp, getting
@@ -1123,7 +1123,7 @@ contains
    end subroutine solve_dtrs
 
 
-   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,inform,options,w)
+   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,inform,w)
        
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
@@ -1134,7 +1134,6 @@ contains
        INTEGER, INTENT(IN) :: method, n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
        type(NLLS_inform), INTENT(INOUT) :: inform
-       type(NLLS_options), INTENT(IN) :: options
 
        character(1) :: trans = 'N'
        integer :: nrhs = 1, lwork, lda, ldb
@@ -1408,14 +1407,13 @@ contains
 
       end subroutine mult_Jt
 
-      subroutine solve_spd(A,b,LtL,x,n,options,inform)
+      subroutine solve_spd(A,b,LtL,x,n,inform)
         REAL(wp), intent(in) :: A(:,:)
         REAL(wp), intent(in) :: b(:)
         REAL(wp), intent(out) :: LtL(:,:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
         type( nlls_inform), intent(inout) :: inform
-        type( nlls_options), intent(in) :: options
 
         ! A wrapper for the lapack subroutine dposv.f
         ! get workspace for the factors....
@@ -1425,21 +1423,16 @@ contains
         if (inform%external_return .ne. 0) then
            inform%status = ERROR%FROM_EXTERNAL
            inform%external_name = 'lapack_dposv'
-           if ( options%print_level > 0 ) then
-              write(options%out,'(a,a)') 'Unexpected error in solving a LLS problem'
-              write(options%out,'(a,i0)') 'dposv returned info = ', inform%external_return
-           end if
            return
         end if
         
       end subroutine solve_spd
 
-      subroutine solve_general(A,b,x,n,options,inform,w)
+      subroutine solve_general(A,b,x,n,inform,w)
         REAL(wp), intent(in) :: A(:,:)
         REAL(wp), intent(in) :: b(:)
         REAL(wp), intent(out) :: x(:)
         integer, intent(in) :: n
-        type( nlls_options ), intent(in) :: options
         type( nlls_inform ), intent(inout) :: inform
         type( solve_general_work ) :: w
         
@@ -1521,14 +1514,13 @@ contains
         
       end subroutine outer_product
 
-      subroutine all_eig_symm(A,n,ew,ev,w,options,inform)
+      subroutine all_eig_symm(A,n,ew,ev,w,inform)
         ! calculate all the eigenvalues of A (symmetric)
 
         real(wp), intent(in) :: A(:,:)
         integer, intent(in) :: n
         real(wp), intent(out) :: ew(:), ev(:,:)
         type( all_eig_symm_work ) :: w
-        type( nlls_options), intent(in) :: options
         type( nlls_inform ), intent(inout) :: inform
 
         real(wp), allocatable :: work
