@@ -212,10 +212,10 @@ contains
        call eval_F(fstatus, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
        if (fstatus > 0) goto 4020
+
        call eval_J(jstatus, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
        if (jstatus > 0) goto 4010
-
        if (options%relative_tr_radius == 1) then 
           ! first, let's get diag(J^TJ)
           Jmax = 0.0
@@ -229,7 +229,7 @@ contains
        else
           w%Delta = options%initial_radius
        end if
-              
+
        if ( calculate_svd_J ) then
           call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
           if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
@@ -261,7 +261,7 @@ contains
           w%resvec(1) = inform%obj
           w%gradvec(1) = inform%norm_g
        end if
-       
+
        select case (options%model)
        case (1) ! first-order
           w%hf(1:n**2) = zero
@@ -301,7 +301,6 @@ contains
        
        
     end if
-
 
     w%iter = w%iter + 1
     if ( options%print_level >= 3 )  write( options%out , 3030 ) w%iter
@@ -615,7 +614,7 @@ contains
     if (options%print_level > 0) then
        write(options%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
     end if
-    inform%status = -2
+    inform%status = ERROR%EVALUATION
     goto 4000
 
 4020 continue
@@ -623,7 +622,7 @@ contains
     if (options%print_level > 0) then
        write(options%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
     end if
-    inform%status = -2
+    inform%status = ERROR%EVALUATION
     goto 4000
 
 4030 continue
@@ -631,7 +630,7 @@ contains
     if (options%print_level > 0) then
        write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
     end if
-    inform%status = -2
+    inform%status = ERROR%EVALUATION
     goto 4000
 
 4040 continue 
@@ -640,7 +639,7 @@ contains
        write(options%error,'(a,i0,a)') 'Error: the choice of options%model = ', &
             options%model, ' is not supported'
     end if
-    inform%status = -3
+    inform%status = ERROR%UNSUPPORTED_MODEL
    goto 4000
 
 4050 continue 
@@ -648,7 +647,7 @@ contains
     if (options%print_level > 0) then
        write(options%error,'(a)') 'Error: maximum tr reductions reached'
     end if
-    inform%status = -500
+    inform%status = ERROR%MAX_TR_REDUCTIONS
     goto 4000
 
 4060 continue 
@@ -656,7 +655,7 @@ contains
     if (options%print_level > 0) then
        write(options%error,'(a)') 'No further progress in X'
     end if
-    inform%status = -700
+    inform%status = ERROR%X_NO_PROGRESS
     goto 4000
 
 4070 continue
@@ -664,7 +663,7 @@ contains
     if (options%print_level > 0) then
        write(options%error,'(a)') ''
     end if
-    inform%status = -800
+    inform%status = ERROR%N_GT_M
     goto 4000
 
 ! convergence 

@@ -23,7 +23,38 @@ module ral_nlls_internal
   real (kind = wp), parameter :: half = 0.5
   real (kind = wp), parameter :: sixteenth = 0.0625
 
-  
+
+  TYPE NLLS_ERROR
+     INTEGER :: MAXITS = -1
+     INTEGER :: EVALUATION = -2
+     INTEGER :: UNSUPPORTED_MODEL = -3
+     INTEGER :: FROM_EXTERNAL = -4
+     INTEGER :: UNSUPPORTED_METHOD = -5
+     INTEGER :: MAX_TR_REDUCTIONS = -500
+     INTEGER :: X_NO_PROGRESS = -700 ! <-- change
+     INTEGER :: N_GT_M = -800  ! <-- change
+     ! dogleg errors
+     INTEGER :: DOGLEG_MODEL = -3  ! <-- change
+     INTEGER :: DOGLEG_LLS = -700  ! <-- change
+     INTEGER :: DOGLEG_BETA = -701 ! <-- change
+     ! AINT errors
+     INTEGER :: AINT_SPD_SOLVE = -4 ! <-- change
+     INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
+     INTEGER :: AINT_EIG = -4 ! <-- change
+     INTEGER :: AINT_BETA = -4 ! <-- change
+     ! More-Sorensen errors
+     INTEGER :: MS_MAXITS = -100 ! <-- change
+     INTEGER :: MS_MINEIG = -333 ! <- change
+     INTEGER :: MS_NO_ALPHA = -200 ! <- CHANGE
+     INTEGER :: MS_SPD = -500    !<--change
+     INTEGER :: MS_SPD_LOOP = -600    !<--change
+     ! DTRS errors
+     INTEGER :: DTRS_EIG = -333 ! <- CHANGE
+     INTEGER :: DTRS_GALAHAD = -777 ! <-- CHANGE
+  END TYPE NLLS_ERROR
+
+  type(NLLS_ERROR) :: ERROR
+
   TYPE, PUBLIC :: NLLS_options
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! P R I N T I N G   C O N T R O L S !!!
@@ -395,6 +426,14 @@ module ral_nlls_internal
      
      REAL ( KIND = wp ) :: scaled_g = HUGE( one ) 
 
+! error returns from external subroutines 
+     
+     INTEGER :: external_return = 0 
+     
+! name of external program that threw and error
+     
+     CHARACTER ( LEN = 80 ) :: external_name = REPEAT( ' ', 80 )
+
 !  the total CPU time spent in the package
 
 !$$     REAL :: cpu_total = 0.0
@@ -436,7 +475,7 @@ module ral_nlls_internal
 !$$     REAL ( KIND = wp ) :: clock_solve = 0.0
 
   END TYPE nlls_inform
-
+  
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
@@ -573,7 +612,8 @@ module ral_nlls_internal
     public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
-
+    public :: ERROR
+    
 contains
 
   SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,options,inform,w)
@@ -588,6 +628,7 @@ contains
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      TYPE( calculate_step_work ) :: w
+
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
@@ -599,13 +640,11 @@ contains
      case (4) ! Galahad
         call solve_dtrs(J,f,hf,n,m,Delta,d,w%solve_dtrs_ws,options,inform)
      case default
-        
         if ( options%print_level > 0 ) then
            write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
            write(options%error,'(a,i0)') 'options%nlls_method = ', options%nlls_method
-           inform%status = -110 ! fix me
         end if
-
+        inform%status = ERROR%UNSUPPORTED_METHOD
      end select
 
    END SUBROUTINE calculate_step
@@ -643,7 +682,7 @@ contains
         if (options%print_level> 0) then
            write(options%error,'(a)') 'Error: model not supported in dogleg'
         end if
-        inform%status = -3
+        inform%status = ERROR%DOGLEG_MODEL
         return
      end select
      
@@ -665,9 +704,11 @@ contains
      if ( options%print_level > 0 ) then
         write(options%out,'(a,a)') 'Unexpected error in solving a linear least squares ', &
                                    'problem in dogleg'
-        write(options%out,'(a,i0)') 'dposv returned info = ', slls_status
+        write(options%out,'(a,i0)') 'dgels returned info = ', slls_status
      end if
-     inform%status = -700
+     inform%status = ERROR%DOGLEG_LLS
+     inform%external_return = slls_status
+     inform%external_name = 'lapack_dgels'
      return
 
 1010 continue
@@ -676,7 +717,7 @@ contains
                                    'in dogleg'
         write(options%out,'(a,i0)') 'dogleg returned info = ', fb_status
      end if
-     inform%status = -701
+     inform%status = ERROR%DOGLEG_BETA
      return
 
      
@@ -768,8 +809,10 @@ contains
         select case (options%model) 
         case (1,3)
            call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,solve_status)!,w%solve_spd_ws)
+           if (solve_status .ne. 0) goto 1010
         case default
           call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,solve_status,w%solve_general_ws)
+          if (solve_status .ne. 0) goto 1020
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
         ! (I think..) and inside...fix
@@ -789,8 +832,10 @@ contains
         select case (options%model)
         case (1,3)
            call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,solve_status)!,w%solve_spd_ws)
+           if (solve_status .ne. 0) goto 1010
         case default
            call solve_general(w%A + lam*w%B,-w%v,w%p1,n,solve_status,w%solve_general_ws)
+           if (solve_status .ne. 0) goto 1020
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
         ! and inside...fix
@@ -814,7 +859,9 @@ contains
         write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
         write(options%error,'(a,i0)') 'dposv returned info = ', solve_status
      end if
-     inform%status = -4
+     inform%status = ERROR%AINT_SPD_SOLVE
+     inform%external_return = solve_status
+     inform%external_name = 'lapack_dposv'
      return
      
 1020 continue
@@ -823,7 +870,9 @@ contains
         write(options%error,'(a)') 'Error in solving a linear system in AINT_TR'
         write(options%error,'(a,i0)') 'dgexv returned info = ', solve_status
      end if
-     inform%status = -4
+     inform%status = ERROR%AINT_GENERAL_SOLVE
+     inform%external_return = solve_status
+     inform%external_name = 'lapack_dgexv'
      return
      
 1030 continue
@@ -832,7 +881,9 @@ contains
         write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
         write(options%error,'(a,i0)') 'dggev returned info = ', eig_info
      end if
-     inform%status = -4
+     inform%status = ERROR%AINT_EIG
+     inform%external_return = eig_info
+     inform%external_name = 'lapack_dggev'
      return
 
 1040 continue
@@ -840,7 +891,7 @@ contains
      if ( options%print_level >= 0 ) then 
         write(options%error,'(a)') 'No valid beta found'
      end if
-     inform%status = -4
+     inform%status = ERROR%AINT_BETA
      return
 
    END SUBROUTINE AINT_tr
@@ -960,7 +1011,7 @@ contains
         write(options%error,'(a)') 'Maximum iterations reached in More-Sorensen'
         write(options%error,'(a)') 'without convergence'
      end if
-     inform%status = -100 ! fix me
+     inform%status = ERROR%MS_MAXITS
      return
 
 1050 continue
@@ -974,7 +1025,9 @@ contains
         write(options%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
         write(options%error,'(a,i0)') 'info = ', mineig_status
      end if
-     inform%status = -333
+     inform%status = ERROR%MS_MAXITS
+     inform%external_return = mineig_status
+     inform%external_name = 'lapack_dsyev'
 
      return
 
@@ -982,7 +1035,7 @@ contains
      if ( options%print_level >= 3 ) then
         write(options%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
      end if
-     inform%status = -200
+     inform%status = ERROR%MS_NO_ALPHA
 
      return
      
@@ -994,7 +1047,9 @@ contains
         write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
         write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     inform%status = -500
+     inform%status = ERROR%MS_SPD
+     inform%external_return = test_pd
+     inform%external_name = 'lapack_dposv'
      return
      
 2010 continue 
@@ -1004,7 +1059,9 @@ contains
                                    'in More_sorensen loop'
         write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
      end if
-     inform%status = -600
+     inform%status = ERROR%MS_SPD_LOOP
+     inform%external_return = test_pd
+     inform%external_name = 'lapack_dposv'
      return
      
      
@@ -1088,15 +1145,19 @@ contains
         write(options%error,'(a)') 'solve_dtrs: error from lapack routine dsyev(x)'
         write(options%error,'(a,i0)') 'info = ', eig_status
      end if
-     inform%status = -333
+     inform%status = ERROR%DTRS_EIG
+     inform%external_return = eig_status
+     inform%external_name = 'lapack_dsyev'
      return
 
 1010 continue
      if ( options%print_level > 0 ) then
-        write(options%error,'(a)') 'solve_dtrs: error from GALAHED routine DTRS'
+        write(options%error,'(a)') 'solve_dtrs: error from GALAHAD routine DTRS'
         write(options%error,'(a,i0)') 'info = ', dtrs_inform%status
      end if
-     inform%status = -777
+     inform%status = ERROR%DTRS_GALAHAD
+     inform%external_return = dtrs_inform%status
+     inform%external_name = 'galahad_dtrs'
      return
 
    end subroutine solve_dtrs
