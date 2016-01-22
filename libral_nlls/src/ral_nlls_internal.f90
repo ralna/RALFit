@@ -766,8 +766,8 @@ contains
         call solve_spd(w%A,-w%v,w%LtL,w%p0,n,options,inform)
         if (inform%status .ne. 0) goto 1000
      case default
-       call solve_general(w%A,-w%v,w%p0,n,options,inform,w%solve_general_ws)
-       if (inform%status .ne. 0) goto 1000
+        call solve_general(w%A,-w%v,w%p0,n,options,inform,w%solve_general_ws)
+        if (inform%status .ne. 0) goto 1000
      end select
           
      call matrix_norm(w%p0,w%B,norm_p0)
@@ -844,14 +844,12 @@ contains
      end if
 
      return
-
-1000 continue 
-     ! bad error return from external subroutine
-     if ( options%print_level >= 0 ) then 
-        write(options%error,'(a)') 'Routine called from subroutine AINT_TR'
-     end if
-     return
          
+1000 continue 
+     ! bad error return from external package
+     call exterr(options,inform,'AINT_TR')
+     return
+
 1030 continue
      ! bad error return from max_eig
      if ( options%print_level >= 0 ) then 
@@ -972,7 +970,8 @@ contains
         
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,options,inform)
-        if (inform%status .ne. 0)  goto 1000 ! shouldn't happen...
+        if (inform%status .ne. 0) goto 1000
+        ! ^^^ this shouldn't happen
         
         nd = norm2(d)
 
@@ -980,13 +979,11 @@ contains
      
      goto 1040
      
-1000 continue
-     ! bad error return from solve_LLS
-     if ( options%print_level > 0 ) then
-        write(options%out,'(a,a)') 'Routine called from subroutine more_sorensen'
-     end if
+1000 continue 
+     ! bad error return from external package
+     call exterr(options,inform,'more_sorensen')
      return
-
+     
 1020 continue
      ! Converged!
      if ( options%print_level >= 3 ) then
@@ -1035,30 +1032,7 @@ contains
      if ( options%print_level > 0 ) then 
         write(options%out,'(a)') 'Too many shifts in More-Sorensen'
         inform%status = ERROR%MS_TOO_MANY_SHIFTS
-     end if
-!!$3000 continue 
-!!$     ! bad error return from solve_spd
-!!$     if ( options%print_level > 0 ) then
-!!$        write(options%out,'(a)') 'Unexpected error in solving a linear system in More_sorensen'
-!!$        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
-!!$     end if
-!!$     inform%status = ERROR%MS_SPD
-!!$     inform%external_return = test_pd
-!!$     inform%external_name = 'lapack_dposv'
-!!$     return
-     
-!!$2010 continue 
-!!$     ! bad error return from solve_spd
-!!$     if ( options%print_level > 0 ) then
-!!$        write(options%out,'(a,a)') 'Unexpected error in solving a linear system ', &
-!!$                                   'in More_sorensen loop'
-!!$        write(options%out,'(a,i0)') 'dposv returned info = ', test_pd
-!!$     end if
-!!$     inform%status = ERROR%MS_SPD_LOOP
-!!$     inform%external_return = test_pd
-!!$     inform%external_name = 'lapack_dposv'
-!!$     return
-     
+     end if    
      
    end subroutine more_sorensen
    
@@ -1132,10 +1106,7 @@ contains
         inform%external_return = dtrs_inform%status
         inform%external_name = 'galahad_dtrs'
         inform%status = ERROR%FROM_EXTERNAL
-        if ( options%print_level > 0 ) then
-           write(options%out,'(a,a)') 'Unexpected error in solve_dtrs'
-           write(options%out,'(a,i0)') 'dtrs returned info = ', inform%external_return
-        end if
+        if (inform%status .ne. 0) goto 1000
         return
      end if
 
@@ -1143,23 +1114,12 @@ contains
      call mult_J(w%ev,n,n,w%d_trans,d)
 
      return
-     
-1000 continue
-     if ( options%print_level > 0 ) then
-        write(options%error,'(a)') 'subroutine called from solve_dtrs'
-     end if
+
+1000 continue 
+     ! bad error return from external package
+     call exterr(options,inform,'solve_dtrs')
      return
-
-!!$1010 continue
-!!$     if ( options%print_level > 0 ) then
-!!$        write(options%error,'(a)') 'solve_dtrs: error from GALAHAD routine DTRS'
-!!$        write(options%error,'(a,i0)') 'info = ', dtrs_inform%status
-!!$     end if
-!!$     inform%status = ERROR%DTRS_GALAHAD
-!!$     inform%external_return = dtrs_inform%status
-!!$     inform%external_name = 'galahad_dtrs'
-!!$     return
-
+     
    end subroutine solve_dtrs
 
 
@@ -1193,10 +1153,6 @@ contains
        if (inform%external_return .ne. 0 ) then
           inform%status = ERROR%FROM_EXTERNAL
           inform%external_name = 'lapack_dgels'
-          if ( options%print_level > 0 ) then
-             write(options%out,'(a,a)') 'Unexpected error in solving a LLS problem'
-             write(options%out,'(a,i0)') 'dgels returned info = ', inform%external_return
-          end if
           return
        end if
 
@@ -1495,10 +1451,6 @@ contains
         if (inform%external_return .ne. 0 ) then
            inform%status = ERROR%FROM_EXTERNAL
            inform%external_name = 'lapack_dgesv'
-           if ( options%print_level > 0 ) then
-              write(options%out,'(a,a)') 'Unexpected error in solving genral matrix system'
-              write(options%out,'(a,i0)') 'dgesv returned info = ', inform%external_return
-           end if
            return
         end if
                 
@@ -1597,10 +1549,6 @@ contains
         if (inform%external_return .ne. 0) then
            inform%status = ERROR%FROM_EXTERNAL
            inform%external_name = 'lapack_dsyev'
-           if ( options%print_level > 0 ) then
-              write(options%out,'(a,a)') 'Unexpected error in solving an eigenproblem'
-              write(options%out,'(a,i0)') 'dsyev returned info = ', inform%external_return
-           end if
            return
         end if
         
@@ -1637,10 +1585,6 @@ contains
            if (inform%external_return .ne. 0) then
               inform%status = ERROR%FROM_EXTERNAL
               inform%external_name = 'lapack_dsyev'
-              if ( options%print_level > 0 ) then
-                 write(options%out,'(a,a)') 'Unexpected error in an eigenvalue calculation'
-                 write(options%out,'(a,i0)') 'dsyev returned info = ', inform%external_return
-              end if
            end if
            minindex = minloc(w%ew)
            ew = w%ew(minindex(1))
@@ -1663,10 +1607,6 @@ contains
            if (inform%external_return .ne. 0) then
               inform%status = ERROR%FROM_EXTERNAL
               inform%external_name = 'lapack_dsyevx'
-              if ( options%print_level > 0 ) then
-                 write(options%out,'(a,a)') 'Unexpected error in an eigenvalue calculation'
-                 write(options%out,'(a,i0)') 'dsyevx returned info = ', inform%external_return
-              end if
            end if
         end if
            
@@ -1708,10 +1648,6 @@ contains
         if (inform%external_return .ne. 0) then
            inform%status = ERROR%FROM_EXTERNAL
            inform%external_name = 'lapack_dggev'
-           if (options%print_level > 0 ) then
-              write(options%out,'(a,a)') 'Unexpected error in solving an eigenproblem'
-              write(options%out,'(a,i0)') 'dggev returned info = ', inform%external_return
-           end if
            return
         end if
        
@@ -1829,6 +1765,19 @@ contains
 
       end subroutine get_svd_J
 
+
+      subroutine exterr(options,inform,subname)
+        type( nlls_options ), intent(in) :: options
+        type( nlls_inform ), intent(in)  :: inform
+        character :: subname
+        
+        if (options%print_level > 0) then
+           write(options%out,'(a)') 'Unexpected error return from an external subroutine'
+           write(options%out,'(a,a,i0,a,a)') trim(inform%external_name),' returned error code ',&
+                inform%external_return,' when called from the subroutine ', subname
+        end if
+        
+      end subroutine exterr
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                                                       !!
