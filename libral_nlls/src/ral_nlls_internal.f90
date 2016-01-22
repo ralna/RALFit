@@ -38,11 +38,12 @@ module ral_nlls_internal
      INTEGER :: DOGLEG_BETA = -701 ! <-- change
      ! AINT errors
      INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
-     INTEGER :: AINT_EIG = -4 ! <-- change
+!     INTEGER :: AINT_EIG = -4 ! <-- change
+     INTEGER :: AINT_EIG_IMAG = -21
+     INTEGER :: AINT_EIG_ODD = -22
      INTEGER :: AINT_BETA = -4 ! <-- change
      ! More-Sorensen errors
      INTEGER :: MS_MAXITS = -100 ! <-- change
-     INTEGER :: MS_MINEIG = -333 ! <- change
      INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
      INTEGER :: MS_NO_ALPHA = -200 ! <- CHANGE
      INTEGER :: MS_SPD_LOOP = -600    !<--change
@@ -789,8 +790,8 @@ contains
      w%M1(n+1:2*n,1:n) = -w%B
      w%M1(1:n,n+1:2*n) = -w%B
      
-     call max_eig(w%M0,w%M1,2*n,lam, w%y, eig_info, y_hardcase,  options, w%max_eig_ws)
-     if ( eig_info > 0 ) goto 1030
+     call max_eig(w%M0,w%M1,2*n,lam, w%y, y_hardcase, options, inform, w%max_eig_ws)
+     if ( inform%status > 0 ) goto 1030
 
      if (norm2(w%y(1:n)) < tau) then
         ! Hard case
@@ -867,12 +868,8 @@ contains
 1030 continue
      ! bad error return from max_eig
      if ( options%print_level >= 0 ) then 
-        write(options%error,'(a)') 'Error in the eigenvalue computation of AINT_TR'
-        write(options%error,'(a,i0)') 'dggev returned info = ', eig_info
+        write(options%error,'(a)') 'called in the eigenvalue computation of AINT_TR'
      end if
-     inform%status = ERROR%AINT_EIG
-     inform%external_return = eig_info
-     inform%external_name = 'lapack_dggev'
      return
 
 1040 continue
@@ -1667,14 +1664,14 @@ contains
         
       end subroutine min_eig_symm
 
-      subroutine max_eig(A,B,n,ew,ev,status,nullevs,options,w)
+      subroutine max_eig(A,B,n,ew,ev,nullevs,options,inform,w)
         
         real(wp), intent(inout) :: A(:,:), B(:,:)
         integer, intent(in) :: n 
         real(wp), intent(out) :: ew, ev(:)
-        integer, intent(out) :: status
         real(wp), intent(out), allocatable :: nullevs(:,:)
         type( nlls_options ), intent(in) :: options
+        type( nlls_inform ), intent(inout) :: inform
         type( max_eig_work ) :: w
         
         integer :: lwork, maxindex(1), no_null, halfn
@@ -1686,7 +1683,6 @@ contains
         ! further, if ||y(1:n/2)|| \approx 0, find and return the 
         ! eigenvectors y(n/2+1:n) associated with this
 
-        status = 0
         ! check that n is even (important for hard case -- see below)
         if (modulo(n,2).ne.0) goto 1010
         
@@ -1698,8 +1694,17 @@ contains
                    w%alphaR, w%alphaI, w%beta, & ! eigenvalue data
                    w%vr, n, & ! not referenced
                    w%vr, n, & ! right eigenvectors
-                   w%work, lwork, status)
-
+                   w%work, lwork, inform%external_return)
+        if (inform%external_return .ne. 0) then
+           inform%status = ERROR%FROM_EXTERNAL
+           inform%external_name = 'lapack_dggev'
+           if (options%print_level > 0 ) then
+              write(options%out,'(a,a)') 'Unexpected error in solving an eigenproblem'
+              write(options%out,'(a,i0)') 'dggev returned info = ', inform%external_return
+           end if
+           return
+        end if
+       
         ! now find the rightmost real eigenvalue
         w%vecisreal = .true.
         where ( abs(w%alphaI) > 1e-8 ) w%vecisreal = .false.
@@ -1734,7 +1739,7 @@ contains
         if ( options%print_level >=0 ) then
            write(options%error,'(a)') 'Error, all eigs are imaginary'
         end if
-        status = 1 ! Eigs imaginary error
+        inform%status = ERROR%AINT_EIG_IMAG ! Eigs imaginary error
         
         return
 
@@ -1742,10 +1747,9 @@ contains
         if (options%print_level >= 0 ) then 
            write(options%error,'(a)') 'error : non-even sized matrix sent to max eig'
         end if
-        status = 2
+        inform%status = ERROR%AINT_EIG_ODD
 
         return
-
                 
       end subroutine max_eig
 

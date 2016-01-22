@@ -473,10 +473,10 @@ program nlls_test
      end do
      
      
-     call max_eig(A,B,n,alpha,x,info,C,options, & 
+     call max_eig(A,B,n,alpha,x,C,options,status, & 
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
 
-     if ( (abs( alpha - 10.0 ) > 1e-12).or.(info .ne. 0) ) then
+     if ( (abs( alpha - 10.0 ) > 1e-12).or.(status%status .ne. 0) ) then
         write(*,*) 'error :: max_eig test failed'
         no_errors_helpers = no_errors_helpers + 1 
      end if
@@ -496,7 +496,7 @@ program nlls_test
      B = A
      A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
 
-     call max_eig(A,B,n,alpha,x,info,C,options,& 
+     call max_eig(A,B,n,alpha,x,C,options,status, & 
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
 
      if (.not. allocated(C)) then ! check C returned 
@@ -548,19 +548,21 @@ program nlls_test
      B(1,1) = 1.0_wp
      B(2,2) = 1.0_wp
 
-     call max_eig(A,B,n,alpha,x,info,C,options, & 
+     call max_eig(A,B,n,alpha,x,C,options,status, & 
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     if (info .ne. 1) then
+     if (status%status .ne. ERROR%AINT_EIG_IMAG) then
         write(*,*) 'error :: all complex part of max_eig test failed'
         no_errors_helpers = no_errors_helpers + 1
      end if
+     status%status = 0
 
-     call max_eig(A,B,n+1,alpha,x,info,C, options, & 
+     call max_eig(A,B,n+1,alpha,x,C, options,status, &
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     if (info .ne. 2) then
+     if ( status%status .ne. ERROR%AINT_EIG_ODD ) then
         write(*,*) 'error :: even part of max_eig test failed'
         no_errors_helpers = no_errors_helpers + 1
      end if
+     status%status = 0
 
      deallocate(A,B,x)
      call remove_workspaces(work,options)
