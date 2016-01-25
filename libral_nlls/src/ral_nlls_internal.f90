@@ -3,7 +3,7 @@
 module ral_nlls_internal
 
   use RAL_NLLS_DTRS_double
-  
+
   implicit none
 
   private
@@ -1375,7 +1375,10 @@ contains
              nu =  nu * 0.5_wp
              if (options%print_level > 2) write(options%out,3010) Delta
           else
-             
+             ! just incase (NaNs and the like...)
+             if (options%print_level > 2) write(options%out,3010) Delta 
+             Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+             rho = -one ! set to be negative, so that the logic works....
           end if
        case default
           if (options%print_level > 0) then 
