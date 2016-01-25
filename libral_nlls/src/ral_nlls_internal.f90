@@ -226,8 +226,9 @@ module ral_nlls_internal
 !    increased if this relative decrease is greater than %eta_very_successful
 !    but smaller than %eta_too_successful
 
-     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 8 )
-     REAL ( KIND = wp ) :: eta_very_successful = point9
+     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 6 )! ten ** ( - 8 ) 
+     REAL ( KIND = wp ) :: eta_success_but_reduce = ten ** ( - 2 ) !0.25_wp
+     REAL ( KIND = wp ) :: eta_very_successful = 0.75_wp!point9 
      REAL ( KIND = wp ) :: eta_too_successful = two
 
 !   on very successful iterations, the trust-region radius will be increased by
@@ -1336,7 +1337,7 @@ contains
        
        select case(options%tr_update_strategy)
        case(1) ! default, step-function
-          if (rho < options%eta_successful) then
+          if (rho < options%eta_success_but_reduce) then
              ! unsuccessful....reduce Delta
              Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
              if (options%print_level > 2) write(options%out,3010) Delta     
