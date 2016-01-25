@@ -1360,7 +1360,6 @@ contains
        case(2) ! Continuous method
           ! Based on that proposed by Hans Bruun Nielsen, TR IMM-REP-1999-05
           ! http://www2.imm.dtu.dk/documents/ftp/tr99/tr05_99.pdf
-          write(*,*) 'rho = ', rho
           if (rho >= options%eta_too_successful) then
              ! too successful....accept step, but don't change Delta
              if (options%print_level > 2) write(options%out,3040) Delta 
