@@ -605,6 +605,8 @@ module ral_nlls_internal
        real(wp), allocatable :: resvec(:), gradvec(:)
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
+       real(wp) :: tr_nu = 2.0
+       integer :: tr_p = 3
     end type NLLS_workspace
 
 !    public :: nlls_solve, nlls_iterate, remove_workspaces
@@ -1323,15 +1325,17 @@ contains
 
      end subroutine apply_second_order_info
 
-     subroutine update_trust_region_radius(rho,options,inform,Delta)
+     subroutine update_trust_region_radius(rho,options,inform,Delta,nu,p)
        
        real(wp), intent(inout) :: rho ! ratio of actual to predicted reduction
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        real(wp), intent(inout) :: Delta ! trust region size
+       real(wp), intent(inout) :: nu ! scaling parameter (tr_update_strategy = 2)
+       integer, intent(in) :: p ! power (tr_update_strategy = 2)
        
        select case(options%tr_update_strategy)
-       case(1)
+       case(1) ! default, step-function
           if (rho < options%eta_successful) then
              ! unsuccessful....reduce Delta
              Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
@@ -1352,6 +1356,27 @@ contains
              Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
              rho = -one ! set to be negative, so that the logic works....
           end if
+       case(2) ! Continuous method
+          ! Based on that proposed by Hans Bruun Nielsen, TR IMM-REP-1999-05
+          ! http://www2.imm.dtu.dk/documents/ftp/tr99/tr05_99.pdf
+          write(*,*) 'rho = ', rho
+          if (rho >= options%eta_too_successful) then
+             ! too successful....accept step, but don't change Delta
+             if (options%print_level > 2) write(options%out,3040) Delta 
+          else if (rho > options%eta_successful) then 
+             Delta = Delta * min(options%radius_increase, &
+                  max(options%radius_reduce, & 
+                  1 - ( (options%radius_increase - 1) * ((1 - 2*rho)**p)) ))
+             nu = options%radius_reduce
+             if (options%print_level > 2) write(options%out,3050) Delta 
+          else if ( rho <= options%eta_successful ) then 
+             write(*,*) 'nu = ', nu
+             Delta = Delta * nu
+             nu =  nu * 0.5_wp
+             if (options%print_level > 2) write(options%out,3010) Delta
+          else
+             
+          end if
        case default
           if (options%print_level > 0) then 
              write(options%error,'(a)') 'Unsupported trust region update strategy chosen'
@@ -1368,6 +1393,7 @@ contains
 3020   FORMAT('Successful step -- Delta staying at', ES12.4)     
 3030   FORMAT('Very successful step -- increasing Delta to', ES12.4)
 3040   FORMAT('Step too successful -- Delta staying at', ES12.4)   
+3050   FORMAT('Chaning Delta to ', ES12.4)
        
 
      end subroutine update_trust_region_radius
@@ -1802,6 +1828,10 @@ contains
         status = 0      
         
         workspace%first_call = 0
+
+        write(*,*) 'whats?!??'
+        workspace%tr_nu = options%radius_increase
+        workspace%tr_p = 7
 
         if (.not. options%exact_second_derivatives) then
            if (.not. allocated(workspace%y)) then
