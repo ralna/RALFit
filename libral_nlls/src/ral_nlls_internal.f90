@@ -1829,7 +1829,6 @@ contains
         
         workspace%first_call = 0
 
-        write(*,*) 'whats?!??'
         workspace%tr_nu = options%radius_increase
         workspace%tr_p = 7
 
