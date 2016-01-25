@@ -18,7 +18,7 @@ program nlls_test
   real(wp) :: alpha
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
   integer :: total_errors
-  integer :: nlls_method, model
+  integer :: nlls_method, model, tr_update
   logical :: test_all, test_subs
 
   integer :: number_of_models
@@ -61,40 +61,43 @@ program nlls_test
      call generate_data_example(params%x_values,params%y_values,m)
      
      
-     do nlls_method = 1,4
-        do model = 1,number_of_models
+     do tr_update = 1,2
+        do nlls_method = 1,4
+           do model = 1,number_of_models
      
-           X(1) = 1.0 
-           X(2) = 2.0
+              X(1) = 1.0 
+              X(2) = 2.0
 
-           options%print_level = 0
-           options%nlls_method = nlls_method
-           options%model = model_to_test(model)
-
-           call nlls_solve(n, m, X,                         &
-                eval_F, eval_J, eval_H, params,  &
-                options, status )
-           if (( nlls_method == 1).and.( options%model > 1)) then
-              if ( status%status .ne. -3 ) then
-                 write(*,*) 'incorrect error return from nlls_solve:'
+              options%print_level = 0
+              options%nlls_method = nlls_method
+              options%tr_update_strategy = tr_update
+              options%model = model_to_test(model)
+              
+              call nlls_solve(n, m, X,                         &
+                   eval_F, eval_J, eval_H, params,  &
+                   options, status )
+              if (( nlls_method == 1).and.( options%model > 1)) then
+                 if ( status%status .ne. -3 ) then
+                    write(*,*) 'incorrect error return from nlls_solve:'
+                    write(*,*) 'NLLS_METHOD = ', nlls_method
+                    write(*,*) 'MODEL = ', options%model
+                    no_errors_main = no_errors_main + 1
+                 end if
+              else if ( options%model == 0 ) then
+                 if ( status%status .ne. -3 ) then
+                    write(*,*) 'incorrect error return from nlls_solve:'
+                    write(*,*) 'NLLS_METHOD = ', nlls_method
+                    write(*,*) 'MODEL = ', options%model
+                    no_errors_main = no_errors_main + 1
+                 end if
+              else if ( status%status .ne. 0 ) then
+                 write(*,*) 'nlls_solve failed to converge:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', options%model
                  no_errors_main = no_errors_main + 1
               end if
-           else if ( options%model == 0 ) then
-              if ( status%status .ne. -3 ) then
-                 write(*,*) 'incorrect error return from nlls_solve:'
-                 write(*,*) 'NLLS_METHOD = ', nlls_method
-                 write(*,*) 'MODEL = ', options%model
-                 no_errors_main = no_errors_main + 1
-              end if
-           else if ( status%status .ne. 0 ) then
-              write(*,*) 'nlls_solve failed to converge:'
-              write(*,*) 'NLLS_METHOD = ', nlls_method
-              write(*,*) 'MODEL = ', options%model
-              no_errors_main = no_errors_main + 1
-           end if
 
+           end do
         end do
      end do
 
