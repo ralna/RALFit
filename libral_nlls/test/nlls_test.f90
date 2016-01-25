@@ -15,7 +15,7 @@ program nlls_test
   real(wp), allocatable :: w(:),x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
   real(wp), allocatable :: results(:)
-  real(wp) :: alpha
+  real(wp) :: alpha, beta, gamma, delta
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
   integer :: total_errors
   integer :: nlls_method, model, tr_update
@@ -240,9 +240,39 @@ program nlls_test
      !------------------!
 
      !! todo
+     
+     !-----------------!
+     !! calculate_rho !!
+     !-----------------!
 
-     !! calculate_rho
-     ! todo
+     alpha = 2.0_wp ! normf
+     beta =  1.0_wp ! normfnew
+     gamma = 1.5_wp ! md
+     call calculate_rho(alpha, beta, gamma, delta)
+     if ( abs(delta - 3.0_wp) > 1e-10) then
+        write(*,*) 'Unexpected answer from calculate_rho'
+        write(*,*) 'Expected 3.0, got ', delta
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
+     ! now, let's check one is returned if alpha = beta
+     beta = 2.0_wp
+     call calculate_rho(alpha,beta,gamma, delta)
+     if (abs(delta - 1.0_wp) > 1e-10) then
+        write(*,*) 'Unexpected answer from calculate_rho'
+        write(*,*) 'Expected 1.0, got ', delta
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     beta = 1.0_wp
+
+     ! finally, check that 1 is returned if denominator = 0
+     gamma = 2.0_wp
+     call calculate_rho(alpha,beta,gamma, delta)
+     if (abs(delta - 1.0_wp) > 1e-10) then
+        write(*,*) 'Unexpected answer from calculate_rho'
+        write(*,*) 'Expected 1.0, got ', delta
+        no_errors_helpers = no_errors_helpers + 1
+     end if
      
      !------------------------------!
      !! update_trust_region_radius !!
