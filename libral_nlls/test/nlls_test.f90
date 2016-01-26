@@ -245,6 +245,16 @@ program nlls_test
      end if
      
      ! finally, let's flag an error....
+     deallocate(w,x,y,z)
+     call remove_workspaces(work, options)
+     
+     n = 100 
+     m = 20
+     allocate(x(n*m), y(m), z(n))     
+     call setup_workspaces(work,n,m,options,info) 
+
+     x = 1.0_wp
+     x = 1.0_wp
      call solve_LLS(x,z,n,m,y,status, & 
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
      if ( status%status .ne. ERROR%FROM_EXTERNAL ) then 
@@ -253,7 +263,7 @@ program nlls_test
         no_errors_helpers = no_errors_helpers+1
      end if
      
-     deallocate(w,x,y,z)
+     deallocate(x,y,z)
      call remove_workspaces(work, options)
      options%nlls_method = 9 ! back to hybrid
      
