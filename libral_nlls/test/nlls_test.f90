@@ -101,6 +101,22 @@ program nlls_test
            end do
         end do
      end do
+     
+     ! Let's do one run with non-exact second derivatives 
+     options%nlls_method = 4
+     options%model = 9
+     options%tr_update_strategy = 1
+     options%exact_second_derivatives = .false.
+     call nlls_solve(n, m, X,                         &
+                    eval_F, eval_J, eval_H, params,  &
+                    options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge:'
+        write(*,*) 'NLLS_METHOD = ', nlls_method
+        write(*,*) 'MODEL = ', options%model
+        no_errors_main = no_errors_main + 1
+     end if
+
 
      ! now let's check errors on the parameters passed to the routine...
      
@@ -135,7 +151,7 @@ program nlls_test
                     eval_F, eval_J, eval_H, params, &
                     options, status)
      if ( status%status .ne. ERROR%BAD_TR_STRATEGY ) then 
-        write(*,*) 'Error: unsupported TR strategy passedd and not caught'
+        write(*,*) 'Error: unsupported TR strategy passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
@@ -262,6 +278,7 @@ program nlls_test
         write(*,*) 'status = ', status%status
         no_errors_helpers = no_errors_helpers+1
      end if
+     status%status = 0
      
      deallocate(x,y,z)
      call remove_workspaces(work, options)
@@ -800,15 +817,16 @@ program nlls_test
 
   
 close(unit = 17)
+!
 !no_errors_helpers = 1
  if (no_errors_helpers + no_errors_main == 0) then
     write(*,*) ' '
     write(*,*) '**************************************'
     write(*,*) '*** All tests passed successfully! ***'
     write(*,*) '**************************************'
-!    stop 0    ! needed for talking with ctest
+    stop 0    ! needed for talking with ctest
  else 
-!    stop 1    ! needed for talking with ctest
+    stop 1    ! needed for talking with ctest
   end if
   
 
