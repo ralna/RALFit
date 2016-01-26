@@ -618,6 +618,7 @@ module ral_nlls_internal
     public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
+    public :: solve_LLS
     public :: ERROR
     
 contains
@@ -682,7 +683,7 @@ contains
      select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,options%lls_solver,w%d_gn,inform,w%solve_LLS_ws)
+        call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws)
         if ( inform%status .ne. 0 ) goto 1000
      case default
         if (options%print_level> 0) then
@@ -1132,7 +1133,7 @@ contains
    end subroutine solve_dtrs
 
 
-   SUBROUTINE solve_LLS(J,f,n,m,method,d_gn,inform,w)
+   SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
        
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
@@ -1140,7 +1141,7 @@ contains
 
        REAL(wp), DIMENSION(:), INTENT(IN) :: J
        REAL(wp), DIMENSION(:), INTENT(IN) :: f
-       INTEGER, INTENT(IN) :: method, n, m
+       INTEGER, INTENT(IN) :: n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
        type(NLLS_inform), INTENT(INOUT) :: inform
 

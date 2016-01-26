@@ -213,6 +213,52 @@ program nlls_test
      call remove_workspaces(work,options)
 
      !! solve_LLS 
+     options%nlls_method = 1 ! dogleg
+     call setup_workspaces(work,n,m,options,info) 
+     
+
+     n = 2 
+     m = 5
+     allocate(x(n*m), y(n), w(m), z(m))
+     ! x<--J
+     ! z<--f
+     ! y<--sol
+     ! w<--J*sol
+     x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, & 
+            6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
+     z = (/ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp /)
+     
+     call solve_LLS(x,z,n,m,y,status, & 
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+     if ( status%status .ne. 0 ) then 
+        write(*,*) 'solve_LLS test failed: wrong error message returned'
+        write(*,*) 'status = ', status%status
+        no_errors_helpers = no_errors_helpers+1
+     end if
+     call mult_J(x,n,m,y,w)
+     alpha = norm2(w + z)
+     if ( alpha > 1e-12 ) then
+        ! wrong answer, as data chosen to fit
+        write(*,*) 'solve_LLS test failed: wrong solution returned'
+        write(*,*) '||Jx - f|| = ', alpha
+        no_errors_helpers = no_errors_helpers+1
+     end if
+     
+     ! finally, let's flag an error....
+     call solve_LLS(x,z,n,m,y,status, & 
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+     if ( status%status .ne. ERROR%FROM_EXTERNAL ) then 
+        write(*,*) 'solve_LLS test failed: wrong error message returned'
+        write(*,*) 'status = ', status%status
+        no_errors_helpers = no_errors_helpers+1
+     end if
+     
+     deallocate(w,x,y,z)
+     call remove_workspaces(work, options)
+     options%nlls_method = 9 ! back to hybrid
+     
+
+     
      ! ** TODO **
      
          
@@ -744,7 +790,7 @@ program nlls_test
 
   
 close(unit = 17)
-no_errors_helpers = 1
+!no_errors_helpers = 1
  if (no_errors_helpers + no_errors_main == 0) then
     write(*,*) ' '
     write(*,*) '**************************************'
