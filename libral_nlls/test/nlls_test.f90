@@ -168,6 +168,9 @@ program nlls_test
      write(*,*) '============================='
      
 
+     !! calculate step...
+     ! ** TODO **
+
      !! dogleg 
      ! ** TODO **
 
@@ -275,6 +278,9 @@ program nlls_test
         no_errors_helpers = no_errors_helpers + 1
      end if
      
+     !! Apply second order info
+     ! todo
+
      !------------------------------!
      !! update_trust_region_radius !!
      !------------------------------!
@@ -555,7 +561,9 @@ program nlls_test
 
      deallocate(x,A,B,results)
 
-
+     !! All_eig_symm
+     ! todo
+     
      !----------------!
      !! min_eig_symm !!
      !----------------!
@@ -717,6 +725,13 @@ program nlls_test
 
      deallocate(A,B,x)
      call remove_workspaces(work,options)
+
+     !! shift_matrix 
+     ! todo
+     
+     !! get_svd_J 
+     ! Todo
+
      ! Report back results....
 
      if (no_errors_helpers == 0) then
