@@ -708,9 +708,7 @@ contains
      
 1000 continue 
      ! bad error return from solve_LLS
-     if ( options%print_level > 0 ) then
-        write(options%out,'(a,a)') 'Routine called from subroutine dogleg'
-     end if
+     call exterr(options,inform,'dogleg')
      return
 
 1010 continue
@@ -799,7 +797,7 @@ contains
      w%M1(1:n,n+1:2*n) = -w%B
      
      call max_eig(w%M0,w%M1,2*n,lam, w%y, y_hardcase, options, inform, w%max_eig_ws)
-     if ( inform%status > 0 ) goto 1030
+     if ( inform%status > 0 ) goto 1000
 
      if (norm2(w%y(1:n)) < tau) then
         ! Hard case
@@ -858,13 +856,6 @@ contains
 1000 continue 
      ! bad error return from external package
      call exterr(options,inform,'AINT_TR')
-     return
-
-1030 continue
-     ! bad error return from max_eig
-     if ( options%print_level >= 0 ) then 
-        write(options%error,'(a)') 'called in the eigenvalue computation of AINT_TR'
-     end if
      return
 
 1040 continue
