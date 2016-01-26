@@ -526,7 +526,7 @@ contains
              w%hybrid_count = 0
           end if
        end if
-
+       
        if (w%use_second_derivatives) then 
           call apply_second_order_info(hfstatus,n,m, &
                X,w%f,w%hf,eval_Hf, &
@@ -535,6 +535,17 @@ contains
 !          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
  !         inform%h_eval = inform%h_eval + 1
           if (hfstatus > 0) goto 4030
+       elseif (.not. options%exact_second_derivatives) then 
+          ! if exact_second_derivatives are not needed,
+          ! call apply_second_order info so that we update the approximation
+           call apply_second_order_info(hfstatus,n,m, &
+               X,w%f,w%hf,eval_Hf, &
+               w%d, w%y, w%y_sharp,  &
+               params,options,inform)
+!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+ !         inform%h_eval = inform%h_eval + 1
+          if (hfstatus > 0) goto 4030
+          w%hf(1:n**2) = zero
        else 
           w%hf(1:n**2) = zero
        end if
