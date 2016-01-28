@@ -619,6 +619,7 @@ module ral_nlls_internal
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix, exterr
+    public :: dogleg
     public :: ERROR
     
 contains
@@ -703,6 +704,7 @@ contains
         if ( fb_status .ne. 0 ) goto 1010
         d = alpha * w%d_sd + beta * w%ghat
      end if
+
      
      return
      

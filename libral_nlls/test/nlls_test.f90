@@ -13,7 +13,7 @@ program nlls_test
   type( NLLS_inform )  :: status
   type( NLLS_options ) :: options
   type( user_type ), target :: params
-  real(wp), allocatable :: w(:),x(:),y(:),z(:)
+  real(wp), allocatable :: v(:),w(:),x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
   real(wp), allocatable :: results(:)
   real(wp) :: alpha, beta, gamma, delta
@@ -120,6 +120,8 @@ program nlls_test
 
      ! now let's check errors on the parameters passed to the routine...
      
+     options%print_level = 3
+
      ! test n > m
      n = 100
      m = 3
@@ -188,10 +190,61 @@ program nlls_test
      options%print_level = 3
 
      !! calculate step...
-     ! ** TODO **
+     ! not needed -- fully tested elsewhere....
 
      !! dogleg 
-     ! ** TODO **
+     options%nlls_method = 1
+     options%model = 5
+     n = 2
+     m = 3
+     allocate(w(m*n), x(n*n), y(m), z(n), v(n))
+     call setup_workspaces(work,n,m,options,info) 
+     ! w <-- J
+     ! x <-- hf
+     ! y <-- f
+     ! z <-- g 
+     ! v <-- d
+     alpha = 10.0_wp
+     
+     ! first, hit the 'method not supported' error
+     options%model = 27
+     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     if (status%status .ne. ERROR%DOGLEG_MODEL) then
+        write(*,*) 'Error: unsupported model allowed in dogleg'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = 0
+     options%model = 1
+
+     w = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
+     x = 0.0_wp
+     y = 1.0_wp
+     z = 1.0_wp
+     ! now, get ||d_gn|| <= Delta
+     alpha = 6.0_wp
+     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: unexpected error in dogleg'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     ! now set delta so that || alpha * d_sd || >= Delta
+     alpha = 0.5_wp
+     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: unexpected error in dogleg'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     ! now get the guys in the middle...
+     alpha = 2.5_wp
+     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: unexpected error in dogleg'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
+     deallocate(x,y,z,v,w)
+     call remove_workspaces(work,options)
+     
 
      !! aint_tr
      ! ** TODO ** 
