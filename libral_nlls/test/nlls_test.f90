@@ -668,9 +668,7 @@ program nlls_test
            options%subproblem_eig_fact = .FALSE.
         end select
         call setup_workspaces(work,n,m,options,info) 
-        
-        options%nlls_method = 2 ! revert...
-        
+                
         A = reshape( (/-5.0,  1.0, 0.0, 0.0, &
           1.0, -5.0, 0.0, 0.0, &
           0.0,  0.0, 4.0, 2.0, & 
@@ -689,9 +687,12 @@ program nlls_test
         end if
         
         call remove_workspaces(work,options)
-        
+        options%nlls_method = 2 ! revert...
+
      end do
-          
+     
+
+     
      deallocate(A,x)
 
      !-----------!
