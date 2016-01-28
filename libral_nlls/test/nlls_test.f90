@@ -809,7 +809,19 @@ program nlls_test
      call remove_workspaces(work,options)
 
      !! shift_matrix 
-     ! todo
+     n = 2
+     allocate(A(2,2),B(2,2))
+     A = 1.0_wp
+     B = 0.0_wp
+     alpha = 5.0_wp
+     call shift_matrix(A,alpha,B,n)
+     if ( ( (B(1,1)-6.0_wp) > 1e-12) .or. ((B(2,2) - 6.0_wp) > 1e-12) ) then
+        write(*,*) 'Error: incorrect return from shift_matrix'
+        no_errors_helpers = no_errors_helpers + 1
+     elseif ( ( (B(1,2)-1.0_wp) > 1e-12) .or. ((B(2,1) - 1.0_wp) > 1e-12) ) then
+        write(*,*) 'Error: incorrect return from shift_matrix'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
      
      !! get_svd_J 
      ! Todo
