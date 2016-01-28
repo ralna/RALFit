@@ -618,7 +618,7 @@ module ral_nlls_internal
     public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
-    public :: solve_LLS, shift_matrix
+    public :: solve_LLS, shift_matrix, exterr
     public :: ERROR
     
 contains
@@ -1944,7 +1944,7 @@ contains
         return
        
 9010    continue 
-        
+        ! leave the subroutine
         return
 
       end subroutine setup_workspaces

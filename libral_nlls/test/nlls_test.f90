@@ -826,6 +826,14 @@ program nlls_test
      !! get_svd_J 
      ! Todo
 
+
+     !! exterr
+
+     status%external_name = 'exterr'
+     status%external_return = 0
+     call exterr(options,status,'nlls_test')
+          
+
      ! Report back results....
 
      if (no_errors_helpers == 0) then
