@@ -30,7 +30,7 @@ program nlls_test
   open(unit = 17, file="nlls_test.out")
   options%error = 17
   options%out   = 17 
-
+  
   test_all = .true.
   test_subs = .true.
 
@@ -165,9 +165,10 @@ program nlls_test
 
      deallocate(x,params%x_values,params%y_values)
      
+     
   end if
 
-  
+  deallocate(model_to_test)
 
   no_errors_helpers = 0
   
@@ -183,6 +184,8 @@ program nlls_test
      write(*,*) '=--Testing the subroutines--='
      write(*,*) '============================='
      
+
+     options%print_level = 3
 
      !! calculate step...
      ! ** TODO **
@@ -202,10 +205,14 @@ program nlls_test
      n = 2
      m = 5
      call setup_workspaces(work,n,m,options,info) 
-     allocate(x(m*n),y(n),z(n**2),w(n))
+
+     allocate(w(n))
+     allocate(x(m*n))
+     allocate(y(m))
+     allocate(z(n*n))
      ! x -> J, y-> f, x -> hf, w-> d
      x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
-     y = (/ 1.2_wp, 3.1_wp /)
+     y = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
      z = 1.0_wp
 
      alpha = 0.02_wp
@@ -213,7 +220,7 @@ program nlls_test
      call solve_dtrs(x,y,z,n,m,alpha,w,& 
           work%calculate_step_ws%solve_dtrs_ws, &
           options,status)
-     
+
      if ( status%status .ne. 0 ) then
         write(*,*) 'DTRS test failed, status = ', status%status
         no_errors_helpers = no_errors_helpers + 1
@@ -270,7 +277,7 @@ program nlls_test
      call setup_workspaces(work,n,m,options,info) 
 
      x = 1.0_wp
-     x = 1.0_wp
+     z = 1.0_wp
      call solve_LLS(x,z,n,m,y,status, & 
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
      if ( status%status .ne. ERROR%FROM_EXTERNAL ) then 
@@ -679,10 +686,10 @@ program nlls_test
 
 
         if ( (abs( alpha + 6.0 ) > 1e-12).or.(status%status .ne. 0) ) then
-           write(*,*) 'error :: max_eig test failed -- wrong eig found'
+           write(*,*) 'error :: min_eig_symm test failed -- wrong eig found'
            no_errors_helpers = no_errors_helpers + 1 
         elseif ( norm2(matmul(A,x) - alpha*x) > 1e-12 ) then
-           write(*,*) 'error :: max_eig test failed -- not an eigenvector'
+           write(*,*) 'error :: min_eig_symm test failed -- not an eigenvector'
            no_errors_helpers = no_errors_helpers + 1
         end if
         
@@ -713,13 +720,18 @@ program nlls_test
      do i = 1,n
         B(i,i) = real(i,wp)
      end do
-     
+     alpha = 1.0_wp
+     x = 0.0_wp
      
      call max_eig(A,B,n,alpha,x,C,options,status, & 
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-
-     if ( (abs( alpha - 10.0 ) > 1e-12).or.(status%status .ne. 0) ) then
-        write(*,*) 'error :: max_eig test failed'
+     
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'error :: max_eig test failed, status = ', status%status
+        no_errors_helpers = no_errors_helpers + 1 
+     elseif ( (abs( alpha - 10.0_wp) > 1e-12) ) then
+        write(*,*) 'error :: max_eig test failed, incorrect answer'
+        write(*,*) 'expected 10.0, got ', alpha
         no_errors_helpers = no_errors_helpers + 1 
      end if
 
@@ -823,6 +835,7 @@ program nlls_test
         write(*,*) 'Error: incorrect return from shift_matrix'
         no_errors_helpers = no_errors_helpers + 1
      end if
+     deallocate(A,B)
      
      !! get_svd_J 
      ! Todo

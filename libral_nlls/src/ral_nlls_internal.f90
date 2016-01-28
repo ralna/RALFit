@@ -1147,7 +1147,7 @@ contains
        lwork = size(w%work)
        
        w%Jlls(:) = J(:)
-
+       
        call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
             inform%external_return)
        if (inform%external_return .ne. 0 ) then
@@ -1682,7 +1682,7 @@ contains
         ! now find the rightmost real eigenvalue
         w%vecisreal = .true.
         where ( abs(w%alphaI) > 1e-8 ) w%vecisreal = .false.
-        
+
         w%ew_array(:) = w%alphaR(:)/w%beta(:)
         maxindex = maxloc(w%ew_array,w%vecisreal)
         if (maxindex(1) == 0) goto 1000
@@ -1826,15 +1826,18 @@ contains
         workspace%tr_nu = options%radius_increase
         workspace%tr_p = 7
 
+        if (.not. allocated(workspace%y)) then
+           allocate(workspace%y(n), stat = status)
+           if (status > 0) goto 9000
+           workspace%y = zero
+        end if
+        if (.not. allocated(workspace%y_sharp)) then
+           allocate(workspace%y_sharp(n), stat = status)
+           if (status > 0) goto 9000
+           workspace%y_sharp = zero
+        end if
+        
         if (.not. options%exact_second_derivatives) then
-           if (.not. allocated(workspace%y)) then
-              allocate(workspace%y(n), stat = status)
-              if (status > 0) goto 9000
-           end if
-           if (.not. allocated(workspace%y_sharp)) then
-              allocate(workspace%y_sharp(n), stat = status)
-              if (status > 0) goto 9000
-           end if
            if (.not. allocated(workspace%g_old)) then
               allocate(workspace%g_old(n), stat = status)
               if (status > 0) goto 9000
@@ -2341,14 +2344,18 @@ contains
         
         allocate( w%alphaR(2*n), stat = status)
         if (status > 0) goto 9000
+        w%alphaR = zero
         allocate( w%alphaI(2*n), stat = status)
         if (status > 0) goto 9000
+        w%alphaI = zero
         allocate( w%beta(2*n),   stat = status)
         if (status > 0) goto 9000
+        w%beta = zero
         allocate( w%vr(2*n,2*n), stat = status)
         if (status > 0) goto 9000
         allocate( w%ew_array(2*n), stat = status)
         if (status > 0) goto 9000
+        w%ew_array = zero
         allocate(workquery(1),stat = status)
         if (status > 0) goto 9000
         ! make a workspace query to dggev
