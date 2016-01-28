@@ -414,7 +414,7 @@ program nlls_test
      ! now check for NaNs...HOW to do this in a non-compiler dependent way!?!?
 
      !! now, let's check the other option....
-     options%tr_update_strategy = 1
+     options%tr_update_strategy = 2
      
      ! check if rho increases...
      alpha = (options%eta_very_successful + options%eta_too_successful) / 2
@@ -437,6 +437,15 @@ program nlls_test
      delta = 100_wp
 
      alpha = options%eta_success_but_reduce - 0.5_wp
+     call update_trust_region_radius(alpha,options,status,delta,beta,i)
+     if ( delta >= 100_wp ) then
+        write(*,*) 'Unexpected answer from update_trust_region_radius'
+        write(*,*) 'Delta did not decrease as expected: delta = ', delta
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     delta = 100_wp
+
+     alpha = options%eta_successful - 10.0_wp
      call update_trust_region_radius(alpha,options,status,delta,beta,i)
      if ( delta >= 100_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'

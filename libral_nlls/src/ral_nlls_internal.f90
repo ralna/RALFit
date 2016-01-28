@@ -1362,7 +1362,6 @@ contains
              nu = options%radius_reduce
              if (options%print_level > 2) write(options%out,3050) Delta 
           else if ( rho <= options%eta_successful ) then 
-             write(*,*) 'nu = ', nu
              Delta = Delta * nu
              nu =  nu * 0.5_wp
              if (options%print_level > 2) write(options%out,3010) Delta
