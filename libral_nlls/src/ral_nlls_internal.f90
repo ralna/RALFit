@@ -33,19 +33,16 @@ module ral_nlls_internal
      INTEGER :: MAX_TR_REDUCTIONS = -500
      INTEGER :: X_NO_PROGRESS = -700 ! <-- change
      INTEGER :: N_GT_M = -800  ! <-- change
-     INTEGER :: BAD_TR_STRATEGY = -900
+     INTEGER :: BAD_TR_STRATEGY = -900 ! <- change
+     INTEGER :: FIND_BETA = -12 ! <- change
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -3  ! <-- change
-     INTEGER :: DOGLEG_BETA = -701 ! <-- change
      ! AINT errors
-!     INTEGER :: AINT_GENERAL_SOLVE = -4 ! <-- change
      INTEGER :: AINT_EIG_IMAG = -21
      INTEGER :: AINT_EIG_ODD = -22
-     INTEGER :: AINT_BETA = -4 ! <-- change
      ! More-Sorensen errors
      INTEGER :: MS_MAXITS = -100 ! <-- change
      INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
-     INTEGER :: MS_NO_ALPHA = -200 ! <- CHANGE
      INTEGER :: MS_SPD_LOOP = -600    !<--change
      ! DTRS errors
 
@@ -671,7 +668,6 @@ contains
      TYPE( dogleg_work ) :: w
      
      real(wp) :: alpha, beta
-     integer :: slls_status, fb_status
 
      !     Jg = J * g
      call mult_J(J,n,m,g,w%Jg)
@@ -700,8 +696,8 @@ contains
         d = (Delta / norm2(w%d_sd) ) * w%d_sd
      else
         w%ghat = w%d_gn - alpha * w%d_sd
-        call findbeta(w%d_sd,w%ghat,alpha,Delta,beta,fb_status)
-        if ( fb_status .ne. 0 ) goto 1010
+        call findbeta(w%d_sd,w%ghat,alpha,Delta,beta,inform)
+        if ( inform%status .ne. 0 ) goto 1000
         d = alpha * w%d_sd + beta * w%ghat
      end if
 
@@ -711,15 +707,6 @@ contains
 1000 continue 
      ! bad error return from solve_LLS
      call exterr(options,inform,'dogleg')
-     return
-
-1010 continue
-          if ( options%print_level > 0 ) then
-        write(options%out,'(a,a)') 'Unexpected error in finding beta ', &
-                                   'in dogleg'
-        write(options%out,'(a,i0)') 'dogleg returned info = ', fb_status
-     end if
-     inform%status = ERROR%DOGLEG_BETA
      return
 
      
@@ -821,8 +808,8 @@ contains
 
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
-        call findbeta(w%q,y_hardcase(:,1),one,Delta,eta,find_status)
-        if ( find_status .ne. 0 ) goto 1040
+        call findbeta(w%q,y_hardcase(:,1),one,Delta,eta,inform)
+        if ( inform%status .ne. 0 ) goto 1000
 
         !!!!!      ^^TODO^^    !!!!!
         ! currently assumes B = I !!
@@ -860,13 +847,6 @@ contains
      call exterr(options,inform,'AINT_TR')
      return
 
-1040 continue
-     ! no valid beta found
-     if ( options%print_level >= 0 ) then 
-        write(options%error,'(a)') 'No valid beta found'
-     end if
-     inform%status = ERROR%AINT_BETA
-     return
 
    END SUBROUTINE AINT_tr
 
@@ -950,8 +930,8 @@ contains
            ! also good...exit
            goto 1050              
         end if
-        call findbeta(d,w%y1,one,Delta,alpha,fb_status)
-        if (fb_status .ne. 0 ) goto 1070  !! todo! change this error code....
+        call findbeta(d,w%y1,one,Delta,alpha,inform)
+        if (inform%status .ne. 0 ) goto 1000  
         d = d + alpha * w%y1
         ! also good....exit
         goto 1050
@@ -1017,14 +997,6 @@ contains
      inform%status = ERROR%MS_MAXITS
      inform%external_return = mineig_status
      inform%external_name = 'lapack_dsyev'
-
-     return
-
-1070 continue
-     if ( options%print_level >= 3 ) then
-        write(options%error,'(a)') 'M-S: Unable to find alpha s.t. ||s + alpha v|| = Delta'
-     end if
-     inform%status = ERROR%MS_NO_ALPHA
 
      return
      
@@ -1162,7 +1134,7 @@ contains
               
      END SUBROUTINE solve_LLS
      
-     SUBROUTINE findbeta(d_sd,ghat,alpha,Delta,beta,status)
+     SUBROUTINE findbeta(d_sd,ghat,alpha,Delta,beta,inform)
 
 !  -----------------------------------------------------------------
 !  findbeta, a subroutine to find the optimal beta such that 
@@ -1172,19 +1144,18 @@ contains
      real(wp), dimension(:), intent(in) :: d_sd, ghat
      real(wp), intent(in) :: alpha, Delta
      real(wp), intent(out) :: beta
-     integer, intent(out) :: status
+     type( nlls_inform ), intent(out) :: inform
      
      real(wp) :: a, b, c, discriminant
      
-     status = 0
-
      a = norm2(ghat)**2
      b = 2.0 * alpha * dot_product( ghat, d_sd)
      c = ( alpha * norm2( d_sd ) )**2 - Delta**2
      
      discriminant = b**2 - 4 * a * c
      if ( discriminant < 0) then
-        status = 1
+        inform%status = ERROR%FIND_BETA
+        inform%external_name = 'findbeta'
         return
      else
         beta = (-b + sqrt(discriminant)) / (2.0 * a)

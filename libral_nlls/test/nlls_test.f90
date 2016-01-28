@@ -344,12 +344,6 @@ program nlls_test
      call remove_workspaces(work, options)
      options%nlls_method = 9 ! back to hybrid
      
-
-     
-     ! ** TODO **
-     
-         
-
      !------------!
      !! findbeta !!
      !------------!
@@ -359,14 +353,31 @@ program nlls_test
      x = (/ 1.0, 2.0, 3.0 /) 
      y = (/ 2.0, 1.0, 1.0 /)
 
-     call findbeta(x,y,1.0_wp,10.0_wp,alpha,info)
+     call findbeta(x,y,1.0_wp,10.0_wp,alpha,status)
 
-     if (info .ne. 0) then
+     if (status%status .ne. 0) then
         write(*,*) 'error -- findbeta did not work: info /= 0'
         no_errors_helpers = no_errors_helpers + 1
      else if ( ( norm2( x + alpha * y ) - 10.0_wp ) > 1e-12 ) then
         write(*,*) 'error -- findbeta did not work'
         write(*,*) '|| x + beta y|| = ', norm2( (x + alpha * y)-10.0_wp)
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
+     deallocate(x,y,z)
+     
+     n = 2
+     allocate(x(n),y(n),z(n))
+     
+     x = 100.0_wp
+     y = 1.0_wp
+     alpha = 1e6
+     beta = 0.0_wp
+
+     call findbeta(x,y,alpha,beta,gamma,status)
+
+     if (status%status .ne. ERROR%FIND_BETA) then
+        write(*,*) 'Expected an error from findbeta: info =', status%status
         no_errors_helpers = no_errors_helpers + 1
      end if
 
