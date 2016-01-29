@@ -364,7 +364,6 @@ program nlls_test
      call remove_workspaces(work,options)
 
      !! solve_dtrs
-     ! ** TODO ** 
      options%nlls_method = 4
      n = 2
      m = 5
@@ -395,6 +394,25 @@ program nlls_test
         write(*,*) 'Delta = ', alpha, '||d|| = ', dot_product(w,w)
         no_errors_helpers = no_errors_helpers + 1
      end if
+
+     ! Flag an error from dtrs...
+     x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
+     y = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
+     z = 1.0_wp
+
+     alpha = -100.0_wp
+     
+     call solve_dtrs(x,y,z,n,m,alpha,w,& 
+          work%calculate_step_ws%solve_dtrs_ws, &
+          options,status)
+
+     if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
+        write(*,*) 'DTRS test failed, expected status = ', ERROR%FROM_EXTERNAL
+        write(*,*) ' but got status = ', status%status
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = 0
+
      
      deallocate(x,y,z,w)
      call remove_workspaces(work,options)
