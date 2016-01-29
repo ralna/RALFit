@@ -1758,7 +1758,7 @@ contains
         else
            s1 = S(1)
            sn = S(n)
-           if (options%print_level > 3) then 
+           if (options%print_level > 2) then 
               write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
               write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
            end if
@@ -1925,7 +1925,6 @@ contains
         return
 
 2000    continue
-        ! error in lower down allocation
         return
        
       end subroutine setup_workspaces
@@ -2317,6 +2316,10 @@ contains
         return
         
 9000    continue
+        call allocation_error(options,'dggev in max_eig')
+        return
+
+9020    continue
         call allocation_error(options,'max_eig')
         return
 

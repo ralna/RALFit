@@ -52,7 +52,6 @@ program nlls_test
      allocate(model_to_test(number_of_models))
      model_to_test = (/ 0, 1, 2, 3, 7, 8, 9 /)
 
-     
      allocate( x(n) )
 
      ! Get params for the function evaluations
@@ -1063,6 +1062,14 @@ program nlls_test
      !! get_svd_J 
      ! Todo
 
+     !! let's make sure output_progress_vectors gets hit
+     options%output_progress_vectors = .true.
+
+     n = 2
+     m = 3
+     call setup_workspaces(work,n,m,options,info)    
+     call remove_workspaces(work,options)
+     
 
      !! exterr
 
