@@ -48,9 +48,9 @@ program nlls_test
 
      m = 67
           
-     number_of_models = 7
+     number_of_models = 4
      allocate(model_to_test(number_of_models))
-     model_to_test = (/ 0, 1, 2, 3, 7, 8, 9 /)
+     model_to_test = (/ 0, 1, 2, 9 /)
 
      allocate( x(n) )
 
@@ -68,7 +68,7 @@ program nlls_test
               X(1) = 1.0 
               X(2) = 2.0
 
-              options%print_level = 0
+              options%print_level = 3
               options%nlls_method = nlls_method
               options%tr_update_strategy = tr_update
               options%model = model_to_test(model)
@@ -101,6 +101,39 @@ program nlls_test
         end do
      end do
      
+     ! Let's get to maxits
+     options%maxit = 5
+     options%model = 1
+     options%nlls_method = 1
+      X(1) = 1.0 
+      X(2) = 2.0
+     call nlls_solve(n, m, X,                         &
+                   eval_F, eval_J, eval_H, params,  &
+                   options, status )
+     if ( status%status .ne. ERROR%MAXITS) then
+        write(*,*) 'Error: incorrect error return when maxits expected to be reached'
+        
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+     options%maxit = 100
+
+     ! Let's get save the arrays
+     options%model = 1
+     options%nlls_method = 1
+     options%output_progress_vectors = .true.
+      X(1) = 1.0 
+      X(2) = 2.0
+     call nlls_solve(n, m, X,                         &
+                   eval_F, eval_J, eval_H, params,  &
+                   options, status )
+     if ( status%status .ne. 0) then
+        write(*,*) 'Error: did not converge when output_progress_vectors = true'
+        no_errors_main = no_errors_main + 1
+        status%status = 0
+     end if
+     options%output_progress_vectors = .false.
+
      ! Let's do one run with non-exact second derivatives 
      options%nlls_method = 4
      options%model = 9

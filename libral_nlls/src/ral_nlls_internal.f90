@@ -759,7 +759,7 @@ contains
      end do
      
      select case (options%model)
-     case (1,3)
+     case (1)
         call solve_spd(w%A,-w%v,w%LtL,w%p0,n,inform)
         if (inform%status .ne. 0) goto 1000
      case default
@@ -796,7 +796,7 @@ contains
         w%M0(1:n,1:n) = w%A(:,:) + lam*w%B(:,:) + w%M1(1:n,1:n)
         ! solve Hq + g = 0 for q
         select case (options%model) 
-        case (1,3)
+        case (1)
            call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,inform)
            if (inform%status .ne. 0) goto 1000
         case default
@@ -819,7 +819,7 @@ contains
         
      else 
         select case (options%model)
-        case (1,3)
+        case (1)
            call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,inform)
            if (inform%status .ne. 0) goto 1000
         case default
@@ -1197,9 +1197,6 @@ contains
        case (1) ! first-order (no Hessian)
           ! nothing to do here...
           continue
-       case (3) ! barely second-order (identity Hessian)
-          ! H = J^T J + I
-          md = md + 0.5 * dot_product(d,d)
        case default
           ! these have a dynamic H -- recalculate
           ! H = J^T J + HF, HF is (an approx?) to the Hessian
@@ -1844,21 +1841,6 @@ contains
               if (status > 0) goto 1000
            end if
         end if
-
-        if( options%model == 8 ) then 
-           if (.not. allocated(workspace%fNewton)) then
-              allocate(workspace%fNewton(m), stat = status)
-              if (status > 0) goto 1000
-           end if
-           if (.not. allocated(workspace%JNewton)) then
-              allocate(workspace%JNewton(n*m), stat = status)
-              if (status > 0) goto 1000
-           end if
-           if (.not. allocated(workspace%XNewton)) then
-              allocate(workspace%XNewton(n), stat = status)
-              if (status > 0) goto 1000
-           end if
-        end if
                 
         if( .not. allocated(workspace%J)) then
            allocate(workspace%J(n*m), stat = status)
@@ -2146,7 +2128,7 @@ contains
         call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,status)
         if (status > 0) goto 9010
         ! setup space for the solve routine
-        if ((options%model .ne. 1).and.(options%model .ne. 3)) then
+        if ((options%model .ne. 1)) then
            call setup_workspace_solve_general(n,m,w%solve_general_ws,options,status)
            if (status > 0 ) goto 9010
         end if
@@ -2181,7 +2163,7 @@ contains
         call remove_workspace_max_eig(w%max_eig_ws,options)
         call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
         ! setup space for the solve routine
-        if ((options%model .ne. 1).and.(options%model .ne. 3)) then
+        if (options%model .ne. 1) then
            call remove_workspace_solve_general(w%solve_general_ws,options)
         end if
 
