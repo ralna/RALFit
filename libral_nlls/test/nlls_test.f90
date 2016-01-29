@@ -242,7 +242,7 @@ program nlls_test
      end if
      
      deallocate(x,y,z,v,w)
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
      
 
      !! aint_tr
@@ -360,7 +360,7 @@ program nlls_test
      options%more_sorensen_maxits = 10
      
      deallocate(x,y,z,w)
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
 
      !! solve_dtrs
      options%nlls_method = 4
@@ -414,7 +414,7 @@ program nlls_test
 
      
      deallocate(x,y,z,w)
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
 
      !! solve_LLS 
      options%nlls_method = 1 ! dogleg
@@ -450,7 +450,7 @@ program nlls_test
      
      ! finally, let's flag an error....
      deallocate(w,x,y,z)
-     call remove_workspaces(work, options)
+     call nlls_finalize(work, options)
      
      n = 100 
      m = 20
@@ -469,7 +469,7 @@ program nlls_test
      status%status = 0
      
      deallocate(x,y,z)
-     call remove_workspaces(work, options)
+     call nlls_finalize(work, options)
      options%nlls_method = 9 ! back to hybrid
      
      !------------!
@@ -668,7 +668,15 @@ program nlls_test
      delta = 100_wp
 
      !! test_convergence
-     ! todo
+     
+     ! hit the case where f = 0 
+     call test_convergence(0.0_wp,1.0_wp, 1.0_wp, 1.0_wp, options, status)
+     if ( status%convergence_normf .ne. 1) then
+        write(*,*) 'Error in test_convergence test :: expected status%convergence_normf = 1'
+        write(*,*) 'got status%convergence_normf = ', status%convergence_normf
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
      
      !----------!
      !! mult_J !!
@@ -775,7 +783,7 @@ program nlls_test
      status%status = 0
      
      deallocate(A,x,y,z)
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
      
      !---------------!
      !! matrix_norm !!
@@ -897,7 +905,7 @@ program nlls_test
            no_errors_helpers = no_errors_helpers + 1
         end if
 
-        call remove_workspaces(work,options)
+        call nlls_finalize(work,options)
         options%nlls_method = 2 ! revert...
 
      end do
@@ -920,7 +928,7 @@ program nlls_test
 !!$     call min_eig_symm(A,n,alpha,x,options,status, & 
 !!$             work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
 !!$     
-!!$     call remove_workspaces(work,options)
+!!$     call nlls_finalize(work,options)
 !!$     deallocate(A,x)    
 
 
@@ -958,7 +966,7 @@ program nlls_test
      end if
 
      deallocate(A,B,x)
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
 
      ! check the 'hard' case...
      n = 4
@@ -1009,7 +1017,7 @@ program nlls_test
 
      deallocate(A,B,C,x,y)
      if (allocated(results)) deallocate(results)
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
 
      
      
@@ -1041,7 +1049,7 @@ program nlls_test
      status%status = 0
 
      deallocate(A,B,x)
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
 
      !! shift_matrix 
      n = 2
@@ -1068,7 +1076,7 @@ program nlls_test
      n = 2
      m = 3
      call setup_workspaces(work,n,m,options,info)    
-     call remove_workspaces(work,options)
+     call nlls_finalize(work,options)
      
 
      !! exterr
