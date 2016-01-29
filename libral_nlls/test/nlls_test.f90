@@ -250,7 +250,118 @@ program nlls_test
      ! ** TODO ** 
 
      !! more_sorensen
-     ! ** TODO ** 
+     options%nlls_method = 3
+     n = 2
+     m = 3
+     allocate(w(m*n), x(n*n), y(m), z(n))
+     call setup_workspaces(work,n,m,options,info) 
+     ! w <-- J
+     ! x <-- hf
+     ! y <-- f
+     ! z <-- d 
+     alpha = 10.0_wp
+     
+     ! regular case...
+     w = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
+     x = 0.0_wp
+     y = 1.0_wp
+     z = 1.0_wp
+     ! now, get ||d_gn|| <= Delta
+     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+          work%calculate_step_ws%more_sorensen_ws)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: unexpected error in more-sorensen'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0
+     end if
+
+     ! non spd matrix, with failure
+     options%more_sorensen_shift = -1000.0_wp
+     w = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
+     x = -10 * (/ 2.0_wp, 1.0_wp, 5.0_wp, 7.0_wp /)
+     y = 1.0_wp
+     z = 1.0_wp
+     ! now, get ||d_gn|| <= Delta
+     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+          work%calculate_step_ws%more_sorensen_ws)
+     if (status%status .ne. ERROR%MS_TOO_MANY_SHIFTS) then
+        write(*,*) 'Error: test passed, when fail expected'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = 0
+     options%more_sorensen_shift = 1e-13
+
+     ! look for nd /=  Delta with a non-zero shift?
+     w = (/ 2.0_wp, 3.0_wp, 4.0_wp, 2.0_wp, 3.0_wp, 4.0_wp /)
+     x = (/ 1.0_wp, 2.0_wp, 2.0_wp, 1.0_wp /)
+     y = 1.0_wp
+     z = 1.0_wp
+     alpha =  10.0_wp
+     ! now, get ||d_gn|| <= Delta
+     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+          work%calculate_step_ws%more_sorensen_ws)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
+        write(*,*) 'status = ', status%status, ' returned'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0
+     end if
+
+     ! now look for nd =  Delta with a non-zero shift?
+     w = (/ 2.0_wp, 3.0_wp, 4.0_wp, 2.0_wp, 3.0_wp, 4.0_wp /)
+     x = (/ 1.0_wp, 2.0_wp, 2.0_wp, 1.0_wp /)
+     y = 1.0_wp
+     z = 1.0_wp
+     beta = options%more_sorensen_tiny
+     options%more_sorensen_tiny = 0.01_wp
+     alpha =  0.2055_wp
+     ! now, get ||d_gn|| <= Delta
+     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+          work%calculate_step_ws%more_sorensen_ws)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
+        write(*,*) 'status = ', status%status, ' returned'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0
+     end if
+     options%more_sorensen_tiny = beta
+     ! *todo*
+
+     ! now take nd > Delta
+     w = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
+     x = 0.0_wp
+     y = 1.0_wp
+     z = 1.0_wp
+     alpha = 3.0_wp
+     ! now, get ||d_gn|| <= Delta
+     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+          work%calculate_step_ws%more_sorensen_ws)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: unexpected error in more-sorensen test with nd > Delta'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0
+     end if
+
+
+     ! get to max_its...
+     options%more_sorensen_maxits = 1     
+     w = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
+     x = 0.0_wp
+     y = 1.0_wp
+     z = 1.0_wp
+     alpha = 3.0_wp
+     ! now, get ||d_gn|| <= Delta
+     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+          work%calculate_step_ws%more_sorensen_ws)
+     if (status%status .ne. ERROR%MS_MAXITS) then
+        write(*,*) 'Error: Expected maximum iterations error in more_sorensen'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = 0
+     options%more_sorensen_maxits = 10
+     
+     deallocate(x,y,z,w)
+     call remove_workspaces(work,options)
 
      !! solve_dtrs
      ! ** TODO ** 

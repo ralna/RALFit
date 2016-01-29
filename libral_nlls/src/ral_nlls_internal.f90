@@ -309,7 +309,7 @@ module ral_nlls_internal
 
     integer  :: more_sorensen_maxits = 500
     real(wp) :: more_sorensen_shift = 1e-13
-    real(wp) :: more_sorensen_tiny = 10.0 * epsmch
+    real(wp) :: more_sorensen_tiny = 10.0_wp * epsmch
     real(wp) :: more_sorensen_tol = 1e-3
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -616,7 +616,7 @@ module ral_nlls_internal
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix, exterr
-    public :: dogleg
+    public :: dogleg, more_sorensen
     public :: ERROR
     
 contains
