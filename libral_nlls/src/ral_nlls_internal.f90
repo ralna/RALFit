@@ -616,7 +616,7 @@ module ral_nlls_internal
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix, exterr
-    public :: dogleg, more_sorensen
+    public :: dogleg, more_sorensen, allocation_error
     public :: ERROR
     
 contains
@@ -1780,6 +1780,18 @@ contains
         
       end subroutine exterr
 
+      subroutine allocation_error(options,subname)
+        type( nlls_options ), intent(in) :: options
+        character( len=* ) :: subname
+
+        if (options%print_level >= 0) then
+           write(options%error,'(a,a,a)') & 
+                'Error allocating array in subroutine ', subname,&
+                ': not enough memory.' 
+        end if
+                
+      end subroutine allocation_error
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                                                       !!
 !! W O R K S P A C E   S E T U P   S U B R O U T I N E S !!
@@ -1801,23 +1813,23 @@ contains
 
         if (.not. allocated(workspace%y)) then
            allocate(workspace%y(n), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
            workspace%y = zero
         end if
         if (.not. allocated(workspace%y_sharp)) then
            allocate(workspace%y_sharp(n), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
            workspace%y_sharp = zero
         end if
         
         if (.not. options%exact_second_derivatives) then
            if (.not. allocated(workspace%g_old)) then
               allocate(workspace%g_old(n), stat = status)
-              if (status > 0) goto 9000
+              if (status > 0) goto 1000
            end if
            if (.not. allocated(workspace%g_mixed)) then
               allocate(workspace%g_mixed(n), stat = status)
-              if (status > 0) goto 9000
+              if (status > 0) goto 1000
            end if
 
         end if
@@ -1825,56 +1837,56 @@ contains
         if( options%output_progress_vectors ) then 
            if (.not. allocated(workspace%resvec)) then
               allocate(workspace%resvec(options%maxit+1), stat = status)
-              if (status > 0) goto 9000
+              if (status > 0) goto 1000
            end if
            if (.not. allocated(workspace%gradvec)) then
               allocate(workspace%gradvec(options%maxit+1), stat = status)
-              if (status > 0) goto 9000
+              if (status > 0) goto 1000
            end if
         end if
 
         if( options%model == 8 ) then 
            if (.not. allocated(workspace%fNewton)) then
               allocate(workspace%fNewton(m), stat = status)
-              if (status > 0) goto 9000
+              if (status > 0) goto 1000
            end if
            if (.not. allocated(workspace%JNewton)) then
               allocate(workspace%JNewton(n*m), stat = status)
-              if (status > 0) goto 9000
+              if (status > 0) goto 1000
            end if
            if (.not. allocated(workspace%XNewton)) then
               allocate(workspace%XNewton(n), stat = status)
-              if (status > 0) goto 9000
+              if (status > 0) goto 1000
            end if
         end if
                 
         if( .not. allocated(workspace%J)) then
            allocate(workspace%J(n*m), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
         end if
         if( .not. allocated(workspace%f)) then
            allocate(workspace%f(m), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
         end if
         if( .not. allocated(workspace%fnew)) then 
            allocate(workspace%fnew(m), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
         end if
         if( .not. allocated(workspace%hf)) then
            allocate(workspace%hf(n*n), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
         end if
         if( .not. allocated(workspace%d)) then
            allocate(workspace%d(n), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
         end if
         if( .not. allocated(workspace%g)) then
            allocate(workspace%g(n), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
         end if
         if( .not. allocated(workspace%Xnew)) then
            allocate(workspace%Xnew(n), stat = status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 1000
         end if
 
 
@@ -1883,46 +1895,39 @@ contains
         case (1) ! use the dogleg method
            call setup_workspace_dogleg(n,m,workspace%calculate_step_ws%dogleg_ws, & 
                 options, status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 2000
 
         case(2) ! use the AINT method
            call setup_workspace_AINT_tr(n,m,workspace%calculate_step_ws%AINT_tr_ws, & 
                 options, status)
-           if (status > 0) goto 9010
+           if (status > 0) goto 2000
            
         case(3) ! More-Sorensen 
            call setup_workspace_more_sorensen(n,m,&
                 workspace%calculate_step_ws%more_sorensen_ws,options,status)
-           if (status > 0) goto 9000
+           if (status > 0) goto 2000
 
         case (4) ! dtrs (Galahad)
            call setup_workspace_solve_dtrs(n,m, & 
                 workspace%calculate_step_ws%solve_dtrs_ws, options, status)
-
+           if (status > 0) goto 2000
         end select
 
 ! evaluate model in the main routine...       
         call setup_workspace_evaluate_model(n,m,workspace%evaluate_model_ws,options,status)
-        if (status > 0) goto 9010
+        if (status > 0) goto 2000
 
         return
 
 ! Error statements
-9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating local array: ',&
-                'not enough memory.' 
-           write(options%error,'(a,i0)') 'status = ', status
- 
-        end if
-        return
-       
-9010    continue 
-        ! leave the subroutine
+1000    continue
+        call allocation_error(options,'local array')
         return
 
+2000    continue
+        ! error in lower down allocation
+        return
+       
       end subroutine setup_workspaces
 
       subroutine remove_workspaces(workspace,options)
@@ -2007,15 +2012,8 @@ contains
 
         ! Error statements
 9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''dogleg'': ',&
-                'not enough memory.' 
-           write(options%error,'(a,i0)') 'status = ', status
- 
-        end if
         
+        call allocation_error(options,'dogleg')
         return
 
 9010    continue
@@ -2069,12 +2067,7 @@ contains
         
 9000    continue
         ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''solve_LLS'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options,'solve_LLS')
         return
 
       end subroutine setup_workspace_solve_LLS
@@ -2105,13 +2098,7 @@ contains
         return
 
 9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''evaluate_model'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options,'evaluate_model')
         return
       end subroutine setup_workspace_evaluate_model
 
@@ -2168,21 +2155,10 @@ contains
         return
         
 9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''AINT_tr'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options,'AINT_tr')
         return
 
 9010    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a)') &
-                'Called from subroutine ''solve_LLS'': '
-        end if
         return
         
       end subroutine setup_workspace_AINT_tr
@@ -2269,22 +2245,11 @@ contains
         return
         
 9000    continue
-        ! Allocation errors : min_eig_symm
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''min_eig_symm'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options,'min_eig_symm')
         return
 
 9020    continue
-        ! Error return from lapack routine
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for lapack subroutine: ',&
-                'not enough memory.' 
-        end if
+        call allocation_error(options,'dsyevx in min_eig_symm')
         return
 
       end subroutine setup_workspace_min_eig_symm
@@ -2352,22 +2317,7 @@ contains
         return
         
 9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''AINT_tr'': ',&
-                'not enough memory.' 
-        end if
-        
-        return
-
-9020    continue
-        ! Error return from lapack routine
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for lapack subroutine: ',&
-                'not enough memory.' 
-        end if
+        call allocation_error(options,'max_eig')
         return
 
       end subroutine setup_workspace_max_eig
@@ -2403,13 +2353,7 @@ contains
         return
         
 9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''solve_general'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options, 'solve_general')
         return
         
       end subroutine setup_workspace_solve_general
@@ -2449,22 +2393,10 @@ contains
         return
                 
 9000    continue
-        ! Allocation errors : solve_dtrs
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''solve_dtrs'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options,'solve_dtrs')
         return
         
 9010    continue  
-        ! errors : solve_dtrs
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Called from routine solve_dtrs' 
-        end if
-        
         return
 
       end subroutine setup_workspace_solve_dtrs
@@ -2517,20 +2449,11 @@ contains
         
 8000    continue 
         ! Allocation errors : all_eig_sym
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''all_eig_symm'': ',&
-                'not enough memory.' 
-        end if
+        call allocation_error(options,'all_eig_sym')
+        return
 
 9000    continue
-        ! lapack error
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''solve_dtrs'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options,'dsyev in all_eig_sym')
         return
 
       end subroutine setup_workspace_all_eig_symm
@@ -2567,22 +2490,10 @@ contains
         return
         
 9000    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a)') &
-                'Error allocating array for subroutine ''more_sorensen'': ',&
-                'not enough memory.' 
-        end if
-        
+        call allocation_error(options,'more_sorensen')
         return
         
 9010    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a)') &
-                'Called from subroutine ''dogleg'': '
-        end if
-
         return
 
 

@@ -757,11 +757,24 @@ program nlls_test
      if (status%status .ne. 0) then
         write(*,*) 'Error: info = ', info, ' returned from solve_general'
         no_errors_helpers = no_errors_helpers + 1
+        status%status = 0
      else if (norm2(x-z) > 1e-12) then
         write(*,*) 'Error: incorrect value returned from solve_general'
         no_errors_helpers = no_errors_helpers + 1
      end if
 
+     A = reshape((/ 0.0, 0.0, 0.0, 0.0 /),shape(A))
+     z = (/ 1.0, 1.0 /)
+     y = (/ 6.0, 3.0 /)
+
+     call solve_general(A,y,x,n,status,& 
+          work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
+     if (status%status .ne. ERROR%FROM_EXTERNAL) then
+        write(*,*) 'Error: expected error return from solve_general, got info = ', info
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = 0
+     
      deallocate(A,x,y,z)
      call remove_workspaces(work,options)
      
@@ -877,7 +890,6 @@ program nlls_test
         call min_eig_symm(A,n,alpha,x,options,status, & 
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
 
-
         if ( (abs( alpha + 6.0 ) > 1e-12).or.(status%status .ne. 0) ) then
            write(*,*) 'error :: min_eig_symm test failed -- wrong eig found'
            no_errors_helpers = no_errors_helpers + 1 
@@ -885,15 +897,33 @@ program nlls_test
            write(*,*) 'error :: min_eig_symm test failed -- not an eigenvector'
            no_errors_helpers = no_errors_helpers + 1
         end if
-        
+
         call remove_workspaces(work,options)
         options%nlls_method = 2 ! revert...
 
      end do
-     
 
-     
      deallocate(A,x)
+     
+!!$     n = 3
+!!$     m = 3
+!!$     allocate(x(n),A(n,n))
+!!$     call setup_workspaces(work,n,m,options,info) 
+!!$     options%subproblem_eig_fact = .TRUE.
+!!$     
+!!$     A = reshape( (/ 1674.456299, -874.579834,  -799.876465,
+!!$                     -874.579834,  1799.875854, -925.296021,
+!!$                     -799.876465,  -925.296021, 1725.172485/), 
+!!$                     shape(A))
+!!$
+!!$     options%nlls_method = 3
+!!$
+!!$     call min_eig_symm(A,n,alpha,x,options,status, & 
+!!$             work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
+!!$     
+!!$     call remove_workspaces(work,options)
+!!$     deallocate(A,x)    
+
 
      !-----------!
      !! max_eig !!
@@ -1040,6 +1070,9 @@ program nlls_test
      status%external_return = 0
      call exterr(options,status,'nlls_test')
           
+     !! allocation_error
+     
+     call allocation_error(options,'nlls_tests')
 
      ! Report back results....
 
