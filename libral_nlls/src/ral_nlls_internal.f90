@@ -1075,14 +1075,14 @@ contains
 
      ! we've now got the vectors we need, pass to dtrs_solve
      call dtrs_initialize( dtrs_options, dtrs_inform ) 
+     
 
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
      if ( dtrs_inform%status .ne. 0) then
         inform%external_return = dtrs_inform%status
         inform%external_name = 'galahad_dtrs'
         inform%status = ERROR%FROM_EXTERNAL
-        if (inform%status .ne. 0) goto 1000
-        return
+        goto 1000
      end if
 
      ! and return the un-transformed vector
@@ -1770,12 +1770,12 @@ contains
       subroutine exterr(options,inform,subname)
         type( nlls_options ), intent(in) :: options
         type( nlls_inform ), intent(in)  :: inform
-        character :: subname
+        character (len = *) :: subname
         
         if (options%print_level > 0) then
            write(options%out,'(a)') 'Unexpected error return from an external subroutine'
            write(options%out,'(a,a,i0,a,a)') trim(inform%external_name),' returned error code ',&
-                inform%external_return,' when called from the subroutine ', subname
+                inform%external_return,' when called from the subroutine ', trim(subname)
         end if
         
       end subroutine exterr
