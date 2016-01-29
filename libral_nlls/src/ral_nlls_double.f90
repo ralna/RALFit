@@ -142,19 +142,21 @@ contains
                          inform, options)
        ! test the returns to see if we've converged
        if (inform%status .ne. 0) then 
-          return 
+          goto 1000 ! error -- exit
        elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
-          return
+          goto 1000 ! converged -- exit
        end if
        
      end do main_loop
     
      ! If we reach here, then we're over maxits     
      if (options%print_level > 0 ) write(options%out,1040) 
-     inform%status = -1
+     inform%status = ERROR%MAXITS
+     goto 1000
     
-     RETURN
-
+1000 continue
+     call nlls_finalize(w,options)
+     return
 ! Non-executable statements
 
 ! print level > 0
@@ -245,7 +247,8 @@ contains
        w%g = -w%g
        normJF = norm2(w%g)
        w%normJF0 = normJF
-       if (options%model == 8 .or. options%model == 9) w%normJFold = normJF
+!       if (options%model == 8 .or. options%model == 9) w%normJFold = normJF
+       if (options%model == 9) w%normJFold = normJF
 
        if (options%model == 9) then
           ! make this relative....
@@ -274,23 +277,6 @@ contains
              ! S_0 = 0 (see Dennis, Gay and Welsch)
              w%hf(1:n**2) = zero
           end if
-       case (3) ! barely second order (identity hessian)
-          w%hf(1:n**2) = zero
-          w%hf((/ ( (i-1)*n + i, i = 1,n ) /)) = one
-       case (7) ! hybrid
-          ! first call, so always first-derivatives only
-          w%hf(1:n**2) = zero
-       case (8) ! hybrid II
-          ! always second order for first call...
-          if ( options%exact_second_derivatives ) then
-             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-             inform%h_eval = inform%h_eval + 1
-             if (hfstatus > 0) goto 4030
-          else
-             ! S_0 = 0 (see Dennis, Gay and Welsch)
-             w%hf(1:n**2) = zero
-          end if
-          w%use_second_derivatives = .true.
        case (9) ! hybrid (MNT)
           ! use first-order method initially
           w%hf(1:n**2) = zero
@@ -355,70 +341,7 @@ contains
        !++++++++++++++++++++++!
        call update_trust_region_radius(rho,options,inform,w%Delta,w%tr_nu,w%tr_p)       
        if (inform%status .ne. 0) goto 4000
-       !+++++++++++++++++++++++!
-       ! Add tests for model=8 !
-       !+++++++++++++++++++++++!
-       model8_success: if ( success .and. (options%model == 8) ) then
-
-          if (.not. options%exact_second_derivatives) then 
-             ! first, let's save some old values...
-             w%g_old = w%g
-             ! g_mixed = J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
-          end if
-
-          ! evaluate J and hf at the new point
-          call eval_J(jstatus, n, m, w%Xnew, w%J, params)
-          inform%g_eval = inform%g_eval + 1
-          if (jstatus > 0) goto 4010
-          if ( calculate_svd_J ) then
-             call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
-             if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
-                write( options%out, 3000 ) svdstatus
-             end if
-          end if
-          
-
-          ! g = -J^Tf
-          call mult_Jt(w%J,n,m,w%fnew,w%g)
-          w%g = -w%g
        
-          w%normF = normFnew
-          normJF = norm2(w%g)
-          
-          decrease_grad: if (normJF > w%normJFold) then
-             ! no reduction in residual...
-             which_time_round: if (w%use_second_derivatives) then
-                w%use_second_derivatives = .false.
-                w%hf(1:n**2) = zero
-                w%normJF_Newton = normJF
-                success = .false.
-                ! copy current vectors....
-                ! (maybe streamline for production?!)
-                w%fNewton(:) = w%fnew(:)
-                w%JNewton(:) = w%J(:)
-                w%XNewton(:) = w%Xnew(:)
-             else  
-                ! Gauss-Newton gave no benefit either....
-                w%use_second_derivatives = .true.
-                Newton_better: if ( w%normJF_Newton < normJF ) then
-                   ! Newton values were better...replace
-                   w%fnew(:) = w%fNewton(:)
-                   w%J(:) = w%JNewton(:)
-                   w%Xnew(:) = w%XNewton(:)
-                   w%normJFold = w%normJF_Newton
-                   normJF = w%normJF_Newton
-                else
-                   w%normJFold = normJF
-                end if Newton_better
-                success = .true.
-             end if which_time_round
-          else 
-             w%normJFold = normJF
-          end if decrease_grad
-                 
-       end if model8_success
-
        if (.not. success) then
           ! finally, check d makes progress
           if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
@@ -430,39 +353,35 @@ contains
     X(:) = w%Xnew(:)
     w%f(:) = w%fnew(:)
     
-    if ( options%model .ne. 8 ) then 
-       
-       if (.not. options%exact_second_derivatives) then 
-          ! first, let's save some old values...
-          ! g_old = -J_k^T r_k
-          w%g_old = w%g
-          ! g_mixed = -J_k^T r_{k+1}
-          call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
-          w%g_mixed = -w%g_mixed
-       end if
-
-       ! evaluate J and hf at the new point
-       call eval_J(jstatus, n, m, X, w%J, params)
-       inform%g_eval = inform%g_eval + 1
-       if (jstatus > 0) goto 4010
-       if ( calculate_svd_J ) then
-          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
-          if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
-             write( options%out, 3000 ) svdstatus
-          end if
-       end if
-       
-       ! g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g)
-       w%g = -w%g
-
-       if ( options%model == 9) w%normJFold = normJF
-
-       w%normF = normFnew
-       normJF = norm2(w%g)
-       
+    if (.not. options%exact_second_derivatives) then 
+       ! first, let's save some old values...
+       ! g_old = -J_k^T r_k
+       w%g_old = w%g
+       ! g_mixed = -J_k^T r_{k+1}
+       call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
+       w%g_mixed = -w%g_mixed
     end if
 
+    ! evaluate J and hf at the new point
+    call eval_J(jstatus, n, m, X, w%J, params)
+    inform%g_eval = inform%g_eval + 1
+    if (jstatus > 0) goto 4010
+    if ( calculate_svd_J ) then
+       call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+       if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
+          write( options%out, 3000 ) svdstatus
+       end if
+    end if
+    
+    ! g = -J^Tf
+    call mult_Jt(w%J,n,m,w%f,w%g)
+    w%g = -w%g
+    
+    if ( options%model == 9) w%normJFold = normJF
+    
+    w%normF = normFnew
+    normJF = norm2(w%g)
+    
     ! setup the vectors needed if second derivatives are not available
     if (.not. options%exact_second_derivatives) then 
        
@@ -479,30 +398,6 @@ contains
             X,w%f,w%hf,eval_Hf, &
             w%d, w%y, w%y_sharp,  &
             params,options,inform)
-!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!       inform%h_eval = inform%h_eval + 1
-       if (hfstatus > 0) goto 4030
-    case (3) ! barely second order (identity hessian)
-       continue
-    case (7) ! hybrid method
-       if ( w%use_second_derivatives ) then 
-          ! hybrid switch turned on....
-          
-          call apply_second_order_info(hfstatus,n,m, &
-               X,w%f,w%hf,eval_Hf, &
-               w%d, w%y, w%y_sharp,  &
-               params,options,inform)
-!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!          inform%h_eval = inform%h_eval + 1
-          if (hfstatus > 0) goto 4030
-       end if
-    case (8)       
-       call apply_second_order_info(hfstatus,n,m,&
-            X,w%f,w%hf,eval_Hf, &
-            w%d, w%y, w%y_sharp,  &
-            params,options,inform)
-!       call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
-!       inform%h_eval = inform%h_eval + 1
        if (hfstatus > 0) goto 4030
     case (9)
        ! First, check if we need to switch methods
@@ -532,8 +427,6 @@ contains
                X,w%f,w%hf,eval_Hf, &
                w%d, w%y, w%y_sharp,  &
                params,options,inform)
-!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
- !         inform%h_eval = inform%h_eval + 1
           if (hfstatus > 0) goto 4030
        elseif (.not. options%exact_second_derivatives) then 
           ! if exact_second_derivatives are not needed,
@@ -542,8 +435,6 @@ contains
                X,w%f,w%hf,eval_Hf, &
                w%d, w%y, w%y_sharp,  &
                params,options,inform)
-!          call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
- !         inform%h_eval = inform%h_eval + 1
           if (hfstatus > 0) goto 4030
           w%hf(1:n**2) = zero
        else 
@@ -558,10 +449,6 @@ contains
     if (options%output_progress_vectors) then
        w%resvec (w%iter + 1) = inform%obj
        w%gradvec(w%iter + 1) = inform%norm_g
-    end if
-    
-    if ( (options%model == 7) .and. (normJF < options%hybrid_switch) ) then
-       w%use_second_derivatives = .true.
     end if
     
     if (options%print_level >=3) write(options%out,3010) inform%obj
@@ -599,15 +486,19 @@ contains
 4000 continue
     ! generic end of algorithm
         ! all (final) exits should pass through here...
-    if (options%output_progress_vectors) then
+!    if (options%output_progress_vectors) then
+    if (allocated(w%resvec)) then
        if(.not. allocated(inform%resvec)) then 
           allocate(inform%resvec(w%iter + 1), stat = astatus)
           if (astatus > 0) then
              inform%status = -9999
              return
           end if
+          write(*,*) 'w%resvec(1) = ', w%resvec(1)
           inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
        end if
+    end if
+    if (allocated(w%gradvec)) then
        if(.not. allocated(inform%gradvec)) then 
           allocate(inform%gradvec(w%iter + 1), stat = astatus)
           if (astatus > 0) then
