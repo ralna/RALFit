@@ -588,7 +588,7 @@ module ral_nlls_internal
     type, public :: NLLS_workspace ! all workspaces called from the top level
        integer :: first_call = 1
        integer :: iter = 0 
-       real(wp) :: normF0, normJF0, normF
+       real(wp) :: normF0, normJF0, normF, normJF
        real(wp) :: normJFold, normJF_Newton
        real(wp) :: Delta
        logical :: use_second_derivatives = .false.
@@ -615,7 +615,7 @@ module ral_nlls_internal
     public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
-    public :: solve_LLS, shift_matrix, exterr
+    public :: solve_LLS, shift_matrix, exterr, eval_error
     public :: dogleg, more_sorensen, allocation_error
     public :: ERROR
     
@@ -1257,7 +1257,7 @@ contains
        integer :: i,j
 
        if (options%exact_second_derivatives) then
-          call eval_HF(status, n, m, X, f, hf, params)
+          call eval_HF(inform%external_return, n, m, X, f, hf, params)
           inform%h_eval = inform%h_eval + 1
        else
 
@@ -1783,11 +1783,24 @@ contains
 
         if (options%print_level >= 0) then
            write(options%error,'(a,a,a)') & 
-                'Error allocating array in subroutine ', subname,&
+                'Error allocating array in subroutine ', trim(subname),&
                 ': not enough memory.' 
         end if
                 
       end subroutine allocation_error
+
+      subroutine eval_error(options,inform,subname)
+        type( nlls_options ), intent(in) :: options
+        type( nlls_inform ), intent(inout)  :: inform
+        character (len = *)  :: subname
+
+        if (options%print_level > 0) then
+           write(options%error,'(a,a,a,i0)') 'Error code from ', trim(subname), &
+                ' status = ', inform%external_return
+        end if
+        inform%status = ERROR%EVALUATION
+        
+      end subroutine eval_error
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                                                       !!

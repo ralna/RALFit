@@ -134,6 +134,22 @@ program nlls_test
      end if
      options%output_progress_vectors = .false.
 
+     ! Let's use a relative tr radius
+     options%nlls_method = 4
+     options%model = 9
+     options%exact_second_derivatives = .true.
+     options%relative_tr_radius = 1
+     call nlls_solve(n, m, X,                         &
+                    eval_F, eval_J, eval_H, params,  &
+                    options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge:'
+        write(*,*) 'NLLS_METHOD = ', nlls_method
+        write(*,*) 'MODEL = ', options%model
+        no_errors_main = no_errors_main + 1
+     end if
+     options%relative_tr_radius = 0
+
      ! Let's do one run with non-exact second derivatives 
      options%nlls_method = 4
      options%model = 9
@@ -149,7 +165,63 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
 
+     ! And the same with model = 2
+     options%nlls_method = 4
+     options%model = 2
+     options%tr_update_strategy = 1
+     options%exact_second_derivatives = .false.
+     call nlls_solve(n, m, X,                         &
+                    eval_F, eval_J, eval_H, params,  &
+                    options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge:'
+        write(*,*) 'NLLS_METHOD = ', nlls_method
+        write(*,*) 'MODEL = ', options%model
+        no_errors_main = no_errors_main + 1
+     end if
+     
+     ! Let's get the method to switch to second-order
+     options%nlls_method = 4
+     options%model = 9
+     options%exact_second_derivatives = .true.
+     options%relative_tr_radius = 1
+     options%stop_g_absolute = 1e-14
+     options%stop_g_relative = 1e-14
+     options%print_level = 3
+     options%hybrid_tol = 1.0_wp
+     params%y_values = params%y_values + 15.0_wp
+     X(1) = 7.0; X(2) = -5.0
+     call nlls_solve(n, m, X,                         &
+                    eval_F, eval_J, eval_H, params,  &
+                    options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge:'
+        write(*,*) 'NLLS_METHOD = ', nlls_method
+        write(*,*) 'MODEL = ', options%model
+        no_errors_main = no_errors_main + 1
+     end if
+     options%relative_tr_radius = 0
 
+     ! Let's get one where ||f|| = 0 
+     options%nlls_method = 4
+     options%model = 2
+     options%relative_tr_radius = 1
+     options%stop_g_absolute = 1e-4
+     options%stop_g_relative = 0.0_wp!1e-4
+     options%print_level = 3
+     params%y_values = exp( 0.3_wp * params%x_values + 0.2_wp)
+     X(1) = 0.3; X(2) = 0.1
+     call nlls_solve(n, m, X,                         &
+                    eval_F, eval_J, eval_H, params,  &
+                    options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge:'
+        write(*,*) 'NLLS_METHOD = ', nlls_method
+        write(*,*) 'MODEL = ', options%model
+        no_errors_main = no_errors_main + 1
+     end if
+     options%relative_tr_radius = 0
+     
      ! now let's check errors on the parameters passed to the routine...
      
      options%print_level = 3
@@ -240,6 +312,10 @@ program nlls_test
      
      ! first, hit the 'method not supported' error
      options%model = 27
+     w = 1.0_wp
+     x = 0.0_wp
+     y = 1.0_wp
+     z = 1.0_wp
      call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
      if (status%status .ne. ERROR%DOGLEG_MODEL) then
         write(*,*) 'Error: unsupported model allowed in dogleg'
@@ -1118,6 +1194,12 @@ program nlls_test
      status%external_return = 0
      call exterr(options,status,'nlls_test')
           
+     !! eval_error
+
+     status%external_name = 'eval_error'
+     status%external_return = 0
+     call eval_error(options,status,'eval_nlls_test')
+
      !! allocation_error
      
      call allocation_error(options,'nlls_tests')

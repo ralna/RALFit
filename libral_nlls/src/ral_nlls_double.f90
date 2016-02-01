@@ -190,7 +190,7 @@ contains
       
     integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, normJF, normFnew, md, Jmax, JtJdiag
+    real(wp) :: rho, normFnew, md, Jmax, JtJdiag
     real(wp) :: FunctionValue, hybrid_tol
     logical :: success, calculate_svd_J
     real(wp) :: s1, sn
@@ -211,13 +211,13 @@ contains
        call setup_workspaces(w,n,m,options,inform%alloc_status)
        if ( inform%alloc_status > 0) goto 4000
 
-       call eval_F(fstatus, n, m, X, w%f, params)
+       call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
-       if (fstatus > 0) goto 4020
+       if (inform%external_return .ne. 0) goto 4020
 
-       call eval_J(jstatus, n, m, X, w%J, params)
+       call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
-       if (jstatus > 0) goto 4010
+       if (inform%external_return .ne. 0) goto 4010
        if (options%relative_tr_radius == 1) then 
           ! first, let's get diag(J^TJ)
           Jmax = 0.0
@@ -245,20 +245,20 @@ contains
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
-       normJF = norm2(w%g)
-       w%normJF0 = normJF
+       w%normJF = norm2(w%g)
+       w%normJF0 = w%normJF
 !       if (options%model == 8 .or. options%model == 9) w%normJFold = normJF
-       if (options%model == 9) w%normJFold = normJF
+       w%normJFold = w%normJF
 
        if (options%model == 9) then
           ! make this relative....
-          w%hybrid_tol = options%hybrid_tol * ( normJF/(0.5*(w%normF**2)) )
+          w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5*(w%normF**2)) )
        end if
        
        ! save some data 
        inform%obj = 0.5 * ( w%normF**2 )
-       inform%norm_g = normJF
-       inform%scaled_g = normJf/w%normF
+       inform%norm_g = w%normJF
+       inform%scaled_g = w%normJF/w%normF
 
        if (options%output_progress_vectors) then
           w%resvec(1) = inform%obj
@@ -270,9 +270,9 @@ contains
           w%hf(1:n**2) = zero
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
-             call eval_HF(hfstatus, n, m, X, w%f, w%hf, params)
+             call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
              inform%h_eval = inform%h_eval + 1
-             if (hfstatus > 0) goto 4030
+             if (inform%external_return > 0) goto 4030
           else
              ! S_0 = 0 (see Dennis, Gay and Welsch)
              w%hf(1:n**2) = zero
@@ -313,9 +313,9 @@ contains
        ! Accept the step? !
        !++++++++++++++++++!
        w%Xnew = X + w%d
-       call eval_F(fstatus, n, m, w%Xnew, w%fnew, params)
+       call eval_F(inform%external_return, n, m, w%Xnew, w%fnew, params)
        inform%f_eval = inform%f_eval + 1
-       if (fstatus > 0) goto 4020
+       if (inform%external_return .ne. 0) goto 4020
        normFnew = norm2(w%fnew)
        
        !++++++++++++++++++++++++++++!
@@ -363,12 +363,12 @@ contains
     end if
 
     ! evaluate J and hf at the new point
-    call eval_J(jstatus, n, m, X, w%J, params)
+    call eval_J(inform%external_return, n, m, X, w%J, params)
     inform%g_eval = inform%g_eval + 1
-    if (jstatus > 0) goto 4010
+    if (inform%external_return .ne. 0) goto 4010
     if ( calculate_svd_J ) then
        call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
-       if ((svdstatus .ne. 0).and.(options%print_level > 3)) then 
+       if ((svdstatus .ne. 0).and.(options%print_level > 2)) then 
           write( options%out, 3000 ) svdstatus
        end if
     end if
@@ -377,10 +377,9 @@ contains
     call mult_Jt(w%J,n,m,w%f,w%g)
     w%g = -w%g
     
-    if ( options%model == 9) w%normJFold = normJF
-    
+    w%normJFold = w%normJF
     w%normF = normFnew
-    normJF = norm2(w%g)
+    w%normJF = norm2(w%g)
     
     ! setup the vectors needed if second derivatives are not available
     if (.not. options%exact_second_derivatives) then 
@@ -398,18 +397,19 @@ contains
             X,w%f,w%hf,eval_Hf, &
             w%d, w%y, w%y_sharp,  &
             params,options,inform)
-       if (hfstatus > 0) goto 4030
+       if (inform%external_return .ne. 0) goto 4030
     case (9)
        ! First, check if we need to switch methods
+       
        if (w%use_second_derivatives) then 
-          if (normJf > w%normJFold) then 
+          if (w%normJF > w%normJFold) then 
              ! switch to Gauss-Newton             
              if (options%print_level .ge. 3) write(options%out,3120) 
              w%use_second_derivatives = .false.
           end if
        else
           FunctionValue = 0.5 * (w%normF**2)
-          if ( normJf/FunctionValue < w%hybrid_tol ) then 
+          if ( w%normJF/FunctionValue < w%hybrid_tol ) then 
              w%hybrid_count = w%hybrid_count + 1
              if (w%hybrid_count == options%hybrid_switch_its) then
                 ! use (Quasi-)Newton
@@ -427,7 +427,7 @@ contains
                X,w%f,w%hf,eval_Hf, &
                w%d, w%y, w%y_sharp,  &
                params,options,inform)
-          if (hfstatus > 0) goto 4030
+          if (inform%external_return .ne. 0) goto 4030
        elseif (.not. options%exact_second_derivatives) then 
           ! if exact_second_derivatives are not needed,
           ! call apply_second_order info so that we update the approximation
@@ -435,7 +435,7 @@ contains
                X,w%f,w%hf,eval_Hf, &
                w%d, w%y, w%y_sharp,  &
                params,options,inform)
-          if (hfstatus > 0) goto 4030
+          if (inform%external_return .ne. 0) goto 4030
           w%hf(1:n**2) = zero
        else 
           w%hf(1:n**2) = zero
@@ -444,20 +444,20 @@ contains
 
     ! update the stats 
     inform%obj = 0.5*(w%normF**2)
-    inform%norm_g = normJF
-    inform%scaled_g = normJf/w%normF
+    inform%norm_g = w%normJF
+    inform%scaled_g = w%normJF/w%normF
     if (options%output_progress_vectors) then
        w%resvec (w%iter + 1) = inform%obj
        w%gradvec(w%iter + 1) = inform%norm_g
     end if
     
     if (options%print_level >=3) write(options%out,3010) inform%obj
-    if (options%print_level >=3) write(options%out,3060) normJF/w%normF
+    if (options%print_level >=3) write(options%out,3060) w%normJF/w%normF
 
     !++++++++++++++++++!
     ! Test convergence !
     !++++++++++++++++++!
-    call test_convergence(w%normF,normJF,w%normF0,w%normJF0,options,inform)
+    call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,options,inform)
     if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
     if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
 
@@ -490,21 +490,14 @@ contains
     if (allocated(w%resvec)) then
        if(.not. allocated(inform%resvec)) then 
           allocate(inform%resvec(w%iter + 1), stat = astatus)
-          if (astatus > 0) then
-             inform%status = -9999
-             return
-          end if
-          write(*,*) 'w%resvec(1) = ', w%resvec(1)
+          if (astatus > 0) call allocation_error(options,'nlls_iterate')
           inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
        end if
     end if
     if (allocated(w%gradvec)) then
        if(.not. allocated(inform%gradvec)) then 
           allocate(inform%gradvec(w%iter + 1), stat = astatus)
-          if (astatus > 0) then
-             inform%status = -9999
-             return
-          end if
+          if (astatus > 0) call allocation_error(options,'nlls_iterate')
           inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
        end if
     end if
@@ -513,26 +506,17 @@ contains
 
 4010 continue
     ! Error in eval_J
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0)') 'Error code from eval_J, status = ', jstatus
-    end if
-    inform%status = ERROR%EVALUATION
+    call eval_error(options,inform,'eval_J')
     goto 4000
 
 4020 continue
     ! Error in eval_J
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0)') 'Error code from eval_F, status = ', fstatus
-    end if
-    inform%status = ERROR%EVALUATION
+    call eval_error(options,inform,'eval_F')
     goto 4000
 
 4030 continue
     ! Error in eval_HF
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0)') 'Error code from eval_HF, status = ', hfstatus
-    end if
-    inform%status = ERROR%EVALUATION
+    call eval_error(options,inform,'eval_HF')
     goto 4000
 
 4040 continue 
