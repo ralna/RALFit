@@ -38,7 +38,9 @@ info = np.dtype({'names' :   ['pname','n','m','status','iter',
 
 # get the list of problems...
 #prob_list = "nist"
-prob_list = "names_nist_first"
+#prob_list = "nist_average"
+#prob_list = "names_nist_first"
+prob_list = "names_minus_boxbod"
 problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
 
 no_probs = len(problems)

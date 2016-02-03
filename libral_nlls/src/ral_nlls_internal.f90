@@ -279,6 +279,11 @@ module ral_nlls_internal
      LOGICAL :: subproblem_eig_fact = .FALSE. ! undocumented....
      
 
+!   scale the variables?
+!   0 - no scaling
+!   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2
+     INTEGER :: scale = 0
+
 !   is a retrospective strategy to be used to update the trust-region radius?
 
 !$$     LOGICAL :: retrospective_trust_region = .FALSE.
@@ -653,6 +658,64 @@ contains
      end select
 
    END SUBROUTINE calculate_step
+   
+   subroutine apply_scaling(J,n,m,A,v,diag,options)
+     real(wp), intent(in) :: J(*)
+     integer, intent(in) :: n,m
+     real(wp), intent(inout) :: A(:,:)
+     real(wp), intent(inout) :: v(:)
+     real(wp), intent(out), allocatable :: diag(:)
+     type( nlls_options ), intent(in) :: options
+
+     integer :: ii, jj
+     real(wp) :: Jij
+
+     select case (options%scale)
+     case (1)
+        ! use the scaling present in gsl:
+        ! scale by W, W_ii = ||J(i,:)||_2^2
+
+        allocate(diag(n)) ! todo :: fixme!!!
+
+        diag = 0.0_wp
+        do ii = 1,n
+           do jj = 1,m
+              call get_element_of_matrix(J,m,jj,ii,Jij)
+              diag(ii) = diag(ii) + Jij**2
+           end do
+           diag(ii) = sqrt(diag(ii))
+        end do
+     case (2)
+        ! use the scaling present in gsl:
+        ! scale by W, W_ii = ||J(i,:)||_2^2
+
+        allocate(diag(n)) ! todo :: fixme!!!
+
+        diag = 0.0_wp
+        do ii = 1,n
+           do jj = 1,n
+              call get_element_of_matrix(J,m,ii,jj,Jij)
+              diag(ii) = diag(ii) + Jij**2
+           end do
+           if (diag(ii) < 1e-14) then 
+              diag(ii) = one
+           else
+              diag(ii) = sqrt(diag(ii))
+           end if
+        end do
+     case default
+        ! flag an error:: todo!
+     end select
+     
+     ! now we have the diagonal scaling matrix, actually scale the 
+     ! Hessian approximation and J^Tf
+     do ii = 1,n
+        v(ii) = v(ii) / diag(ii)
+        A(ii,:) = A(ii,:) / diag(ii)
+        A(:,ii) = A(:,ii) / diag(ii)
+     end do
+
+   end subroutine apply_scaling
 
 
    SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,options,inform,w)
@@ -872,9 +935,10 @@ contains
      ! parameters...make these options?
      real(wp) :: nd, nq
 
-     real(wp) :: sigma, alpha
+     real(wp) :: sigma, alpha, Jij
      integer :: fb_status, mineig_status
-     integer :: test_pd, i, no_shifts
+     integer :: test_pd, i, ii, jj, no_shifts
+     real(wp), allocatable :: diag(:)
      
      ! The code finds 
      !  d = arg min_p   v^T p + 0.5 * p^T A p
@@ -889,7 +953,12 @@ contains
      w%A = w%A + reshape(hf,(/n,n/))
      ! now form v = J^T f 
      call mult_Jt(J,n,m,f,w%v)
-          
+
+     ! if scaling needed, do it
+     if ( options%scale .ne. 0) then
+        call apply_scaling(J,n,m,w%A,w%v,diag,options)
+     end if
+     
      ! d = -A\v
      call solve_spd(w%A,-w%v,w%LtL,d,n,inform)
      if (inform%status .eq. 0) then
@@ -965,14 +1034,14 @@ contains
 1000 continue 
      ! bad error return from external package
      call exterr(options,inform,'more_sorensen')
-     return
+     goto 4000
      
 1020 continue
      ! Converged!
      if ( options%print_level >= 3 ) then
         write(options%error,'(a,i0)') 'More-Sorensen converged at iteration ', i
      end if
-     return
+     goto 4000
      
 1040 continue
      ! maxits reached, not converged
@@ -981,13 +1050,13 @@ contains
         write(options%error,'(a)') 'without convergence'
      end if
      inform%status = ERROR%MS_MAXITS
-     return
+     goto 4000
 
 1050 continue
      if ( options%print_level >= 3 ) then
         write(options%error,'(a)') 'More-Sorensen: first point within trust region'
      end if
-     return
+     goto 4000
 
 1060 continue
      if ( options%print_level > 0 ) then
@@ -998,7 +1067,7 @@ contains
      inform%external_return = mineig_status
      inform%external_name = 'lapack_dsyev'
 
-     return
+     goto 4000
      
 2000 format('Non-spd system in more_sorensen. Increasing sigma to ',es12.4)
 
@@ -1007,8 +1076,18 @@ contains
      if ( options%print_level > 0 ) then 
         write(options%out,'(a)') 'Too many shifts in More-Sorensen'
         inform%status = ERROR%MS_TOO_MANY_SHIFTS
-     end if    
+     end if 
+     goto 4000
      
+4000 continue
+     ! exit the routine
+     if (options%scale .ne. 0 ) then 
+        do ii = 1, n
+           d(ii) = d(ii) / diag(ii)
+        end do
+        deallocate(diag)
+     end if
+     return 
    end subroutine more_sorensen
    
    subroutine solve_dtrs(J,f,hf,n,m,Delta,d,w,options,inform)
@@ -1034,6 +1113,9 @@ contains
      integer :: eig_status
      TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_options
      TYPE ( DTRS_inform_type )  :: dtrs_inform
+
+     real(wp), allocatable :: diag(:)
+     integer :: ii
      
      ! The code finds 
      !  d = arg min_p   w^T p + 0.5 * p^T D p
@@ -1055,6 +1137,11 @@ contains
 
      ! now form v = J^T f 
      call mult_Jt(J,n,m,f,w%v)
+
+     ! if scaling needed, do it
+     if ( options%scale .ne. 0) then
+        call apply_scaling(J,n,m,w%A,w%v,diag,options)
+     end if
 
      ! Now that we have the unprocessed matrices, we need to get an 
      ! eigendecomposition to make A diagonal
@@ -1087,6 +1174,13 @@ contains
 
      ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
+
+     if (options%scale .ne. 0 ) then 
+        do ii = 1, n
+           d(ii) = d(ii) / diag(ii)
+        end do
+        deallocate(diag) ! todo : fixme
+     end if
 
      return
 
@@ -1412,6 +1506,19 @@ contains
        call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
 
       end subroutine mult_Jt
+
+      subroutine get_element_of_matrix(J,m,ii,jj,Jij)
+        real(wp), intent(in) :: J(*)
+        integer, intent(in) :: m
+        integer, intent(in) :: ii,jj
+        real(wp), intent(out) :: Jij
+        
+        ! return the (ii,jj)th entry of a matrix 
+        
+        ! J held by columns....
+        Jij = J(ii + (jj-1)*m)
+        
+      end subroutine get_element_of_matrix
 
       subroutine solve_spd(A,b,LtL,x,n,inform)
         REAL(wp), intent(in) :: A(:,:)
