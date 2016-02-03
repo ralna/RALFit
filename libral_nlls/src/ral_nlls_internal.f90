@@ -669,6 +669,10 @@ contains
 
      integer :: ii, jj
      real(wp) :: Jij
+     real(wp) :: scaling_min, scaling_max
+
+     scaling_min = 1e-14
+     scaling_max = 1e14
 
      select case (options%scale)
      case (1)
@@ -683,29 +687,24 @@ contains
               call get_element_of_matrix(J,m,jj,ii,Jij)
               diag(ii) = diag(ii) + Jij**2
            end do
-           diag(ii) = sqrt(diag(ii))
-        end do
-     case (2)
-        ! use the scaling present in gsl:
-        ! scale by W, W_ii = ||J(i,:)||_2^2
-
-        allocate(diag(n)) ! todo :: fixme!!!
-
-        diag = 0.0_wp
-        do ii = 1,n
-           do jj = 1,n
-              call get_element_of_matrix(J,m,ii,jj,Jij)
-              diag(ii) = diag(ii) + Jij**2
-           end do
-           if (diag(ii) < 1e-14) then 
-              diag(ii) = one
+           if (diag(ii) < scaling_min) then 
+              write(*,*) 'diag(',ii,') = ', diag(ii)
+              write(*,*) 'setting to one'
+              diag(ii) = one!scaling_min
+           elseif (diag(ii) > scaling_max) then
+              write(*,*) 'diag(',ii,') = ', diag(ii)
+!              write(*,*) 'setting to one'
+              diag(ii) = scaling_max
            else
               diag(ii) = sqrt(diag(ii))
            end if
         end do
+        
      case default
         ! flag an error:: todo!
      end select
+     
+     
      
      ! now we have the diagonal scaling matrix, actually scale the 
      ! Hessian approximation and J^Tf
@@ -1141,13 +1140,16 @@ contains
      ! if scaling needed, do it
      if ( options%scale .ne. 0) then
         call apply_scaling(J,n,m,w%A,w%v,diag,options)
+        write(*,*) 'diag = ', diag
      end if
 
      ! Now that we have the unprocessed matrices, we need to get an 
      ! eigendecomposition to make A diagonal
      !
+     write(*,*) 'getting the eigs'
      call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,inform)
      if (inform%status .ne. 0) goto 1000
+     write(*,*) 'done'
 
      ! We can now change variables, setting y = Vp, getting
      ! Vd = arg min_(Vx) v^T p + 0.5 * (Vp)^T D (Vp)
@@ -1163,7 +1165,9 @@ contains
      ! we've now got the vectors we need, pass to dtrs_solve
      call dtrs_initialize( dtrs_options, dtrs_inform ) 
      
-
+     write(*,*) 'sending to dtrs'
+     write(*,*) 'c = ', w%v_trans
+     write(*,*) 'H = ', w%ew
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
      if ( dtrs_inform%status .ne. 0) then
         inform%external_return = dtrs_inform%status
@@ -1171,7 +1175,8 @@ contains
         inform%status = ERROR%FROM_EXTERNAL
         goto 1000
      end if
-
+     write(*,*) 'done'
+     
      ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
 
