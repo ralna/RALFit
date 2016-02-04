@@ -283,6 +283,8 @@ module ral_nlls_internal
 !   0 - no scaling
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2
      INTEGER :: scale = 0
+     REAL(wp) :: scale_max = 1e12
+     REAL(wp) :: scale_min = 1e-12
 
 !   is a retrospective strategy to be used to update the trust-region radius?
 
@@ -669,10 +671,9 @@ contains
 
      integer :: ii, jj
      real(wp) :: Jij
-     real(wp) :: scaling_min, scaling_max
 
-     scaling_min = 1e-14
-     scaling_max = 1e14
+     write(*,*) 'scale_min = ', options%scale_min
+     write(*,*) 'scale_max = ', options%scale_max
 
      select case (options%scale)
      case (1)
@@ -687,17 +688,39 @@ contains
               call get_element_of_matrix(J,m,jj,ii,Jij)
               diag(ii) = diag(ii) + Jij**2
            end do
-           if (diag(ii) < scaling_min) then 
+           if (diag(ii) < options%scale_min) then 
               write(*,*) 'diag(',ii,') = ', diag(ii)
               write(*,*) 'setting to one'
               diag(ii) = one!scaling_min
-           elseif (diag(ii) > scaling_max) then
+           elseif (diag(ii) > options%scale_max) then
               write(*,*) 'diag(',ii,') = ', diag(ii)
 !              write(*,*) 'setting to one'
-              diag(ii) = scaling_max
-           else
-              diag(ii) = sqrt(diag(ii))
+              diag(ii) = options%scale_max
            end if
+           diag(ii) = sqrt(diag(ii))
+        end do
+        
+     case (2)
+        ! as case (1), but if diag < scaling_min, set to scaling_min
+        
+        allocate(diag(n)) ! todo :: fixme!!!
+
+        diag = 0.0_wp
+        do ii = 1,n
+           do jj = 1,m
+              call get_element_of_matrix(J,m,jj,ii,Jij)
+              diag(ii) = diag(ii) + Jij**2
+           end do
+           if (diag(ii) < options%scale_min) then 
+              write(*,*) 'diag(',ii,') = ', diag(ii)
+              write(*,*) 'setting to one'
+              diag(ii) = options%scale_min
+           elseif (diag(ii) > options%scale_max) then
+              write(*,*) 'diag(',ii,') = ', diag(ii)
+!              write(*,*) 'setting to one'
+              diag(ii) = options%scale_max
+           end if
+           diag(ii) = sqrt(diag(ii))
         end do
         
      case default
