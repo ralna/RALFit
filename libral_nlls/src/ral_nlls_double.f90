@@ -486,6 +486,7 @@ contains
 4000 continue
     ! generic end of algorithm
         ! all (final) exits should pass through here...
+    inform%iter = w%iter
 !    if (options%output_progress_vectors) then
     if (allocated(w%resvec)) then
        if(.not. allocated(inform%resvec)) then 
