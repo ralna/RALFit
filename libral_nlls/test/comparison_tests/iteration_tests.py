@@ -159,7 +159,7 @@ def compute(no_tests,control_files,problems,i):
     try:
         cutestdir = os.environ.get("CUTEST")
     except:
-        print "ERROR: the CUTEST environment variable doesn't appear to be set"
+        raise Error("the CUTEST environment variable doesn't appear to be set")
     
     for j in range(no_tests):
         if control_files[j] == "gsl":
@@ -171,7 +171,7 @@ def compute(no_tests,control_files,problems,i):
             subprocess.call(["cp", "control_files/"+control_files[j], \
                              cutestdir+"/src/"+package+"/"+package.upper()+".SPC"])
         except:
-            print "Error: No control file " + control_files[j] + " found"
+            raise Error("No control file " + control_files[j] + " found")
            
         os.chdir("cutest/sif/")
                
@@ -212,7 +212,7 @@ def plot_prof(control_files,no_tests,prob_list):
 
     os.chdir("data")
     subprocess.call(["pprof","5","iterations",data_files,testset])
-    subprocess.call(["pprof","6","f-evals",data_files,testset])
+    subprocess.call(["pprof","6","fevals",data_files,testset])
 
     os.chdir("..")
 
