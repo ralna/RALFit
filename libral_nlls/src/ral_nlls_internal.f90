@@ -677,9 +677,6 @@ contains
      type( all_eig_symm_work ) :: work
      integer :: status
      
-     write(*,*) 'scale_min = ', options%scale_min
-     write(*,*) 'scale_max = ', options%scale_max
-
      select case (options%scale)
      case (1)
         ! use the scaling present in gsl:
@@ -694,12 +691,8 @@ contains
               diag(ii) = diag(ii) + Jij**2
            end do
            if (diag(ii) < options%scale_min) then 
-              write(*,*) 'diag(',ii,') = ', diag(ii)
-              write(*,*) 'setting to one'
               diag(ii) = one!scaling_min
            elseif (diag(ii) > options%scale_max) then
-              write(*,*) 'diag(',ii,') = ', diag(ii)
-!              write(*,*) 'setting to one'
               diag(ii) = options%scale_max
            end if
            diag(ii) = sqrt(diag(ii))
@@ -717,12 +710,8 @@ contains
               diag(ii) = diag(ii) + Jij**2
            end do
            if (diag(ii) < options%scale_min) then 
-              write(*,*) 'diag(',ii,') = ', diag(ii)
-              write(*,*) 'setting to one'
               diag(ii) = options%scale_min
            elseif (diag(ii) > options%scale_max) then
-              write(*,*) 'diag(',ii,') = ', diag(ii)
-!              write(*,*) 'setting to one'
               diag(ii) = options%scale_max
            end if
            diag(ii) = sqrt(diag(ii))
@@ -738,12 +727,8 @@ contains
               diag(ii) = diag(ii) + A(ii,jj)**2
            end do
            if (diag(ii) < options%scale_min) then 
-              write(*,*) 'diag(',ii,') = ', diag(ii)
-              write(*,*) 'setting to one'
               diag(ii) = one!options%scale_min
            elseif (diag(ii) > options%scale_max) then
-              write(*,*) 'diag(',ii,') = ', diag(ii)
-!              write(*,*) 'setting to one'
               diag(ii) = options%scale_max
            end if
            diag(ii) = sqrt(diag(ii))
@@ -753,25 +738,17 @@ contains
         write(*,*) '***** Warning ********'
         write(*,*) '*    not robust      *'
         write(*,*) '**********************'
-        write(*,*) 'getting the eigs'
         allocate(ev(n,n))
         allocate(diag(n)) ! todo :: fixme!!!
         call setup_workspace_all_eig_symm(n,m,work,options,status)
-        write(*,*) 'workspace set up'
-        write(*,*) 'A = '
-        do  ii = 1,n
-           write(*,*) A(:,ii)
-        end do
         call all_eig_symm(A,n,diag,ev,work,inform)
         if (inform%status .ne. 0) goto 1000
         call remove_workspace_all_eig_symm(work,options)
         deallocate(ev)
-        write(*,*) 'done'
         do ii = 1,n
            if (diag(ii) < epsmch) diag(ii) = epsmch ! set -ve values to 1 too
            diag(ii) = sqrt(diag(ii))
         end do
-        write(*,*) 'diag = ', diag
      case default
 
         ! flag an error:: todo!
@@ -1228,16 +1205,13 @@ contains
      ! if scaling needed, do it
      if ( options%scale .ne. 0) then
         call apply_scaling(J,n,m,w%A,w%v,diag,options,inform)
-        write(*,*) 'diag = ', diag
      end if
 
      ! Now that we have the unprocessed matrices, we need to get an 
      ! eigendecomposition to make A diagonal
      !
-     write(*,*) 'getting the eigs'
      call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,inform)
      if (inform%status .ne. 0) goto 1000
-     write(*,*) 'done'
 
      ! We can now change variables, setting y = Vp, getting
      ! Vd = arg min_(Vx) v^T p + 0.5 * (Vp)^T D (Vp)
@@ -1262,11 +1236,6 @@ contains
         end if
      end do
 
-
-     write(*,*) 'sending to dtrs'
-     write(*,*) 'Delta = ', Delta
-     write(*,*) 'c = ', w%v_trans
-     write(*,*) 'H = ', w%ew
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
      if ( dtrs_inform%status .ne. 0) then
         inform%external_return = dtrs_inform%status
@@ -1274,7 +1243,6 @@ contains
         inform%status = ERROR%FROM_EXTERNAL
         goto 1000
      end if
-     write(*,*) 'done'
      
      ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
