@@ -97,7 +97,9 @@ def main(argv):
             hash_error = False
         elif str(metadata[j]['hash']) != short_hash:
             hash_error = True
-        for i in range(0,no_probs):     
+
+    for i in range(0,no_probs):     
+        for j in range (0,no_tests):
             if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
                 all_iterates[j][i] = -9999 
             local_iterates[j] = all_iterates[j][i]
@@ -150,6 +152,8 @@ def main(argv):
         print "************************************************"
         print "\n"
 
+    plot_prof(control_files,no_tests,prob_list)
+
 def compute(no_tests,control_files,problems,i):
     # read the cutest directory from the environment variables
     try:
@@ -183,6 +187,34 @@ def compute(no_tests,control_files,problems,i):
         
         os.chdir("../../")
 
+def plot_prof(control_files,no_tests,prob_list):
+    # try:
+    #     import pymatlab
+    #     py_prof = True
+    # except:
+    #     print "If matlab is installed, install pymatlab\n"
+    #     print " sudo pip install pymatlab\n"
+    #     print "to allow performance profiles to be plotted natively\n"
+    #     py_prof = False
     
+    # performance profiles for iterations
+    data_files = ""
+    for j in range(no_tests):
+        data_files += control_files[j]+".out"
+        if j != no_tests-1:
+            data_files += " "
+    if prob_list=="names_nist_first" or prob_list=="sif_names":
+        testset = "(All tests)"
+    elif prob_list=="nist":
+        testset = "NIST tests"
+    else:
+        testset = "CUTEst tests"
+
+    os.chdir("data")
+    subprocess.call(["pprof","5","iterations",data_files,testset])
+    subprocess.call(["pprof","6","f-evals",data_files,testset])
+
+    os.chdir("..")
+
 if __name__ == "__main__":
     main(sys.argv[1:])
