@@ -4,7 +4,7 @@
 4                     method used (1=dogleg, 2=AINT, 3=More-Sorensen, 4=gltr)
 9                     model used (1=first order, 2=Newton)
 1000                  maxits
-2                     TR update strategy		      
+1                     TR update strategy		      
 0                     relative trust region? (1=relative)
 1.0                   TR scaling parameter
 100.0                 initial TR radius
@@ -19,8 +19,8 @@
 2.0E-0                hybrid_tol
 1                     hybrid_switch_its
 1                     scale
-1e-12                 scale_min
-1e12                  scale_max
+1e-11                 scale_min
+1e11                  scale_max
 T                     output_progress_vectors
 F                     exact second derivatives
 44                    summary unit (not + = don't write)
