@@ -661,17 +661,22 @@ contains
 
    END SUBROUTINE calculate_step
    
-   subroutine apply_scaling(J,n,m,A,v,diag,options)
+   subroutine apply_scaling(J,n,m,A,v,diag,options,inform)
      real(wp), intent(in) :: J(*)
      integer, intent(in) :: n,m
      real(wp), intent(inout) :: A(:,:)
      real(wp), intent(inout) :: v(:)
      real(wp), intent(out), allocatable :: diag(:)
      type( nlls_options ), intent(in) :: options
+     type( nlls_inform ), intent(inout) :: inform
 
      integer :: ii, jj
      real(wp) :: Jij
+     real(wp), allocatable :: ev(:,:)
 
+     type( all_eig_symm_work ) :: work
+     integer :: status
+     
      write(*,*) 'scale_min = ', options%scale_min
      write(*,*) 'scale_max = ', options%scale_max
 
@@ -723,10 +728,54 @@ contains
            diag(ii) = sqrt(diag(ii))
         end do
         
+     case (3)
+        ! scale on the values of H, not J....
+        allocate(diag(n)) ! todo :: fixme!!!
+
+        diag = 0.0_wp
+        do ii = 1,n
+           do jj = 1,n
+              diag(ii) = diag(ii) + A(ii,jj)**2
+           end do
+           if (diag(ii) < options%scale_min) then 
+              write(*,*) 'diag(',ii,') = ', diag(ii)
+              write(*,*) 'setting to one'
+              diag(ii) = one!options%scale_min
+           elseif (diag(ii) > options%scale_max) then
+              write(*,*) 'diag(',ii,') = ', diag(ii)
+!              write(*,*) 'setting to one'
+              diag(ii) = options%scale_max
+           end if
+           diag(ii) = sqrt(diag(ii))
+        end do
+     case (4)
+        ! assuming problems are small...do an eigen-decomposition of H
+        write(*,*) '***** Warning ********'
+        write(*,*) '*    not robust      *'
+        write(*,*) '**********************'
+        write(*,*) 'getting the eigs'
+        allocate(ev(n,n))
+        allocate(diag(n)) ! todo :: fixme!!!
+        call setup_workspace_all_eig_symm(n,m,work,options,status)
+        write(*,*) 'workspace set up'
+        write(*,*) 'A = '
+        do  ii = 1,n
+           write(*,*) A(:,ii)
+        end do
+        call all_eig_symm(A,n,diag,ev,work,inform)
+        if (inform%status .ne. 0) goto 1000
+        call remove_workspace_all_eig_symm(work,options)
+        deallocate(ev)
+        write(*,*) 'done'
+        do ii = 1,n
+           if (diag(ii) < epsmch) diag(ii) = epsmch ! set -ve values to 1 too
+           diag(ii) = sqrt(diag(ii))
+        end do
+        write(*,*) 'diag = ', diag
      case default
+
         ! flag an error:: todo!
      end select
-     
      
      
      ! now we have the diagonal scaling matrix, actually scale the 
@@ -736,9 +785,15 @@ contains
         A(ii,:) = A(ii,:) / diag(ii)
         A(:,ii) = A(:,ii) / diag(ii)
      end do
+        
+     return
+     
+1000 continue
+     ! error in external package
+     call exterr(options,inform,'solve_dtrs')
+     return
 
    end subroutine apply_scaling
-
 
    SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,options,inform,w)
 ! -----------------------------------------
@@ -957,7 +1012,7 @@ contains
      ! parameters...make these options?
      real(wp) :: nd, nq
 
-     real(wp) :: sigma, alpha, Jij
+     real(wp) :: sigma, alpha, Jij, local_ms_shift, sigma_shift
      integer :: fb_status, mineig_status
      integer :: test_pd, i, ii, jj, no_shifts
      real(wp), allocatable :: diag(:)
@@ -978,9 +1033,11 @@ contains
 
      ! if scaling needed, do it
      if ( options%scale .ne. 0) then
-        call apply_scaling(J,n,m,w%A,w%v,diag,options)
+        call apply_scaling(J,n,m,w%A,w%v,diag,options,inform)
      end if
      
+     local_ms_shift = options%more_sorensen_shift
+
      ! d = -A\v
      call solve_spd(w%A,-w%v,w%LtL,d,n,inform)
      if (inform%status .eq. 0) then
@@ -993,7 +1050,7 @@ contains
         inform%external_name = REPEAT( ' ', 80 )
         call min_eig_symm(w%A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws) 
         if (inform%status .ne. 0) goto 1000
-        sigma = -(sigma - options%more_sorensen_shift)
+        sigma = -(sigma - local_ms_shift)
         no_shifts = 1
 100     continue
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
@@ -1005,7 +1062,7 @@ contains
            inform%external_name = REPEAT( ' ', 80 )
            no_shifts = no_shifts + 1
            if ( no_shifts == 10 ) goto 3000
-           sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
+           sigma =  sigma + (10**no_shifts) * local_ms_shift
            if (options%print_level >=3) write(options%out,2000) sigma
            goto 100 
         end if
@@ -1030,6 +1087,7 @@ contains
 
      ! now, we're not in the trust region initally, so iterate....
      do i = 1, options%more_sorensen_maxits
+
         if ( abs(nd - Delta) <= options%more_sorensen_tol * Delta) then
            goto 1020 ! converged!
         end if
@@ -1040,7 +1098,14 @@ contains
         
         nq = norm2(w%q)
         
-        sigma = sigma + ( (nd/nq)**2 )* ( (nd - Delta) / Delta )
+        sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
+        if (abs(sigma_shift) < epsmch * abs(sigma) ) then
+           inform%status = -2923
+           goto 4000
+           ! we're not going to make progress...jump out 
+        end if
+
+        sigma = sigma + sigma_shift
         
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
@@ -1162,7 +1227,7 @@ contains
 
      ! if scaling needed, do it
      if ( options%scale .ne. 0) then
-        call apply_scaling(J,n,m,w%A,w%v,diag,options)
+        call apply_scaling(J,n,m,w%A,w%v,diag,options,inform)
         write(*,*) 'diag = ', diag
      end if
 
@@ -1188,7 +1253,18 @@ contains
      ! we've now got the vectors we need, pass to dtrs_solve
      call dtrs_initialize( dtrs_options, dtrs_inform ) 
      
+     do ii = 1,n
+        if (abs(w%v_trans(ii)) < epsmch) then
+           w%v_trans(ii) = zero
+        end if
+        if (abs(w%ew(ii)) < epsmch) then
+           w%ew(ii) = zero
+        end if
+     end do
+
+
      write(*,*) 'sending to dtrs'
+     write(*,*) 'Delta = ', Delta
      write(*,*) 'c = ', w%v_trans
      write(*,*) 'H = ', w%ew
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
