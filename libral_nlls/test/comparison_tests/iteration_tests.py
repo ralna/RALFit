@@ -28,8 +28,8 @@ def main(argv):
 
     # get the list of problems...
     #prob_list = "nist"
-    prob_list = "nist_average"
-#    prob_list = "names_nist_first"
+#    prob_list = "nist_average"
+    prob_list = "names_nist_first"
     #prob_list = "names_minus_boxbod"
     problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
 
@@ -97,7 +97,7 @@ def main(argv):
             hash_error = False
         elif str(metadata[j]['hash']) != short_hash:
             hash_error = True
-        for i in range(0,no_probs):            
+        for i in range(0,no_probs):     
             if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
                 all_iterates[j][i] = -9999 
             local_iterates[j] = all_iterates[j][i]
