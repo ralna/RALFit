@@ -19,6 +19,8 @@
 2.0E-0                hybrid_tol
 1                     hybrid_switch_its
 1                     scale
+1e-12                 scale_min
+1e12                  scale_max
 T                     output_progress_vectors
 F                     exact second derivatives
 44                    summary unit (not + = don't write)
