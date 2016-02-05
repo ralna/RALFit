@@ -27,7 +27,7 @@
       IMPLICIT NONE
 
       PRIVATE
-      PUBLIC :: DTRS_initialize, DTRS_solve
+      PUBLIC :: DTRS_initialize, DTRS_solve, DTRS_solve_main
 
 !--------------------
 !   P r e c i s i o n
@@ -57,7 +57,10 @@
       REAL ( KIND = wp ), PARAMETER :: threequarters = 0.75_wp
       REAL ( KIND = wp ), PARAMETER :: ten = 10.0_wp
       REAL ( KIND = wp ), PARAMETER :: twentyfour = 24.0_wp
-      REAL ( KIND = wp ), PARAMETER :: infinity = half * HUGE( one )
+      REAL ( KIND = wp ), PARAMETER :: largest = HUGE( one )
+      REAL ( KIND = wp ), PARAMETER :: infinity = half * largest
+      REAL ( KIND = wp ), PARAMETER :: lower_default = - half * largest
+      REAL ( KIND = wp ), PARAMETER :: upper_default = largest
       REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
       REAL ( KIND = wp ), PARAMETER :: teneps = ten * epsmch
       REAL ( KIND = wp ), PARAMETER :: pi = 3.1415926535897931_wp
@@ -95,10 +98,18 @@
 
         INTEGER :: taylor_max_degree = 3
 
+!  any entry of H that is smaller than h_min * MAXVAL( H ) we be treated as zero
+
+        REAL ( KIND = wp ) :: h_min = epsmch
+
+!  any entry of C that is smaller than c_min * MAXVAL( C ) we be treated as zero
+
+        REAL ( KIND = wp ) :: c_min = epsmch
+
 !  lower and upper bounds on the multiplier, if known
 
-        REAL ( KIND = wp ) :: lower = - half * HUGE( one )
-        REAL ( KIND = wp ) :: upper =  HUGE( one )
+        REAL ( KIND = wp ) :: lower = lower_default
+        REAL ( KIND = wp ) :: upper = upper_default
 
 !  stop when | ||x|| - radius | <=
 !     max( stop_normal * radius, stop_absolute_normal )
@@ -269,6 +280,141 @@
 !
 !  Solve the trust-region subproblem
 !
+!      minimize     q(x) = 1/2 <x, H x> + <c, x> + f
+!      subject to   ||x||_2 <= radius  or ||x||_2 = radius
+!
+!  where H is diagonal, using a secular iteration
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Arguments:
+!  =========
+!
+!   n - the number of unknowns
+!
+!   radius - the trust-region radius
+!
+!   f - the value of constant term for the quadratic function
+!
+!   C - a vector of values for the linear term c
+!
+!   H -  a vector of values for the diagonal matrix H
+!
+!   X - the required solution vector x
+!
+!   control - a structure containing control information. See DTRS_control_type
+!
+!   inform - a structure containing information. See DTRS_inform_type
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: n
+      REAL ( KIND = wp ), INTENT( IN ) :: radius
+      REAL ( KIND = wp ), INTENT( IN ) :: f
+      REAL ( KIND = wp ), INTENT( IN ), DIMENSION( n ) :: C, H
+      REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
+      TYPE ( DTRS_control_type ), INTENT( IN ) :: control
+      TYPE ( DTRS_inform_type ), INTENT( INOUT ) :: inform
+
+!  local variables
+
+      INTEGER :: i
+      REAL ( KIND = wp ) :: scale_h, scale_c, f_scale, radius_scale
+      REAL ( KIND = wp ), DIMENSION( n ) :: C_scale, H_scale
+      TYPE ( DTRS_control_type ) :: control_scale
+
+!  scale the problem to solve instead
+
+!      minimize    q_s(x_s) = 1/2 <x_s, H_s x_s> + <c_s, x_s> + f_s
+!      subject to    ||x_s||_2 <= radius_s  or ||x_s||_2 = radius_s
+
+!  where H_s = H / s_h and c_s = c / s_c for scale factors s_h and s_c
+
+!  This corresponds to
+!    radius_s = ( s_h / s_c ) radius,
+!    f_s = ( s_h / s_c^2 ) f
+!  and the solution may be recovered as
+!    x = ( s_c / s_h ) x_s
+!    lambda = s_h lambda_s
+!    q(x) = ( s_c^2 / s_ h ) q_s(x_s)
+
+!write(6,"( A2, 5ES13.4E3 )" ) 'H', H
+!write(6,"( A2, 5ES13.4E3 )" ) 'C', C
+
+!  scale H by the largest H and remove relatively tiny H
+
+      scale_h = MAXVAL( ABS( H ) )
+      IF ( scale_h > zero ) THEN
+        DO i = 1, n
+          IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
+            H_scale( i ) = H( i ) / scale_h
+          ELSE
+            H_scale( i ) = zero
+          END IF
+        END DO
+      ELSE
+        scale_h = one
+        H_scale = zero
+      END IF
+
+!  scale c by the largest c and remove relatively tiny c
+
+      scale_c = MAXVAL( ABS( C ) )
+      IF ( scale_c > zero ) THEN
+        DO i = 1, n
+          IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
+            C_scale( i ) = C( i ) / scale_c
+          ELSE
+            C_scale( i ) = zero
+          END IF
+        END DO
+      ELSE
+        scale_c = one
+        C_scale = zero
+      END IF
+
+      radius_scale = ( scale_h / scale_c ) * radius
+      f_scale = ( scale_h / scale_c ** 2 ) * f
+
+      control_scale = control
+      IF ( control_scale%lower /= lower_default )                              &
+        control_scale%lower = control_scale%lower / scale_h
+      IF ( control_scale%upper /= upper_default )                              &
+        control_scale%upper = control_scale%upper / scale_h
+
+!  solve the scaled problem
+
+      CALL DTRS_solve_main( n, radius_scale, f_scale, C_scale, H_scale, X,     &
+                            control_scale, inform )
+
+!  unscale the solution, function value, multiplier and related values
+
+      X = ( scale_c / scale_h ) * X
+      inform%obj = ( scale_c ** 2 / scale_h ) * inform%obj
+      inform%multiplier = scale_h * inform%multiplier
+      inform%pole = scale_h * inform%pole
+      DO i = 1, inform%len_history
+        inform%history( i )%lambda = scale_h * inform%history( i )%lambda
+        inform%history( i )%x_norm                                             &
+          = ( scale_c / scale_h ) * inform%history( i )%x_norm
+      END DO
+
+!  End of subroutine DTRS_solve
+
+      END SUBROUTINE DTRS_solve
+
+!-*-*-*-*-*-*-*-*-  D T R S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-
+
+      SUBROUTINE DTRS_solve_main( n, radius, f, C, H, X, control, inform )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Solve the trust-region subproblem
+!
 !      minimize     1/2 <x, H x> + <c, x> + f
 !      subject to    ||x||_2 <= radius  or ||x||_2 = radius
 !
@@ -332,7 +478,11 @@
       IF ( LEN( TRIM( control%prefix ) ) > 2 )                                 &
         prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
 
+!write(6,"( A2, 5ES13.4E3 )" ) 'H', H
+!write(6,"( A2, 5ES13.4E3 )" ) 'C', C
+
 !  output problem data
+
       IF ( control%problem > 0 ) THEN
         INQUIRE( FILE = control%problem_file, EXIST = problem_file_exists )
         IF ( problem_file_exists ) THEN
@@ -443,6 +593,7 @@
         inform%hard_case = .TRUE.
         DO i = 1, n
           IF ( H( i ) == lambda_min ) THEN
+!           IF ( ABS( C( i ) ) > epsmch ) THEN
             IF ( ABS( C( i ) ) > epsmch * c_norm ) THEN
               inform%hard_case = .FALSE.
               c2 = c2 + C( i ) ** 2
@@ -519,7 +670,8 @@
 !  sum of squares of the singular terms is equal to radius^2
 
         ELSE
-          lambda = lambda + SQRT( c2 ) / radius
+!         lambda = lambda + SQRT( c2 ) / radius
+          lambda = MAX( lambda + SQRT( c2 ) / radius, epsmch )
           lambda_l = MAX( lambda_l, lambda )
         END IF
       END IF
@@ -760,9 +912,9 @@
  2030 FORMAT( A, '    it     ||x||-radius             lambda ',                &
                  '              d_lambda' )
 
-!  End of subroutine DTRS_solve
+!  End of subroutine DTRS_solve_main
 
-      END SUBROUTINE DTRS_solve
+      END SUBROUTINE DTRS_solve_main
 
 !-*-*-*-*-*-*-  D T R S _ P I _ D E R I V S   S U B R O U T I N E   -*-*-*-*-*-
 
