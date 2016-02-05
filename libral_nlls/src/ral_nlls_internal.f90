@@ -1375,7 +1375,7 @@ contains
        
        real(wp), allocatable :: Sks(:), ysharpSks(:)
 
-       real(wp) :: yts, alpha
+       real(wp) :: yts, alpha, dSks
        integer :: i,j
 
        if (options%exact_second_derivatives) then
@@ -1384,6 +1384,11 @@ contains
        else
 
           yts = dot_product(d,y)
+          if ( yts < 10 * epsmch ) then
+             ! safeguard: skip this update
+             return
+          end if
+          
           allocate(Sks(n))
           call mult_J(hf,n,n,d,Sks) ! hfs = S_k * d
 
@@ -1391,7 +1396,8 @@ contains
           ysharpSks = y_sharp - Sks
           
           ! now, let's scale hd (Nocedal and Wright, Section 10.2)
-          alpha = abs(dot_product(d,y_sharp))/abs(dot_product(d,Sks))
+          dSks = abs(dot_product(d,Sks))
+          alpha = abs(dot_product(d,y_sharp))/ dSks
           alpha = min(one,alpha)
           hf(:)  = alpha * hf(:)
 
