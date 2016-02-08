@@ -35,6 +35,7 @@ module ral_nlls_internal
      INTEGER :: N_GT_M = -800  ! <-- change
      INTEGER :: BAD_TR_STRATEGY = -900 ! <- change
      INTEGER :: FIND_BETA = -12 ! <- change
+     INTEGER :: BAD_SCALING = -34 ! <- change
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -3  ! <-- change
      ! AINT errors
@@ -281,10 +282,14 @@ module ral_nlls_internal
 
 !   scale the variables?
 !   0 - no scaling
-!   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2
-     INTEGER :: scale = 0
-     REAL(wp) :: scale_max = 1e12
-     REAL(wp) :: scale_min = 1e-12
+!   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
+!       tiny values get set to one       
+!   2 - as 1, but tiny values stay the same
+!   3 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
+!   4 - scale using the eigenvalues (not yet robust)     
+     INTEGER :: scale = 1
+     REAL(wp) :: scale_max = 1e11
+     REAL(wp) :: scale_min = 1e-11
 
 !   is a retrospective strategy to be used to update the trust-region radius?
 
@@ -556,10 +561,16 @@ module ral_nlls_internal
     type, private :: all_eig_symm_work ! workspace for subroutine all_eig_symm
        real(wp), allocatable :: work(:)
     end type all_eig_symm_work
+
+    type, private :: apply_scaling_work ! workspace for subrouine apply_scaling
+       real(wp), allocatable :: diag(:)
+       real(wp), allocatable :: ev(:,:)
+    end type apply_scaling_work
         
     type, private :: solve_dtrs_work ! workspace for subroutine dtrs_work
        real(wp), allocatable :: A(:,:), ev(:,:), ew(:), v(:), v_trans(:), d_trans(:)
        type( all_eig_symm_work ) :: all_eig_symm_ws
+       type( apply_scaling_work ) :: apply_scaling_ws
     end type solve_dtrs_work
         
     type, private :: more_sorensen_work ! workspace for subroutine more_sorensen
@@ -568,7 +579,9 @@ module ral_nlls_internal
        real(wp), allocatable :: v(:), q(:), y1(:)
 !       type( solve_general_work ) :: solve_general_ws
        type( min_eig_symm_work ) :: min_eig_symm_ws
+       type( apply_scaling_work ) :: apply_scaling_ws
     end type more_sorensen_work
+
 
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
        type( max_eig_work ) :: max_eig_ws
@@ -661,106 +674,94 @@ contains
 
    END SUBROUTINE calculate_step
    
-   subroutine apply_scaling(J,n,m,A,v,diag,options,inform)
+   subroutine apply_scaling(J,n,m,A,v,w,options,inform)
      real(wp), intent(in) :: J(*)
      integer, intent(in) :: n,m
      real(wp), intent(inout) :: A(:,:)
      real(wp), intent(inout) :: v(:)
-     real(wp), intent(out), allocatable :: diag(:)
+     type( apply_scaling_work ), intent(inout) :: w
      type( nlls_options ), intent(in) :: options
      type( nlls_inform ), intent(inout) :: inform
 
      integer :: ii, jj
      real(wp) :: Jij
-     real(wp), allocatable :: ev(:,:)
 
      type( all_eig_symm_work ) :: work
      integer :: status
-     
+  
+     w%diag = 0.0_wp
+   
      select case (options%scale)
      case (1)
         ! use the scaling present in gsl:
         ! scale by W, W_ii = ||J(i,:)||_2^2
-
-        allocate(diag(n)) ! todo :: fixme!!!
-
-        diag = 0.0_wp
         do ii = 1,n
            do jj = 1,m
               call get_element_of_matrix(J,m,jj,ii,Jij)
-              diag(ii) = diag(ii) + Jij**2
+              w%diag(ii) = w%diag(ii) + Jij**2
            end do
-           if (diag(ii) < options%scale_min) then 
-              diag(ii) = one!scaling_min
-           elseif (diag(ii) > options%scale_max) then
-              diag(ii) = options%scale_max
+           if (w%diag(ii) < options%scale_min) then 
+              w%diag(ii) = one!scaling_min
+           elseif (w%diag(ii) > options%scale_max) then
+              w%diag(ii) = options%scale_max
            end if
-           diag(ii) = sqrt(diag(ii))
+           w%diag(ii) = sqrt(w%diag(ii))
         end do
         
      case (2)
-        ! as case (1), but if diag < scaling_min, set to scaling_min
-        
-        allocate(diag(n)) ! todo :: fixme!!!
-
-        diag = 0.0_wp
+        ! as case (1), but if w%diag < scaling_min, set to scaling_min
         do ii = 1,n
            do jj = 1,m
               call get_element_of_matrix(J,m,jj,ii,Jij)
-              diag(ii) = diag(ii) + Jij**2
+              w%diag(ii) = w%diag(ii) + Jij**2
            end do
-           if (diag(ii) < options%scale_min) then 
-              diag(ii) = options%scale_min
-           elseif (diag(ii) > options%scale_max) then
-              diag(ii) = options%scale_max
+           if (w%diag(ii) < options%scale_min) then 
+              w%diag(ii) = options%scale_min
+           elseif (w%diag(ii) > options%scale_max) then
+              w%diag(ii) = options%scale_max
            end if
-           diag(ii) = sqrt(diag(ii))
+           w%diag(ii) = sqrt(w%diag(ii))
         end do
         
      case (3)
         ! scale on the values of H, not J....
-        allocate(diag(n)) ! todo :: fixme!!!
-
-        diag = 0.0_wp
         do ii = 1,n
            do jj = 1,n
-              diag(ii) = diag(ii) + A(ii,jj)**2
+              w%diag(ii) = w%diag(ii) + A(ii,jj)**2
            end do
-           if (diag(ii) < options%scale_min) then 
-              diag(ii) = one!options%scale_min
-           elseif (diag(ii) > options%scale_max) then
-              diag(ii) = options%scale_max
+           if (w%diag(ii) < options%scale_min) then 
+              w%diag(ii) = one!options%scale_min
+           elseif (w%diag(ii) > options%scale_max) then
+              w%diag(ii) = options%scale_max
            end if
-           diag(ii) = sqrt(diag(ii))
+           w%diag(ii) = sqrt(w%diag(ii))
         end do
      case (4)
         ! assuming problems are small...do an eigen-decomposition of H
         write(*,*) '***** Warning ********'
         write(*,*) '*    not robust      *'
         write(*,*) '**********************'
-        allocate(ev(n,n))
-        allocate(diag(n)) ! todo :: fixme!!!
+!        allocate(ev(n,n))
+!        allocate(w%diag(n)) ! todo :: fixme!!!
         call setup_workspace_all_eig_symm(n,m,work,options,status)
-        call all_eig_symm(A,n,diag,ev,work,inform)
+        call all_eig_symm(A,n,w%diag,w%ev,work,inform)
         if (inform%status .ne. 0) goto 1000
         call remove_workspace_all_eig_symm(work,options)
-        deallocate(ev)
         do ii = 1,n
-           if (diag(ii) < epsmch) diag(ii) = epsmch ! set -ve values to 1 too
-           diag(ii) = sqrt(diag(ii))
+           if (w%diag(ii) < epsmch) w%diag(ii) = epsmch ! set -ve values to 1 too
+           w%diag(ii) = sqrt(w%diag(ii))
         end do
      case default
-
-        ! flag an error:: todo!
+        inform%status = ERROR%BAD_SCALING
+        return
      end select
-     
-     
-     ! now we have the diagonal scaling matrix, actually scale the 
+          
+     ! now we have the w%diagonal scaling matrix, actually scale the 
      ! Hessian approximation and J^Tf
      do ii = 1,n
-        v(ii) = v(ii) / diag(ii)
-        A(ii,:) = A(ii,:) / diag(ii)
-        A(:,ii) = A(:,ii) / diag(ii)
+        v(ii) = v(ii) / w%diag(ii)
+        A(ii,:) = A(ii,:) / w%diag(ii)
+        A(:,ii) = A(:,ii) / w%diag(ii)
      end do
         
      return
@@ -992,7 +993,7 @@ contains
      real(wp) :: sigma, alpha, Jij, local_ms_shift, sigma_shift
      integer :: fb_status, mineig_status
      integer :: test_pd, i, ii, jj, no_shifts
-     real(wp), allocatable :: diag(:)
+!     real(wp), allocatable :: diag(:)
      
      ! The code finds 
      !  d = arg min_p   v^T p + 0.5 * p^T A p
@@ -1010,7 +1011,7 @@ contains
 
      ! if scaling needed, do it
      if ( options%scale .ne. 0) then
-        call apply_scaling(J,n,m,w%A,w%v,diag,options,inform)
+        call apply_scaling(J,n,m,w%A,w%v,w%apply_scaling_ws,options,inform)
      end if
      
      local_ms_shift = options%more_sorensen_shift
@@ -1147,9 +1148,9 @@ contains
      ! exit the routine
      if (options%scale .ne. 0 ) then 
         do ii = 1, n
-           d(ii) = d(ii) / diag(ii)
+           d(ii) = d(ii) / w%apply_scaling_ws%diag(ii)
         end do
-        deallocate(diag)
+!        deallocate(diag)
      end if
      return 
    end subroutine more_sorensen
@@ -1178,7 +1179,7 @@ contains
      TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_options
      TYPE ( DTRS_inform_type )  :: dtrs_inform
 
-     real(wp), allocatable :: diag(:)
+!     real(wp), allocatable :: diag(:)
      integer :: ii
      
      ! The code finds 
@@ -1204,7 +1205,7 @@ contains
 
      ! if scaling needed, do it
      if ( options%scale .ne. 0) then
-        call apply_scaling(J,n,m,w%A,w%v,diag,options,inform)
+        call apply_scaling(J,n,m,w%A,w%v,w%apply_scaling_ws,options,inform)
      end if
 
      ! Now that we have the unprocessed matrices, we need to get an 
@@ -1249,9 +1250,9 @@ contains
 
      if (options%scale .ne. 0 ) then 
         do ii = 1, n
-           d(ii) = d(ii) / diag(ii)
+           d(ii) = d(ii) / w%apply_scaling_ws%diag(ii)
         end do
-        deallocate(diag) ! todo : fixme
+!        deallocate(diag) ! todo : fixme
      end if
 
      return
@@ -2572,6 +2573,11 @@ contains
 
         call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,status)
         if (status > 0) goto 9010
+
+        if (options%scale > 0) then
+           call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,status)
+           if (status > 0) goto 9010
+        end if
         
         return
                 
@@ -2596,6 +2602,9 @@ contains
         if(allocated( w%d_trans )) deallocate(w%d_trans)
 
         call remove_workspace_all_eig_symm(w%all_eig_symm_ws,options)
+        if (options%scale > 0) then
+           call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
+        end if
         
         return
 
@@ -2670,6 +2679,11 @@ contains
         call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,status)
         if (status > 0) goto 9010
         
+        if (options%scale > 0) then
+           call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,status)
+           if (status > 0) goto 9010
+        end if
+        
         return
         
 9000    continue
@@ -2678,7 +2692,6 @@ contains
         
 9010    continue
         return
-
 
       end subroutine setup_workspace_more_sorensen
       
@@ -2694,10 +2707,37 @@ contains
         if(allocated( w%AplusSigma )) deallocate(w%AplusSigma)
 
         call remove_workspace_min_eig_symm(w%min_eig_symm_ws,options)
+        if (options%scale > 0) then
+           call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
+        end if
         
         return
 
       end subroutine remove_workspace_more_sorensen
+
+
+      subroutine setup_workspace_apply_scaling(n,m,w,options,status)
+        
+        integer, intent(in) :: n,m
+        type( apply_scaling_work ) :: w
+        type( nlls_options ), intent(in) :: options
+        integer, intent(out) :: status
+        
+        allocate(w%diag(n))
+        
+      end subroutine setup_workspace_apply_scaling
+
+      subroutine remove_workspace_apply_scaling(w,options)
+        type( apply_scaling_work ) :: w
+        type( nlls_options ), intent(in) :: options
+                
+        if(allocated( w%diag )) deallocate( w%diag )
+        if(allocated( w%ev )) deallocate( w%ev ) 
+        
+        return 
+ 
+      end subroutine remove_workspace_apply_scaling
+      
       
 
 end module ral_nlls_internal

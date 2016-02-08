@@ -292,6 +292,7 @@ program nlls_test
      
 
      options%print_level = 3
+     options%scale = 0
 
      !! calculate step...
      ! not needed -- fully tested elsewhere....
