@@ -155,6 +155,7 @@ program nlls_test
      options%model = 9
      options%tr_update_strategy = 1
      options%exact_second_derivatives = .false.
+     X = 0.0_wp
      call nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status )
@@ -349,11 +350,90 @@ program nlls_test
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in dogleg'
         no_errors_helpers = no_errors_helpers + 1
+        status%status = 0
      end if
      
      deallocate(x,y,z,v,w)
      call nlls_finalize(work,options)
      
+     options%scale = 4
+     options%nlls_method = 3
+     n = 2
+     m = 3 
+     allocate(w(m*n),A(n,n),y(n))
+     call setup_workspaces(work,n,m,options,info)
+     
+     w = 0.0_wp
+     w(1) = 1e15
+     w(4) = 1e-15
+     A(1,1) = 1.0_wp
+     A(2,1) = 0.0_wp
+     A(1,2) = 0.0_wp
+     A(2,2) = 1.0_wp
+
+     !** scale = 1 **
+     options%scale = 1     
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error in apply_scaling when scale = 1'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+
+     !** scale = 2 **
+     options%scale = 2
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error in apply_scaling when scale = 2'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+
+     !** scale = 3 **
+     options%scale = 3
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error in apply_scaling when scale = 3'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+
+     !** scale = 4 **
+     options%scale = 4
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error in apply_scaling when scale = 4'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+
+     !** scale undefined
+     options%scale = 786
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. ERROR%BAD_SCALING ) then
+        write(*,*) 'Error: expected error in apply_scaling when passing undefined scaling'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+     
+     deallocate(w,A,y)
+     call nlls_finalize(work,options)
+     options%scale = 0 
 
      !! aint_tr
      ! ** TODO ** 

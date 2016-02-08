@@ -394,8 +394,8 @@ contains
        continue
     case (2) ! second order
        call apply_second_order_info(hfstatus,n,m, & 
-            X,w%f,w%hf,eval_Hf, &
-            w%d, w%y, w%y_sharp,  &
+            X,w, & 
+            eval_Hf, &
             params,options,inform)
        if (inform%external_return .ne. 0) goto 4030
     case (9)
@@ -424,16 +424,16 @@ contains
        
        if (w%use_second_derivatives) then 
           call apply_second_order_info(hfstatus,n,m, &
-               X,w%f,w%hf,eval_Hf, &
-               w%d, w%y, w%y_sharp,  &
+               X, w, & 
+               eval_Hf, &
                params,options,inform)
           if (inform%external_return .ne. 0) goto 4030
        elseif (.not. options%exact_second_derivatives) then 
           ! if exact_second_derivatives are not needed,
           ! call apply_second_order info so that we update the approximation
            call apply_second_order_info(hfstatus,n,m, &
-               X,w%f,w%hf,eval_Hf, &
-               w%d, w%y, w%y_sharp,  &
+               X,w, &
+               eval_Hf, &
                params,options,inform)
           if (inform%external_return .ne. 0) goto 4030
           w%hf(1:n**2) = zero

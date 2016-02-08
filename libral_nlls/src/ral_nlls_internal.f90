@@ -565,6 +565,7 @@ module ral_nlls_internal
     type, private :: apply_scaling_work ! workspace for subrouine apply_scaling
        real(wp), allocatable :: diag(:)
        real(wp), allocatable :: ev(:,:)
+       type( all_eig_symm_work ) :: all_eig_symm_ws
     end type apply_scaling_work
         
     type, private :: solve_dtrs_work ! workspace for subroutine dtrs_work
@@ -620,6 +621,7 @@ module ral_nlls_internal
        real(wp), allocatable :: hf(:)
        real(wp), allocatable :: d(:), g(:), Xnew(:)
        real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
+       real(wp), allocatable :: ysharpSks(:), Sks(:)
        real(wp), allocatable :: resvec(:), gradvec(:)
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
@@ -627,8 +629,6 @@ module ral_nlls_internal
        integer :: tr_p = 3
     end type NLLS_workspace
 
-!    public :: nlls_solve, nlls_iterate, remove_workspaces
-    
     public :: setup_workspaces, solve_dtrs, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
     public :: matmult_outer, outer_product, min_eig_symm, max_eig
@@ -636,7 +636,7 @@ module ral_nlls_internal
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix, exterr, eval_error
-    public :: dogleg, more_sorensen, allocation_error
+    public :: dogleg, more_sorensen, allocation_error, apply_scaling
     public :: ERROR
     
 contains
@@ -741,12 +741,8 @@ contains
         write(*,*) '***** Warning ********'
         write(*,*) '*    not robust      *'
         write(*,*) '**********************'
-!        allocate(ev(n,n))
-!        allocate(w%diag(n)) ! todo :: fixme!!!
-        call setup_workspace_all_eig_symm(n,m,work,options,status)
-        call all_eig_symm(A,n,w%diag,w%ev,work,inform)
+        call all_eig_symm(A,n,w%diag,w%ev,w%all_eig_symm_ws,inform)
         if (inform%status .ne. 0) goto 1000
-        call remove_workspace_all_eig_symm(work,options)
         do ii = 1,n
            if (w%diag(ii) < epsmch) w%diag(ii) = epsmch ! set -ve values to 1 too
            w%diag(ii) = sqrt(w%diag(ii))
@@ -1150,7 +1146,6 @@ contains
         do ii = 1, n
            d(ii) = d(ii) / w%apply_scaling_ws%diag(ii)
         end do
-!        deallocate(diag)
      end if
      return 
    end subroutine more_sorensen
@@ -1252,7 +1247,6 @@ contains
         do ii = 1, n
            d(ii) = d(ii) / w%apply_scaling_ws%diag(ii)
         end do
-!        deallocate(diag) ! todo : fixme
      end if
 
      return
@@ -1405,14 +1399,16 @@ contains
      end subroutine calculate_rho
 
      subroutine apply_second_order_info(status,n,m,&
-          X,f,hf,eval_Hf,&
-          d, y, y_sharp, & 
+          X,w, & !f,hf,
+          eval_Hf,&
+          !          d, y, y_sharp, & 
           params,options,inform)
        integer, intent(out) :: status
        integer, intent(in)  :: n, m 
-       real(wp), intent(in) :: X(:), f(:)
-       real(wp), intent(inout) :: hf(:)
-       real(wp), intent(in) :: d(:), y(:), y_sharp(:)
+       real(wp), intent(in) :: X(:)!, f(:)
+!       real(wp), intent(inout) :: hf(:)
+!       real(wp), intent(in) :: d(:), y(:), y_sharp(:)
+       type( NLLS_workspace ), intent(inout) :: w
        procedure( eval_hf_type ) :: eval_Hf
        class( params_base_type ) :: params
        type( nlls_options ), intent(in) :: options
@@ -1424,38 +1420,36 @@ contains
        integer :: i,j
 
        if (options%exact_second_derivatives) then
-          call eval_HF(inform%external_return, n, m, X, f, hf, params)
+          call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
           inform%h_eval = inform%h_eval + 1
        else
 
-          yts = dot_product(d,y)
-          if ( yts < 10 * epsmch ) then
+          yts = dot_product(w%d,w%y)
+          if ( abs(yts) < 10 * epsmch ) then
              ! safeguard: skip this update
              return
           end if
           
-          allocate(Sks(n))
-          call mult_J(hf,n,n,d,Sks) ! hfs = S_k * d
+          call mult_J(w%hf,n,n,w%d,w%Sks) ! hfs = S_k * d
 
-          allocate(ysharpSks(n))
-          ysharpSks = y_sharp - Sks
+          w%ysharpSks = w%y_sharp - w%Sks
           
           ! now, let's scale hd (Nocedal and Wright, Section 10.2)
-          dSks = abs(dot_product(d,Sks))
-          alpha = abs(dot_product(d,y_sharp))/ dSks
+          dSks = abs(dot_product(w%d,w%Sks))
+          alpha = abs(dot_product(w%d,w%y_sharp))/ dSks
           alpha = min(one,alpha)
-          hf(:)  = alpha * hf(:)
+          w%hf(:)  = alpha * w%hf(:)
 
           ! update S_k (again, as in N&W, Section 10.2)
 
           ! hf = hf + (1/yts) (y# - Sk d)^T y:
           alpha = 1/yts
-          call dGER(n,n,alpha,ysharpSks,1,y,1,hf,n)
+          call dGER(n,n,alpha,w%ysharpSks,1,w%y,1,w%hf,n)
           ! hf = hf + (1/yts) y^T (y# - Sk d):
-          call dGER(n,n,alpha,y,1,ysharpSks,1,hf,n)
+          call dGER(n,n,alpha,w%y,1,w%ysharpSks,1,w%hf,n)
           ! hf = hf - ((y# - Sk d)^T d)/((yts)**2)) * y y^T
-          alpha = -dot_product(ysharpSks,d)/(yts**2)
-          call dGER(n,n,alpha,y,1,y,1,hf,n)
+          alpha = -dot_product(w%ysharpSks,w%d)/(yts**2)
+          call dGER(n,n,alpha,w%y,1,w%y,1,w%hf,n)
                     
        end if
 
@@ -2027,7 +2021,15 @@ contains
               allocate(workspace%g_mixed(n), stat = status)
               if (status > 0) goto 1000
            end if
-
+           if (.not. allocated(workspace%Sks)) then
+              allocate(workspace%Sks(n), stat = status)
+              if (status > 0) goto 1000
+           end if
+           if (.not. allocated(workspace%ysharpSks)) then
+              allocate(workspace%ysharpSks(n), stat = status)
+              if (status > 0) goto 1000
+           end if
+           
         end if
 
         if( options%output_progress_vectors ) then 
@@ -2724,6 +2726,10 @@ contains
         integer, intent(out) :: status
         
         allocate(w%diag(n))
+        allocate(w%ev(n,n))
+        if (options%scale == 4) then
+           call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,status)
+        end if
         
       end subroutine setup_workspace_apply_scaling
 
