@@ -8,6 +8,17 @@ project (libral_nlls)
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
 
+# see if the build type is debug.  First, convert to lower
+STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
+# now do the test
+if(CMAKE_BUILD_TYPE_LOWER MATCHES debug)
+  message("WARNING: Debug version - not to be used in production code.")
+  # compile lapack from source...
+  set(CompileMiniLAPACK On)
+  # set the test coverage switch
+  set(TestCoverage On)
+endif()
+
 # Set the location for cmake module files
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
