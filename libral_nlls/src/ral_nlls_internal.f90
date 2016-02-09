@@ -591,6 +591,7 @@ module ral_nlls_internal
 !       type( solve_spd_work ) :: solve_spd_ws
        REAL(wp), allocatable :: A(:,:), LtL(:,:), v(:), B(:,:), p0(:), p1(:)
        REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
+       REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
     end type AINT_tr_work
 
     type, private :: dogleg_work ! workspace for subroutine dogleg
@@ -841,8 +842,7 @@ contains
      integer :: keep_p0, i, size_hard(2)
      real(wp) :: obj_p0, obj_p1
      REAL(wp) :: norm_p0, tau, lam, eta
-     REAL(wp), allocatable :: y_hardcase(:,:)
-     
+     REAL(wp), allocatable :: y_hardcase(:,:)     
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
@@ -903,15 +903,15 @@ contains
         ! Hard case
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(y_hardcase)
-        call matmult_outer( matmul(w%B,y_hardcase), size_hard(2), n, w%M1(1:n,1:n))
-        w%M0(1:n,1:n) = w%A(:,:) + lam*w%B(:,:) + w%M1(1:n,1:n)
+        call matmult_outer( matmul(w%B,y_hardcase), size_hard(2), n, w%M1_small)
+        w%M0_small = w%A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model) 
         case (1)
-           call solve_spd(w%M0(1:n,1:n),-w%v,w%LtL,w%q,n,inform)
+           call solve_spd(w%M0_small,-w%v,w%LtL,w%q,n,inform)
            if (inform%status .ne. 0) goto 1000
         case default
-          call solve_general(w%M0(1:n,1:n),-w%v,w%q,n,inform,w%solve_general_ws)
+          call solve_general(w%M0_small,-w%v,w%q,n,inform,w%solve_general_ws)
           if (inform%status .ne. 0) goto 1000
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
@@ -2293,6 +2293,10 @@ contains
         if (status > 0) goto 9000
         allocate(w%M1(2*n,2*n),stat = status)
         if (status > 0) goto 9000
+        allocate(w%M0_small(n,n),stat = status)
+        if (status > 0) goto 9000
+        allocate(w%M1_small(n,n),stat = status)
+        if (status > 0) goto 9000
         allocate(w%y(2*n),stat = status)
         if (status > 0) goto 9000
         allocate(w%gtg(n,n),stat = status)
@@ -2334,6 +2338,8 @@ contains
         if(allocated( w%p1 )) deallocate(w%p1)
         if(allocated( w%M0 )) deallocate(w%M0)
         if(allocated( w%M1 )) deallocate(w%M1)
+        if(allocated( w%M0_small )) deallocate(w%M0_small)
+        if(allocated( w%M1_small )) deallocate(w%M1_small)
         if(allocated( w%y )) deallocate(w%y)
         if(allocated( w%gtg )) deallocate(w%gtg)
         if(allocated( w%q )) deallocate(w%q)
