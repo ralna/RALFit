@@ -25,11 +25,20 @@ endif(TestCoverage)
 include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
 add_library (ral_nlls src/ral_nlls_double.f90 src/ral_nlls_internal.f90 src/ral_nlls_dtrs_double.f90 src/ral_nlls_symbols.f90 src/ral_nlls_ciface.f90)
 
+if(NOT CompileMiniLAPACK)
+  # try to find lapack..
+  find_package(LAPACK)
+  if(NOT LAPACK_FOUND)
+    # couldn't find lapack...compile locally
+    set(CompileMiniLAPACK On)
+  endif()
+endif()
+
 # LAPACK routines
 if(CompileMiniLAPACK)
    message("WARNING: Compiling our own LAPACK library.")
    message("WARNING: This should be avoided as it is likely to be less optimised than a")
-   message("WARNING: vendor supplied version. It may also be out of date and full of bugs.")
+   message("WARNING: vendor supplied version, and may also be out of date.")
    add_library(ral_nlls_lapack
          lapack/dbdsqr.f lapack/dgebd2.f lapack/dgebrd.f lapack/dgebrd.f
          lapack/dgebrd.f lapack/dgelq2.f lapack/dgelqf.f lapack/dgels.f
@@ -58,8 +67,6 @@ if(CompileMiniLAPACK)
          lapack/iparmq.f)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
    find_package(BLAS REQUIRED)
-else()
-   find_package(LAPACK REQUIRED)
 endif()
 
 # Tests and examples
