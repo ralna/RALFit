@@ -1125,11 +1125,11 @@ program nlls_test
      !-----------!
      !! max_eig !!
      !-----------!
-     n = 4
-     m = 4
+     n = 2
+     m = 2
      ! make sure max_eig gets called
 
-     allocate(x(n),A(n,n), B(n,n))
+     allocate(x(2*n),A(2*n,2*n), B(2*n,2*n))
      call setup_workspaces(work,n,m,options,info) 
      
      A = reshape( (/1.0, 2.0, 3.0, 4.0, &
@@ -1137,15 +1137,13 @@ program nlls_test
           3.0, 6.0, 9.0, 12.0, & 
           4.0, 8.0, 12.0, 16.0/), shape(A))
      B = 0.0_wp
-     do i = 1,n
+     do i = 1,2*n
         B(i,i) = real(i,wp)
      end do
      alpha = 1.0_wp
      x = 0.0_wp
-     
-     call max_eig(A,B,n,alpha,x,C,options,status, & 
+     call max_eig(A,B,2*n,alpha,x,C,options,status, & 
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     
      if ( status%status .ne. 0 ) then
         write(*,*) 'error :: max_eig test failed, status = ', status%status
         no_errors_helpers = no_errors_helpers + 1 
@@ -1156,13 +1154,14 @@ program nlls_test
      end if
 
      deallocate(A,B,x)
+     if(allocated(C)) deallocate(C)
      call nlls_finalize(work,options)
 
      ! check the 'hard' case...
-     n = 4
-     m = 4
-     allocate(x(n),A(n,n), B(n,n))
-     call setup_workspaces(work,2,2,options,info) 
+     n = 2
+     m = 2
+     allocate(x(2*n),A(2*n,2*n), B(2*n,2*n))
+     call setup_workspaces(work,n,m,options,info) 
 
      A = 0.0_wp  
      A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
@@ -1170,16 +1169,15 @@ program nlls_test
      B = A
      A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
 
-     call max_eig(A,B,n,alpha,x,C,options,status, & 
+     call max_eig(A,B,2*n,alpha,x,C,options,status, & 
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-
      if (.not. allocated(C)) then ! check C returned 
         write(*,*) 'error :: hard case of max_eig test failed - C not returned'
         no_errors_helpers = no_errors_helpers + 1 
      else
         allocate(y(2))
         y = shape(C)
-        if ((y(1) .ne. 2) .or. (y(2) .ne. n)) then
+        if ((y(1) .ne. 2) .or. (y(2) .ne. 2*n)) then
            write(*,*) 'error :: hard case of max_eig test failed - wrong shape C returned'
            write(*,*) 'y(1) = ', y(1), 'y(2) = ', y(2)
            no_errors_helpers = no_errors_helpers + 1 
@@ -1205,7 +1203,11 @@ program nlls_test
         end if
      end if
 
-     deallocate(A,B,C,x,y)
+     if(allocated(A)) deallocate(A)
+     if(allocated(B)) deallocate(B)
+     if(allocated(C)) deallocate(C)
+     if(allocated(x)) deallocate(x)
+     if(allocated(y)) deallocate(y)
      if (allocated(results)) deallocate(results)
      call nlls_finalize(work,options)
 

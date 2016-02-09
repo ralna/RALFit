@@ -686,9 +686,6 @@ contains
      integer :: ii, jj
      real(wp) :: Jij
 
-     type( all_eig_symm_work ) :: work
-     integer :: status
-  
      w%diag = 0.0_wp
    
      select case (options%scale)
@@ -743,6 +740,7 @@ contains
         write(*,*) '**********************'
         call all_eig_symm(A,n,w%diag,w%ev,w%all_eig_symm_ws,inform)
         if (inform%status .ne. 0) goto 1000
+        !w%diag(1:n) = w%diag(n:-1:1)
         do ii = 1,n
            if (w%diag(ii) < epsmch) w%diag(ii) = epsmch ! set -ve values to 1 too
            w%diag(ii) = sqrt(w%diag(ii))
@@ -759,7 +757,7 @@ contains
         A(ii,:) = A(ii,:) / w%diag(ii)
         A(:,ii) = A(:,ii) / w%diag(ii)
      end do
-        
+   
      return
      
 1000 continue
@@ -840,8 +838,7 @@ contains
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( AINT_tr_work ) :: w
         
-     integer :: solve_status, find_status
-     integer :: keep_p0, i, eig_info, size_hard(2)
+     integer :: keep_p0, i, size_hard(2)
      real(wp) :: obj_p0, obj_p1
      REAL(wp) :: norm_p0, tau, lam, eta
      REAL(wp), allocatable :: y_hardcase(:,:)
@@ -986,9 +983,8 @@ contains
      ! parameters...make these options?
      real(wp) :: nd, nq
 
-     real(wp) :: sigma, alpha, Jij, local_ms_shift, sigma_shift
-     integer :: fb_status, mineig_status
-     integer :: test_pd, i, ii, jj, no_shifts
+     real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
+     integer :: i, no_shifts
 !     real(wp), allocatable :: diag(:)
      
      ! The code finds 
@@ -1119,17 +1115,6 @@ contains
      end if
      goto 4000
 
-1060 continue
-     if ( options%print_level > 0 ) then
-        write(options%error,'(a)') 'More-Sorensen: error from lapack routine dsyev(x)'
-        write(options%error,'(a,i0)') 'info = ', mineig_status
-     end if
-     inform%status = ERROR%MS_MAXITS
-     inform%external_return = mineig_status
-     inform%external_name = 'lapack_dsyev'
-
-     goto 4000
-     
 2000 format('Non-spd system in more_sorensen. Increasing sigma to ',es12.4)
 
 3000 continue
@@ -1143,8 +1128,8 @@ contains
 4000 continue
      ! exit the routine
      if (options%scale .ne. 0 ) then 
-        do ii = 1, n
-           d(ii) = d(ii) / w%apply_scaling_ws%diag(ii)
+        do i = 1, n
+           d(i) = d(i) / w%apply_scaling_ws%diag(i)
         end do
      end if
      return 
@@ -1170,7 +1155,6 @@ contains
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
-     integer :: eig_status
      TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_options
      TYPE ( DTRS_inform_type )  :: dtrs_inform
 
@@ -1398,12 +1382,11 @@ contains
 
      end subroutine calculate_rho
 
-     subroutine apply_second_order_info(status,n,m,&
+     subroutine apply_second_order_info(n,m,&
           X,w, & !f,hf,
           eval_Hf,&
           !          d, y, y_sharp, & 
           params,options,inform)
-       integer, intent(out) :: status
        integer, intent(in)  :: n, m 
        real(wp), intent(in) :: X(:)!, f(:)
 !       real(wp), intent(inout) :: hf(:)
@@ -1414,10 +1397,7 @@ contains
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        
-       real(wp), allocatable :: Sks(:), ysharpSks(:)
-
        real(wp) :: yts, alpha, dSks
-       integer :: i,j
 
        if (options%exact_second_derivatives) then
           call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
@@ -1709,8 +1689,6 @@ contains
         type( all_eig_symm_work ) :: w
         type( nlls_inform ), intent(inout) :: inform
 
-        real(wp), allocatable :: work
-        real(wp) :: tol
         integer :: lwork
         
         ! copy the matrix A into the eigenvector array
@@ -2620,7 +2598,7 @@ contains
 
         real(wp), allocatable :: workquery(:)
         real(wp) :: A,ew
-        integer :: lapack_status, lwork, eigsout
+        integer :: lapack_status, lwork
 
         lapack_status = 0
         A = 1.0_wp

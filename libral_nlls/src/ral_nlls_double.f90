@@ -393,7 +393,7 @@ contains
     case (1) ! first-order
        continue
     case (2) ! second order
-       call apply_second_order_info(hfstatus,n,m, & 
+       call apply_second_order_info(n,m, & 
             X,w, & 
             eval_Hf, &
             params,options,inform)
@@ -423,7 +423,7 @@ contains
        end if
        
        if (w%use_second_derivatives) then 
-          call apply_second_order_info(hfstatus,n,m, &
+          call apply_second_order_info(n,m, &
                X, w, & 
                eval_Hf, &
                params,options,inform)
@@ -431,7 +431,7 @@ contains
        elseif (.not. options%exact_second_derivatives) then 
           ! if exact_second_derivatives are not needed,
           ! call apply_second_order info so that we update the approximation
-           call apply_second_order_info(hfstatus,n,m, &
+           call apply_second_order_info(n,m, &
                X,w, &
                eval_Hf, &
                params,options,inform)
