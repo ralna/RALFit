@@ -1433,57 +1433,60 @@ contains
 
      end subroutine apply_second_order_info
 
-     subroutine update_trust_region_radius(rho,options,inform,Delta,nu,p)
+     subroutine update_trust_region_radius(rho,options,inform,w)
        
        real(wp), intent(inout) :: rho ! ratio of actual to predicted reduction
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       real(wp), intent(inout) :: Delta ! trust region size
-       real(wp), intent(inout) :: nu ! scaling parameter (tr_update_strategy = 2)
-       integer, intent(in) :: p ! power (tr_update_strategy = 2)
+       type( nlls_workspace ), intent(inout) :: w
+!       real(wp), intent(inout) :: Delta ! trust region size
+ !      real(wp), intent(inout) :: nu ! scaling parameter (tr_update_strategy = 2)
+ !      integer, intent(in) :: p ! power (tr_update_strategy = 2)
        
        select case(options%tr_update_strategy)
        case(1) ! default, step-function
           if (rho < options%eta_success_but_reduce) then
              ! unsuccessful....reduce Delta
-             Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
-             if (options%print_level > 2) write(options%out,3010) Delta     
+             w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
+             if (options%print_level > 2) write(options%out,3010) w%Delta     
           else if (rho < options%eta_very_successful) then 
              ! doing ok...retain status quo
-             if (options%print_level > 2) write(options%out,3020) Delta 
+             if (options%print_level > 2) write(options%out,3020) w%Delta 
           else if (rho < options%eta_too_successful ) then
              ! more than very successful -- increase delta
-             Delta = min(options%maximum_radius, options%radius_increase * Delta )
-             if (options%print_level > 2) write(options%out,3030) Delta
+             w%Delta = min(options%maximum_radius, &
+                  options%radius_increase * w%Delta)!, &              
+!                  options%radius_increase * norm2(w%d))
+             if (options%print_level > 2) write(options%out,3030) w%Delta
           else if (rho >= options%eta_too_successful) then
-             ! too successful....accept step, but don't change Delta
-             if (options%print_level > 2) write(options%out,3040) Delta 
+             ! too successful....accept step, but don't change w%Delta
+             if (options%print_level > 2) write(options%out,3040) w%Delta 
           else
              ! just incase (NaNs and the like...)
-             if (options%print_level > 2) write(options%out,3010) Delta 
-             Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+             if (options%print_level > 2) write(options%out,3010) w%Delta 
+             w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -one ! set to be negative, so that the logic works....
           end if
        case(2) ! Continuous method
           ! Based on that proposed by Hans Bruun Nielsen, TR IMM-REP-1999-05
           ! http://www2.imm.dtu.dk/documents/ftp/tr99/tr05_99.pdf
           if (rho >= options%eta_too_successful) then
-             ! too successful....accept step, but don't change Delta
-             if (options%print_level > 2) write(options%out,3040) Delta 
+             ! too successful....accept step, but don't change w%Delta
+             if (options%print_level > 2) write(options%out,3040) w%Delta 
           else if (rho > options%eta_successful) then 
-             Delta = Delta * min(options%radius_increase, &
+             w%Delta = w%Delta * min(options%radius_increase, &
                   max(options%radius_reduce, & 
-                  1 - ( (options%radius_increase - 1) * ((1 - 2*rho)**p)) ))
-             nu = options%radius_reduce
-             if (options%print_level > 2) write(options%out,3050) Delta 
+                  1 - ( (options%radius_increase - 1) * ((1 - 2*rho)**w%tr_p)) ))
+             w%tr_nu = options%radius_reduce
+             if (options%print_level > 2) write(options%out,3050) w%Delta 
           else if ( rho <= options%eta_successful ) then 
-             Delta = Delta * nu
-             nu =  nu * 0.5_wp
-             if (options%print_level > 2) write(options%out,3010) Delta
+             w%Delta = w%Delta * w%tr_nu
+             w%tr_nu =  w%tr_nu * 0.5_wp
+             if (options%print_level > 2) write(options%out,3010) w%Delta
           else
              ! just incase (NaNs and the like...)
-             if (options%print_level > 2) write(options%out,3010) Delta 
-             Delta = max( options%radius_reduce, options%radius_reduce_max) * Delta
+             if (options%print_level > 2) write(options%out,3010) w%Delta 
+             w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta 
              rho = -one ! set to be negative, so that the logic works....
           end if
        case default

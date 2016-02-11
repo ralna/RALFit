@@ -746,10 +746,10 @@ program nlls_test
      !------------------------------!
      !! update_trust_region_radius !!
      !------------------------------!
-     
-     delta = 100.0_wp ! Delta
-     beta = 2.0_wp ! nu
-     i = 3 ! p
+     call setup_workspaces(work,2,2,options,info) 
+     work%Delta = 100.0_wp ! Delta
+     work%tr_nu = 2.0_wp ! nu
+     work%tr_p = 3 ! p
      ! alpha = rho
 
      options%tr_update_strategy = 1
@@ -761,44 +761,44 @@ program nlls_test
 
      ! check if rho reduced...
      alpha = options%eta_success_but_reduce - 0.5_wp
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( delta >= 100_wp ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( work%Delta >= 100_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not decrease as expected: delta = ', delta
+        write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
      
      ! check if rho stays the same...
      alpha = (options%eta_success_but_reduce + options%eta_very_successful) / 2
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( abs(delta - 100_wp) > 1e-12 ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( abs(work%Delta - 100_wp) > 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not stay the same: delta = ', delta
+        write(*,*) 'Delta did not stay the same: Delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
 
      ! check if rho increases...
      alpha = (options%eta_very_successful + options%eta_too_successful) / 2
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( delta <= 100_wp ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( work%Delta <= 100_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not incease: delta = ', delta
+        write(*,*) 'Delta did not incease: delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
 
      
      ! check if rho stays the same because too successful...
      alpha = options%eta_too_successful + 1.0_wp
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( abs(delta - 100_wp) > 1e-12 ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( abs(work%Delta - 100_wp) > 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not stay the same: delta = ', delta
+        write(*,*) 'Delta did not stay the same: delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
 
      ! now check for NaNs...HOW to do this in a non-compiler dependent way!?!?
 
@@ -807,55 +807,55 @@ program nlls_test
      
      ! check if rho increases...
      alpha = (options%eta_very_successful + options%eta_too_successful) / 2
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( delta <= 100_wp ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( work%Delta <= 100_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not incease: delta = ', delta
+        write(*,*) 'Delta did not incease: delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
      
      ! check if rho stays the same because too successful...
      alpha = options%eta_too_successful + 1.0_wp
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( abs(delta - 100_wp) > 1e-12 ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( abs(work%Delta - 100_wp) > 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not stay the same: delta = ', delta
+        write(*,*) 'Delta did not stay the same: delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
 
      alpha = options%eta_success_but_reduce - 0.5_wp
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( delta >= 100_wp ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( work%Delta >= 100_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not decrease as expected: delta = ', delta
+        write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
 
      alpha = options%eta_successful - 10.0_wp
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
-     if ( delta >= 100_wp ) then
+     call update_trust_region_radius(alpha,options,status,work)
+     if ( work%Delta >= 100_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Delta did not decrease as expected: delta = ', delta
+        write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         no_errors_helpers = no_errors_helpers + 1
      end if
-     delta = 100_wp
+     work%Delta = 100_wp
      
      ! again...NaN test should go here!!!
 
      !Finally, check the error cases...
      
      options%tr_update_strategy = 18
-     call update_trust_region_radius(alpha,options,status,delta,beta,i)
+     call update_trust_region_radius(alpha,options,status,work)
      if ( status%status .ne. ERROR%BAD_TR_STRATEGY ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Error returned is = ', status%status, ', expected ',ERROR%BAD_TR_STRATEGY
         no_errors_helpers = no_errors_helpers + 1
      end if
      status%status = 0
-     delta = 100_wp
+     work%Delta = 100_wp
 
      !! test_convergence
      
