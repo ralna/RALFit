@@ -781,6 +781,7 @@ program nlls_test
 
      ! check if rho increases...
      alpha = (options%eta_very_successful + options%eta_too_successful) / 2
+     work%normd = 100_wp
      call update_trust_region_radius(alpha,options,status,work)
      if ( work%Delta <= 100_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
