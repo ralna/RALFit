@@ -285,12 +285,15 @@ module ral_nlls_internal
 !   0 - no scaling
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
 !       tiny values get set to one       
-!   2 - as 1, but tiny values stay the same
+!   2 - deprecated
 !   3 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
 !   4 - scale using the eigenvalues (not yet robust)     
      INTEGER :: scale = 1
      REAL(wp) :: scale_max = 1e11
      REAL(wp) :: scale_min = 1e-11
+     LOGICAL :: scale_trim_min = .FALSE.
+     LOGICAL :: scale_trim_max = .TRUE.
+     LOGICAL :: scale_require_increase = .FALSE.
 
 !   is a retrospective strategy to be used to update the trust-region radius?
 
@@ -566,6 +569,7 @@ module ral_nlls_internal
     type, private :: apply_scaling_work ! workspace for subrouine apply_scaling
        real(wp), allocatable :: diag(:)
        real(wp), allocatable :: ev(:,:)
+       real(wp), allocatable :: tempvec(:)
        type( all_eig_symm_work ) :: all_eig_symm_ws
     end type apply_scaling_work
         
@@ -686,67 +690,60 @@ contains
      type( nlls_inform ), intent(inout) :: inform
 
      integer :: ii, jj
-     real(wp) :: Jij
+     real(wp) :: Jij, temp
 
-     w%diag = 0.0_wp
-   
+
      select case (options%scale)
-     case (1)
-        ! use the scaling present in gsl:
-        ! scale by W, W_ii = ||J(i,:)||_2^2
+     case (1,3)
         do ii = 1,n
-           do jj = 1,m
-              call get_element_of_matrix(J,m,jj,ii,Jij)
-              w%diag(ii) = w%diag(ii) + Jij**2
-           end do
-           if (w%diag(ii) < options%scale_min) then 
-              w%diag(ii) = one!scaling_min
-           elseif (w%diag(ii) > options%scale_max) then
-              w%diag(ii) = options%scale_max
+           temp = zero
+           what_scale: if (options%scale == 1) then
+              ! use the scaling present in gsl:
+              ! scale by W, W_ii = ||J(i,:)||_2^2
+              do jj = 1,m
+                 call get_element_of_matrix(J,m,jj,ii,Jij)
+                 temp = temp + Jij**2
+              end do
+           elseif ( options%scale == 3) then 
+              ! scale using the (approximate) hessian
+              do jj = 1,n
+                 temp = temp + A(ii,jj)**2
+              end do
+           end if what_scale
+           trim_scale: if (temp < options%scale_min) then 
+              if (options%scale_trim_min) then 
+                 temp = options%scale_min
+              else
+                 temp = one
+              end if
+           elseif (temp > options%scale_max) then
+              if (options%scale_trim_max) then 
+                 temp = options%scale_max
+              else
+                 temp = one 
+              end if
+           end if trim_scale
+           temp = sqrt(temp)
+           if (options%scale_require_increase) then
+              write(*,*) 'w%diag(ii) = ', w%diag(ii)
+              write(*,*) 'temp = ', temp
+              w%diag(ii) = max(temp,w%diag(ii))
+           else
+              w%diag(ii) = temp
            end if
-           w%diag(ii) = sqrt(w%diag(ii))
-        end do
-        
-     case (2)
-        ! as case (1), but if w%diag < scaling_min, set to scaling_min
-        do ii = 1,n
-           do jj = 1,m
-              call get_element_of_matrix(J,m,jj,ii,Jij)
-              w%diag(ii) = w%diag(ii) + Jij**2
-           end do
-           if (w%diag(ii) < options%scale_min) then 
-              w%diag(ii) = options%scale_min
-           elseif (w%diag(ii) > options%scale_max) then
-              w%diag(ii) = options%scale_max
-           end if
-           w%diag(ii) = sqrt(w%diag(ii))
-        end do
-        
-     case (3)
-        ! scale on the values of H, not J....
-        do ii = 1,n
-           do jj = 1,n
-              w%diag(ii) = w%diag(ii) + A(ii,jj)**2
-           end do
-           if (w%diag(ii) < options%scale_min) then 
-              w%diag(ii) = one!options%scale_min
-           elseif (w%diag(ii) > options%scale_max) then
-              w%diag(ii) = options%scale_max
-           end if
-           w%diag(ii) = sqrt(w%diag(ii))
         end do
      case (4)
         ! assuming problems are small...do an eigen-decomposition of H
         write(*,*) '***** Warning ********'
         write(*,*) '*    not robust      *'
         write(*,*) '**********************'
-        call all_eig_symm(A,n,w%diag,w%ev,w%all_eig_symm_ws,inform)
+        call all_eig_symm(A,n,w%tempvec,w%ev,w%all_eig_symm_ws,inform)
         if (inform%status .ne. 0) goto 1000
-        !w%diag(1:n) = w%diag(n:-1:1)
         do ii = 1,n
-           if (w%diag(ii) < epsmch) w%diag(ii) = epsmch ! set -ve values to 1 too
-           w%diag(ii) = sqrt(w%diag(ii))
+           ! plain version...
+           w%diag(n + 1 - ii) = w%tempvec(ii)
         end do
+        ! todo : require_increase, test for trimming
      case default
         inform%status = ERROR%BAD_SCALING
         return
@@ -2711,8 +2708,10 @@ contains
         integer, intent(out) :: status
         
         allocate(w%diag(n))
+        w%diag = zero
         allocate(w%ev(n,n))
         if (options%scale == 4) then
+           allocate(w%tempvec(n))
            call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,status)
         end if
         

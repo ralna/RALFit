@@ -21,6 +21,9 @@
 1                     scale
 1e-11                 scale_min
 1e11                  scale_max
+F                     scale_trim_min
+T                     scale_trim_max
+F                     scale_require_increase
 T                     output_progress_vectors
 F                     exact second derivatives
 44                    summary unit (not + = don't write)

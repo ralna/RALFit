@@ -372,7 +372,7 @@ program nlls_test
      A(2,2) = 1.0_wp
 
      !** scale = 1 **
-     options%scale = 1     
+     options%scale= 1     
      call apply_scaling(w,n,m,A,y,& 
           work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
           options,status)
@@ -383,17 +383,17 @@ program nlls_test
         status%status = 0 
      end if
 
-     !** scale = 2 **
-     options%scale = 2
-     call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
-          options,status)
-     if (status%status .ne. 0 ) then
-        write(*,*) 'Error: unexpected error in apply_scaling when scale = 2'
-        write(*,*) 'status = ', status%status,' returned.'
-        no_errors_helpers = no_errors_helpers + 1
-        status%status = 0 
-     end if
+!!$     !** scale = 2 **
+!!$     options%scale = 2
+!!$     call apply_scaling(w,n,m,A,y,& 
+!!$          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+!!$          options,status)
+!!$     if (status%status .ne. 0 ) then
+!!$        write(*,*) 'Error: unexpected error in apply_scaling when scale = 2'
+!!$        write(*,*) 'status = ', status%status,' returned.'
+!!$        no_errors_helpers = no_errors_helpers + 1
+!!$        status%status = 0 
+!!$     end if
 
      !** scale = 3 **
      options%scale = 3
