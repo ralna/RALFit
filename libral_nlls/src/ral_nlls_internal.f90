@@ -45,6 +45,7 @@ module ral_nlls_internal
      INTEGER :: MS_MAXITS = -100 ! <-- change
      INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
      INTEGER :: MS_SPD_LOOP = -600    !<--change
+     INTEGER :: MS_NO_PROGRESS = -2923 ! change
      ! DTRS errors
 
   END TYPE NLLS_ERROR
