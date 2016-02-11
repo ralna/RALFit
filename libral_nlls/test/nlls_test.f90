@@ -395,8 +395,8 @@ program nlls_test
 !!$        status%status = 0 
 !!$     end if
 
-     !** scale = 3 **
-     options%scale = 3
+     !** scale = 2 **
+     options%scale = 2
      call apply_scaling(w,n,m,A,y,& 
           work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
           options,status)
@@ -407,8 +407,8 @@ program nlls_test
         status%status = 0 
      end if
 
-     !** scale = 4 **
-     options%scale = 4
+     !** scale = 3 **
+     options%scale = 3
      call apply_scaling(w,n,m,A,y,& 
           work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
           options,status)
@@ -430,6 +430,49 @@ program nlls_test
         no_errors_helpers = no_errors_helpers + 1
         status%status = 0 
      end if
+     status%status = 0
+     
+     ! now, let's test the non-default modes
+     ! first, set scale_require_increase to T
+     options%scale = 1
+     options%scale_require_increase = .true.
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+     options%scale_require_increase = .false.
+
+     ! first, set scale_trim_min to T
+     options%scale_trim_min = .true.
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+     options%scale_trim_min = .false.
+
+     ! first, set scale_trim_max to T
+     options%scale_trim_max = .false.
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+        write(*,*) 'status = ', status%status,' returned.'
+        no_errors_helpers = no_errors_helpers + 1
+        status%status = 0 
+     end if
+     options%scale_trim_max = .true.
+
      
      deallocate(w,A,y)
      call nlls_finalize(work,options)
