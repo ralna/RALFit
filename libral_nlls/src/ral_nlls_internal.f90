@@ -1463,8 +1463,11 @@ contains
           else if (rho < options%eta_too_successful ) then
              ! more than very successful -- increase delta
              w%Delta = min(options%maximum_radius, &
-!                 options%radius_increase * w%Delta)
                   options%radius_increase * w%normd)
+             ! increase based on normd = ||d||_D
+             ! if d is on the tr boundary, this is Delta
+             ! otherwise, point was within the tr, and there's no point increasing 
+             ! the radius
              if (options%print_level > 2) write(options%out,3030) w%Delta
           else if (rho >= options%eta_too_successful) then
              ! too successful....accept step, but don't change w%Delta
