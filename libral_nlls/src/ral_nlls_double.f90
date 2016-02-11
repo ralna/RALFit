@@ -305,7 +305,7 @@ contains
        !    d                                      !   
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,options,inform,& 
+       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,w%normd,options,inform,& 
             w%calculate_step_ws)
        if (inform%status .ne. 0) goto 4000
        

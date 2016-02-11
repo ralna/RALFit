@@ -618,6 +618,7 @@ module ral_nlls_internal
        real(wp) :: normF0, normJF0, normF, normJF
        real(wp) :: normJFold, normJF_Newton
        real(wp) :: Delta
+       real(wp) :: normd
        logical :: use_second_derivatives = .false.
        integer :: hybrid_count = 0
        real(wp) :: hybrid_tol = 1.0
@@ -647,7 +648,7 @@ module ral_nlls_internal
     
 contains
 
-  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,options,inform,w)
+  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,normd,options,inform,w)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -656,6 +657,7 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: normd
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      TYPE( calculate_step_work ) :: w
@@ -663,13 +665,13 @@ contains
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
-        call dogleg(J,f,hf,g,n,m,Delta,d,options,inform,w%dogleg_ws)
+        call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
      case (2) ! The AINT method
-        call AINT_TR(J,f,hf,n,m,Delta,d,options,inform,w%AINT_tr_ws)
+        call AINT_TR(J,f,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
      case (3) ! More-Sorensen
-        call more_sorensen(J,f,hf,n,m,Delta,d,options,inform,w%more_sorensen_ws)
+        call more_sorensen(J,f,hf,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
      case (4) ! Galahad
-        call solve_dtrs(J,f,hf,n,m,Delta,d,options,inform,w%solve_dtrs_ws)
+        call solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_dtrs_ws)
      case default
         if ( options%print_level > 0 ) then
            write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
@@ -766,7 +768,7 @@ contains
 
    end subroutine apply_scaling
 
-   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,options,inform,w)
+   SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w)
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
@@ -774,6 +776,7 @@ contains
      REAL(wp), intent(in) :: J(:), hf(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: normd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      TYPE( dogleg_work ) :: w
@@ -812,6 +815,7 @@ contains
         d = alpha * w%d_sd + beta * w%ghat
      end if
 
+     normd = norm2(d)
      
      return
      
@@ -823,7 +827,7 @@ contains
      
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,options,inform,w)
+   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,normd,options,inform,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
@@ -833,6 +837,7 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: normd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( AINT_tr_work ) :: w
@@ -949,6 +954,8 @@ contains
         d = w%p1
      end if
 
+     normd = norm2(d)
+
      return
          
 1000 continue 
@@ -959,7 +966,7 @@ contains
 
    END SUBROUTINE AINT_tr
 
-   subroutine more_sorensen(J,f,hf,n,m,Delta,d,options,inform,w)
+   subroutine more_sorensen(J,f,hf,n,m,Delta,d,nd,options,inform,w)
      ! -----------------------------------------
      ! more_sorensen
      ! Solve the trust-region subproblem using 
@@ -974,16 +981,14 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: nd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( more_sorensen_work ) :: w
 
-     ! parameters...make these options?
-     real(wp) :: nd, nq
-
+     real(wp) :: nq
      real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
      integer :: i, no_shifts
-!     real(wp), allocatable :: diag(:)
      
      ! The code finds 
      !  d = arg min_p   v^T p + 0.5 * p^T A p
@@ -1133,7 +1138,7 @@ contains
      return 
    end subroutine more_sorensen
    
-   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,options,inform,w)
+   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w)
 
      !---------------------------------------------
      ! solve_dtrs
@@ -1149,6 +1154,7 @@ contains
      REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
      type( solve_dtrs_work ) :: w
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -1225,6 +1231,8 @@ contains
      ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
 
+     normd = norm2(d) ! ||d||_D
+     
      if (options%scale .ne. 0 ) then 
         do ii = 1, n
            d(ii) = d(ii) / w%apply_scaling_ws%diag(ii)
@@ -1455,8 +1463,8 @@ contains
           else if (rho < options%eta_too_successful ) then
              ! more than very successful -- increase delta
              w%Delta = min(options%maximum_radius, &
-                  options%radius_increase * w%Delta)!, &              
-!                  options%radius_increase * norm2(w%d))
+!                 options%radius_increase * w%Delta)
+                  options%radius_increase * w%normd)
              if (options%print_level > 2) write(options%out,3030) w%Delta
           else if (rho >= options%eta_too_successful) then
              ! too successful....accept step, but don't change w%Delta
@@ -2711,7 +2719,7 @@ contains
         integer, intent(out) :: status
         
         allocate(w%diag(n))
-        w%diag = zero
+        w%diag = one
         allocate(w%ev(n,n))
         if (options%scale == 4) then
            allocate(w%tempvec(n))

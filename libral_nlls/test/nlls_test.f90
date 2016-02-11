@@ -318,7 +318,7 @@ program nlls_test
      x = 0.0_wp
      y = 1.0_wp
      z = 1.0_wp
-     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     call dogleg(w,y,x,z,n,m,alpha,v,beta,options,status,work%calculate_step_ws%dogleg_ws)
      if (status%status .ne. ERROR%DOGLEG_MODEL) then
         write(*,*) 'Error: unsupported model allowed in dogleg'
         no_errors_helpers = no_errors_helpers + 1
@@ -332,21 +332,21 @@ program nlls_test
      z = 1.0_wp
      ! now, get ||d_gn|| <= Delta
      alpha = 6.0_wp
-     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     call dogleg(w,y,x,z,n,m,alpha,v,beta,options,status,work%calculate_step_ws%dogleg_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in dogleg'
         no_errors_helpers = no_errors_helpers + 1
      end if
      ! now set delta so that || alpha * d_sd || >= Delta
      alpha = 0.5_wp
-     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     call dogleg(w,y,x,z,n,m,alpha,v,beta,options,status,work%calculate_step_ws%dogleg_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in dogleg'
         no_errors_helpers = no_errors_helpers + 1
      end if
      ! now get the guys in the middle...
      alpha = 2.5_wp
-     call dogleg(w,y,x,z,n,m,alpha,v,options,status,work%calculate_step_ws%dogleg_ws)
+     call dogleg(w,y,x,z,n,m,alpha,v,beta,options,status,work%calculate_step_ws%dogleg_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in dogleg'
         no_errors_helpers = no_errors_helpers + 1
@@ -456,7 +456,7 @@ program nlls_test
      y = 1.0_wp
      z = 1.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen'
@@ -471,7 +471,7 @@ program nlls_test
      y = 1.0_wp
      z = 1.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. ERROR%MS_TOO_MANY_SHIFTS) then
         write(*,*) 'Error: test passed, when fail expected'
@@ -487,7 +487,7 @@ program nlls_test
      z = 1.0_wp
      alpha =  10.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
@@ -505,7 +505,7 @@ program nlls_test
      options%more_sorensen_tiny = 0.01_wp
      alpha =  0.2055_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
@@ -523,7 +523,7 @@ program nlls_test
      z = 1.0_wp
      alpha = 3.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with nd > Delta'
@@ -540,7 +540,7 @@ program nlls_test
      z = 1.0_wp
      alpha = 3.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,options,status,& 
+     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. ERROR%MS_MAXITS) then
         write(*,*) 'Error: Expected maximum iterations error in more_sorensen'
@@ -569,7 +569,7 @@ program nlls_test
 
      alpha = 0.02_wp
      
-     call solve_dtrs(x,y,z,n,m,alpha,w,& 
+     call solve_dtrs(x,y,z,n,m,alpha,w,beta,& 
           options,status, &
           work%calculate_step_ws%solve_dtrs_ws )
 
@@ -591,7 +591,7 @@ program nlls_test
 
      alpha = -100.0_wp
      
-     call solve_dtrs(x,y,z,n,m,alpha,w,& 
+     call solve_dtrs(x,y,z,n,m,alpha,w,beta,& 
           options,status,& 
           work%calculate_step_ws%solve_dtrs_ws)
 
