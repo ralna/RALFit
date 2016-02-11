@@ -1068,7 +1068,7 @@ contains
         
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
         if (abs(sigma_shift) < epsmch * abs(sigma) ) then
-           inform%status = -2923
+           inform%status = ERROR%MS_NO_PROGRESS
            goto 4000
            ! we're not going to make progress...jump out 
         end if
