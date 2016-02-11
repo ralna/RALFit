@@ -727,8 +727,6 @@ contains
            end if trim_scale
            temp = sqrt(temp)
            if (options%scale_require_increase) then
-              write(*,*) 'w%diag(ii) = ', w%diag(ii)
-              write(*,*) 'temp = ', temp
               w%diag(ii) = max(temp,w%diag(ii))
            else
               w%diag(ii) = temp
