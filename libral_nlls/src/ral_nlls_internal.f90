@@ -669,7 +669,7 @@ contains
      case (3) ! More-Sorensen
         call more_sorensen(J,f,hf,n,m,Delta,d,options,inform,w%more_sorensen_ws)
      case (4) ! Galahad
-        call solve_dtrs(J,f,hf,n,m,Delta,d,w%solve_dtrs_ws,options,inform)
+        call solve_dtrs(J,f,hf,n,m,Delta,d,options,inform,w%solve_dtrs_ws)
      case default
         if ( options%print_level > 0 ) then
            write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
@@ -1133,7 +1133,7 @@ contains
      return 
    end subroutine more_sorensen
    
-   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,w,options,inform)
+   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,options,inform,w)
 
      !---------------------------------------------
      ! solve_dtrs
