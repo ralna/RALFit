@@ -285,9 +285,8 @@ module ral_nlls_internal
 !   0 - no scaling
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
 !       tiny values get set to one       
-!   2 - deprecated
-!   3 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
-!   4 - scale using the eigenvalues (not yet robust)     
+!   2 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
+!   3 - scale using the eigenvalues (not yet robust)     
      INTEGER :: scale = 1
      REAL(wp) :: scale_max = 1e11
      REAL(wp) :: scale_min = 1e-11
@@ -696,7 +695,7 @@ contains
 
 
      select case (options%scale)
-     case (1,3)
+     case (1,2)
         do ii = 1,n
            temp = zero
            what_scale: if (options%scale == 1) then
@@ -706,13 +705,14 @@ contains
                  call get_element_of_matrix(J,m,jj,ii,Jij)
                  temp = temp + Jij**2
               end do
-           elseif ( options%scale == 3) then 
+           elseif ( options%scale == 2) then 
               ! scale using the (approximate) hessian
               do jj = 1,n
                  temp = temp + A(ii,jj)**2
               end do
            end if what_scale
            trim_scale: if (temp < options%scale_min) then 
+              write(*,*) 'temp = ', temp
               if (options%scale_trim_min) then 
                  temp = options%scale_min
               else
@@ -732,7 +732,7 @@ contains
               w%diag(ii) = temp
            end if
         end do
-     case (4)
+     case (3)
         ! assuming problems are small...do an eigen-decomposition of H
         write(*,*) '***** Warning ********'
         write(*,*) '*    not robust      *'

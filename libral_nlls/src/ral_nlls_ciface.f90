@@ -34,9 +34,16 @@ module ral_nlls_ciface
      real(wp) :: radius_increase
      real(wp) :: radius_reduce
      real(wp) :: radius_reduce_max
+     integer :: tr_update_strategy
      real(wp) :: hybrid_switch
      logical(c_bool) :: exact_second_derivatives
      logical(c_bool) :: subproblem_eig_fact
+     integer(C_INT) :: scale
+     real(wp) :: scale_max
+     real(wp) :: scale_min
+     logical(c_bool) :: scale_trim_min
+     logical(c_bool) :: scale_trim_max
+     logical(c_bool) :: scale_require_increase
      integer(c_int) :: more_sorensen_maxits
      real(wp) :: more_sorensen_shift
      real(wp) :: more_sorensen_tiny
@@ -58,6 +65,8 @@ module ral_nlls_ciface
      real(wp) :: gradinf
      real(wp) :: obj
      real(wp) :: norm_g
+     real(wp) :: scaled_g
+     integer(C_INT) :: external_return
   end type nlls_inform
 
   abstract interface
@@ -120,6 +129,7 @@ contains
     foptions%lls_solver = coptions%lls_solver
     foptions%stop_g_absolute = coptions%stop_g_absolute
     foptions%stop_g_relative = coptions%stop_g_relative
+    foptions%relative_tr_radius = coptions%relative_tr_radius
     foptions%initial_radius_scale = coptions%initial_radius_scale
     foptions%initial_radius = coptions%initial_radius
     foptions%maximum_radius = coptions%maximum_radius
@@ -129,9 +139,16 @@ contains
     foptions%radius_increase = coptions%radius_increase
     foptions%radius_reduce = coptions%radius_reduce
     foptions%radius_reduce_max = coptions%radius_reduce_max
+    foptions%tr_update_strategy = coptions%tr_update_strategy
     foptions%hybrid_switch = coptions%hybrid_switch
     foptions%exact_second_derivatives = coptions%exact_second_derivatives
     foptions%subproblem_eig_fact = coptions%subproblem_eig_fact
+    foptions%scale = coptions%scale
+    foptions%scale_max = coptions%scale_max
+    foptions%scale_min = coptions%scale_min
+    foptions%scale_trim_max = coptions%scale_trim_max
+    foptions%scale_trim_min = coptions%scale_trim_min
+    foptions%scale_require_increase = coptions%scale_require_increase
     foptions%more_sorensen_maxits = coptions%more_sorensen_maxits
     foptions%more_sorensen_shift = coptions%more_sorensen_shift
     foptions%more_sorensen_tiny = coptions%more_sorensen_tiny
@@ -160,6 +177,8 @@ contains
        cinfo%gradinf = maxval(abs(finfo%gradvec(:)))
     cinfo%obj = finfo%obj
     cinfo%norm_g = finfo%norm_g
+    cinfo%scaled_g = finfo%scaled_g
+    cinfo%external_return = finfo%external_return
 
   end subroutine copy_info_out
 
@@ -236,9 +255,16 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%radius_increase = foptions%radius_increase
   coptions%radius_reduce = foptions%radius_reduce
   coptions%radius_reduce_max = foptions%radius_reduce_max
+  coptions%tr_update_strategy = foptions%tr_update_strategy
   coptions%hybrid_switch = foptions%hybrid_switch
   coptions%exact_second_derivatives = foptions%exact_second_derivatives
   coptions%subproblem_eig_fact = foptions%subproblem_eig_fact
+  coptions%scale = foptions%scale
+  coptions%scale_max = foptions%scale_max
+  coptions%scale_min = foptions%scale_min
+  coptions%scale_trim_max = foptions%scale_trim_max
+  coptions%scale_trim_min = foptions%scale_trim_min
+  coptions%scale_require_increase = foptions%scale_require_increase
   coptions%more_sorensen_maxits = foptions%more_sorensen_maxits
   coptions%more_sorensen_shift = foptions%more_sorensen_shift
   coptions%more_sorensen_tiny = foptions%more_sorensen_tiny

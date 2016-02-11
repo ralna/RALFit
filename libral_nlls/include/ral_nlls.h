@@ -35,8 +35,8 @@ struct ral_nlls_options_d {
   int lls_solver; /* which lls solver to use? */
   ral_nllspkgtype_d_ stop_g_absolute; /* absolute stopping tolerance */
   ral_nllspkgtype_d_ stop_g_relative; /* relative stopping tolerance */
-  ral_nllspkgtype_d_ relative_tr_radius; /* ??? */
-  ral_nllspkgtype_d_ initial_radius_scale; /* ??? */
+  int relative_tr_radius; /* non-zero if we scale the initial tr radius */
+  ral_nllspkgtype_d_ initial_radius_scale; /* what should we scale tr rad by? */
   ral_nllspkgtype_d_ initial_radius; /* initial trust region radius */
   ral_nllspkgtype_d_ maximum_radius; /* maximux trust region radius */
   ral_nllspkgtype_d_ eta_successful; /* trust region step successful level */
@@ -45,9 +45,16 @@ struct ral_nlls_options_d {
   ral_nllspkgtype_d_ radius_increase; /* how much to increase the radius by? */
   ral_nllspkgtype_d_ radius_reduce; /* how much to reduce the radius by? */
   ral_nllspkgtype_d_ radius_reduce_max; /* max amount to reduce the radius by */
+  int tr_update_strategy; /* 1: step function, 2: continuous */
   ral_nllspkgtype_d_ hybrid_switch;
   bool exact_second_derivatives;
   bool subproblem_eig_fact;
+  int scale; /* 0: don't scale, 1: norm of J, 2: norm of Hessian, 3: eigs */
+  ral_nllspkgtype_d_ scale_max; /* max before we trim scaling */
+  ral_nllspkgtype_d_ scale_min; /* min before we trim scaling */
+  bool scale_trim_min; /* if min attained, trim? (or set to 1) */
+  bool scale_trim_max; /* if max attained, trim? (or set to 1) */
+  bool scale_require_increase; /* scaling matrix must increase to update */
   int more_sorensen_maxits;
   ral_nllspkgtype_d_ more_sorensen_shift;
   ral_nllspkgtype_d_ more_sorensen_tiny;
@@ -69,6 +76,8 @@ struct ral_nlls_inform_d {
   ral_nllspkgtype_d_ gradinf;
   ral_nllspkgtype_d_ obj;
   ral_nllspkgtype_d_ norm_g;
+  ral_nllspkgtype_d_ scaled_g;
+  int external_return;
 };
 
 /* Set default values of options */
