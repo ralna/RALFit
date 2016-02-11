@@ -49,9 +49,9 @@ for i in range(no_tests-1):
     
     os.chdir("cutest/sif/")
 
+    subprocess.call(["cp","/dev/null",control_files[i]+"_iter.out"])
     if i == 0:
         # very first call, so create blank file...
-        subprocess.call(["cp","/dev/null",control_files[i]+"_iter.out"])
         subprocess.call(["runcutest","-p",package,"--decode",problem])
     else: # no need to decode again....
         subprocess.call(["runcutest","-p",package])
