@@ -1918,7 +1918,6 @@ contains
            write(error_string,'(a,a,a,i0)') & 
                 'Error code from user-supplied subroutine ',trim(inform%external_name), & 
                 ' passed error = ', inform%external_return
-           error_string = 'Error from eval_F/J/Hf'
         elseif ( inform%status == ERROR%UNSUPPORTED_MODEL ) then
            error_string = 'Unsupported model passed in options'
         elseif ( inform%status == ERROR%FROM_EXTERNAL ) then
@@ -1930,7 +1929,7 @@ contains
            error_string = 'Unsupported nlls_method passed in options'
         elseif ( inform%status == ERROR%ALLOCATION ) then
            write(error_string,'(a,a)') &
-                'Bad allocation of memory in ', inform%bad_alloc
+                'Bad allocation of memory in ', trim(inform%bad_alloc)
         elseif ( inform%status == ERROR%MAX_TR_REDUCTIONS ) then
            error_string = 'The trust region was reduced the maximum number of times'
         elseif ( inform%status == ERROR%X_NO_PROGRESS ) then

@@ -21,6 +21,8 @@ program nlls_test
   integer :: total_errors
   integer :: nlls_method, model, tr_update
   logical :: test_all, test_subs
+  character (len = 80) :: error_string
+  character (len = 80) :: expected_string
 
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
@@ -1316,6 +1318,374 @@ program nlls_test
      call nlls_finalize(work,options)
      
      ! nlls_strerror
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     status%status = ERROR%EVALUATION
+     status%external_name = 'nlls_test'
+     status%external_return = -1
+     write(expected_string,'(a,a,a,i0)') & 
+                'Error code from user-supplied subroutine ',trim(status%external_name), & 
+                ' passed error = ', status%external_return
+     call nlls_strerror(status,error_string)
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     status%status = ERROR%UNSUPPORTED_MODEL
+     call nlls_strerror(status,error_string)
+     expected_string = 'Unsupported model passed in options'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     status%status = ERROR%FROM_EXTERNAL
+     call nlls_strerror(status,error_string)
+     write(expected_string,'(a,a,a,i0)') & 
+                'The external subroutine ',trim(status%external_name), & 
+                ' passed error = ', status%external_return
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = ERROR%MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum number of iterations reached'
+     if (error_string .ne. 'Maximum number of iterations reached') then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     
+     status%status = ERROR%UNSUPPORTED_METHOD
+     call nlls_strerror(status,error_string)
+     expected_string = 'Unsupported nlls_method passed in options'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     status%status = ERROR%ALLOCATION
+     status%bad_alloc = "nlls_test"
+     call nlls_strerror(status,error_string)
+     write(expected_string,'(a,a)') &
+                'Bad allocation of memory in ', trim(status%bad_alloc)
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     status%status = ERROR%MAX_TR_REDUCTIONS
+     call nlls_strerror(status,error_string)
+     expected_string = 'The trust region was reduced the maximum number of times'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     
+     status%status = ERROR%MAX_TR_REDUCTIONS
+     call nlls_strerror(status,error_string)
+     expected_string = 'The trust region was reduced the maximum number of times'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%X_NO_PROGRESS
+     call nlls_strerror(status,error_string)
+     expected_string = 'No progress made in X'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%N_GT_M
+     call nlls_strerror(status,error_string)
+     expected_string = 'The problem is overdetermined'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%BAD_TR_STRATEGY
+     call nlls_strerror(status,error_string)
+     expected_string = 'Unsupported tr_update_stategy passed in options'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%FIND_BETA
+     call nlls_strerror(status,error_string)
+     expected_string = 'Unable to find suitable scalar in findbeta subroutine'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%BAD_SCALING
+     call nlls_strerror(status,error_string)
+     expected_string = 'Unsupported value of scale passed in options'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%DOGLEG_MODEL
+     call nlls_strerror(status,error_string)
+     expected_string = 'Model not supported in dogleg (nlls_method=1)'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%AINT_EIG_IMAG
+     call nlls_strerror(status,error_string)
+     expected_string = 'All eigenvalues are imaginary (nlls_method=2)'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%AINT_EIG_ODD
+     call nlls_strerror(status,error_string)
+     expected_string = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%MS_MAXITS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%MS_TOO_MANY_SHIFTS
+     call nlls_strerror(status,error_string)
+     expected_string = 'Too many shifts taken in more_sorensen (nlls_method=3)'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = ERROR%MS_NO_PROGRESS
+     call nlls_strerror(status,error_string)
+     expected_string = 'No progress being made in more_sorensen (nlls_method=3)'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
+     status%status = -2355
+     call nlls_strerror(status,error_string)
+     expected_string = 'Unknown error number'
+     if (error_string .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
 
      ! Report back results....
 
