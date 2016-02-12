@@ -61,7 +61,7 @@ module ral_nlls_double
      end subroutine eval_hf_type
   end interface
 
-  public :: nlls_solve, nlls_iterate, nlls_finalize
+  public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     
   public :: nlls_options, nlls_inform, nlls_workspace
   public :: params_base_type
@@ -103,6 +103,7 @@ contains
     integer  :: i
     
     type ( NLLS_workspace ) :: w
+    character (len = 80) :: error_string
     
 !!$    write(*,*) 'Controls in:'
 !!$    write(*,*) control
@@ -141,7 +142,12 @@ contains
                          params,                    &
                          inform, options)
        ! test the returns to see if we've converged
-       if (inform%status .ne. 0) then 
+
+       if (inform%status < 0) then 
+          if ( options%print_level > 0 ) then
+             call nlls_strerror(inform,error_string)
+             write(options%error,'(a,a)') 'ERROR: ', trim(error_string)
+          end if
           goto 1000 ! error -- exit
        elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
           goto 1000 ! converged -- exit
@@ -188,7 +194,7 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
       
-    integer :: jstatus=0, fstatus=0, hfstatus=0, astatus = 0, svdstatus = 0
+    integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, normFnew, md, Jmax, JtJdiag
     real(wp) :: FunctionValue, hybrid_tol
@@ -208,7 +214,7 @@ contains
        ! first, check if n < m
        if (n > m) goto 4070
 
-       call setup_workspaces(w,n,m,options,inform%alloc_status)
+       call setup_workspaces(w,n,m,options,inform)
        if ( inform%alloc_status > 0) goto 4000
 
        call eval_F(inform%external_return, n, m, X, w%f, params)
@@ -490,15 +496,15 @@ contains
 !    if (options%output_progress_vectors) then
     if (allocated(w%resvec)) then
        if(.not. allocated(inform%resvec)) then 
-          allocate(inform%resvec(w%iter + 1), stat = astatus)
-          if (astatus > 0) call allocation_error(options,'nlls_iterate')
+          allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
+          if (inform%alloc_status > 0) goto 4080
           inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
        end if
     end if
     if (allocated(w%gradvec)) then
        if(.not. allocated(inform%gradvec)) then 
-          allocate(inform%gradvec(w%iter + 1), stat = astatus)
-          if (astatus > 0) call allocation_error(options,'nlls_iterate')
+          allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
+          if (inform%alloc_status > 0) goto 4080
           inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
        end if
     end if
@@ -507,50 +513,47 @@ contains
 
 4010 continue
     ! Error in eval_J
-    call eval_error(options,inform,'eval_J')
+    inform%external_name = 'eval_J'
+    inform%status = ERROR%EVALUATION
+!    call eval_error(options,inform,'eval_J')
     goto 4000
 
 4020 continue
-    ! Error in eval_J
-    call eval_error(options,inform,'eval_F')
+    ! Error in eval_F
+    inform%external_name = 'eval_F'
+    inform%status = ERROR%EVALUATION
+!    call eval_error(options,inform,'eval_F')
     goto 4000
 
 4030 continue
     ! Error in eval_HF
-    call eval_error(options,inform,'eval_HF')
+    inform%external_name = 'eval_HF'
+    inform%status = ERROR%EVALUATION
     goto 4000
 
 4040 continue 
-    ! unsupported choice of model
-    if (options%print_level > 0) then
-       write(options%error,'(a,i0,a)') 'Error: the choice of options%model = ', &
-            options%model, ' is not supported'
-    end if
     inform%status = ERROR%UNSUPPORTED_MODEL
-   goto 4000
+    goto 4000
 
 4050 continue 
     ! max tr reductions exceeded
-    if (options%print_level > 0) then
-       write(options%error,'(a)') 'Error: maximum tr reductions reached'
-    end if
     inform%status = ERROR%MAX_TR_REDUCTIONS
     goto 4000
 
 4060 continue 
     ! x makes no progress
-    if (options%print_level > 0) then
-       write(options%error,'(a)') 'No further progress in X'
-    end if
     inform%status = ERROR%X_NO_PROGRESS
     goto 4000
 
 4070 continue
     ! n > m on entry
-    if (options%print_level > 0) then
-       write(options%error,'(a)') ''
-    end if
     inform%status = ERROR%N_GT_M
+    goto 4000
+
+4080 continue
+    ! bad allocation
+    inform%status = ERROR%ALLOCATION
+    inform%bad_alloc = 'nlls_iterate'
     goto 4000
 
 ! convergence 

@@ -28,7 +28,8 @@ program nlls_test
   type( NLLS_workspace ) :: work
 
   open(unit = 17, file="nlls_test.out")
-  options%error = 17
+  open(unit = 18, file="nlls_test_error.out")
+  options%error = 18
   options%out   = 17 
   
   test_all = .true.
@@ -77,7 +78,7 @@ program nlls_test
                    eval_F, eval_J, eval_H, params,  &
                    options, status )
               if (( nlls_method == 1).and.( options%model > 1)) then
-                 if ( status%status .ne. -3 ) then
+                 if ( status%status .ne. ERROR%DOGLEG_MODEL ) then
                     write(*,*) 'incorrect error return from nlls_solve:'
                     write(*,*) 'NLLS_METHOD = ', nlls_method
                     write(*,*) 'MODEL = ', options%model
@@ -304,7 +305,7 @@ program nlls_test
      n = 2
      m = 3
      allocate(w(m*n), x(n*n), y(m), z(n), v(n))
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,status) 
      ! w <-- J
      ! x <-- hf
      ! y <-- f
@@ -361,7 +362,7 @@ program nlls_test
      n = 2
      m = 3 
      allocate(w(m*n),A(n,n),y(n))
-     call setup_workspaces(work,n,m,options,info)
+     call setup_workspaces(work,n,m,options,status)
      
      w = 0.0_wp
      w(1) = 1e15
@@ -486,7 +487,7 @@ program nlls_test
      n = 2
      m = 3
      allocate(w(m*n), x(n*n), y(m), z(n))
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,status) 
      ! w <-- J
      ! x <-- hf
      ! y <-- f
@@ -599,7 +600,7 @@ program nlls_test
      options%nlls_method = 4
      n = 2
      m = 5
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,status) 
 
      allocate(w(n))
      allocate(x(m*n))
@@ -651,7 +652,7 @@ program nlls_test
 
      !! solve_LLS 
      options%nlls_method = 1 ! dogleg
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,status) 
      
 
      n = 2 
@@ -688,7 +689,7 @@ program nlls_test
      n = 100 
      m = 20
      allocate(x(n*m), y(m), z(n))     
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,status) 
 
      x = 1.0_wp
      z = 1.0_wp
@@ -789,7 +790,7 @@ program nlls_test
      !------------------------------!
      !! update_trust_region_radius !!
      !------------------------------!
-     call setup_workspaces(work,2,2,options,info) 
+     call setup_workspaces(work,2,2,options,status) 
      work%Delta = 100.0_wp ! Delta
      work%tr_nu = 2.0_wp ! nu
      work%tr_p = 3 ! p
@@ -953,7 +954,7 @@ program nlls_test
      ! Setup workspace for n = 2
      ! use this for max_eig, solve_spd
      options%nlls_method = 2
-     call setup_workspaces(work,2,2,options,info) 
+     call setup_workspaces(work,2,2,options,status) 
 !!!!!!
 
      !-------------!
@@ -986,7 +987,7 @@ program nlls_test
      options%nlls_method = 2
      options%model = 2
 
-     call setup_workspaces(work,2,2,options,info) 
+     call setup_workspaces(work,2,2,options,status) 
      allocate(A(n,n),x(2),y(2),z(2))
 
      A = reshape((/ 4.0, 1.0, 2.0, 2.0 /),shape(A))
@@ -1121,7 +1122,7 @@ program nlls_test
         case (2)
            options%subproblem_eig_fact = .FALSE.
         end select
-        call setup_workspaces(work,n,m,options,info) 
+        call setup_workspaces(work,n,m,options,status) 
                 
         A = reshape( (/-5.0,  1.0, 0.0, 0.0, &
           1.0, -5.0, 0.0, 0.0, &
@@ -1174,7 +1175,7 @@ program nlls_test
      ! make sure max_eig gets called
 
      allocate(x(2*n),A(2*n,2*n), B(2*n,2*n))
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,status) 
      
      A = reshape( (/1.0, 2.0, 3.0, 4.0, &
           2.0, 4.0, 6.0, 8.0, &
@@ -1205,7 +1206,7 @@ program nlls_test
      n = 2
      m = 2
      allocate(x(2*n),A(2*n,2*n), B(2*n,2*n))
-     call setup_workspaces(work,n,m,options,info) 
+     call setup_workspaces(work,n,m,options,status) 
 
      A = 0.0_wp  
      A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
@@ -1257,7 +1258,7 @@ program nlls_test
 
      
      
-     call setup_workspaces(work,1,1,options,info)  !todo: deallocation routine
+     call setup_workspaces(work,1,1,options,status)  !todo: deallocation routine
      ! check the error return
      n = 2
      allocate(x(n), A(n,n), B(n,n))
@@ -1311,25 +1312,10 @@ program nlls_test
 
      n = 2
      m = 3
-     call setup_workspaces(work,n,m,options,info)    
+     call setup_workspaces(work,n,m,options,status)    
      call nlls_finalize(work,options)
      
-
-     !! exterr
-
-     status%external_name = 'exterr'
-     status%external_return = 0
-     call exterr(options,status,'nlls_test')
-          
-     !! eval_error
-
-     status%external_name = 'eval_error'
-     status%external_return = 0
-     call eval_error(options,status,'eval_nlls_test')
-
-     !! allocation_error
-     
-     call allocation_error(options,'nlls_tests')
+     ! nlls_strerror
 
      ! Report back results....
 

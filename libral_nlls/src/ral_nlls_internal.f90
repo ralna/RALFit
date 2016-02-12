@@ -30,6 +30,7 @@ module ral_nlls_internal
      INTEGER :: UNSUPPORTED_MODEL = -3
      INTEGER :: FROM_EXTERNAL = -4
      INTEGER :: UNSUPPORTED_METHOD = -5
+     INTEGER :: ALLOCATION = -6
      INTEGER :: MAX_TR_REDUCTIONS = -500
      INTEGER :: X_NO_PROGRESS = -700 ! <-- change
      INTEGER :: N_GT_M = -800  ! <-- change
@@ -37,14 +38,13 @@ module ral_nlls_internal
      INTEGER :: FIND_BETA = -12 ! <- change
      INTEGER :: BAD_SCALING = -34 ! <- change
      ! dogleg errors
-     INTEGER :: DOGLEG_MODEL = -3  ! <-- change
+     INTEGER :: DOGLEG_MODEL = -36  ! <-- change
      ! AINT errors
      INTEGER :: AINT_EIG_IMAG = -21
      INTEGER :: AINT_EIG_ODD = -22
      ! More-Sorensen errors
      INTEGER :: MS_MAXITS = -100 ! <-- change
      INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
-     INTEGER :: MS_SPD_LOOP = -600    !<--change
      INTEGER :: MS_NO_PROGRESS = -2923 ! change
      ! DTRS errors
 
@@ -366,7 +366,7 @@ module ral_nlls_internal
 
 !  the name of the array for which an allocation/deallocation error ocurred
 
-!$$     CHARACTER ( LEN = 80 ) :: bad_alloc = REPEAT( ' ', 80 )
+     CHARACTER ( LEN = 80 ) :: bad_alloc = REPEAT( ' ', 80 )
 
 !  the total number of iterations performed
      
@@ -641,9 +641,9 @@ module ral_nlls_internal
     public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info
     public :: test_convergence, calculate_rho
-    public :: solve_LLS, shift_matrix, exterr, eval_error
-    public :: dogleg, more_sorensen, allocation_error, apply_scaling
-    public :: ERROR
+    public :: solve_LLS, shift_matrix
+    public :: dogleg, more_sorensen, apply_scaling
+    public :: ERROR, nlls_strerror
     
 contains
 
@@ -672,10 +672,6 @@ contains
      case (4) ! Galahad
         call solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_dtrs_ws)
      case default
-        if ( options%print_level > 0 ) then
-           write(options%error,'(a)') 'Error: unknown value of options%nlls_method'
-           write(options%error,'(a,i0)') 'options%nlls_method = ', options%nlls_method
-        end if
         inform%status = ERROR%UNSUPPORTED_METHOD
      end select
 
@@ -712,7 +708,6 @@ contains
               end do
            end if what_scale
            trim_scale: if (temp < options%scale_min) then 
-              write(*,*) 'temp = ', temp
               if (options%scale_trim_min) then 
                  temp = options%scale_min
               else
@@ -761,7 +756,7 @@ contains
      
 1000 continue
      ! error in external package
-     call exterr(options,inform,'solve_dtrs')
+!     call exterr(options,inform,'solve_dtrs')
      return
 
    end subroutine apply_scaling
@@ -795,9 +790,6 @@ contains
         call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws)
         if ( inform%status .ne. 0 ) goto 1000
      case default
-        if (options%print_level> 0) then
-           write(options%error,'(a)') 'Error: model not supported in dogleg'
-        end if
         inform%status = ERROR%DOGLEG_MODEL
         return
      end select
@@ -819,7 +811,7 @@ contains
      
 1000 continue 
      ! bad error return from solve_LLS
-     call exterr(options,inform,'dogleg')
+!     call exterr(options,inform,'dogleg')
      return
 
      
@@ -958,7 +950,7 @@ contains
          
 1000 continue 
      ! bad error return from external package
-     call exterr(options,inform,'AINT_TR')
+!     call exterr(options,inform,'AINT_TR')
      return
 
 
@@ -1091,28 +1083,24 @@ contains
      
 1000 continue 
      ! bad error return from external package
-     call exterr(options,inform,'more_sorensen')
+!     call exterr(options,inform,'more_sorensen')
      goto 4000
      
 1020 continue
      ! Converged!
      if ( options%print_level >= 3 ) then
-        write(options%error,'(a,i0)') 'More-Sorensen converged at iteration ', i
+        write(options%out,'(a,i0)') 'More-Sorensen converged at iteration ', i
      end if
      goto 4000
      
 1040 continue
      ! maxits reached, not converged
-     if ( options%print_level > 0 ) then
-        write(options%error,'(a)') 'Maximum iterations reached in More-Sorensen'
-        write(options%error,'(a)') 'without convergence'
-     end if
      inform%status = ERROR%MS_MAXITS
      goto 4000
 
 1050 continue
      if ( options%print_level >= 3 ) then
-        write(options%error,'(a)') 'More-Sorensen: first point within trust region'
+        write(options%out,'(a)') 'More-Sorensen: first point within trust region'
      end if
      goto 4000
 
@@ -1121,7 +1109,6 @@ contains
 3000 continue
      ! too many shifts
      if ( options%print_level > 0 ) then 
-        write(options%out,'(a)') 'Too many shifts in More-Sorensen'
         inform%status = ERROR%MS_TOO_MANY_SHIFTS
      end if 
      goto 4000
@@ -1241,7 +1228,7 @@ contains
 
 1000 continue 
      ! bad error return from external package
-     call exterr(options,inform,'solve_dtrs')
+!     call exterr(options,inform,'solve_dtrs')
      return
      
    end subroutine solve_dtrs
@@ -1499,9 +1486,6 @@ contains
              rho = -one ! set to be negative, so that the logic works....
           end if
        case default
-          if (options%print_level > 0) then 
-             write(options%error,'(a)') 'Unsupported trust region update strategy chosen'
-          end if
           inform%status = ERROR%BAD_TR_STRATEGY
           return          
        end select
@@ -1848,17 +1832,10 @@ contains
         return 
 
 1000    continue 
-        if ( options%print_level >=0 ) then
-           write(options%error,'(a)') 'Error, all eigs are imaginary'
-        end if
         inform%status = ERROR%AINT_EIG_IMAG ! Eigs imaginary error
-        
         return
 
 1010    continue
-        if (options%print_level >= 0 ) then 
-           write(options%error,'(a)') 'error : non-even sized matrix sent to max eig'
-        end if
         inform%status = ERROR%AINT_EIG_ODD
 
         return
@@ -1930,134 +1907,147 @@ contains
         end if
 
       end subroutine get_svd_J
+      
+      subroutine nlls_strerror(inform,error_string)
+        type( nlls_inform ), intent(in) :: inform
+        character (len = *), intent(out) :: error_string
 
-
-      subroutine exterr(options,inform,subname)
-        type( nlls_options ), intent(in) :: options
-        type( nlls_inform ), intent(in)  :: inform
-        character (len = *) :: subname
-        
-        if (options%print_level > 0) then
-           write(options%out,'(a)') 'Unexpected error return from an external subroutine'
-           write(options%out,'(a,a,i0,a,a)') trim(inform%external_name),' returned error code ',&
-                inform%external_return,' when called from the subroutine ', trim(subname)
+        if ( inform%status == ERROR%MAXITS ) then
+           error_string = 'Maximum number of iterations reached'
+        elseif ( inform%status == ERROR%EVALUATION ) then
+           write(error_string,'(a,a,a,i0)') & 
+                'Error code from user-supplied subroutine ',trim(inform%external_name), & 
+                ' passed error = ', inform%external_return
+           error_string = 'Error from eval_F/J/Hf'
+        elseif ( inform%status == ERROR%UNSUPPORTED_MODEL ) then
+           error_string = 'Unsupported model passed in options'
+        elseif ( inform%status == ERROR%FROM_EXTERNAL ) then
+           write(error_string,'(a,a,a,i0)') & 
+                'The external subroutine ',trim(inform%external_name), & 
+                ' passed error = ', inform%external_return
+           ! todo: adapt this to give the last called subroutine?
+        elseif ( inform%status == ERROR%UNSUPPORTED_METHOD ) then
+           error_string = 'Unsupported nlls_method passed in options'
+        elseif ( inform%status == ERROR%ALLOCATION ) then
+           write(error_string,'(a,a)') &
+                'Bad allocation of memory in ', inform%bad_alloc
+        elseif ( inform%status == ERROR%MAX_TR_REDUCTIONS ) then
+           error_string = 'The trust region was reduced the maximum number of times'
+        elseif ( inform%status == ERROR%X_NO_PROGRESS ) then
+           error_string = 'No progress made in X'
+        elseif ( inform%status == ERROR%N_GT_M ) then
+           error_string = 'The problem is overdetermined'
+        elseif ( inform%status == ERROR%BAD_TR_STRATEGY ) then
+           error_string = 'Unsupported tr_update_stategy passed in options'
+        elseif ( inform%status == ERROR%FIND_BETA ) then
+           error_string = 'Unable to find suitable scalar in findbeta subroutine'
+        elseif ( inform%status == ERROR%BAD_SCALING ) then
+           error_string = 'Unsupported value of scale passed in options'
+        elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
+           error_string = 'Model not supported in dogleg (nlls_method=1)'
+        elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
+           error_string = 'All eigenvalues are imaginary (nlls_method=2)'
+        elseif ( inform%status == ERROR%AINT_EIG_ODD ) then
+           error_string = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
+        elseif ( inform%status == ERROR%MS_MAXITS ) then
+           error_string = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
+        elseif ( inform%status == ERROR%MS_TOO_MANY_SHIFTS ) then
+           error_string = 'Too many shifts taken in more_sorensen (nlls_method=3)'
+        elseif ( inform%status == ERROR%MS_NO_PROGRESS ) then
+           error_string = 'No progress being made in more_sorensen (nlls_method=3)'
+        else 
+           error_string = 'Unknown error number'           
         end if
-        
-      end subroutine exterr
 
-      subroutine allocation_error(options,subname)
-        type( nlls_options ), intent(in) :: options
-        character( len=* ) :: subname
 
-        if (options%print_level >= 0) then
-           write(options%error,'(a,a,a)') & 
-                'Error allocating array in subroutine ', trim(subname),&
-                ': not enough memory.' 
-        end if
-                
-      end subroutine allocation_error
-
-      subroutine eval_error(options,inform,subname)
-        type( nlls_options ), intent(in) :: options
-        type( nlls_inform ), intent(inout)  :: inform
-        character (len = *)  :: subname
-
-        if (options%print_level > 0) then
-           write(options%error,'(a,a,a,i0)') 'Error code from ', trim(subname), &
-                ' status = ', inform%external_return
-        end if
-        inform%status = ERROR%EVALUATION
-        
-      end subroutine eval_error
+      end subroutine nlls_strerror
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                                                       !!
 !! W O R K S P A C E   S E T U P   S U B R O U T I N E S !!
 !!                                                       !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      subroutine setup_workspaces(workspace,n,m,options,status)
+      subroutine setup_workspaces(workspace,n,m,options,inform)
         
         type( NLLS_workspace ), intent(out) :: workspace
         type( nlls_options ), intent(in) :: options
         integer, intent(in) :: n,m
-        integer, intent(out) :: status
+        type( NLLS_inform ), intent(out) :: inform
 
-        status = 0      
-        
         workspace%first_call = 0
 
         workspace%tr_nu = options%radius_increase
         workspace%tr_p = 7
 
         if (.not. allocated(workspace%y)) then
-           allocate(workspace%y(n), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%y(n), stat = inform%alloc_status)
+           if (inform%alloc_status .ne. 0) goto 1000
            workspace%y = zero
         end if
         if (.not. allocated(workspace%y_sharp)) then
-           allocate(workspace%y_sharp(n), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%y_sharp(n), stat = inform%alloc_status)
+           if (inform%alloc_status .ne. 0) goto 1000
            workspace%y_sharp = zero
         end if
         
         if (.not. options%exact_second_derivatives) then
            if (.not. allocated(workspace%g_old)) then
-              allocate(workspace%g_old(n), stat = status)
-              if (status > 0) goto 1000
+              allocate(workspace%g_old(n), stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
            end if
            if (.not. allocated(workspace%g_mixed)) then
-              allocate(workspace%g_mixed(n), stat = status)
-              if (status > 0) goto 1000
+              allocate(workspace%g_mixed(n), stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
            end if
            if (.not. allocated(workspace%Sks)) then
-              allocate(workspace%Sks(n), stat = status)
-              if (status > 0) goto 1000
+              allocate(workspace%Sks(n), stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
            end if
            if (.not. allocated(workspace%ysharpSks)) then
-              allocate(workspace%ysharpSks(n), stat = status)
-              if (status > 0) goto 1000
+              allocate(workspace%ysharpSks(n), stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
            end if
            
         end if
 
         if( options%output_progress_vectors ) then 
            if (.not. allocated(workspace%resvec)) then
-              allocate(workspace%resvec(options%maxit+1), stat = status)
-              if (status > 0) goto 1000
+              allocate(workspace%resvec(options%maxit+1), stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
            end if
            if (.not. allocated(workspace%gradvec)) then
-              allocate(workspace%gradvec(options%maxit+1), stat = status)
-              if (status > 0) goto 1000
+              allocate(workspace%gradvec(options%maxit+1), stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
            end if
         end if
                 
         if( .not. allocated(workspace%J)) then
-           allocate(workspace%J(n*m), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%J(n*m), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 1000
         end if
         if( .not. allocated(workspace%f)) then
-           allocate(workspace%f(m), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%f(m), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 1000
         end if
         if( .not. allocated(workspace%fnew)) then 
-           allocate(workspace%fnew(m), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%fnew(m), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 1000
         end if
         if( .not. allocated(workspace%hf)) then
-           allocate(workspace%hf(n*n), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%hf(n*n), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 1000
         end if
         if( .not. allocated(workspace%d)) then
-           allocate(workspace%d(n), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%d(n), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 1000
         end if
         if( .not. allocated(workspace%g)) then
-           allocate(workspace%g(n), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%g(n), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 1000
         end if
         if( .not. allocated(workspace%Xnew)) then
-           allocate(workspace%Xnew(n), stat = status)
-           if (status > 0) goto 1000
+           allocate(workspace%Xnew(n), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 1000
         end if
 
 
@@ -2065,37 +2055,38 @@ contains
         
         case (1) ! use the dogleg method
            call setup_workspace_dogleg(n,m,workspace%calculate_step_ws%dogleg_ws, & 
-                options, status)
-           if (status > 0) goto 2000
+                options, inform)
+           if (inform%alloc_status > 0) goto 1010
 
         case(2) ! use the AINT method
            call setup_workspace_AINT_tr(n,m,workspace%calculate_step_ws%AINT_tr_ws, & 
-                options, status)
-           if (status > 0) goto 2000
+                options, inform)
+           if (inform%alloc_status > 0) goto 1010
            
         case(3) ! More-Sorensen 
            call setup_workspace_more_sorensen(n,m,&
-                workspace%calculate_step_ws%more_sorensen_ws,options,status)
-           if (status > 0) goto 2000
+                workspace%calculate_step_ws%more_sorensen_ws,options,inform)
+           if (inform%alloc_status > 0) goto 1010
 
         case (4) ! dtrs (Galahad)
            call setup_workspace_solve_dtrs(n,m, & 
-                workspace%calculate_step_ws%solve_dtrs_ws, options, status)
-           if (status > 0) goto 2000
+                workspace%calculate_step_ws%solve_dtrs_ws, options, inform)
+           if (inform%alloc_status > 0) goto 1010
         end select
 
 ! evaluate model in the main routine...       
-        call setup_workspace_evaluate_model(n,m,workspace%evaluate_model_ws,options,status)
-        if (status > 0) goto 2000
+        call setup_workspace_evaluate_model(n,m,workspace%evaluate_model_ws,options,inform)
+        if (inform%alloc_status > 0) goto 1010
 
         return
 
 ! Error statements
-1000    continue
-        call allocation_error(options,'local array')
+1000    continue ! bad allocation from this subroutine
+        inform%bad_alloc = 'setup_workspaces'
+        inform%status = ERROR%ALLOCATION
         return
 
-2000    continue
+1010    continue ! bad allocation from called subroutine
         return
        
       end subroutine setup_workspaces
@@ -2155,44 +2146,38 @@ contains
       end subroutine remove_workspaces
 
 
-      subroutine setup_workspace_dogleg(n,m,w,options,status)
+      subroutine setup_workspace_dogleg(n,m,w,options,inform)
         integer, intent(in) :: n, m 
         type( dogleg_work ), intent(out) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(inout) :: status
+        type( nlls_inform ), intent(out) :: inform
 
-        allocate(w%d_sd(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%d_gn(n),stat = status)
-        if (status > 0) goto 9000           
-        allocate(w%ghat(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%Jg(m),stat = status)
-        if (status > 0) goto 9000
+        allocate(w%d_sd(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%d_gn(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000           
+        allocate(w%ghat(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%Jg(m),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         ! setup space for 
         !   solve_LLS
-        call setup_workspace_solve_LLS(n,m,w%solve_LLS_ws,options,status)
-        if (status > 0 ) goto 9010
+        call setup_workspace_solve_LLS(n,m,w%solve_LLS_ws,options,inform)
+        if (inform%status > 0 ) goto 9010
         ! setup space for 
         !   evaluate_model
-        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,status)
-        if (status > 0 ) goto 9010
+        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,inform)
+        if (inform%status > 0 ) goto 9010
 
         return
 
         ! Error statements
-9000    continue
-        
-        call allocation_error(options,'dogleg')
+9000    continue  ! bad allocations in this subroutine
+        inform%bad_alloc = 'setup_workspace_dogleg'
+        inform%status = ERROR%ALLOCATION
         return
 
-9010    continue
-        ! Allocation errors : dogleg
-        if (options%print_level >= 0) then
-           write(options%error,'(a)') &
-                'Called from subroutine ''dogleg'': '
-        end if
-
+9010    continue  ! bad allocations from dependent subroutine
         return
         
 
@@ -2218,26 +2203,26 @@ contains
 
       end subroutine remove_workspace_dogleg
 
-      subroutine setup_workspace_solve_LLS(n,m,w,options,status)
+      subroutine setup_workspace_solve_LLS(n,m,w,options,inform)
         integer, intent(in) :: n, m 
         type( solve_LLS_work ) :: w 
         type( nlls_options ), intent(in) :: options
-        integer, intent(inout) :: status
+        type( nlls_inform ), intent(out) :: inform
         integer :: lwork
         
-        allocate( w%temp(max(m,n)), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%temp(max(m,n)), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         lwork = max(1, min(m,n) + max(min(m,n), 1)*4) 
-        allocate( w%work(lwork), stat = status)
-        if (status > 0) goto 9000
-        allocate( w%Jlls(n*m), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%work(lwork), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate( w%Jlls(n*m), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         
         return
         
-9000    continue
-        ! Allocation errors : dogleg
-        call allocation_error(options,'solve_LLS')
+9000    continue  ! local allocation error
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "solve_LLS"
         return
 
       end subroutine setup_workspace_solve_LLS
@@ -2254,21 +2239,22 @@ contains
                 
       end subroutine remove_workspace_solve_LLS
 
-      subroutine setup_workspace_evaluate_model(n,m,w,options,status)
+      subroutine setup_workspace_evaluate_model(n,m,w,options,inform)
         integer, intent(in) :: n, m        
         type( evaluate_model_work ) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform ), intent(out) :: inform
         
-        allocate( w%Jd(m), stat = status )
-        if (status > 0) goto 9000
-        allocate( w%Hd(n), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%Jd(m), stat = inform%alloc_status )
+        if (inform%alloc_status > 0) goto 9000
+        allocate( w%Hd(n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
 
         return
 
 9000    continue
-        call allocation_error(options,'evaluate_model')
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = 'evaluate_model'
         return
       end subroutine setup_workspace_evaluate_model
 
@@ -2283,56 +2269,58 @@ contains
 
       end subroutine remove_workspace_evaluate_model
 
-      subroutine setup_workspace_AINT_tr(n,m,w,options,status)
+      subroutine setup_workspace_AINT_tr(n,m,w,options,inform)
         integer, intent(in) :: n, m 
         type( AINT_tr_work ) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform ), intent(out) :: inform
         
-        allocate(w%A(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%v(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%B(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%p0(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%p1(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%M0(2*n,2*n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%M1(2*n,2*n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%M0_small(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%M1_small(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%y(2*n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%gtg(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%q(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%LtL(n,n),stat = status)
-        if (status > 0) goto 9000
+        allocate(w%A(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%v(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%B(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%p0(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%p1(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%M0(2*n,2*n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%M1(2*n,2*n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%M0_small(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%M1_small(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%y(2*n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%gtg(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%q(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%LtL(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         ! setup space for max_eig
-        call setup_workspace_max_eig(n,m,w%max_eig_ws,options,status)
-        if (status > 0) goto 9010
-        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,status)
-        if (status > 0) goto 9010
+        call setup_workspace_max_eig(n,m,w%max_eig_ws,options,inform)
+        if (inform%status > 0) goto 9010
+        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,inform)
+        if (inform%status > 0) goto 9010
         ! setup space for the solve routine
         if ((options%model .ne. 1)) then
-           call setup_workspace_solve_general(n,m,w%solve_general_ws,options,status)
-           if (status > 0 ) goto 9010
+           call setup_workspace_solve_general(n,m,w%solve_general_ws,options,inform)
+           if (inform%status > 0 ) goto 9010
         end if
 
         return
         
-9000    continue
-        call allocation_error(options,'AINT_tr')
+9000    continue ! local allocation error
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "AINT_tr"
+        !call allocation_error(options,'AINT_tr')
         return
 
-9010    continue
+9010    continue ! allocation error from called subroutine
         return
         
       end subroutine setup_workspace_AINT_tr
@@ -2366,36 +2354,36 @@ contains
         
       end subroutine remove_workspace_AINT_tr
 
-      subroutine setup_workspace_min_eig_symm(n,m,w,options,status)
+      subroutine setup_workspace_min_eig_symm(n,m,w,options,inform)
         integer, intent(in) :: n, m 
         type( min_eig_symm_work) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform ), intent(out) :: inform
         
         real(wp), allocatable :: workquery(:)
-        integer :: lapack_status, lwork, eigsout
+        integer :: lwork, eigsout
         
-        allocate(w%A(n,n),stat = status)
-        if (status > 0) goto 9000
+        allocate(w%A(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         
-        allocate(workquery(1),stat = status)
-        if (status > 0) goto 9000
-        lapack_status = 0
+        allocate(workquery(1),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         
         if (options%subproblem_eig_fact) then 
-           allocate(w%ew(n), stat = status)
-           if (status > 0) goto 9000
+           allocate(w%ew(n), stat = inform%alloc_status)
+           if (inform%alloc_status > 0) goto 9000
            
            call dsyev('V', & ! both ew's and ev's 
                 'U', & ! upper triangle of A
                 n, w%A, n, & ! data about A
                 w%ew, workquery, -1, & 
-                lapack_status)
+                inform%external_return)
+           if (inform%external_return .ne. 0) goto 9010
         else
-           allocate( w%iwork(5*n), stat = status )
-           if (status > 0) goto 9000
-           allocate( w%ifail(n), stat = status ) 
-           if (status > 0) goto 9000
+           allocate( w%iwork(5*n), stat = inform%alloc_status )
+           if (inform%alloc_status > 0) goto 9000
+           allocate( w%ifail(n), stat = inform%alloc_status ) 
+           if (inform%alloc_status > 0) goto 9000
            
            ! make a workspace query to dsyevx
            call dsyevx( 'V',& ! get both ew's and ev's
@@ -2410,22 +2398,28 @@ contains
                       n, & ! ldz (the eigenvector array)
                       workquery, -1, w%iwork, &  ! workspace
                       w%ifail, & ! array containing indicies of non-converging ews
-                      lapack_status)
-           if (lapack_status > 0) goto 9020
+                      inform%external_return)
+           if (inform%external_return .ne. 0) goto 9010
         end if
         lwork = int(workquery(1))
         deallocate(workquery)
-        allocate( w%work(lwork), stat = status )
-        if (status > 0) goto 9000
+        allocate( w%work(lwork), stat = inform%alloc_status )
+        if (inform%alloc_status > 0) goto 9000
 
         return
         
-9000    continue
-        call allocation_error(options,'min_eig_symm')
+9000    continue      
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "min_eig_symm"
         return
 
+9010    continue
+        inform%status = ERROR%FROM_EXTERNAL
+        inform%external_name = "lapack_dsyev"
+
 9020    continue
-        call allocation_error(options,'dsyevx in min_eig_symm')
+        inform%status = ERROR%FROM_EXTERNAL
+        inform%external_name = "lapack_dsyevx"
         return
 
       end subroutine setup_workspace_min_eig_symm
@@ -2448,30 +2442,30 @@ contains
 
       end subroutine remove_workspace_min_eig_symm
       
-      subroutine setup_workspace_max_eig(n,m,w,options,status)
+      subroutine setup_workspace_max_eig(n,m,w,options,inform)
         integer, intent(in) :: n, m 
         type( max_eig_work) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform), intent(out) :: inform
         real(wp), allocatable :: workquery(:)
-        integer :: lapack_status, lwork
+        integer :: lwork
         
-        allocate( w%alphaR(2*n), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%alphaR(2*n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         w%alphaR = zero
-        allocate( w%alphaI(2*n), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%alphaI(2*n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         w%alphaI = zero
-        allocate( w%beta(2*n),   stat = status)
-        if (status > 0) goto 9000
+        allocate( w%beta(2*n),   stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         w%beta = zero
-        allocate( w%vr(2*n,2*n), stat = status)
-        if (status > 0) goto 9000
-        allocate( w%ew_array(2*n), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%vr(2*n,2*n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate( w%ew_array(2*n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         w%ew_array = zero
-        allocate(workquery(1),stat = status)
-        if (status > 0) goto 9000
+        allocate(workquery(1),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         ! make a workspace query to dggev
         call dggev('N', & ! No left eigenvectors
              'V', &! Yes right eigenvectors
@@ -2479,25 +2473,27 @@ contains
              1.0, 0.1, 0.1, & ! eigenvalue data
              0.1, 2*n, & ! not referenced
              0.1, 2*n, & ! right eigenvectors
-             workquery, -1, lapack_status)
-        if (lapack_status > 0) goto 9020
+             workquery, -1, inform%external_return)
+        if (inform%external_return > 0) goto 9020
         lwork = int(workquery(1))
         deallocate(workquery)
-        allocate( w%work(lwork), stat = status)
-        if (status > 0) goto 9000
-        allocate( w%nullindex(2*n), stat = status)
-        if (status > 0) goto 9000
-        allocate( w%vecisreal(2*n), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%work(lwork), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate( w%nullindex(2*n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate( w%vecisreal(2*n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
 
         return
         
 9000    continue
-        call allocation_error(options,'dggev in max_eig')
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "max_eig"
         return
 
 9020    continue
-        call allocation_error(options,'max_eig')
+        inform%status = ERROR%FROM_EXTERNAL
+        inform%external_name = "lapack_dggev"
         return
 
       end subroutine setup_workspace_max_eig
@@ -2519,21 +2515,22 @@ contains
         
       end subroutine remove_workspace_max_eig
 
-      subroutine setup_workspace_solve_general(n, m, w, options, status)
+      subroutine setup_workspace_solve_general(n, m, w, options, inform)
         integer, intent(in) :: n, m 
         type( solve_general_work ) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform), intent(out) :: inform
         
-        allocate( w%A(n,n), stat = status)
-        if (status > 0) goto 9000
-        allocate( w%ipiv(n), stat = status)
-        if (status > 0) goto 9000
+        allocate( w%A(n,n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate( w%ipiv(n), stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
         
         return
         
-9000    continue
-        call allocation_error(options, 'solve_general')
+9000    continue ! allocation error
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "solve_general"
         return
         
       end subroutine setup_workspace_solve_general
@@ -2548,40 +2545,41 @@ contains
 
       end subroutine remove_workspace_solve_general
 
-      subroutine setup_workspace_solve_dtrs(n,m,w,options,status)
+      subroutine setup_workspace_solve_dtrs(n,m,w,options,inform)
         integer, intent(in) :: n,m
         type( solve_dtrs_work ) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform ), intent(out) :: inform
         
-        allocate(w%A(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%ev(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%v(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%v_trans(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%ew(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%d_trans(n),stat = status)
-        if (status > 0) goto 9000
+        allocate(w%A(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%ev(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%v(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%v_trans(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%ew(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%d_trans(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
 
-        call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,status)
-        if (status > 0) goto 9010
+        call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,inform)
+        if (inform%status > 0) goto 9010
 
         if (options%scale > 0) then
-           call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,status)
-           if (status > 0) goto 9010
+           call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,inform)
+           if (inform%status > 0) goto 9010
         end if
         
         return
                 
-9000    continue
-        call allocation_error(options,'solve_dtrs')
+9000    continue ! allocation error here
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "solve_dtrs"
         return
         
-9010    continue  
+9010    continue  ! allocation error from called subroutine
         return
 
       end subroutine setup_workspace_solve_dtrs
@@ -2606,42 +2604,43 @@ contains
 
       end subroutine remove_workspace_solve_dtrs
       
-      subroutine setup_workspace_all_eig_symm(n,m,w,options,status)
+      subroutine setup_workspace_all_eig_symm(n,m,w,options,inform)
         integer, intent(in) :: n,m
         type( all_eig_symm_work ) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform ), intent(out) :: inform
 
         real(wp), allocatable :: workquery(:)
         real(wp) :: A,ew
-        integer :: lapack_status, lwork
+        integer :: lwork
 
-        lapack_status = 0
         A = 1.0_wp
         ew = 1.0_wp
 
-        allocate(workquery(1))
+        allocate(workquery(1), stat = inform%alloc_status)
+        if (inform%alloc_status .ne. 0 ) goto 8000
         call dsyev('V', & ! both ew's and ev's 
              'U', & ! upper triangle of A
              n, A, n, & ! data about A
              ew, workquery, -1, & 
-             lapack_status)  
-        if (lapack_status .ne. 0) goto 9000
+             inform%external_return)  
+        if (inform%external_return .ne. 0) goto 9000
 
         lwork = int(workquery(1))
         deallocate(workquery)
-        allocate( w%work(lwork), stat = status )
-        if (status > 0) goto 8000
+        allocate( w%work(lwork), stat = inform%alloc_status )
+        if (inform%alloc_status > 0) goto 8000
         
         return
         
-8000    continue 
-        ! Allocation errors : all_eig_sym
-        call allocation_error(options,'all_eig_sym')
+8000    continue  ! allocation error
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "all_eig_sym"
         return
 
-9000    continue
-        call allocation_error(options,'dsyev in all_eig_sym')
+9000    continue ! error from lapack
+        inform%status = ERROR%FROM_EXTERNAL
+        inform%external_name = "lapack_dsyev"
         return
 
       end subroutine setup_workspace_all_eig_symm
@@ -2654,39 +2653,41 @@ contains
 
       end subroutine remove_workspace_all_eig_symm
       
-      subroutine setup_workspace_more_sorensen(n,m,w,options,status)
+      subroutine setup_workspace_more_sorensen(n,m,w,options,inform)
         integer, intent(in) :: n,m
         type( more_sorensen_work ) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
-        allocate(w%A(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%LtL(n,n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%v(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%q(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%y1(n),stat = status)
-        if (status > 0) goto 9000
-        allocate(w%AplusSigma(n,n),stat = status)
-        if (status > 0) goto 9000
+        type( nlls_inform ), intent(out) :: inform
 
-        call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,status)
-        if (status > 0) goto 9010
+        allocate(w%A(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%LtL(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%v(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%q(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%y1(n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+        allocate(w%AplusSigma(n,n),stat = inform%alloc_status)
+        if (inform%alloc_status > 0) goto 9000
+
+        call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,inform)
+        if (inform%status > 0) goto 9010
         
         if (options%scale > 0) then
-           call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,status)
-           if (status > 0) goto 9010
+           call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,inform)
+           if (inform%status > 0) goto 9010
         end if
         
         return
         
-9000    continue
-        call allocation_error(options,'more_sorensen')
+9000    continue ! allocation error here
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "more_sorenesen"
         return
         
-9010    continue
+9010    continue ! error from called subroutine
         return
 
       end subroutine setup_workspace_more_sorensen
@@ -2712,20 +2713,34 @@ contains
       end subroutine remove_workspace_more_sorensen
 
 
-      subroutine setup_workspace_apply_scaling(n,m,w,options,status)
+      subroutine setup_workspace_apply_scaling(n,m,w,options,inform)
         
         integer, intent(in) :: n,m
         type( apply_scaling_work ) :: w
         type( nlls_options ), intent(in) :: options
-        integer, intent(out) :: status
+        type( nlls_inform ), intent(out) :: inform
         
-        allocate(w%diag(n))
+        allocate(w%diag(n), stat = inform%alloc_status )
+        if (inform%alloc_status .ne. 0) goto 1000
         w%diag = one
-        allocate(w%ev(n,n))
+        allocate(w%ev(n,n), stat = inform%alloc_status )
+        if (inform%alloc_status .ne. 0) goto 1000
+
         if (options%scale == 4) then
            allocate(w%tempvec(n))
-           call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,status)
+           call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,inform)
+           if (inform%status .ne. 0) goto 1010
         end if
+        
+        return
+        
+1000    continue ! allocation error here
+        inform%status = ERROR%ALLOCATION
+        inform%bad_alloc = "apply_scaling"
+        return
+
+1010    continue ! error from lower down subroutine
+        return
         
       end subroutine setup_workspace_apply_scaling
 
