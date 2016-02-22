@@ -186,7 +186,7 @@ contains
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( nlls_inform ), INTENT( OUT ) :: inform
+    TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( nlls_options ), INTENT( IN ) :: options
     type( NLLS_workspace ), INTENT( INOUT ) :: w
     procedure( eval_f_type ) :: eval_F
