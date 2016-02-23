@@ -31,12 +31,12 @@ module ral_nlls_internal
      INTEGER :: FROM_EXTERNAL = -4
      INTEGER :: UNSUPPORTED_METHOD = -5
      INTEGER :: ALLOCATION = -6
-     INTEGER :: MAX_TR_REDUCTIONS = -500
-     INTEGER :: X_NO_PROGRESS = -700 ! <-- change
-     INTEGER :: N_GT_M = -800  ! <-- change
-     INTEGER :: BAD_TR_STRATEGY = -900 ! <- change
-     INTEGER :: FIND_BETA = -12 ! <- change
-     INTEGER :: BAD_SCALING = -34 ! <- change
+     INTEGER :: MAX_TR_REDUCTIONS = -7
+     INTEGER :: X_NO_PROGRESS = -8
+     INTEGER :: N_GT_M = -9  
+     INTEGER :: BAD_TR_STRATEGY = -10 
+     INTEGER :: FIND_BETA = -11 
+     INTEGER :: BAD_SCALING = -12 
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -36  ! <-- change
      ! AINT errors
@@ -756,7 +756,6 @@ contains
      
 1000 continue
      ! error in external package
-!     call exterr(options,inform,'solve_dtrs')
      return
 
    end subroutine apply_scaling
@@ -811,7 +810,6 @@ contains
      
 1000 continue 
      ! bad error return from solve_LLS
-!     call exterr(options,inform,'dogleg')
      return
 
      
@@ -950,7 +948,6 @@ contains
          
 1000 continue 
      ! bad error return from external package
-!     call exterr(options,inform,'AINT_TR')
      return
 
 
@@ -1083,7 +1080,6 @@ contains
      
 1000 continue 
      ! bad error return from external package
-!     call exterr(options,inform,'more_sorensen')
      goto 4000
      
 1020 continue
@@ -1228,7 +1224,6 @@ contains
 
 1000 continue 
      ! bad error return from external package
-!     call exterr(options,inform,'solve_dtrs')
      return
      
    end subroutine solve_dtrs
