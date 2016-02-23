@@ -495,18 +495,17 @@ contains
     inform%iter = w%iter
 !    if (options%output_progress_vectors) then
     if (allocated(w%resvec)) then
-       if(.not. allocated(inform%resvec)) then 
-          allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
-          if (inform%alloc_status > 0) goto 4080
-          inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
-       end if
+       if( allocated(inform%resvec)) deallocate(inform%resvec)
+       write(*,*) 'what?!?'
+       allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 4080
+       inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
     end if
     if (allocated(w%gradvec)) then
-       if(.not. allocated(inform%gradvec)) then 
-          allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
-          if (inform%alloc_status > 0) goto 4080
-          inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
-       end if
+       if (allocated(inform%gradvec)) deallocate(inform%gradvec)
+       allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 4080
+       inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
     end if
 
     return
