@@ -496,7 +496,6 @@ contains
 !    if (options%output_progress_vectors) then
     if (allocated(w%resvec)) then
        if( allocated(inform%resvec)) deallocate(inform%resvec)
-       write(*,*) 'what?!?'
        allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 4080
        inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
