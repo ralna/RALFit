@@ -236,7 +236,7 @@ program nlls_test
      call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status )
-     if (status%status .ne. -800) then
+     if (status%status .ne. ERROR%N_GT_M) then
         write(*,*) 'Error: wrong error return, n > m'
         no_errors_main = no_errors_main + 1
      end if
