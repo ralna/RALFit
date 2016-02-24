@@ -34,7 +34,7 @@ progress = [None for i in range(no_tests-1)]
 # and an empyt
 all_min  = np.zeros(no_tests-1)
 
-starting_point = 2
+starting_point = 1
 
 # now, let's run the tests!
 for i in range(no_tests-1):
