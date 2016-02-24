@@ -1,0 +1,71 @@
+% describe the method we use
+
+The algorithm uses a trust-region method to minimize the cost function
+$F(\vx)$ \ref{eq:nlls_problem}.  From a starting point $\vx_0$, the algorithm finds a direction $\vd$ that minimizes a quadratic model of the $F(\vx)$.
+
+The subroutine \texttt{nlls\_solve} simply calls the subroutine 
+\texttt{nlls\_iterate} in a loop until either the number of iterates reaches 
+\texttt{control\ct maxit}, or a convergence test is satisfied.
+
+The algorithm used by \texttt{nlls\_iterate} is given as Algorithm~\ref{alg:nlls_iterate}.
+This is a trust region method that calculates and returns step $\vd$ that 
+reduces the model by an acceptable amount.  
+
+\begin{algorithm}
+\caption{nlls\_solve}
+\label{alg:nlls_solve}
+  \begin{algorithmic}
+    \State $ {\tt {\bf function} \  \tx = nlls\_solve}(\iter[0]{\tx},{\tt options})$
+    \State $\iter[0]{\tr} = {\tt eval\_r}(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt eval\_J}(\iter[0]{\tx})$
+    \Comment Evaluate residual and Jacobian at initial guess
+    \State $\Delta = {\tt options\ct initial\_radius}$
+    \State $ \iter[0]{\tg} = - {\iter[0]{\tJ}}^T\iter[0]{\tr}$
+    \If {second-order information needed for model}
+      \If { {\tt options\ct exact\_second\_derivatives} }
+        \State $\iter[0]{\thess} = {\tt eval\_HF(\iter[0]{\tx},\iter[0]{\tr})}$
+      \Else
+        \State $\iter[0]{\thess} = {\tt 0}$
+      \EndIf
+    \EndIf
+    \For { $k = 0, \dots, {\tt options\ct maxit}$}
+      \While{ ${\tt success} \ne  1$ } 
+        \State Calculate a potential step $\td$
+        \State $\iter[k+1]{\tx} = \iter[k]{\tx} + \td$
+        \State $\iter[k+1]{\tr} = {\tt eval\_r}(\iter[k]{\tx})$
+        \Comment Evaluate the residual at the new point
+        \State $\rho = 0.5 (\| \iter[k+1]{\tr} \|^2 - \| \iter[k]{\tr}\|^2)/(m_k(0) - m_k(\td)) $ 
+        \Comment If model is good, $\rho$ should be close to one
+          \If{ $\rho > {\tt control\ct eta\_successful}$}
+          \State ${\tt success} = 1$
+        \EndIf
+        \State $\Delta = {\tt update\_trust\_region\_radius}(\Delta,\rho)$
+      \EndWhile
+      \State $\iter[k+1]{\tJ} = {\tt eval\_J}(\iter[k+1]{\tx})$
+      \Comment Evaluate the Jacobian at the new point
+      \State $\iter[k+1]{\tg} = -{\iter[k+1]{\tJ}}^T\iter[k+1]{\tr}$
+      \If { ${\tt options\ct exact\_second\_derivatives \ne true}$ } 
+      \EndIf
+      \If {second-order information needed for model}
+      \If { {\tt options\ct exact\_second\_derivatives} }
+        \State $\iter[k+1]{\thess} = {\tt eval\_HF(\iter[0]{\tx},\iter[0]{\tr})}$
+      \Else
+        \State $\ty = \iter[k]{\tg} - \iter[k+1]{\tg}$
+        \State $\ty^\sharp = {\iter[k]{\tJ}}^T \iter[k+1]{\tr} - \iter[k+1]{\tg}$
+        \State $\widehat{\iter[k]{\thess}} = \min\left( 1, \frac{|\td^T\ty^\sharp|}{|\td^T\iter[k]{\thess}\td|}\right) \iter[k]{\thess}$
+        \State $\iter[k+1]{\thess} = \widehat{\iter[k]{\thess}} + 
+        \left((\iter[k+1]{\ty^\sharp} - \iter[k]{\thess}\td 
+          )^T\td\right)/\ty^T\td$
+      \EndIf
+    \EndIf
+    \EndFor
+  \end{algorithmic}
+  
+\end{algorithm}
+
+
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "nlls_fortran"
+%%% End: 

@@ -2,14 +2,10 @@
 
 \usepackage{amsfonts,bm,amsmath}
 \usepackage{verbatim}
-% set the release and package names
+\usepackage{algorithm, algpseudocode}
 
-\newcommand{\libraryname}{RAL}
-\newcommand{\packagename}{NLLS}
-\newcommand{\fullpackagename}{\libraryname\_\packagename}
-\newcommand{\versionum}{0.5.0}
-\newcommand{\versiondate}{15 January 2016}
-\newcommand{\version}{\versionum}
+
+\input{nlls_header.tex}
 \newcommand{\scalarinteger}{is a scalar of type {\tt INTEGER} }
 \newcommand{\scalarlogical}{is a scalar of type {\tt LOGICAL} }
 \newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER} }
@@ -19,58 +15,14 @@
 \newcommand{\ronearrayreal}[1]{is a rank-1 array of package type and size {\tt #1}\ }
 \newcommand{\ronearrayrealii}[1]{is an \intentin rank-1 array of package type and size {\tt #1}\ }
 \newcommand{\ronearrayrealio}[1]{is an \intentout rank-1 array of package type and size {\tt #1}\ }
-\newcommand{\vx}{ {\bm x} } % macro for a vector x
-\newcommand{\vr}{ {\bm r} } % macro for a vector r
-\newcommand{\vg}{ {\bm g} } % macro for a vector g
-\newcommand{\vd}{ {\bm d} } % macro for a vector d
-\newcommand{\vH}{ {\bm H} } % macro for a matrix H
-\newcommand{\vJ}{ {\bm J} } % macro for a matrix J
-\newcommand{\iter}[2][k]{ #2_{#1}^{}} % macro for an iteration
-\newcommand{\comp}[2][i]{ #2_{#1}^{}} % macro for a component of a vector
+\newcommand{\ct}{\%}
 \begin{document}
 
 \hslheader
 
 \hslsummary
-{\tt \fullpackagename} computes a solution to the non-linear least-squares problem
-\begin{equation}
-\min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_2^2,
-\label{eq:nlls_problem}
-\end{equation}
-where $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is the non-linear residual of
-some data that needs fitting.
-% the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
-% ($m>n$).
-% The $n$ variables that are fitted are $\vx=(x_1,x_2,...,x_n)^T$.
-% \textcolor{blue}{Some confusion: the $y_i$ don't appear again.}
 
-The algorithm is iterative.
-At each point, $\iter{\vx}$, a quadratic model of the function
-\[
-F(\iter{\vx}) \approx \iter{m}(\vx) := {\iter{\vg}}^T \vx + \frac{1}{2} {\vx}^T \iter{\vH} \vx.
-\]
-is built.
-The `ideal' values in this model are $\iter{\vg} = {\iter{\vJ}}^T\vr(\iter{\vx})$ and
-$\iter{\vH} = {\iter{\vJ}}^T\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \nabla^2 \comp{r}(\iter{\vx})$,
-where $\iter{\vJ}$ denotes the $m \times n$ Jacobian of $\vr(\vx)$ at the point $\iter{\vx}$
-and $\iter{\vH}$ is the Hessian at $\iter{\vx}$.
-
-Once the model has been formed, a trust-region sub-problem of the form
-\[
-\vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,
-\]
-is solved,
-where $\Delta$ is the trust region radius and $B$ is a given symmetric positive definite matrix.
-The quantity
-\[\rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \vd)}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \vd)}\]
-is then calculated.
-If this is sufficiently large, the point is accepted and  $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \vd$; if not, the trust-region radius, $\Delta$,
-is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one --
-the trust-region radius is increased.
-
-This process continues until either the residual, $\|\vr(\iter{\vx})\|_2$, or a measure of the gradient,
-$\|{\iter{\vJ}}^T\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_2$, is sufficiently small.
-
+\input{summary.tex}
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 \hslattributes
@@ -465,13 +417,7 @@ A successful return from a subroutine in the package is indicated by
 A non-zero value is associated with an error message that by default will
 be output on unit {\tt NLLS\_options$\%$error}.
 
-Possible values are:
-\begin{description}
-\item{} {\tt -1} Maximum number of iterations reached without convergence.
-\item{} {\tt -2} Error from evaluating a function/Jacobian/Hessian.
-\item{} {\tt -3} Unsupported choice of model.
-\item{} {\tt -4} Error return from an {\tt lapack} routine.
-\end{description}
+\input{errors.tex}
 
 \hslgeneral
 
@@ -487,38 +433,12 @@ Possible values are:
 \hslmethod
 \label{method}
 
+\input{method.tex}
 % todo!
 
 \hslexample
-Consider fitting the function $y(t) = x_1e^{x_2 t}$ to data $(\bm{t}, \bm{y})$
-using a non-linear least squares fit.\\
-The residual function is given by
-$$
-   r_i(\vx; t_i, y_i) = x_1 e^{x_2 t_i} - y_i.
-$$
-We can calculate the Jacobian and Hessian as
-$$
-   J_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
-      e^{x_2 t_i} &
-      t_i x_1 e^{x_2 t_i}
-      \end{array}\right)
-$$
-$$
-   H_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
-      1                 & t_i e^{x_2 t_i}    \\
-      t_i e^{x_2 t_i}   & t_i^2 e^{x_2 t_i}
-   \end{array}\right)
-$$
-Given the data
-\begin{center}
-   \begin{tabular}{l|*{5}{r}}
-      $i$   & 1 & 2 & 3  & 4  & 5 \\
-      \hline
-      $t_i$ & 1 & 2 & 4  & 5  & 8 \\
-      $y_i$ & 3 & 4 & 6 & 11 & 20
-   \end{tabular}
-\end{center}
-and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit.
+
+\input{example_text.tex}
 
 \verbatiminput{../example/Fortran/nlls_example.f90}
 

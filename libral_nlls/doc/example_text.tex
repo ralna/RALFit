@@ -1,0 +1,31 @@
+% setup the example problem
+
+Consider fitting the function $y(t) = x_1e^{x_2 t}$ to data $(\bm{t}, \bm{y})$
+using a non-linear least squares fit.\\
+The residual function is given by
+$$
+   r_i(\vx; t_i, y_i) = x_1 e^{x_2 t_i} - y_i.
+$$
+We can calculate the Jacobian and Hessian as
+$$
+   J_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
+      e^{x_2 t_i} &
+      t_i x_1 e^{x_2 t_i}
+      \end{array}\right)
+$$
+$$
+   H_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
+      1                 & t_i e^{x_2 t_i}    \\
+      t_i e^{x_2 t_i}   & t_i^2 e^{x_2 t_i}
+   \end{array}\right)
+$$
+Given the data
+\begin{center}
+   \begin{tabular}{l|*{5}{r}}
+      $i$   & 1 & 2 & 3  & 4  & 5 \\
+      \hline
+      $t_i$ & 1 & 2 & 4  & 5  & 8 \\
+      $y_i$ & 3 & 4 & 6 & 11 & 20
+   \end{tabular}
+\end{center}
+and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit.
