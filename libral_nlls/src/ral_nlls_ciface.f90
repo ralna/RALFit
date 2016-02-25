@@ -58,6 +58,7 @@ module ral_nlls_ciface
   type, bind(C) :: nlls_inform 
      integer(C_INT) :: status
      integer(C_INT) :: alloc_status
+     character( kind = c_char), dimension(81) :: bad_alloc
      integer(C_INT) :: iter
      integer(C_INT) :: f_eval
      integer(C_INT) :: g_eval
@@ -70,6 +71,8 @@ module ral_nlls_ciface
      real(wp) :: norm_g
      real(wp) :: scaled_g
      integer(C_INT) :: external_return
+     character( kind = c_char), dimension(81) :: external_name
+     
   end type nlls_inform
 
   abstract interface
@@ -168,8 +171,15 @@ contains
     type(nlls_inform), intent(in) :: cinfo
     type(f_nlls_inform) , intent(out) :: finfo
     
+    integer :: i
+
     finfo%status = cinfo%status
     finfo%alloc_status = cinfo%alloc_status
+    do i = 1, 81
+       if (cinfo%bad_alloc(i) == c_null_char) exit
+       finfo%bad_alloc(i:i) = cinfo%bad_alloc(i)
+    end do
+    !finfo%bad_alloc = cinfo%bad_alloc(1:nchars)
     finfo%iter = cinfo%iter
     finfo%f_eval = cinfo%f_eval
     finfo%g_eval = cinfo%g_eval
@@ -184,16 +194,27 @@ contains
     finfo%norm_g = cinfo%norm_g
     finfo%scaled_g = cinfo%scaled_g
     finfo%external_return = cinfo%external_return
-
+    do i = 1, 81
+       if (cinfo%external_name(i) == c_null_char) exit
+       finfo%external_name(i:i) = cinfo%external_name(i)
+    end do
+   ! finfo%external_name = cinfo%external_name(1:nchars)
+    
   end subroutine copy_info_in
 
   subroutine copy_info_out(finfo,cinfo)
 
     type(f_nlls_inform), intent(in) :: finfo
     type(nlls_inform) , intent(out) :: cinfo
+        
+    integer :: i
     
     cinfo%status = finfo%status
     cinfo%alloc_status = finfo%alloc_status
+    do i = 1,len(finfo%bad_alloc)
+       cinfo%bad_alloc(i) = finfo%bad_alloc(i:i)
+    end do
+    cinfo%bad_alloc(len(finfo%bad_alloc) + 1) = C_NULL_CHAR
     cinfo%iter = finfo%iter
     cinfo%f_eval = finfo%f_eval
     cinfo%g_eval = finfo%g_eval
@@ -208,6 +229,10 @@ contains
     cinfo%norm_g = finfo%norm_g
     cinfo%scaled_g = finfo%scaled_g
     cinfo%external_return = finfo%external_return
+    do i = 1,len(finfo%external_name)
+       cinfo%external_name(i) = finfo%external_name(i:i)
+    end do
+    cinfo%external_name(len(finfo%external_name) + 1) = C_NULL_CHAR
 
   end subroutine copy_info_out
 

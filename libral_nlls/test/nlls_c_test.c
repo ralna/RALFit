@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct params_type {
   double *t; // t_i
@@ -106,26 +107,81 @@ int generic_test(int model, int method){
       return inform.status; // Error
     }
   }
-  
+    
   return 0; // Success!
 }
+
+
+int test_error_out (void) {
+  
+  // first, let's get some legit informs...
+  // Data to be fitted
+  int m = 5;
+  char errstr[81];
+
+  struct params_type params = {
+    .t = (double []) { 1.0, 2.0, 4.0,  5.0,  8.0 },
+    .y = (double []) { 3.0, 4.0, 6.0, 11.0, 20.0 }
+  };
+  
+  // Initialize options values
+  struct ral_nlls_options options;
+  ral_nlls_default_options(&options);
+  
+  options.model = 9;
+  options.nlls_method = 4;
+  
+  // Call fitting routine
+  double x[2] = { 2.5, 0.25 }; // Initial guess
+  struct ral_nlls_inform inform;
+  nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform);
+  
+  inform.status = -1;
+  nlls_strerror(&inform,errstr);
+  printf("%s \n", errstr);
+
+  strncpy(inform.external_name,"sausages",81);
+  inform.status = -4;
+  inform.external_return = -1;
+  nlls_strerror(&inform,errstr);
+  printf("%s \n", errstr);
+
+  strncpy(inform.bad_alloc,"mash",81);
+  inform.status = -6;
+  inform.external_return = -12;
+  nlls_strerror(&inform,errstr);
+  printf("%s \n", errstr);
+
+  return 0; // success!!!!
+}
+
+
 
 int main(void){
   
   int no_errors = 0;
   int no_methods = 4;
+  int status = 0;
   // passing tests....
   int model_array[4] = {1,2,9,0};
   for(int i=0; i<4;i++) { // loop over the methods
     for (int method=1;method<no_methods+1;method++){
-      int status = generic_test(model_array[i],method);
+      status = generic_test(model_array[i],method);
       if (status != 0) {
+	status = 0;
 	no_errors += 1;
 	printf("Test failed, model = %d, method = %d\n",model_array[i],method);
       }
     }
   }
   
+  status = test_error_out();
+  if (status != 0) {
+    status = 0;
+    no_errors += 1;
+    printf("Error string test failed\n");
+  }
+
   if (no_errors > 0) {
     return no_errors;
   }

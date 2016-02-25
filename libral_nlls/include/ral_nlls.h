@@ -69,6 +69,7 @@ struct ral_nlls_options_d {
 struct ral_nlls_inform_d {
   int status; /* flag */
   int alloc_status;
+  char bad_alloc[81];
   int iter;
   int f_eval;
   int g_eval;
@@ -81,6 +82,7 @@ struct ral_nlls_inform_d {
   ral_nllspkgtype_d_ norm_g;
   ral_nllspkgtype_d_ scaled_g;
   int external_return;
+  char external_name[81];
 };
 
 /* Set default values of options */
