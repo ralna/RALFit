@@ -28,8 +28,8 @@ libral_nlls/test/comparison_tests/GROUP.f
 libral_nlls/test/comparison_tests/OUTSDIF.d
 libral_nlls/test/comparison_tests/RAL_NLLS.SPC
 libral_nlls/test/comparison_tests/RANGE.f
-*.png
 *.out
+*.png
 /libral_nlls/test/comparison_tests/cutest/sif/ELFUN.f
 /libral_nlls/test/comparison_tests/cutest/sif/GROUP.f
 /libral_nlls/test/comparison_tests/cutest/sif/RANGE.f
