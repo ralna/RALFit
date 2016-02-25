@@ -12,7 +12,8 @@ RESULT=$?
 echo "cutest example..."
 cd $NLLS_TEST_SRC/comparison_tests/cutest/sif/
 runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF | \
-    diff $NLLS_TEST_SRC/rat43.output -
+    diff <(head -n 165 $NLLS_TEST_SRC/rat43.output) <(head -n 165 -)
+# skip the final few lines, so as to avoid the timings 
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 2
 echo "passed"
@@ -37,10 +38,8 @@ echo "passed"
 # $RAL_NLLS../debug/example/C/nlls_c_example
 echo "Fortran example..."
 $NLLS_EXAMPLE/Fortran/nlls_example | \
-    diff <(head -n 164 $NLLS_TEST_SRC/nlls_fortran_example.output) \
-    <(head -n 164 -)
-# only compare up to the statistics (line 164) -- avoid comparing the printout
-# of the timings
+    diff $NLLS_TEST_SRC/nlls_fortran_example.output -
+
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 6
 echo "passed"
