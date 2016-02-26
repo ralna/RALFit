@@ -7,7 +7,6 @@ module ral_nlls_ciface
        f_nlls_workspace    => nlls_workspace,      &
        f_nlls_solve        => nlls_solve,          & 
        f_nlls_iterate      => nlls_iterate,        &
-       f_nlls_strerror     => nlls_strerror,       &
        f_params_base_type  => params_base_type
   implicit none
 
@@ -56,7 +55,8 @@ module ral_nlls_ciface
   end type nlls_options
 
   type, bind(C) :: nlls_inform 
-     integer(C_INT) :: status
+     integer(C_INT) :: status     
+     character( kind = c_char), dimension(81) :: error_message
      integer(C_INT) :: alloc_status
      character( kind = c_char), dimension(81) :: bad_alloc
      integer(C_INT) :: iter
@@ -166,42 +166,6 @@ contains
 
   end subroutine copy_options_in
 
-  subroutine copy_info_in(cinfo,finfo)
-
-    type(nlls_inform), intent(in) :: cinfo
-    type(f_nlls_inform) , intent(out) :: finfo
-    
-    integer :: i
-
-    finfo%status = cinfo%status
-    finfo%alloc_status = cinfo%alloc_status
-    do i = 1, 81
-       if (cinfo%bad_alloc(i) == c_null_char) exit
-       finfo%bad_alloc(i:i) = cinfo%bad_alloc(i)
-    end do
-    !finfo%bad_alloc = cinfo%bad_alloc(1:nchars)
-    finfo%iter = cinfo%iter
-    finfo%f_eval = cinfo%f_eval
-    finfo%g_eval = cinfo%g_eval
-    finfo%h_eval = cinfo%h_eval
-    finfo%convergence_normf = cinfo%convergence_normf
-    finfo%convergence_normg = cinfo%convergence_normf
-!    if(allocated(cinfo%resvec)) &
-!       finfo%resinf = maxval(abs(cinfo%resvec(:)))
-!    if(allocated(cinfo%gradvec)) &
-!       finfo%gradinf = maxval(abs(cinfo%gradvec(:)))
-    finfo%obj = cinfo%obj
-    finfo%norm_g = cinfo%norm_g
-    finfo%scaled_g = cinfo%scaled_g
-    finfo%external_return = cinfo%external_return
-    do i = 1, 81
-       if (cinfo%external_name(i) == c_null_char) exit
-       finfo%external_name(i:i) = cinfo%external_name(i)
-    end do
-   ! finfo%external_name = cinfo%external_name(1:nchars)
-    
-  end subroutine copy_info_in
-
   subroutine copy_info_out(finfo,cinfo)
 
     type(f_nlls_inform), intent(in) :: finfo
@@ -210,6 +174,10 @@ contains
     integer :: i
     
     cinfo%status = finfo%status
+    do i = 1,len(finfo%error_message)
+       cinfo%error_message(i) = finfo%error_message(i:i)
+    end do
+    cinfo%error_message(len(finfo%error_message) + 1) = C_NULL_CHAR
     cinfo%alloc_status = finfo%alloc_status
     do i = 1,len(finfo%bad_alloc)
        cinfo%bad_alloc(i) = finfo%bad_alloc(i:i)
@@ -328,25 +296,6 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%hybrid_switch_its = foptions%hybrid_switch_its
   coptions%output_progress_vectors = foptions%output_progress_vectors
 end subroutine ral_nlls_default_options_d
-
-subroutine nlls_strerror_d(cinform, c_error_string) bind(C)
-  use ral_nlls_ciface
-  implicit none
-  
-  TYPE( nlls_inform )  :: cinform
-  character( kind = c_char), dimension(81), intent(out) :: c_error_string
-  TYPE( f_nlls_inform ) :: finform
-  character (len = 80) :: f_error_string
-  integer :: i
-
-  call copy_info_in(cinform,finform)
-  call f_nlls_strerror(finform,f_error_string)
-  do i = 1,len(f_error_string)
-     c_error_string(i) = f_error_string(i:i)
-  end do
-  c_error_string(len(f_error_string)+1) = C_NULL_CHAR
-  
-end subroutine nlls_strerror_d
 
 subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform) bind(C)
   use ral_nlls_ciface

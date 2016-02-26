@@ -144,9 +144,9 @@ contains
        ! test the returns to see if we've converged
 
        if (inform%status < 0) then 
+          call nlls_strerror(inform)
           if ( options%print_level > 0 ) then
-             call nlls_strerror(inform,error_string)
-             write(options%error,'(a,a)') 'ERROR: ', trim(error_string)
+             write(options%error,'(a,a)') 'ERROR: ', trim(inform%error_message)
           end if
           goto 1000 ! error -- exit
        elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then

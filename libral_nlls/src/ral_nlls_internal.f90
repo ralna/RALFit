@@ -363,6 +363,11 @@ module ral_nlls_internal
 !   4 -- error return from an lapack routine
      
      INTEGER :: status = 0
+
+! error message     
+          
+     CHARACTER ( LEN = 80 ) :: error_message = REPEAT( ' ', 80 )
+
      
 !  the status of the last attempted allocation/deallocation
 
@@ -1912,57 +1917,55 @@ contains
 
       end subroutine get_svd_J
       
-      subroutine nlls_strerror(inform,error_string)
-        type( nlls_inform ), intent(in) :: inform
-        character (len = *), intent(out) :: error_string
-
+      subroutine nlls_strerror(inform)!,error_string)
+        type( nlls_inform ), intent(inout) :: inform
+        
         if ( inform%status == ERROR%MAXITS ) then
-           error_string = 'Maximum number of iterations reached'
+           inform%error_message = 'Maximum number of iterations reached'
         elseif ( inform%status == ERROR%EVALUATION ) then
-           write(error_string,'(a,a,a,i0)') & 
+           write(inform%error_message,'(a,a,a,i0)') & 
                 'Error code from user-supplied subroutine ',trim(inform%external_name), & 
                 ' passed error = ', inform%external_return
         elseif ( inform%status == ERROR%UNSUPPORTED_MODEL ) then
-           error_string = 'Unsupported model passed in options'
+           inform%error_message = 'Unsupported model passed in options'
         elseif ( inform%status == ERROR%FROM_EXTERNAL ) then
-           write(error_string,'(a,a,a,i0)') & 
+           write(inform%error_message,'(a,a,a,i0)') & 
                 'The external subroutine ',trim(inform%external_name), & 
                 ' passed error = ', inform%external_return
            ! todo: adapt this to give the last called subroutine?
         elseif ( inform%status == ERROR%UNSUPPORTED_METHOD ) then
-           error_string = 'Unsupported nlls_method passed in options'
+           inform%error_message = 'Unsupported nlls_method passed in options'
         elseif ( inform%status == ERROR%ALLOCATION ) then
-           write(error_string,'(a,a)') &
+           write(inform%error_message,'(a,a)') &
                 'Bad allocation of memory in ', trim(inform%bad_alloc)
         elseif ( inform%status == ERROR%MAX_TR_REDUCTIONS ) then
-           error_string = 'The trust region was reduced the maximum number of times'
+           inform%error_message = 'The trust region was reduced the maximum number of times'
         elseif ( inform%status == ERROR%X_NO_PROGRESS ) then
-           error_string = 'No progress made in X'
+           inform%error_message = 'No progress made in X'
         elseif ( inform%status == ERROR%N_GT_M ) then
-           error_string = 'The problem is overdetermined'
+           inform%error_message = 'The problem is overdetermined'
         elseif ( inform%status == ERROR%BAD_TR_STRATEGY ) then
-           error_string = 'Unsupported tr_update_stategy passed in options'
+           inform%error_message = 'Unsupported tr_update_stategy passed in options'
         elseif ( inform%status == ERROR%FIND_BETA ) then
-           error_string = 'Unable to find suitable scalar in findbeta subroutine'
+           inform%error_message = 'Unable to find suitable scalar in findbeta subroutine'
         elseif ( inform%status == ERROR%BAD_SCALING ) then
-           error_string = 'Unsupported value of scale passed in options'
+           inform%error_message = 'Unsupported value of scale passed in options'
         elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
-           error_string = 'Model not supported in dogleg (nlls_method=1)'
+           inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
         elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
-           error_string = 'All eigenvalues are imaginary (nlls_method=2)'
+           inform%error_message = 'All eigenvalues are imaginary (nlls_method=2)'
         elseif ( inform%status == ERROR%AINT_EIG_ODD ) then
-           error_string = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
+           inform%error_message = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
         elseif ( inform%status == ERROR%MS_MAXITS ) then
-           error_string = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
+           inform%error_message = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
         elseif ( inform%status == ERROR%MS_TOO_MANY_SHIFTS ) then
-           error_string = 'Too many shifts taken in more_sorensen (nlls_method=3)'
+           inform%error_message = 'Too many shifts taken in more_sorensen (nlls_method=3)'
         elseif ( inform%status == ERROR%MS_NO_PROGRESS ) then
-           error_string = 'No progress being made in more_sorensen (nlls_method=3)'
+           inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
         else 
-           error_string = 'Unknown error number'           
+           inform%error_message = 'Unknown error number'           
         end if
-
-
+        
       end subroutine nlls_strerror
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2476,7 +2479,7 @@ contains
                       workquery, -1, w%iwork, &  ! workspace
                       w%ifail, & ! array containing indicies of non-converging ews
                       inform%external_return)
-           if (inform%external_return .ne. 0) goto 9010
+           if (inform%external_return .ne. 0) goto 9020
         end if
         lwork = int(workquery(1))
         deallocate(workquery)

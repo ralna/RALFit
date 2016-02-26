@@ -68,6 +68,7 @@ struct ral_nlls_options_d {
 
 struct ral_nlls_inform_d {
   int status; /* flag */
+  char error_message[81];
   int alloc_status;
   char bad_alloc[81];
   int iter;
