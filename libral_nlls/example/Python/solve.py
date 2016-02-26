@@ -26,20 +26,20 @@ def J(x, data):
         ))
 
 # Calculate:
-# HF = sum_i r_i H_i
+# Hr = sum_i r_i H_i
 # Where H_i = [ 1                t_i e^(x_2 t_i)    ]
 #             [ t_i e^(x_2 t_i)  t_i^2 e^(x_2 t_i)  ]
-def HF(x, r, data):
+def Hr(x, r, data):
     x1 = x[0]; x2 = x[1]
     t = data[:,0]; y = data[:,1]
 
-    HF = numpy.zeros((2,2))
-    HF[0,0] = numpy.sum(r)              # H_11
+    Hr = numpy.zeros((2,2))
+    Hr[0,0] = numpy.sum(r)              # H_11
     v = t * numpy.exp(x2*t)
-    HF[1,0] = numpy.dot(r, v)           # H_21
-    HF[1,1] = numpy.dot(r, t*v)         # H_22
+    Hr[1,0] = numpy.dot(r, v)           # H_21
+    Hr[1,1] = numpy.dot(r, t*v)         # H_22
 
-    return HF
+    return Hr
 
 # Data to be fitted
 data = numpy.array([
@@ -54,7 +54,7 @@ data = numpy.array([
 x0 = numpy.array([2.5, 0.25])
 
 # Call fitting routine
-(x, inform) = ral_nlls.solve(x0, r, J, Hf=HF, params=data,
+(x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=data,
         options = {
             'print_level': 1
             }

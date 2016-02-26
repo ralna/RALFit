@@ -8,7 +8,7 @@
 struct callback_data {
    PyObject* f;
    PyObject* J;
-   PyObject* Hf;
+   PyObject* Hr;
    PyObject* params;
 };
 
@@ -36,7 +36,7 @@ int eval_f(int n, int m, const void *params, const double *x, double *f) {
    // Extract result
    PyArrayObject* farray = (PyArrayObject*) PyArray_FROM_OTF(result, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
    if(farray == NULL) {
-      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from f call");
+      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from r call");
       Py_DECREF(result);
       return -1;
    }
@@ -101,7 +101,7 @@ int eval_J(int n, int m, const void *params, const double *x, double *J) {
 }
 
 static
-int eval_Hf(int n, int m, const void *params, const double *x, const double *r, double *Hf) {
+int eval_Hr(int n, int m, const void *params, const double *x, const double *r, double *Hr) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
 
@@ -123,30 +123,30 @@ int eval_Hf(int n, int m, const void *params, const double *x, const double *r, 
    PyObject *arglist;
    if(data->params)  arglist = Py_BuildValue("(OOO)", xpy, rpy, data->params);
    else              arglist = Py_BuildValue("(OO)", xpy, rpy);
-   PyObject *result = PyObject_CallObject(data->Hf, arglist);
+   PyObject *result = PyObject_CallObject(data->Hr, arglist);
    Py_DECREF(arglist);
    Py_DECREF(xpy);
    Py_DECREF(rpy);
    if(!result) return -1;
 
    // Extract result
-   PyArrayObject* Hfarray = (PyArrayObject*) PyArray_FROM_OTF(result, NPY_FLOAT64, NPY_ARRAY_IN_FARRAY);
-   if(Hfarray == NULL) {
-      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from Hf call");
+   PyArrayObject* Hrarray = (PyArrayObject*) PyArray_FROM_OTF(result, NPY_FLOAT64, NPY_ARRAY_IN_FARRAY);
+   if(Hrarray == NULL) {
+      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from Hr call");
       Py_DECREF(result);
       return -1;
    }
-   if(PyArray_NDIM(Hfarray) != 2) {
-      PyErr_SetString(PyExc_RuntimeError, "Hf() must return rank-2 array");
-      Py_DECREF(Hfarray);
+   if(PyArray_NDIM(Hrarray) != 2) {
+      PyErr_SetString(PyExc_RuntimeError, "Hr() must return rank-2 array");
+      Py_DECREF(Hrarray);
       Py_DECREF(result);
       return -2;
    }
-   const double *Hfval = (double*) PyArray_DATA(Hfarray);
+   const double *Hrval = (double*) PyArray_DATA(Hrarray);
    for(int i=0; i<n*n; ++i) {
-      Hf[i] = Hfval[i];
+      Hr[i] = Hrval[i];
    }
-   Py_DECREF(Hfarray);
+   Py_DECREF(Hrarray);
    Py_DECREF(result);
 
    return 0; // Success
@@ -271,7 +271,7 @@ make_info_dict(const struct ral_nlls_inform *inform) {
 }
 
 /*
- * x = ral_nlls.solve(x0, f, J=None, Hf=None, params=(), options={})
+ * x = ral_nlls.solve(x0, f, J=None, Hr=None, params=(), options={})
  */
 static PyObject*
 ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
@@ -281,14 +281,14 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    PyArrayObject *x0=NULL, *f=NULL, *x=NULL;
 
    struct callback_data data;
-   data.f = NULL; data.J = NULL; data.Hf = NULL; data.params = NULL;
+   data.f = NULL; data.J = NULL; data.Hr = NULL; data.params = NULL;
 
-   static char *kwlist[] = {"x0", "f", "J", "Hf", "params", "options", NULL};
+   static char *kwlist[] = {"x0", "r", "J", "Hr", "params", "options", NULL};
    if(!PyArg_ParseTupleAndKeywords(args, keywds, "OOO|OOO!", kwlist,
             &x0ptr,
             &data.f,
             &data.J,
-            &data.Hf,
+            &data.Hr,
             &data.params,
             &PyDict_Type, &options_ptr)
          )
@@ -316,7 +316,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
       goto fail;
    }
    if(PyArray_NDIM(f) != 1) {
-      PyErr_SetString(PyExc_RuntimeError, "f() must return rank-1 array");
+      PyErr_SetString(PyExc_RuntimeError, "r() must return rank-1 array");
       goto fail;
    }
    npy_intp* fdim = PyArray_DIMS(f);
@@ -335,8 +335,8 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    struct ral_nlls_options options;
    if(!set_opts(&options, options_ptr)) goto fail;
    struct ral_nlls_inform inform;
-   if(data.Hf) {
-      nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hf, &data, &options, &inform);
+   if(data.Hr) {
+      nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform);
    } else {
       options.exact_second_derivatives = false;
       nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform);
@@ -348,7 +348,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
          PyErr_SetString(PyExc_RuntimeError,
                "Exceeded maximum number of iterations");
          goto fail;
-      case -2: // Error return from evaluation of f/J/Hf
+      case -2: // Error return from evaluation of f/J/Hr
          // No error msg, allow existing one to propagate
          goto fail;
       case -3: // Unsupported choice of model
@@ -377,7 +377,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 static PyMethodDef RalNllsMethods[] = {
    {"solve", (PyCFunction)ral_nlls_solve, METH_VARARGS | METH_KEYWORDS,
     "Solve a non-linear least squares problem.\n"
-    "   x = ral_nlls.solve(x0, f, J, Hf=None, params=None, options={})"
+    "   x = ral_nlls.solve(x0, r, J, Hr=None, params=None, options={})"
    },
    {NULL, NULL, 0, NULL} /* Sentinel */
 };
