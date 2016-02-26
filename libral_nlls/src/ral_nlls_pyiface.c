@@ -252,6 +252,21 @@ static PyObject*
 make_info_dict(const struct ral_nlls_inform *inform) {
    PyObject *pyinfo = PyDict_New();
 
+   PyDict_SetItemString(pyinfo, "iter", PyInt_FromLong(inform->iter));
+   PyDict_SetItemString(pyinfo, "f_eval", PyInt_FromLong(inform->f_eval));
+   PyDict_SetItemString(pyinfo, "g_eval", PyInt_FromLong(inform->g_eval));
+   PyDict_SetItemString(pyinfo, "h_eval", PyInt_FromLong(inform->h_eval));
+   PyDict_SetItemString(pyinfo, "convergence_normf",
+         PyInt_FromLong(inform->convergence_normf)
+         );
+   PyDict_SetItemString(pyinfo, "resinf", PyFloat_FromDouble(inform->resinf));
+   PyDict_SetItemString(pyinfo, "gradinf", PyFloat_FromDouble(inform->gradinf));
+   PyDict_SetItemString(pyinfo, "obj", PyFloat_FromDouble(inform->obj));
+   PyDict_SetItemString(pyinfo, "norm_g", PyFloat_FromDouble(inform->norm_g));
+   PyDict_SetItemString(pyinfo, "scaled_g",
+         PyFloat_FromDouble(inform->scaled_g)
+         );
+
    return pyinfo;
 }
 
