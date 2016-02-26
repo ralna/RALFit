@@ -381,7 +381,9 @@ to hold information from the execution of {\tt ral\_nlls}.
 The members are:
 \begin{description}
 \itt{int status} gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.
+\itt{char error\_message[81]} holds the error message corresponding to the exit status.
 \itt{int alloc\_status} gives the status of the last attempted allocation/deallocation.
+\itt{char bad\_alloc[81]} holds the name of the array that was being allocated when an error was flagged.
 \itt{int iter} gives the total number of iterations performed.
 \itt{int f\_eval} gives the total number of evaluations of the objective function.
 \itt{int g\_eval} gives the total number of evaluations of the gradient of the objective function.
@@ -391,7 +393,10 @@ The members are:
 %\itt{double *resvec} holds the vector of residuals
 %\itt{double *gradvec} holds the vector of gradients.
 \itt{double obj} holds the value of the objective function at the best estimate of the solution determined by the algorithm.
-\itt{double norm\_g} holds the gradient of the objective function at the best estimate of the solution determined by the algorithm.
+\itt{double norm\_g} holds the 2-norm of the  gradient of the objective function at the best estimate of the solution determined by the algorithm.
+\itt{double scaled\_g} holds the norm gradient of the objective function at the best estimate of the solution determined by the algorithm, where the norm used is the matrix norm associated with the scaling matrix.
+\itt{int external\_return} gives the error code that was returned by a call to an external routine.
+\itt{char external\_name[81]} holds the name of the external code that flagged an error.
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% Warning and error messages %%%%%%%%%%%%%%%%%%%%%%%%
@@ -401,7 +406,8 @@ The members are:
 A successful return from a subroutine in the package is indicated by
 {\tt inform.status} having the value zero.
 A non-zero value is associated with an error message that by default will
-be output on the Fortran unit {\tt inform.error}.
+be output on the Fortran unit {\tt inform.error}.  This string is also passed to the 
+calling routine in {\tt inform.error\_message}.
 
 \input{errors.tex}
 
