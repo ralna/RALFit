@@ -62,4 +62,5 @@ x0 = numpy.array([2.5, 0.25])
 
 # Print result
 print "Found a local optimum at x = ", x
-print inform
+for k, v in inform.iteritems():
+    print k, ":", v
