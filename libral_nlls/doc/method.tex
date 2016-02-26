@@ -53,7 +53,7 @@ reduces the model by an acceptable amount.
         \State $\ty^\sharp = {\iter[k]{\tJ}}^T \iter[k+1]{\tr} - \iter[k+1]{\tg}$
         \State $\widehat{\iter[k]{\thess}} = \min\left( 1, \frac{|\td^T\ty^\sharp|}{|\td^T\iter[k]{\thess}\td|}\right) \iter[k]{\thess}$
         \State $\iter[k+1]{\thess} = \widehat{\iter[k]{\thess}} + 
-        \left((\iter[k+1]{\ty^\sharp} - \iter[k]{\thess}\td 
+        \left(({\iter[k+1]{\ty}}^\sharp - \iter[k]{\thess}\td 
           )^T\td\right)/\ty^T\td$
       \EndIf
     \EndIf

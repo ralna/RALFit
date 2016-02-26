@@ -45,7 +45,7 @@ Functions signatures are defined in a header file
 \vspace{-0.1cm}
 \begin{description}
    \item[\texttt{ral\_nlls\_default\_options()}] initializes solver options to default values.
-   \item[\texttt{ral\_nlls()}]  solves the non-linear least squares problem (Section~\ref{eq:nlls_problem}).
+   \item[\texttt{nlls\_solve()}]  solves the non-linear least squares problem (Section~\ref{eq:nlls_problem}).
    \item[\texttt{ral\_nlls\_init\_workspace()}] initialises a workspace for use with \texttt{ral\_nlls\_iterate()}.
    \item[\texttt{ral\_nlls\_iterate()}] performs a single iteration of the solver algorithm.
    \item[\texttt{ral\_nlls\_free\_workspace()}] frees memory allocated by a call to \texttt{ral\_nlls\_init\_workspace()}.
@@ -99,7 +99,7 @@ To solve the non-linear least squares problem make a call of the following
 subroutine:
 
 \begin{verbatim}
-   void ral_nlls( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
+   void nlls_solve( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
       ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
       void* params, struct nlls_options const* options, struct nlls_inform* inform)
 \end{verbatim}
@@ -151,7 +151,7 @@ initialised by a call to the following subroutine:
       To avoid a memory leak, it must be freed through a call to \texttt{ral\_nlls\_free\_workspace()}.
 \end{description}
 
-\subsection{To iterate once}
+\subsubsection{To iterate once}
 \label{sec:iterate}
 Alternatively, the user may step through the solution process one iteration at
 a time by making a call of the following form:
@@ -412,7 +412,7 @@ be output on the Fortran unit {\tt inform.error}.
 \hslmethod
 \label{method}
 
-\input{method.tex}
+%\input{method.tex}
 
 \hslexample
 
