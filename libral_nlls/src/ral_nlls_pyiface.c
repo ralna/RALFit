@@ -13,6 +13,19 @@ struct callback_data {
 };
 
 static
+PyObject* build_arglist(Py_ssize_t sz, PyObject* extra) {
+   Py_ssize_t als = sz;
+   if(extra) als += PyTuple_Size(extra);
+   PyObject *arglist = PyTuple_New(als);
+   if(extra)
+      for(int i=0; i<PyTuple_Size(extra); ++i) {
+         PyObject *obj = PyTuple_GET_ITEM(extra, i);
+         PyTuple_SET_ITEM(arglist, i+sz, obj); Py_INCREF(obj);
+      }
+   return arglist;
+}
+
+static
 int eval_f(int n, int m, const void *params, const double *x, double *f) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
@@ -25,9 +38,8 @@ int eval_f(int n, int m, const void *params, const double *x, double *f) {
       xval[i] = x[i];
 
    // Call routine
-   PyObject *arglist;
-   if(data->params)  arglist = Py_BuildValue("(OO)", xpy, data->params);
-   else              arglist = Py_BuildValue("(O)", xpy);
+   PyObject *arglist = build_arglist(1, data->params);
+   PyTuple_SET_ITEM(arglist, 0, (PyObject*) xpy); Py_INCREF(xpy);
    PyObject *result = PyObject_CallObject(data->f, arglist);
    Py_DECREF(arglist);
    Py_DECREF(xpy);
@@ -69,9 +81,8 @@ int eval_J(int n, int m, const void *params, const double *x, double *J) {
       xval[i] = x[i];
 
    // Call routine
-   PyObject *arglist;
-   if(data->params)  arglist = Py_BuildValue("(OO)", xpy, data->params);
-   else              arglist = Py_BuildValue("(O)", xpy);
+   PyObject *arglist = build_arglist(1, data->params);
+   PyTuple_SET_ITEM(arglist, 0, (PyObject*) xpy); Py_INCREF(xpy);
    PyObject *result = PyObject_CallObject(data->J, arglist);
    Py_DECREF(arglist);
    Py_DECREF(xpy);
@@ -120,9 +131,9 @@ int eval_Hr(int n, int m, const void *params, const double *x, const double *r, 
       rval[i] = r[i];
 
    // Call routine
-   PyObject *arglist;
-   if(data->params)  arglist = Py_BuildValue("(OOO)", xpy, rpy, data->params);
-   else              arglist = Py_BuildValue("(OO)", xpy, rpy);
+   PyObject *arglist = build_arglist(2, data->params);
+   PyTuple_SET_ITEM(arglist, 0, (PyObject*) xpy); Py_INCREF(xpy);
+   PyTuple_SET_ITEM(arglist, 1, (PyObject*) rpy); Py_INCREF(rpy);
    PyObject *result = PyObject_CallObject(data->Hr, arglist);
    Py_DECREF(arglist);
    Py_DECREF(xpy);
@@ -296,8 +307,8 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    int n = xdim[0];
 
    /* Determine m by making call to f */
-   if(data.params)   arglist = Py_BuildValue("(OO)", x0, data.params);
-   else              arglist = Py_BuildValue("(O)", x0);
+   arglist = build_arglist(1, data.params);
+   PyTuple_SET_ITEM(arglist, 0, (PyObject*) x0); Py_INCREF(x0);
    result = PyObject_CallObject(data.f, arglist);
    if(!result) goto fail;
    Py_DECREF(arglist); arglist=NULL;
