@@ -1,0 +1,15 @@
+ ===========================
+ =--Testing the main file--=
+ ===========================
+ *** All (main) tests passed successfully! ***
+ =============================
+ =--Testing the subroutines--=
+ =============================
+ ***** Warning ********
+ *    not robust      *
+ **********************
+ *** All (helper) tests passed successfully! ***
+  
+ **************************************
+ *** All tests passed successfully! ***
+ **************************************
