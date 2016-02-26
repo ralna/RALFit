@@ -38,14 +38,14 @@ module ral_nlls_internal
      INTEGER :: FIND_BETA = -11 
      INTEGER :: BAD_SCALING = -12 
      ! dogleg errors
-     INTEGER :: DOGLEG_MODEL = -36  ! <-- change
+     INTEGER :: DOGLEG_MODEL = -101
      ! AINT errors
-     INTEGER :: AINT_EIG_IMAG = -21
-     INTEGER :: AINT_EIG_ODD = -22
+     INTEGER :: AINT_EIG_IMAG = -201
+     INTEGER :: AINT_EIG_ODD = -202
      ! More-Sorensen errors
-     INTEGER :: MS_MAXITS = -100 ! <-- change
-     INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
-     INTEGER :: MS_NO_PROGRESS = -2923 ! change
+     INTEGER :: MS_MAXITS = -301
+     INTEGER :: MS_TOO_MANY_SHIFTS = -302
+     INTEGER :: MS_NO_PROGRESS = -303
      ! DTRS errors
 
   END TYPE NLLS_ERROR

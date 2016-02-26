@@ -88,8 +88,8 @@ int generic_test(int model, int method){
   if (method==1 && model > 1){
     nlls_strerror(&inform, errstr);
     printf("%s \n", errstr);
-    if (inform.status != -36){
-      printf("ral_nlls() returned with error flag %d (expected -3)",inform.status);
+    if (inform.status != -101){
+      printf("ral_nlls() returned with error flag %d (expected -101)",inform.status);
       return -36;
     }
   }
@@ -97,7 +97,7 @@ int generic_test(int model, int method){
     nlls_strerror(&inform, errstr);
     printf("%s \n", errstr);
     if (inform.status != -3){
-      printf("ral_nlls() returned with error flag %d (expected -36)",inform.status);
+      printf("ral_nlls() returned with error flag %d (expected -3)",inform.status);
       return -3;
     }
   }
