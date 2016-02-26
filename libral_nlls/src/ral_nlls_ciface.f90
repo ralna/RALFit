@@ -7,6 +7,7 @@ module ral_nlls_ciface
        f_nlls_workspace    => nlls_workspace,      &
        f_nlls_solve        => nlls_solve,          & 
        f_nlls_iterate      => nlls_iterate,        &
+       f_nlls_strerror     => nlls_strerror,       &
        f_params_base_type  => params_base_type
   implicit none
 
@@ -24,7 +25,7 @@ module ral_nlls_ciface
      integer(C_INT) :: lls_solver
      real(wp) :: stop_g_absolute
      real(wp) :: stop_g_relative
-     real(wp) :: relative_tr_radius
+     integer(c_int) :: relative_tr_radius
      real(wp) :: initial_radius_scale
      real(wp) :: initial_radius
      real(wp) :: maximum_radius
@@ -34,7 +35,7 @@ module ral_nlls_ciface
      real(wp) :: radius_increase
      real(wp) :: radius_reduce
      real(wp) :: radius_reduce_max
-     integer :: tr_update_strategy
+     integer(c_int) :: tr_update_strategy
      real(wp) :: hybrid_switch
      logical(c_bool) :: exact_second_derivatives
      logical(c_bool) :: subproblem_eig_fact
@@ -44,6 +45,7 @@ module ral_nlls_ciface
      logical(c_bool) :: scale_trim_min
      logical(c_bool) :: scale_trim_max
      logical(c_bool) :: scale_require_increase
+     logical(c_bool) :: calculate_svd_J
      integer(c_int) :: more_sorensen_maxits
      real(wp) :: more_sorensen_shift
      real(wp) :: more_sorensen_tiny
@@ -56,17 +58,21 @@ module ral_nlls_ciface
   type, bind(C) :: nlls_inform 
      integer(C_INT) :: status
      integer(C_INT) :: alloc_status
+     character( kind = c_char), dimension(81) :: bad_alloc
      integer(C_INT) :: iter
      integer(C_INT) :: f_eval
      integer(C_INT) :: g_eval
      integer(C_INT) :: h_eval
      integer(C_INT) :: convergence_normf
+     integer(C_INT) :: convergence_normg
      real(wp) :: resinf
      real(wp) :: gradinf
      real(wp) :: obj
      real(wp) :: norm_g
      real(wp) :: scaled_g
      integer(C_INT) :: external_return
+     character( kind = c_char), dimension(81) :: external_name
+     
   end type nlls_inform
 
   abstract interface
@@ -149,6 +155,7 @@ contains
     foptions%scale_trim_max = coptions%scale_trim_max
     foptions%scale_trim_min = coptions%scale_trim_min
     foptions%scale_require_increase = coptions%scale_require_increase
+    foptions%calculate_svd_J = coptions%calculate_svd_J
     foptions%more_sorensen_maxits = coptions%more_sorensen_maxits
     foptions%more_sorensen_shift = coptions%more_sorensen_shift
     foptions%more_sorensen_tiny = coptions%more_sorensen_tiny
@@ -159,18 +166,61 @@ contains
 
   end subroutine copy_options_in
 
+  subroutine copy_info_in(cinfo,finfo)
+
+    type(nlls_inform), intent(in) :: cinfo
+    type(f_nlls_inform) , intent(out) :: finfo
+    
+    integer :: i
+
+    finfo%status = cinfo%status
+    finfo%alloc_status = cinfo%alloc_status
+    do i = 1, 81
+       if (cinfo%bad_alloc(i) == c_null_char) exit
+       finfo%bad_alloc(i:i) = cinfo%bad_alloc(i)
+    end do
+    !finfo%bad_alloc = cinfo%bad_alloc(1:nchars)
+    finfo%iter = cinfo%iter
+    finfo%f_eval = cinfo%f_eval
+    finfo%g_eval = cinfo%g_eval
+    finfo%h_eval = cinfo%h_eval
+    finfo%convergence_normf = cinfo%convergence_normf
+    finfo%convergence_normg = cinfo%convergence_normf
+!    if(allocated(cinfo%resvec)) &
+!       finfo%resinf = maxval(abs(cinfo%resvec(:)))
+!    if(allocated(cinfo%gradvec)) &
+!       finfo%gradinf = maxval(abs(cinfo%gradvec(:)))
+    finfo%obj = cinfo%obj
+    finfo%norm_g = cinfo%norm_g
+    finfo%scaled_g = cinfo%scaled_g
+    finfo%external_return = cinfo%external_return
+    do i = 1, 81
+       if (cinfo%external_name(i) == c_null_char) exit
+       finfo%external_name(i:i) = cinfo%external_name(i)
+    end do
+   ! finfo%external_name = cinfo%external_name(1:nchars)
+    
+  end subroutine copy_info_in
+
   subroutine copy_info_out(finfo,cinfo)
 
     type(f_nlls_inform), intent(in) :: finfo
     type(nlls_inform) , intent(out) :: cinfo
+        
+    integer :: i
     
     cinfo%status = finfo%status
     cinfo%alloc_status = finfo%alloc_status
+    do i = 1,len(finfo%bad_alloc)
+       cinfo%bad_alloc(i) = finfo%bad_alloc(i:i)
+    end do
+    cinfo%bad_alloc(len(finfo%bad_alloc) + 1) = C_NULL_CHAR
     cinfo%iter = finfo%iter
     cinfo%f_eval = finfo%f_eval
     cinfo%g_eval = finfo%g_eval
     cinfo%h_eval = finfo%h_eval
     cinfo%convergence_normf = finfo%convergence_normf
+    cinfo%convergence_normg = finfo%convergence_normf
     if(allocated(finfo%resvec)) &
        cinfo%resinf = maxval(abs(finfo%resvec(:)))
     if(allocated(finfo%gradvec)) &
@@ -179,6 +229,10 @@ contains
     cinfo%norm_g = finfo%norm_g
     cinfo%scaled_g = finfo%scaled_g
     cinfo%external_return = finfo%external_return
+    do i = 1,len(finfo%external_name)
+       cinfo%external_name(i) = finfo%external_name(i:i)
+    end do
+    cinfo%external_name(len(finfo%external_name) + 1) = C_NULL_CHAR
 
   end subroutine copy_info_out
 
@@ -265,6 +319,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%scale_trim_max = foptions%scale_trim_max
   coptions%scale_trim_min = foptions%scale_trim_min
   coptions%scale_require_increase = foptions%scale_require_increase
+  coptions%calculate_svd_J = foptions%calculate_svd_J
   coptions%more_sorensen_maxits = foptions%more_sorensen_maxits
   coptions%more_sorensen_shift = foptions%more_sorensen_shift
   coptions%more_sorensen_tiny = foptions%more_sorensen_tiny
@@ -273,6 +328,25 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%hybrid_switch_its = foptions%hybrid_switch_its
   coptions%output_progress_vectors = foptions%output_progress_vectors
 end subroutine ral_nlls_default_options_d
+
+subroutine nlls_strerror_d(cinform, c_error_string) bind(C)
+  use ral_nlls_ciface
+  implicit none
+  
+  TYPE( nlls_inform )  :: cinform
+  character( kind = c_char), dimension(81), intent(out) :: c_error_string
+  TYPE( f_nlls_inform ) :: finform
+  character (len = 80) :: f_error_string
+  integer :: i
+
+  call copy_info_in(cinform,finform)
+  call f_nlls_strerror(finform,f_error_string)
+  do i = 1,len(f_error_string)
+     c_error_string(i) = f_error_string(i:i)
+  end do
+  c_error_string(len(f_error_string)+1) = C_NULL_CHAR
+  
+end subroutine nlls_strerror_d
 
 subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform) bind(C)
   use ral_nlls_ciface

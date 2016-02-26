@@ -318,6 +318,8 @@ module ral_nlls_internal
 
 !$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '    
 
+     logical :: calculate_svd_J = .true.
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
@@ -343,6 +345,8 @@ module ral_nlls_internal
 
 ! Shall we output progess vectors at termination of the routine?
      logical :: output_progress_vectors = .false.
+
+     
 
   END TYPE nlls_options
 
@@ -403,6 +407,14 @@ module ral_nlls_internal
 !  vector of gradients 
      
      real(wp), allocatable :: gradvec(:)
+
+!  vector of smallest singular values
+
+     real(wp), allocatable :: smallest_sv(:)
+     
+!  vector of largest singular values
+
+     real(wp), allocatable :: largest_sv(:)
 
 !  the maximum number of factorizations in a sub-problem solve
 
@@ -587,7 +599,6 @@ module ral_nlls_internal
        type( apply_scaling_work ) :: apply_scaling_ws
     end type more_sorensen_work
 
-
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
        type( max_eig_work ) :: max_eig_ws
        type( evaluate_model_work ) :: evaluate_model_ws
@@ -611,6 +622,11 @@ module ral_nlls_internal
        type( solve_dtrs_work ) :: solve_dtrs_ws
     end type calculate_step_work
 
+    type, private :: get_svd_J_work ! workspace for subroutine get_svd_J
+       real(wp), allocatable :: Jcopy(:), S(:), work(:)
+       
+    end type get_svd_J_work
+
     type, public :: NLLS_workspace ! all workspaces called from the top level
        integer :: first_call = 1
        integer :: iter = 0 
@@ -629,8 +645,10 @@ module ral_nlls_internal
        real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
        real(wp), allocatable :: ysharpSks(:), Sks(:)
        real(wp), allocatable :: resvec(:), gradvec(:)
+       real(wp), allocatable :: largest_sv(:), smallest_sv(:)
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
+       type ( get_svd_J_work ) :: get_svd_J_ws
        real(wp) :: tr_nu = 2.0
        integer :: tr_p = 3
     end type NLLS_workspace
@@ -1853,39 +1871,30 @@ contains
                 
       end subroutine shift_matrix
 
-      subroutine get_svd_J(n,m,J,s1,sn,options,status)
+      subroutine get_svd_J(n,m,J,s1,sn,options,status,w)
         integer, intent(in) :: n,m 
         real(wp), intent(in) :: J(:)
         real(wp), intent(out) :: s1, sn
         type( nlls_options ) :: options
         integer, intent(out) :: status
+        type( get_svd_J_work ) :: w
 
+        !  Given an (m x n)  matrix J held by columns as a vector,
+        !  this routine returns the largest and smallest singular values
+        !  of J.
+        
         character :: jobu(1), jobvt(1)
-        real(wp), allocatable :: Jcopy(:)
-        real(wp), allocatable :: S(:)
-        real(wp), allocatable :: work(:)
         integer :: lwork
         
-        allocate(Jcopy(n*m))
-        allocate(S(n))
-        Jcopy(:) = J(:)
+        w%Jcopy(:) = J(:)
 
         jobu  = 'N' ! calculate no left singular vectors
         jobvt = 'N' ! calculate no right singular vectors
         
-        allocate(work(1))
-        ! make a workspace query....
-        call dgesvd( jobu, jobvt, n, m, Jcopy, n, S, S, 1, S, 1, & 
-             work, -1, status )
-        if (status .ne. 0 ) return
-
-        lwork = int(work(1))
-        deallocate(work)
-        allocate(work(lwork))     
+        lwork = size(w%work)
         
-        ! call the real thing....
-        call dgesvd( JOBU, JOBVT, n, m, Jcopy, n, S, S, 1, S, 1, & 
-             work, lwork, status )
+        call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1, & 
+             w%work, lwork, status )
         if ( (status .ne. 0) .and. (options%print_level > 3) ) then 
            write(options%out,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
                                         status
@@ -1893,8 +1902,8 @@ contains
            sn = -1.0
            ! allow to continue, but warn user and return zero singular values
         else
-           s1 = S(1)
-           sn = S(n)
+           s1 = w%S(1)
+           sn = w%S(n)
            if (options%print_level > 2) then 
               write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
               write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
@@ -2014,6 +2023,22 @@ contains
               if (inform%alloc_status > 0) goto 1000
            end if
         end if
+        
+        if( options%calculate_svd_J ) then
+           if (.not. allocated(workspace%largest_sv)) then
+              allocate(workspace%largest_sv(options%maxit + 1), &
+                   stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
+           end if
+           if (.not. allocated(workspace%smallest_sv)) then
+              allocate(workspace%smallest_sv(options%maxit + 1), &
+                   stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
+           end if
+           call setup_workspace_get_svd_J(n,m,workspace%get_svd_J_ws, & 
+                                          options, inform)
+           if (inform%alloc_status > 0) goto 1010
+        end if
                 
         if( .not. allocated(workspace%J)) then
            allocate(workspace%J(n*m), stat = inform%alloc_status)
@@ -2100,9 +2125,18 @@ contains
         if(allocated(workspace%resvec)) deallocate(workspace%resvec)
         if(allocated(workspace%gradvec)) deallocate(workspace%gradvec)
         
+        if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv)
+        if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv)
+        
         if(allocated(workspace%fNewton)) deallocate(workspace%fNewton )
         if(allocated(workspace%JNewton)) deallocate(workspace%JNewton )
         if(allocated(workspace%XNewton)) deallocate(workspace%XNewton ) 
+
+        if( options%calculate_svd_J ) then
+           if (allocated(workspace%largest_sv)) deallocate(workspace%largest_sv)
+           if (allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv)
+           call remove_workspace_get_svd_J(workspace%get_svd_J_ws, options)
+        end if
                 
         if(allocated(workspace%J)) deallocate(workspace%J ) 
         if(allocated(workspace%f)) deallocate(workspace%f ) 
@@ -2139,6 +2173,55 @@ contains
 
       end subroutine remove_workspaces
 
+      subroutine setup_workspace_get_svd_J(n,m,w,options,inform)
+        integer, intent(in) :: n, m 
+        type( get_svd_J_work ), intent(out) :: w
+        type( nlls_options ), intent(in) :: options
+        type( nlls_inform ), intent(out) :: inform
+        
+        integer :: lwork
+        character :: jobu(1), jobvt(1)
+        
+        allocate( w%Jcopy(n*m), stat = inform%alloc_status)
+        if (inform%alloc_status .ne. 0) goto 9000
+                
+        allocate( w%S(n), stat = inform%alloc_status)
+        if (inform%alloc_status .ne. 0) goto 9000
+
+        allocate(w%work(1))
+        jobu  = 'N' ! calculate no left singular vectors
+        jobvt = 'N' ! calculate no right singular vectors
+        
+        ! make a workspace query....
+        call dgesvd( jobu, jobvt, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1, & 
+                     w%work, -1, inform%alloc_status )
+        if ( inform%alloc_status .ne. 0 ) goto 9000
+        
+        lwork = int(w%work(1))
+        deallocate(w%work)
+        allocate(w%work(lwork))     
+                
+        return
+
+        ! Error statements
+9000    continue  ! bad allocations in this subroutine
+        inform%bad_alloc = 'setup_workspace_get_svd_J'
+        inform%status = ERROR%ALLOCATION
+        return
+
+      end subroutine setup_workspace_get_svd_J
+
+      subroutine remove_workspace_get_svd_J(w,options)
+        type( get_svd_J_work ) :: w
+        type( nlls_options ) :: options
+
+        if( allocated(w%Jcopy) ) deallocate( w%Jcopy )
+        if( allocated(w%S) ) deallocate( w%S )
+        if( allocated(w%work) ) deallocate( w%work )
+
+        return
+        
+      end subroutine remove_workspace_get_svd_J
 
       subroutine setup_workspace_dogleg(n,m,w,options,inform)
         integer, intent(in) :: n, m 
