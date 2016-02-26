@@ -202,15 +202,6 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          options->nlls_method = (int) v;
          continue;
       }
-      if(strcmp(key_name, "lls_solver")==0) {
-         long v = PyInt_AsLong(value);
-         if(v==-1 && PyErr_Occurred()) {
-            PyErr_SetString(PyExc_RuntimeError, "options['lls_solver'] must be an integer.");
-            return false;
-         }
-         options->lls_solver = (int) v;
-         continue;
-      }
       if(strcmp(key_name, "stop_g_absolute")==0) {
          double v = PyFloat_AsDouble(value);
          if(v==-1.0 && PyErr_Occurred()) {
@@ -357,7 +348,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
          goto fail;
       default: ; // empty statement for language conformatity.
          char errmsg[100];
-         sprintf(errmsg, "NLLS_SOLVE with unrecognised error code %d\n",
+         sprintf(errmsg, "NLLS_SOLVE failed with unrecognised error code %d\n",
                inform.status);
          PyErr_SetString(PyExc_RuntimeError, errmsg);
          goto fail;

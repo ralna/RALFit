@@ -51,10 +51,11 @@ This module is a binary module that provides non-linear least squares solvers.
      * ``3`` More-Sorensen; or
      * ``4`` Galahad DTRS.
 
-   * ``lls_solver`` ???
-   * ``stop_g_absolute`` float specifying absolute tolerance for convergence.
-   * ``stop_g_relative`` float specifying relative tolerance for convergence.
-   * ``relative_tr_radius`` integer specifying whether initial trust region
+   * ``stop_g_absolute=1e-5`` float specifying absolute tolerance for
+     convergence.
+   * ``stop_g_relative=1e-8`` float specifying relative tolerance for
+     convergence.
+   * ``relative_tr_radius=0`` integer specifying whether initial trust region
      should be scaled.
 
 Example
