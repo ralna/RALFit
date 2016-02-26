@@ -149,7 +149,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
       PyErr_SetString(PyExc_RuntimeError, "f() must return rank-1 array");
       goto fail;
    }
-   npy_intp* fdim = PyArray_DIMS(x0);
+   npy_intp* fdim = PyArray_DIMS(f);
    int m = fdim[0];
    Py_DECREF(f); f=NULL;
    Py_DECREF(result); result=NULL;
@@ -164,6 +164,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    /* Call RAL_NLLS */
    struct ral_nlls_options options;
    ral_nlls_default_options_d(&options);
+   options.exact_second_derivatives = false;
    struct ral_nlls_inform inform;
    nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform);
    switch(inform.status) {
