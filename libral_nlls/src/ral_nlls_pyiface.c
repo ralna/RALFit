@@ -248,6 +248,13 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
    return true; // success
 }
 
+static PyObject*
+make_info_dict(const struct ral_nlls_inform *inform) {
+   PyObject *pyinfo = PyDict_New();
+
+   return pyinfo;
+}
+
 /*
  * x = ral_nlls.solve(x0, f, J=None, Hf=None, params=(), options={})
  */
@@ -343,7 +350,8 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 
    /* Free references and return solution */
    Py_DECREF(x0); x0=NULL;
-   return (PyObject*) x;
+   PyObject *pyinfo = make_info_dict(&inform);
+   return Py_BuildValue("(OO)", x, pyinfo);
 
    fail:
    Py_XDECREF(arglist); Py_XDECREF(result);
