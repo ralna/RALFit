@@ -78,9 +78,9 @@ int eval_J(int n, int m, const void *params, const double *x, double *J) {
    if(!result) return -1;
 
    // Extract result
-   PyArrayObject* Jarray = (PyArrayObject*) PyArray_FROM_OTF(result, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+   PyArrayObject* Jarray = (PyArrayObject*) PyArray_FROM_OTF(result, NPY_FLOAT64, NPY_ARRAY_IN_FARRAY);
    if(Jarray == NULL) {
-      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from f call");
+      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from J call");
       Py_DECREF(result);
       return -1;
    }
@@ -95,6 +95,58 @@ int eval_J(int n, int m, const void *params, const double *x, double *J) {
       J[i] = Jval[i];
    }
    Py_DECREF(Jarray);
+   Py_DECREF(result);
+
+   return 0; // Success
+}
+
+static
+int eval_Hf(int n, int m, const void *params, const double *x, const double *r, double *Hf) {
+   // Recover our datatype
+   const struct callback_data *data = (struct callback_data*) params;
+
+   // Copy x into Python array
+   npy_intp xdim[] = {n};
+   PyArrayObject* xpy = (PyArrayObject*) PyArray_SimpleNew(1, xdim, NPY_DOUBLE);
+   double* xval = (double*) PyArray_DATA(xpy);
+   for(int i=0; i<n; ++i)
+      xval[i] = x[i];
+
+   // Copy r into Python array
+   npy_intp rdim[] = {m};
+   PyArrayObject* rpy = (PyArrayObject*) PyArray_SimpleNew(1, rdim, NPY_DOUBLE);
+   double* rval = (double*) PyArray_DATA(rpy);
+   for(int i=0; i<m; ++i)
+      rval[i] = r[i];
+
+   // Call routine
+   PyObject *arglist;
+   if(data->params)  arglist = Py_BuildValue("(OOO)", xpy, rpy, data->params);
+   else              arglist = Py_BuildValue("(OO)", xpy, rpy);
+   PyObject *result = PyObject_CallObject(data->Hf, arglist);
+   Py_DECREF(arglist);
+   Py_DECREF(xpy);
+   Py_DECREF(rpy);
+   if(!result) return -1;
+
+   // Extract result
+   PyArrayObject* Hfarray = (PyArrayObject*) PyArray_FROM_OTF(result, NPY_FLOAT64, NPY_ARRAY_IN_FARRAY);
+   if(Hfarray == NULL) {
+      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from Hf call");
+      Py_DECREF(result);
+      return -1;
+   }
+   if(PyArray_NDIM(Hfarray) != 2) {
+      PyErr_SetString(PyExc_RuntimeError, "Hf() must return rank-2 array");
+      Py_DECREF(Hfarray);
+      Py_DECREF(result);
+      return -2;
+   }
+   const double *Hfval = (double*) PyArray_DATA(Hfarray);
+   for(int i=0; i<n*n; ++i) {
+      Hf[i] = Hfval[i];
+   }
+   Py_DECREF(Hfarray);
    Py_DECREF(result);
 
    return 0; // Success
@@ -164,9 +216,13 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    /* Call RAL_NLLS */
    struct ral_nlls_options options;
    ral_nlls_default_options_d(&options);
-   options.exact_second_derivatives = false;
    struct ral_nlls_inform inform;
-   nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform);
+   if(data.Hf) {
+      nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hf, &data, &options, &inform);
+   } else {
+      options.exact_second_derivatives = false;
+      nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform);
+   }
    switch(inform.status) {
       case 0: // Clean exit
          break;
