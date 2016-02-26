@@ -19,14 +19,18 @@ RESULT=$?
 echo "passed"
 
 # run the test suite...
-$NLLS_TEST/test
+echo "fortran tests..."
+$NLLS_TEST/test | diff $NLLS_TEST_SRC/test.output -
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
+echo "passed"
 
 # c tests...
-$NLLS_TEST/nlls_c_test
+echo "C tests..."
+$NLLS_TEST/nlls_c_test | diff $NLLS_TEST_SRC/nlls_c_test.output -
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 4
+echo "passed"
 
 # run the sample programs...
 echo "C example...."
