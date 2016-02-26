@@ -152,6 +152,102 @@ int eval_Hf(int n, int m, const void *params, const double *x, const double *r, 
    return 0; // Success
 }
 
+static
+bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
+   ral_nlls_default_options_d(options);
+
+   if(!pyoptions) return true; // Just use defaults
+
+   PyObject *key, *value;
+   Py_ssize_t pos = 0;
+   while(PyDict_Next(pyoptions, &pos, &key, &value)) {
+      const char* key_name = PyString_AsString(key);
+      if(!key_name) {
+         PyErr_SetString(PyExc_RuntimeError, "Non-string option, can't interpret!");
+         return false;
+      }
+      if(strcmp(key_name, "print_level")==0) {
+         long v = PyInt_AsLong(value);
+         if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['print_level'] must be an integer.");
+            return false;
+         }
+         options->print_level = (int) v;
+         continue;
+      }
+      if(strcmp(key_name, "maxit")==0) {
+         long v = PyInt_AsLong(value);
+         if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['maxit'] must be an integer.");
+            return false;
+         }
+         options->maxit = (int) v;
+         continue;
+      }
+      if(strcmp(key_name, "model")==0) {
+         long v = PyInt_AsLong(value);
+         if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['model'] must be an integer.");
+            return false;
+         }
+         options->model = (int) v;
+         continue;
+      }
+      if(strcmp(key_name, "nlls_method")==0) {
+         long v = PyInt_AsLong(value);
+         if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['nlls_method'] must be an integer.");
+            return false;
+         }
+         options->nlls_method = (int) v;
+         continue;
+      }
+      if(strcmp(key_name, "lls_solver")==0) {
+         long v = PyInt_AsLong(value);
+         if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['lls_solver'] must be an integer.");
+            return false;
+         }
+         options->lls_solver = (int) v;
+         continue;
+      }
+      if(strcmp(key_name, "stop_g_absolute")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['stop_g_absolute'] must be a float.");
+            return false;
+         }
+         options->stop_g_absolute = v;
+         continue;
+      }
+      if(strcmp(key_name, "stop_g_relative")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['stop_g_relative'] must be a float.");
+            return false;
+         }
+         options->stop_g_relative = v;
+         continue;
+      }
+      if(strcmp(key_name, "relative_tr_radius")==0) {
+         long v = PyInt_AsLong(value);
+         if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['relative_tr_radius'] must be an integer.");
+            return false;
+         }
+         options->relative_tr_radius = (int) v;
+         continue;
+      }
+      // If we reach this point, unreconised option
+      char errmsg[200];
+      snprintf(errmsg, 200, "Bad key options['%s']\n", key_name);
+      PyErr_SetString(PyExc_RuntimeError, errmsg);
+      return false;
+   }
+
+   return true; // success
+}
+
 /*
  * x = ral_nlls.solve(x0, f, J=None, Hf=None, params=(), options={})
  */
@@ -166,13 +262,13 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    data.f = NULL; data.J = NULL; data.Hf = NULL; data.params = NULL;
 
    static char *kwlist[] = {"x0", "f", "J", "Hf", "params", "options", NULL};
-   if(!PyArg_ParseTupleAndKeywords(args, keywds, "OOO|OOO", kwlist,
+   if(!PyArg_ParseTupleAndKeywords(args, keywds, "OOO|OOO!", kwlist,
             &x0ptr,
             &data.f,
             &data.J,
             &data.Hf,
             &data.params,
-            &options_ptr)
+            &PyDict_Type, &options_ptr)
          )
       return NULL;
 
@@ -215,7 +311,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 
    /* Call RAL_NLLS */
    struct ral_nlls_options options;
-   ral_nlls_default_options_d(&options);
+   if(!set_opts(&options, options_ptr)) goto fail;
    struct ral_nlls_inform inform;
    if(data.Hf) {
       nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hf, &data, &options, &inform);
@@ -258,7 +354,7 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 static PyMethodDef RalNllsMethods[] = {
    {"solve", (PyCFunction)ral_nlls_solve, METH_VARARGS | METH_KEYWORDS,
     "Solve a non-linear least squares problem.\n"
-    "   x = ral_nlls.solve(x0, f, J=None, Hf=None, params=(), options={})"
+    "   x = ral_nlls.solve(x0, f, J, Hf=None, params=None, options={})"
    },
    {NULL, NULL, 0, NULL} /* Sentinel */
 };

@@ -54,7 +54,7 @@ data = numpy.array([
 x0 = numpy.array([2.5, 0.25])
 
 # Call fitting routine
-x = ral_nlls.solve(x0, r, J, Hf=HF, params=data)
+x = ral_nlls.solve(x0, r, J, Hf=HF, params=data, options={'print_level':1})
 
 # Print result
 print "Found a local optimum at x = ", x
