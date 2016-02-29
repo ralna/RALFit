@@ -144,9 +144,9 @@ contains
        ! test the returns to see if we've converged
 
        if (inform%status < 0) then 
+          call nlls_strerror(inform)
           if ( options%print_level > 0 ) then
-             call nlls_strerror(inform,error_string)
-             write(options%error,'(a,a)') 'ERROR: ', trim(error_string)
+             write(options%error,'(a,a)') 'ERROR: ', trim(inform%error_message)
           end if
           goto 1000 ! error -- exit
        elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
@@ -186,7 +186,7 @@ contains
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( nlls_inform ), INTENT( OUT ) :: inform
+    TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( nlls_options ), INTENT( IN ) :: options
     type( NLLS_workspace ), INTENT( INOUT ) :: w
     procedure( eval_f_type ) :: eval_F
@@ -197,15 +197,14 @@ contains
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, normFnew, md, Jmax, JtJdiag
-    real(wp) :: FunctionValue, hybrid_tol
-    logical :: success, calculate_svd_J
-    real(wp) :: s1, sn
+    real(wp) :: FunctionValue
+    logical :: success
     
     ! todo: make max_tr_decrease a control variable
 
     ! Perform a single iteration of the RAL_NLLS loop
     
-    calculate_svd_J = .true. ! todo :: make a control variable 
+!    calculate_svd_J = .true. ! todo :: make a control variable 
 
     if (w%first_call == 1) then
        ! This is the first call...allocate arrays, and get initial 
@@ -238,10 +237,13 @@ contains
           w%Delta = options%initial_radius
        end if
 
-       if ( calculate_svd_J ) then
-          call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+       if ( options%calculate_svd_J ) then
+          call get_svd_J(n,m,w%J,&
+               w%smallest_sv(1), w%largest_sv(1), &
+               options,svdstatus,w%get_svd_J_ws)
           if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
-             write( options%out, 3000 ) svdstatus
+             write(*,*) 'warning! svdstatus = ', svdstatus
+             write( options%out, 3140 ) svdstatus
           end if
        end if
 
@@ -372,10 +374,12 @@ contains
     call eval_J(inform%external_return, n, m, X, w%J, params)
     inform%g_eval = inform%g_eval + 1
     if (inform%external_return .ne. 0) goto 4010
-    if ( calculate_svd_J ) then
-       call get_svd_J(n,m,w%J,s1,sn,options,svdstatus)
+    if ( options%calculate_svd_J ) then
+       call get_svd_J(n,m,w%J,&
+            w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
+            options,svdstatus,w%get_svd_J_ws)
        if ((svdstatus .ne. 0).and.(options%print_level > 2)) then 
-          write( options%out, 3000 ) svdstatus
+          write( options%out, 3140 ) svdstatus
        end if
     end if
     
@@ -488,6 +492,7 @@ contains
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
 3120 FORMAT('** Switching to Gauss-Newton **')
 3130 FORMAT('** Switching to (Quasi-)Newton **')
+3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
 ! error returns
 4000 continue
     ! generic end of algorithm
@@ -495,19 +500,26 @@ contains
     inform%iter = w%iter
 !    if (options%output_progress_vectors) then
     if (allocated(w%resvec)) then
-       if(.not. allocated(inform%resvec)) then 
-          allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
-          if (inform%alloc_status > 0) goto 4080
-          inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
-       end if
+       if( allocated(inform%resvec)) deallocate(inform%resvec)
+       allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 4080
+       inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
     end if
     if (allocated(w%gradvec)) then
-       if(.not. allocated(inform%gradvec)) then 
-          allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
-          if (inform%alloc_status > 0) goto 4080
-          inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
-       end if
+       if (allocated(inform%gradvec)) deallocate(inform%gradvec)
+       allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 4080
+       inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
     end if
+    if (options%calculate_svd_J) then
+       if (allocated(inform%smallest_sv) ) deallocate(inform%smallest_sv)
+       allocate(inform%smallest_sv(w%iter + 1))
+       if (inform%alloc_status > 0) goto 4080
+       if (allocated(inform%largest_sv) ) deallocate(inform%largest_sv)
+       allocate(inform%largest_sv(w%iter + 1))
+       if (inform%alloc_status > 0) goto 4080
+    end if
+
 
     return
 

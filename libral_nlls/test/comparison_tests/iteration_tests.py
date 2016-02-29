@@ -161,6 +161,8 @@ def compute(no_tests,control_files,problems,i):
     except:
         raise Error("the CUTEST environment variable doesn't appear to be set")
     
+    starting_point = 1
+
     for j in range(no_tests):
         if control_files[j] == "gsl":
             package = "gsl"
@@ -181,7 +183,8 @@ def compute(no_tests,control_files,problems,i):
 
         if j == 0:
             # and then call sifdecoder as well as cutest
-            subprocess.call(["runcutest","-p",package,"--decode",problems[i]])
+            subprocess.call(["runcutest","-p",package,"--decode",problems[i], \
+                             "-st",str(starting_point)])
         else: # no need to decode again....
             subprocess.call(["runcutest","-p",package])
         

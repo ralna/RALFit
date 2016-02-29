@@ -1,0 +1,52 @@
+#!/bin/bash
+
+NLLS_DEBUG=$RAL_NLLS../debug/
+NLLS_TEST_SRC=$RAL_NLLS../test/
+NLLS_TEST=$NLLS_DEBUG/test/
+NLLS_EXAMPLE=$NLLS_DEBUG/example/
+
+make -C $NLLS_DEBUG
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 1
+
+echo "cutest example..."
+cd $NLLS_TEST_SRC/comparison_tests/cutest/sif/
+runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF | \
+    diff <(head -n 165 $NLLS_TEST_SRC/rat43.output) <(head -n 165 -)
+# skip the final few lines, so as to avoid the timings 
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 2
+echo "passed"
+
+# run the test suite...
+echo "fortran tests..."
+$NLLS_TEST/test | diff $NLLS_TEST_SRC/test.output -
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 3
+echo "passed"
+
+# c tests...
+echo "C tests..."
+$NLLS_TEST/nlls_c_test | diff $NLLS_TEST_SRC/nlls_c_test.output -
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 4
+echo "passed"
+
+# run the sample programs...
+echo "C example...."
+$NLLS_EXAMPLE/C/nlls_c_example | diff $NLLS_TEST_SRC/nlls_c_example.output -
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 5
+echo "passed"
+
+# $RAL_NLLS../debug/example/C/nlls_c_example
+echo "Fortran example..."
+$NLLS_EXAMPLE/Fortran/nlls_example | \
+    diff $NLLS_TEST_SRC/nlls_fortran_example.output -
+
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 6
+echo "passed"
+
+#[ $RESULT -ne 0 ] && exit 1
+exit 0

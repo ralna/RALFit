@@ -31,21 +31,21 @@ module ral_nlls_internal
      INTEGER :: FROM_EXTERNAL = -4
      INTEGER :: UNSUPPORTED_METHOD = -5
      INTEGER :: ALLOCATION = -6
-     INTEGER :: MAX_TR_REDUCTIONS = -500
-     INTEGER :: X_NO_PROGRESS = -700 ! <-- change
-     INTEGER :: N_GT_M = -800  ! <-- change
-     INTEGER :: BAD_TR_STRATEGY = -900 ! <- change
-     INTEGER :: FIND_BETA = -12 ! <- change
-     INTEGER :: BAD_SCALING = -34 ! <- change
+     INTEGER :: MAX_TR_REDUCTIONS = -7
+     INTEGER :: X_NO_PROGRESS = -8
+     INTEGER :: N_GT_M = -9  
+     INTEGER :: BAD_TR_STRATEGY = -10 
+     INTEGER :: FIND_BETA = -11 
+     INTEGER :: BAD_SCALING = -12 
      ! dogleg errors
-     INTEGER :: DOGLEG_MODEL = -36  ! <-- change
+     INTEGER :: DOGLEG_MODEL = -101
      ! AINT errors
-     INTEGER :: AINT_EIG_IMAG = -21
-     INTEGER :: AINT_EIG_ODD = -22
+     INTEGER :: AINT_EIG_IMAG = -201
+     INTEGER :: AINT_EIG_ODD = -202
      ! More-Sorensen errors
-     INTEGER :: MS_MAXITS = -100 ! <-- change
-     INTEGER :: MS_TOO_MANY_SHIFTS = -123 ! <-- change
-     INTEGER :: MS_NO_PROGRESS = -2923 ! change
+     INTEGER :: MS_MAXITS = -301
+     INTEGER :: MS_TOO_MANY_SHIFTS = -302
+     INTEGER :: MS_NO_PROGRESS = -303
      ! DTRS errors
 
   END TYPE NLLS_ERROR
@@ -318,6 +318,8 @@ module ral_nlls_internal
 
 !$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '    
 
+     logical :: calculate_svd_J = .true.
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
@@ -344,6 +346,8 @@ module ral_nlls_internal
 ! Shall we output progess vectors at termination of the routine?
      logical :: output_progress_vectors = .false.
 
+     
+
   END TYPE nlls_options
 
 !  - - - - - - - - - - - - - - - - - - - - - - - 
@@ -359,6 +363,11 @@ module ral_nlls_internal
 !   4 -- error return from an lapack routine
      
      INTEGER :: status = 0
+
+! error message     
+          
+     CHARACTER ( LEN = 80 ) :: error_message = REPEAT( ' ', 80 )
+
      
 !  the status of the last attempted allocation/deallocation
 
@@ -403,6 +412,14 @@ module ral_nlls_internal
 !  vector of gradients 
      
      real(wp), allocatable :: gradvec(:)
+
+!  vector of smallest singular values
+
+     real(wp), allocatable :: smallest_sv(:)
+     
+!  vector of largest singular values
+
+     real(wp), allocatable :: largest_sv(:)
 
 !  the maximum number of factorizations in a sub-problem solve
 
@@ -587,7 +604,6 @@ module ral_nlls_internal
        type( apply_scaling_work ) :: apply_scaling_ws
     end type more_sorensen_work
 
-
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
        type( max_eig_work ) :: max_eig_ws
        type( evaluate_model_work ) :: evaluate_model_ws
@@ -611,6 +627,11 @@ module ral_nlls_internal
        type( solve_dtrs_work ) :: solve_dtrs_ws
     end type calculate_step_work
 
+    type, private :: get_svd_J_work ! workspace for subroutine get_svd_J
+       real(wp), allocatable :: Jcopy(:), S(:), work(:)
+       
+    end type get_svd_J_work
+
     type, public :: NLLS_workspace ! all workspaces called from the top level
        integer :: first_call = 1
        integer :: iter = 0 
@@ -629,8 +650,10 @@ module ral_nlls_internal
        real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
        real(wp), allocatable :: ysharpSks(:), Sks(:)
        real(wp), allocatable :: resvec(:), gradvec(:)
+       real(wp), allocatable :: largest_sv(:), smallest_sv(:)
        type ( calculate_step_work ) :: calculate_step_ws
        type ( evaluate_model_work ) :: evaluate_model_ws
+       type ( get_svd_J_work ) :: get_svd_J_ws
        real(wp) :: tr_nu = 2.0
        integer :: tr_p = 3
     end type NLLS_workspace
@@ -756,7 +779,6 @@ contains
      
 1000 continue
      ! error in external package
-!     call exterr(options,inform,'solve_dtrs')
      return
 
    end subroutine apply_scaling
@@ -811,7 +833,6 @@ contains
      
 1000 continue 
      ! bad error return from solve_LLS
-!     call exterr(options,inform,'dogleg')
      return
 
      
@@ -950,7 +971,6 @@ contains
          
 1000 continue 
      ! bad error return from external package
-!     call exterr(options,inform,'AINT_TR')
      return
 
 
@@ -1083,7 +1103,6 @@ contains
      
 1000 continue 
      ! bad error return from external package
-!     call exterr(options,inform,'more_sorensen')
      goto 4000
      
 1020 continue
@@ -1228,7 +1247,6 @@ contains
 
 1000 continue 
      ! bad error return from external package
-!     call exterr(options,inform,'solve_dtrs')
      return
      
    end subroutine solve_dtrs
@@ -1858,39 +1876,30 @@ contains
                 
       end subroutine shift_matrix
 
-      subroutine get_svd_J(n,m,J,s1,sn,options,status)
+      subroutine get_svd_J(n,m,J,s1,sn,options,status,w)
         integer, intent(in) :: n,m 
         real(wp), intent(in) :: J(:)
         real(wp), intent(out) :: s1, sn
         type( nlls_options ) :: options
         integer, intent(out) :: status
+        type( get_svd_J_work ) :: w
 
+        !  Given an (m x n)  matrix J held by columns as a vector,
+        !  this routine returns the largest and smallest singular values
+        !  of J.
+        
         character :: jobu(1), jobvt(1)
-        real(wp), allocatable :: Jcopy(:)
-        real(wp), allocatable :: S(:)
-        real(wp), allocatable :: work(:)
         integer :: lwork
         
-        allocate(Jcopy(n*m))
-        allocate(S(n))
-        Jcopy(:) = J(:)
+        w%Jcopy(:) = J(:)
 
         jobu  = 'N' ! calculate no left singular vectors
         jobvt = 'N' ! calculate no right singular vectors
         
-        allocate(work(1))
-        ! make a workspace query....
-        call dgesvd( jobu, jobvt, n, m, Jcopy, n, S, S, 1, S, 1, & 
-             work, -1, status )
-        if (status .ne. 0 ) return
-
-        lwork = int(work(1))
-        deallocate(work)
-        allocate(work(lwork))     
+        lwork = size(w%work)
         
-        ! call the real thing....
-        call dgesvd( JOBU, JOBVT, n, m, Jcopy, n, S, S, 1, S, 1, & 
-             work, lwork, status )
+        call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1, & 
+             w%work, lwork, status )
         if ( (status .ne. 0) .and. (options%print_level > 3) ) then 
            write(options%out,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
                                         status
@@ -1898,8 +1907,8 @@ contains
            sn = -1.0
            ! allow to continue, but warn user and return zero singular values
         else
-           s1 = S(1)
-           sn = S(n)
+           s1 = w%S(1)
+           sn = w%S(n)
            if (options%print_level > 2) then 
               write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
               write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
@@ -1908,57 +1917,55 @@ contains
 
       end subroutine get_svd_J
       
-      subroutine nlls_strerror(inform,error_string)
-        type( nlls_inform ), intent(in) :: inform
-        character (len = *), intent(out) :: error_string
-
+      subroutine nlls_strerror(inform)!,error_string)
+        type( nlls_inform ), intent(inout) :: inform
+        
         if ( inform%status == ERROR%MAXITS ) then
-           error_string = 'Maximum number of iterations reached'
+           inform%error_message = 'Maximum number of iterations reached'
         elseif ( inform%status == ERROR%EVALUATION ) then
-           write(error_string,'(a,a,a,i0)') & 
+           write(inform%error_message,'(a,a,a,i0)') & 
                 'Error code from user-supplied subroutine ',trim(inform%external_name), & 
                 ' passed error = ', inform%external_return
         elseif ( inform%status == ERROR%UNSUPPORTED_MODEL ) then
-           error_string = 'Unsupported model passed in options'
+           inform%error_message = 'Unsupported model passed in options'
         elseif ( inform%status == ERROR%FROM_EXTERNAL ) then
-           write(error_string,'(a,a,a,i0)') & 
+           write(inform%error_message,'(a,a,a,i0)') & 
                 'The external subroutine ',trim(inform%external_name), & 
                 ' passed error = ', inform%external_return
            ! todo: adapt this to give the last called subroutine?
         elseif ( inform%status == ERROR%UNSUPPORTED_METHOD ) then
-           error_string = 'Unsupported nlls_method passed in options'
+           inform%error_message = 'Unsupported nlls_method passed in options'
         elseif ( inform%status == ERROR%ALLOCATION ) then
-           write(error_string,'(a,a)') &
+           write(inform%error_message,'(a,a)') &
                 'Bad allocation of memory in ', trim(inform%bad_alloc)
         elseif ( inform%status == ERROR%MAX_TR_REDUCTIONS ) then
-           error_string = 'The trust region was reduced the maximum number of times'
+           inform%error_message = 'The trust region was reduced the maximum number of times'
         elseif ( inform%status == ERROR%X_NO_PROGRESS ) then
-           error_string = 'No progress made in X'
+           inform%error_message = 'No progress made in X'
         elseif ( inform%status == ERROR%N_GT_M ) then
-           error_string = 'The problem is overdetermined'
+           inform%error_message = 'The problem is overdetermined'
         elseif ( inform%status == ERROR%BAD_TR_STRATEGY ) then
-           error_string = 'Unsupported tr_update_stategy passed in options'
+           inform%error_message = 'Unsupported tr_update_stategy passed in options'
         elseif ( inform%status == ERROR%FIND_BETA ) then
-           error_string = 'Unable to find suitable scalar in findbeta subroutine'
+           inform%error_message = 'Unable to find suitable scalar in findbeta subroutine'
         elseif ( inform%status == ERROR%BAD_SCALING ) then
-           error_string = 'Unsupported value of scale passed in options'
+           inform%error_message = 'Unsupported value of scale passed in options'
         elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
-           error_string = 'Model not supported in dogleg (nlls_method=1)'
+           inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
         elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
-           error_string = 'All eigenvalues are imaginary (nlls_method=2)'
+           inform%error_message = 'All eigenvalues are imaginary (nlls_method=2)'
         elseif ( inform%status == ERROR%AINT_EIG_ODD ) then
-           error_string = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
+           inform%error_message = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
         elseif ( inform%status == ERROR%MS_MAXITS ) then
-           error_string = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
+           inform%error_message = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
         elseif ( inform%status == ERROR%MS_TOO_MANY_SHIFTS ) then
-           error_string = 'Too many shifts taken in more_sorensen (nlls_method=3)'
+           inform%error_message = 'Too many shifts taken in more_sorensen (nlls_method=3)'
         elseif ( inform%status == ERROR%MS_NO_PROGRESS ) then
-           error_string = 'No progress being made in more_sorensen (nlls_method=3)'
+           inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
         else 
-           error_string = 'Unknown error number'           
+           inform%error_message = 'Unknown error number'           
         end if
-
-
+        
       end subroutine nlls_strerror
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2018,6 +2025,22 @@ contains
               allocate(workspace%gradvec(options%maxit+1), stat = inform%alloc_status)
               if (inform%alloc_status > 0) goto 1000
            end if
+        end if
+        
+        if( options%calculate_svd_J ) then
+           if (.not. allocated(workspace%largest_sv)) then
+              allocate(workspace%largest_sv(options%maxit + 1), &
+                   stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
+           end if
+           if (.not. allocated(workspace%smallest_sv)) then
+              allocate(workspace%smallest_sv(options%maxit + 1), &
+                   stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 1000
+           end if
+           call setup_workspace_get_svd_J(n,m,workspace%get_svd_J_ws, & 
+                                          options, inform)
+           if (inform%alloc_status > 0) goto 1010
         end if
                 
         if( .not. allocated(workspace%J)) then
@@ -2105,9 +2128,18 @@ contains
         if(allocated(workspace%resvec)) deallocate(workspace%resvec)
         if(allocated(workspace%gradvec)) deallocate(workspace%gradvec)
         
+        if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv)
+        if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv)
+        
         if(allocated(workspace%fNewton)) deallocate(workspace%fNewton )
         if(allocated(workspace%JNewton)) deallocate(workspace%JNewton )
         if(allocated(workspace%XNewton)) deallocate(workspace%XNewton ) 
+
+        if( options%calculate_svd_J ) then
+           if (allocated(workspace%largest_sv)) deallocate(workspace%largest_sv)
+           if (allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv)
+           call remove_workspace_get_svd_J(workspace%get_svd_J_ws, options)
+        end if
                 
         if(allocated(workspace%J)) deallocate(workspace%J ) 
         if(allocated(workspace%f)) deallocate(workspace%f ) 
@@ -2144,6 +2176,55 @@ contains
 
       end subroutine remove_workspaces
 
+      subroutine setup_workspace_get_svd_J(n,m,w,options,inform)
+        integer, intent(in) :: n, m 
+        type( get_svd_J_work ), intent(out) :: w
+        type( nlls_options ), intent(in) :: options
+        type( nlls_inform ), intent(out) :: inform
+        
+        integer :: lwork
+        character :: jobu(1), jobvt(1)
+        
+        allocate( w%Jcopy(n*m), stat = inform%alloc_status)
+        if (inform%alloc_status .ne. 0) goto 9000
+                
+        allocate( w%S(n), stat = inform%alloc_status)
+        if (inform%alloc_status .ne. 0) goto 9000
+
+        allocate(w%work(1))
+        jobu  = 'N' ! calculate no left singular vectors
+        jobvt = 'N' ! calculate no right singular vectors
+        
+        ! make a workspace query....
+        call dgesvd( jobu, jobvt, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1, & 
+                     w%work, -1, inform%alloc_status )
+        if ( inform%alloc_status .ne. 0 ) goto 9000
+        
+        lwork = int(w%work(1))
+        deallocate(w%work)
+        allocate(w%work(lwork))     
+                
+        return
+
+        ! Error statements
+9000    continue  ! bad allocations in this subroutine
+        inform%bad_alloc = 'setup_workspace_get_svd_J'
+        inform%status = ERROR%ALLOCATION
+        return
+
+      end subroutine setup_workspace_get_svd_J
+
+      subroutine remove_workspace_get_svd_J(w,options)
+        type( get_svd_J_work ) :: w
+        type( nlls_options ) :: options
+
+        if( allocated(w%Jcopy) ) deallocate( w%Jcopy )
+        if( allocated(w%S) ) deallocate( w%S )
+        if( allocated(w%work) ) deallocate( w%work )
+
+        return
+        
+      end subroutine remove_workspace_get_svd_J
 
       subroutine setup_workspace_dogleg(n,m,w,options,inform)
         integer, intent(in) :: n, m 
@@ -2398,7 +2479,7 @@ contains
                       workquery, -1, w%iwork, &  ! workspace
                       w%ifail, & ! array containing indicies of non-converging ews
                       inform%external_return)
-           if (inform%external_return .ne. 0) goto 9010
+           if (inform%external_return .ne. 0) goto 9020
         end if
         lwork = int(workquery(1))
         deallocate(workquery)

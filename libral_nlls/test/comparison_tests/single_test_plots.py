@@ -34,6 +34,8 @@ progress = [None for i in range(no_tests-1)]
 # and an empyt
 all_min  = np.zeros(no_tests-1)
 
+starting_point = 1
+
 # now, let's run the tests!
 for i in range(no_tests-1):
     if control_files[i] == "gsl":
@@ -52,7 +54,7 @@ for i in range(no_tests-1):
     subprocess.call(["cp","/dev/null",control_files[i]+"_iter.out"])
     if i == 0:
         # very first call, so create blank file...
-        subprocess.call(["runcutest","-p",package,"--decode",problem])
+        subprocess.call(["runcutest","-p",package,"--decode",problem,"-st",str(starting_point)])
     else: # no need to decode again....
         subprocess.call(["runcutest","-p",package])
     subprocess.call(["mv", control_files[i]+"_iter.out", \

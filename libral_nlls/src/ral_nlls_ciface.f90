@@ -24,7 +24,7 @@ module ral_nlls_ciface
      integer(C_INT) :: lls_solver
      real(wp) :: stop_g_absolute
      real(wp) :: stop_g_relative
-     real(wp) :: relative_tr_radius
+     integer(c_int) :: relative_tr_radius
      real(wp) :: initial_radius_scale
      real(wp) :: initial_radius
      real(wp) :: maximum_radius
@@ -34,7 +34,7 @@ module ral_nlls_ciface
      real(wp) :: radius_increase
      real(wp) :: radius_reduce
      real(wp) :: radius_reduce_max
-     integer :: tr_update_strategy
+     integer(c_int) :: tr_update_strategy
      real(wp) :: hybrid_switch
      logical(c_bool) :: exact_second_derivatives
      logical(c_bool) :: subproblem_eig_fact
@@ -44,6 +44,7 @@ module ral_nlls_ciface
      logical(c_bool) :: scale_trim_min
      logical(c_bool) :: scale_trim_max
      logical(c_bool) :: scale_require_increase
+     logical(c_bool) :: calculate_svd_J
      integer(c_int) :: more_sorensen_maxits
      real(wp) :: more_sorensen_shift
      real(wp) :: more_sorensen_tiny
@@ -54,19 +55,24 @@ module ral_nlls_ciface
   end type nlls_options
 
   type, bind(C) :: nlls_inform 
-     integer(C_INT) :: status
+     integer(C_INT) :: status     
+     character( kind = c_char), dimension(81) :: error_message
      integer(C_INT) :: alloc_status
+     character( kind = c_char), dimension(81) :: bad_alloc
      integer(C_INT) :: iter
      integer(C_INT) :: f_eval
      integer(C_INT) :: g_eval
      integer(C_INT) :: h_eval
      integer(C_INT) :: convergence_normf
+     integer(C_INT) :: convergence_normg
      real(wp) :: resinf
      real(wp) :: gradinf
      real(wp) :: obj
      real(wp) :: norm_g
      real(wp) :: scaled_g
      integer(C_INT) :: external_return
+     character( kind = c_char), dimension(81) :: external_name
+     
   end type nlls_inform
 
   abstract interface
@@ -149,6 +155,7 @@ contains
     foptions%scale_trim_max = coptions%scale_trim_max
     foptions%scale_trim_min = coptions%scale_trim_min
     foptions%scale_require_increase = coptions%scale_require_increase
+    foptions%calculate_svd_J = coptions%calculate_svd_J
     foptions%more_sorensen_maxits = coptions%more_sorensen_maxits
     foptions%more_sorensen_shift = coptions%more_sorensen_shift
     foptions%more_sorensen_tiny = coptions%more_sorensen_tiny
@@ -163,14 +170,25 @@ contains
 
     type(f_nlls_inform), intent(in) :: finfo
     type(nlls_inform) , intent(out) :: cinfo
+        
+    integer :: i
     
     cinfo%status = finfo%status
+    do i = 1,len(finfo%error_message)
+       cinfo%error_message(i) = finfo%error_message(i:i)
+    end do
+    cinfo%error_message(len(finfo%error_message) + 1) = C_NULL_CHAR
     cinfo%alloc_status = finfo%alloc_status
+    do i = 1,len(finfo%bad_alloc)
+       cinfo%bad_alloc(i) = finfo%bad_alloc(i:i)
+    end do
+    cinfo%bad_alloc(len(finfo%bad_alloc) + 1) = C_NULL_CHAR
     cinfo%iter = finfo%iter
     cinfo%f_eval = finfo%f_eval
     cinfo%g_eval = finfo%g_eval
     cinfo%h_eval = finfo%h_eval
     cinfo%convergence_normf = finfo%convergence_normf
+    cinfo%convergence_normg = finfo%convergence_normf
     if(allocated(finfo%resvec)) &
        cinfo%resinf = maxval(abs(finfo%resvec(:)))
     if(allocated(finfo%gradvec)) &
@@ -179,6 +197,10 @@ contains
     cinfo%norm_g = finfo%norm_g
     cinfo%scaled_g = finfo%scaled_g
     cinfo%external_return = finfo%external_return
+    do i = 1,len(finfo%external_name)
+       cinfo%external_name(i) = finfo%external_name(i:i)
+    end do
+    cinfo%external_name(len(finfo%external_name) + 1) = C_NULL_CHAR
 
   end subroutine copy_info_out
 
@@ -265,6 +287,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%scale_trim_max = foptions%scale_trim_max
   coptions%scale_trim_min = foptions%scale_trim_min
   coptions%scale_require_increase = foptions%scale_require_increase
+  coptions%calculate_svd_J = foptions%calculate_svd_J
   coptions%more_sorensen_maxits = foptions%more_sorensen_maxits
   coptions%more_sorensen_shift = foptions%more_sorensen_shift
   coptions%more_sorensen_tiny = foptions%more_sorensen_tiny
