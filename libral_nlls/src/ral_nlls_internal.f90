@@ -183,7 +183,7 @@ module ral_nlls_internal
 
 !  which linear least squares solver should we use?
      
-     INTEGER :: lls_solver
+     INTEGER :: lls_solver = 1
         
 !   overall convergence tolerances. The iteration will terminate when the
 !     norm of the gradient of the objective function is smaller than 
@@ -225,9 +225,9 @@ module ral_nlls_internal
 !    increased if this relative decrease is greater than %eta_very_successful
 !    but smaller than %eta_too_successful
 
-     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 6 )! ten ** ( - 8 ) 
-     REAL ( KIND = wp ) :: eta_success_but_reduce = ten ** ( - 2 ) !0.25_wp
-     REAL ( KIND = wp ) :: eta_very_successful = 0.75_wp!point9 
+     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 8 )! ten ** ( - 8 ) 
+     REAL ( KIND = wp ) :: eta_success_but_reduce = ten ** ( - 8 ) !0.25_wp
+     REAL ( KIND = wp ) :: eta_very_successful = point9!0.75_wp!point9 
      REAL ( KIND = wp ) :: eta_too_successful = two
 
 !   on very successful iterations, the trust-region radius will be increased by
@@ -264,7 +264,7 @@ module ral_nlls_internal
 !   shall we use explicit second derivatives, or approximate using a secant 
 !   method
      
-     LOGICAL :: exact_second_derivatives = .true.
+     LOGICAL :: exact_second_derivatives = .false.!.true.
       
 !   is the Hessian matrix of second derivatives available or is access only
 !    via matrix-vector products?
@@ -334,10 +334,10 @@ module ral_nlls_internal
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! what's the tolerance such that ||J^T f || < tol * 0.5 ||f||^2 triggers a switch
-    real(wp) :: hybrid_tol = 0.02
+    real(wp) :: hybrid_tol = 2.0!0.02
 
 ! how many successive iterations does the above condition need to hold before we switch?
-    integer  :: hybrid_switch_its = 3
+    integer  :: hybrid_switch_its = 1!3
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! O U T P U T   C O N T R O L S !!!
