@@ -551,33 +551,94 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
       nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform);
    }
    switch(inform.status) {
-      case 0: // Clean exit
-         break;
-      case -1: // Exceeded max itr
-         PyErr_SetString(PyExc_RuntimeError,
-               "Exceeded maximum number of iterations");
-         goto fail;
-      case -2: // Error return from evaluation of f/J/Hr
-         // No error msg, allow existing one to propagate
-         goto fail;
-      case -3: // Unsupported choice of model
-         PyErr_SetString(PyExc_RuntimeError,
-               "Bad model");
-         goto fail;
-      default: ; // empty statement for language conformatity.
-         char errmsg[100];
-         sprintf(errmsg, "NLLS_SOLVE failed with unrecognised error code %d\n",
-               inform.status);
-         PyErr_SetString(PyExc_RuntimeError, errmsg);
-         goto fail;
+   case 0: // Clean exit
+     break;
+   case -1: // Exceeded max itr
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Exceeded maximum number of iterations");
+     goto output;
+   case -2: // Error return from evaluation of f/J/Hr
+     // No error msg, allow existing one to propagate
+     goto fail;
+   case -3: // Unsupported choice of model
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Bad model");
+     goto fail;
+   case -4: // Error from external
+     PyErr_SetString(PyExc_RuntimeError,
+		     "External routine gave an error");
+     goto fail;
+   case -5: // Unsupported method
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Bad method");
+     goto fail;
+   case -6: // Allocation error
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Error allocating memory");
+     goto fail;
+   case -7: // max_tr_reductions
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Max number of TR reductions");
+     goto output;
+   case -8: // no progress in x
+     PyErr_SetString(PyExc_RuntimeError,
+		     "No progress in x");
+     goto output;
+   case -9: //n_gt_m
+     PyErr_SetString(PyExc_RuntimeError,
+		     "n > m");
+     goto fail;
+   case -10: //bad_tr_strategy
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Bad trust region strategy");
+     goto fail;
+   case -11: // find_beta
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Error in find_beta");
+     goto output;
+   case -12: // bad_scaling
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Bad trust region strategy");
+     goto fail;
+   case -101: // dogleg_model
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Bad model for dogleg");
+     goto fail;
+   case -201: // aint_eig_imag
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Error in aint_eig_imag");
+     goto output;
+   case -202: // aint_eig_odd
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Error in aint_eig_odd");
+     goto output;
+   case -301: // ms_maxits
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Max iters reached in More Sorensen");
+     goto output;
+   case -302: // ms_too_many_shifts
+     PyErr_SetString(PyExc_RuntimeError,
+		     "Too many shifts in More-sorensen");
+     goto output;
+   case -303: // ms_no_progress
+     PyErr_SetString(PyExc_RuntimeError,
+		     "No progress in More Sorensen");
+     goto output;
+   default: ; // empty statement for language conformatity.
+     char errmsg[100];
+     sprintf(errmsg, "NLLS_SOLVE failed with unrecognised error code %d\n",
+	     inform.status);
+     PyErr_SetString(PyExc_RuntimeError, errmsg);
+     goto fail;
    }
 
    /* Free references and return solution */
+ output:
    Py_DECREF(x0); x0=NULL;
    PyObject *pyinfo = make_info_dict(&inform);
    return Py_BuildValue("(OO)", x, pyinfo);
-
-   fail:
+   
+ fail:
    Py_XDECREF(arglist); Py_XDECREF(result);
    Py_XDECREF(x0); Py_XDECREF(f); Py_XDECREF(x);
    return NULL;
