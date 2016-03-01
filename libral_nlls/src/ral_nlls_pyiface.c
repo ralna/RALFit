@@ -232,13 +232,220 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          continue;
       }
       if(strcmp(key_name, "relative_tr_radius")==0) {
-         long v = PyInt_AsLong(value);
-         if(v==-1 && PyErr_Occurred()) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_RuntimeError, "options['relative_tr_radius'] must be an integer.");
             return false;
+	}
+	options->relative_tr_radius = (int) v;
+	continue;
+      }
+      if(strcmp(key_name, "initial_radius_scale")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['initial_radius_scale'] must be a float.");
+            return false;
          }
-         options->relative_tr_radius = (int) v;
+         options->initial_radius_scale = v;
          continue;
+      }
+      if(strcmp(key_name, "initial_radius")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['initial_radius'] must be a float.");
+            return false;
+         }
+         options->initial_radius = v;
+         continue;
+      }
+      if(strcmp(key_name, "maximum_radius")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['maximum_radius'] must be a float.");
+            return false;
+         }
+         options->maximum_radius = v;
+         continue;
+      }
+      if(strcmp(key_name, "eta_successful")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['eta_successful'] must be a float.");
+            return false;
+         }
+         options->eta_successful = v;
+         continue;
+      }
+      if(strcmp(key_name, "eta_success_but_reduce")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['eta_success_but_reduce'] must be a float.");
+            return false;
+         }
+         options->eta_success_but_reduce = v;
+         continue;
+      }
+      if(strcmp(key_name, "eta_very_successful")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['eta_very_successful'] must be a float.");
+            return false;
+         }
+         options->eta_very_successful = v;
+         continue;
+      }
+      if(strcmp(key_name, "eta_too_successful")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['eta_too_successful'] must be a float.");
+            return false;
+         }
+         options->eta_too_successful = v;
+         continue;
+      }
+      if(strcmp(key_name, "radius_increase")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['radius_increase'] must be a float.");
+            return false;
+         }
+         options->radius_increase = v;
+         continue;
+      }
+      if(strcmp(key_name, "radius_reduce")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['radius_reduce'] must be a float.");
+            return false;
+         }
+         options->radius_reduce = v;
+         continue;
+      }
+      if(strcmp(key_name, "radius_reduce_max")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['radius_reduce_max'] must be a float.");
+            return false;
+         }
+         options->radius_reduce_max = v;
+         continue;
+      }
+      if(strcmp(key_name, "tr_update_strategy")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['tr_update_strategy'] must be a float.");
+            return false;
+	}
+	options->tr_update_strategy = v;
+	continue;
+      }
+      if(strcmp(key_name, "hybrid_switch")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['hybrid_switch'] must be a float.");
+            return false;
+         }
+         options->hybrid_switch = v;
+         continue;
+      }
+      // bool: exact_second_derivatives
+      // bool: subproblem_eig_fact
+      //      if (strcmp(key_name, "subproblem_eig_fact")==0) {
+      //	bool v = PyBool
+      //      }
+      if(strcmp(key_name, "scale")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['scale'] must be a float.");
+            return false;
+	}
+	options->scale = v;
+	continue;
+      }
+      if(strcmp(key_name, "scale_max")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['scale_max'] must be a float.");
+            return false;
+         }
+         options->scale_max = v;
+         continue;
+      }
+      if(strcmp(key_name, "scale_min")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['scale_min'] must be a float.");
+            return false;
+         }
+         options->scale_min = v;
+         continue;
+      }
+      // bool :: scale_trim_min
+      // bool :: scale_trim_max
+      // bool :: scale_require_increase
+      // bool :: calculate_svd
+      if(strcmp(key_name, "more_sorensen_maxits")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['more_sorensen_maxits'] must be a float.");
+            return false;
+	}
+	options->more_sorensen_maxits = v;
+	continue;
+      }
+      if(strcmp(key_name, "more_sorensen_shift")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['more_sorensen_shift'] must be a float.");
+            return false;
+         }
+         options->more_sorensen_shift = v;
+         continue;
+      }
+      if(strcmp(key_name, "more_sorensen_tiny")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['more_sorensen_tiny'] must be a float.");
+            return false;
+         }
+         options->more_sorensen_tiny = v;
+         continue;
+      }
+      if(strcmp(key_name, "more_sorensen_tol")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['more_sorensen_tol'] must be a float.");
+            return false;
+         }
+         options->more_sorensen_tol = v;
+         continue;
+      }
+      if(strcmp(key_name, "more_sorensen_tol")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['more_sorensen_tol'] must be a float.");
+            return false;
+         }
+         options->more_sorensen_tol = v;
+         continue;
+      }
+      if(strcmp(key_name, "hybrid_tol")==0) {
+         double v = PyFloat_AsDouble(value);
+         if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['hybrid_tol'] must be a float.");
+            return false;
+         }
+         options->hybrid_tol = v;
+         continue;
+      }
+      if(strcmp(key_name, "hybrid_switch_its")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['hybrid_switch_its'] must be a float.");
+            return false;
+	}
+	options->hybrid_switch_its = v;
+	continue;
       }
       // If we reach this point, unreconised option
       char errmsg[200];
