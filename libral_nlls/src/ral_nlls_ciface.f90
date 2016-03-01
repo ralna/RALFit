@@ -29,6 +29,7 @@ module ral_nlls_ciface
      real(wp) :: initial_radius
      real(wp) :: maximum_radius
      real(wp) :: eta_successful
+     real(wp) :: eta_success_but_reduce
      real(wp) :: eta_very_successful
      real(wp) :: eta_too_successful
      real(wp) :: radius_increase
@@ -140,6 +141,7 @@ contains
     foptions%initial_radius = coptions%initial_radius
     foptions%maximum_radius = coptions%maximum_radius
     foptions%eta_successful = coptions%eta_successful
+    foptions%eta_success_but_reduce = coptions%eta_success_but_reduce
     foptions%eta_very_successful = coptions%eta_very_successful
     foptions%eta_too_successful = coptions%eta_too_successful
     foptions%radius_increase = coptions%radius_increase

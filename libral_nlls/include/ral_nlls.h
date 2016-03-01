@@ -41,6 +41,7 @@ struct ral_nlls_options_d {
   ral_nllspkgtype_d_ initial_radius; /* initial trust region radius */
   ral_nllspkgtype_d_ maximum_radius; /* maximux trust region radius */
   ral_nllspkgtype_d_ eta_successful; /* trust region step successful level */
+  ral_nllspkgtype_d_ eta_success_but_reduce;
   ral_nllspkgtype_d_ eta_very_successful; /* trust region step very successful */
   ral_nllspkgtype_d_ eta_too_successful; /* trust region step too successful */
   ral_nllspkgtype_d_ radius_increase; /* how much to increase the radius by? */
