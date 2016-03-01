@@ -468,8 +468,8 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyDict_SetItemString(pyinfo, "convergence_normf",
          PyInt_FromLong(inform->convergence_normf)
          );
-   PyDict_SetItemString(pyinfo, "resinf", PyFloat_FromDouble(inform->resinf));
-   PyDict_SetItemString(pyinfo, "gradinf", PyFloat_FromDouble(inform->gradinf));
+   //   PyDict_SetItemString(pyinfo, "resinf", PyFloat_FromDouble(inform->resinf));
+   //   PyDict_SetItemString(pyinfo, "gradinf", PyFloat_FromDouble(inform->gradinf));
    PyDict_SetItemString(pyinfo, "obj", PyFloat_FromDouble(inform->obj));
    PyDict_SetItemString(pyinfo, "norm_g", PyFloat_FromDouble(inform->norm_g));
    PyDict_SetItemString(pyinfo, "scaled_g",
