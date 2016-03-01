@@ -44,7 +44,6 @@ echo "passed"
 
 # run the sample programs...
 echo "C example...."
-$NLLS_EXAMPLE/C/nlls_c_example
 $NLLS_EXAMPLE/C/nlls_c_example | diff $NLLS_TEST_SRC/nlls_c_example.output -
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 5
