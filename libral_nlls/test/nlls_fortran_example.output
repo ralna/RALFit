@@ -1,6 +1,6 @@
- Found a local optimum at x =    2.5410457061538470       0.25950480010020283     
+ Found a local optimum at x =    2.5410456963758774       0.25950480056308051     
  Residuals = 
  Took            5  iterations
                  6  function evaluations
                  6  gradient evaluations
-                 2  hessian evaluations
+                 5  hessian evaluations
