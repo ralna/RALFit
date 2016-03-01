@@ -1,7 +1,9 @@
 #!/bin/bash
 
-NLLS_DEBUG=$RAL_NLLS../debug/
-NLLS_TEST_SRC=$RAL_NLLS../test/
+NLLS_BASE=$RAL_NLLS..
+NLLS_DEBUG=$NLLS_BASE/build/
+#debug/
+NLLS_TEST_SRC=$NLLS_BASE/test/
 NLLS_TEST=$NLLS_DEBUG/test/
 NLLS_EXAMPLE=$NLLS_DEBUG/example/
 
@@ -9,7 +11,15 @@ make -C $NLLS_DEBUG
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 1
 
+cd $NLLS_BASE
+rm ral_nlls.so
+python setup.py build_ext --inplace
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 10
+
 echo "cutest example..."
+cp $NLLS_TEST_SRC/comparison_tests/control_files/TESTSPEC \
+    $NLLS_TEST_SRC/comparison_tests/cutest/sif/RAL_NLLS.SPC
 cd $NLLS_TEST_SRC/comparison_tests/cutest/sif/
 runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF | \
     diff <(head -n 165 $NLLS_TEST_SRC/rat43.output) <(head -n 165 -)
@@ -43,9 +53,15 @@ echo "passed"
 echo "Fortran example..."
 $NLLS_EXAMPLE/Fortran/nlls_example | \
     diff $NLLS_TEST_SRC/nlls_fortran_example.output -
-
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 6
+echo "passed"
+
+# python!
+echo "Python example..."
+$NLLS_BASE/example/Python/solve.py | diff $NLLS_TEST_SRC/solve_python.output -
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 7
 echo "passed"
 
 #[ $RESULT -ne 0 ] && exit 1
