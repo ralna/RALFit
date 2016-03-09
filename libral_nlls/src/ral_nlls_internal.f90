@@ -91,95 +91,23 @@ module ral_nlls_internal
 
      INTEGER :: maxit = 100
 
-!   removal of the file alive_file from unit alive_unit terminates execution
-
-!$$     INTEGER :: alive_unit = 40
-!$$     CHARACTER ( LEN = 30 ) :: alive_file = 'ALIVE.d'
-
-!   non-monotone <= 0 monotone strategy used, anything else non-monotone
-!     strategy with this history length used
-
-!$$     INTEGER :: non_monotone = 1
-
 !   specify the model used. Possible values are
 !
 !      0  dynamic (*not yet implemented*)
 !      1  Gauss-Newton (no 2nd derivatives)
 !      2  second-order (exact Hessian)
-!      3  barely second-order (identity Hessian)
-!      4  secant second-order (sparsity-based)
-!      5  secant second-order (limited-memory BFGS, with %lbfgs_vectors history)
-!      6  secant second-order (limited-memory SR1, with %lbfgs_vectors history)
-!      7  hybrid (Gauss-Newton until gradient small, then Newton)
-!      8  hybrid (Newton first, then Gauss-Newton)
 !      9  hybrid (using Madsen, Nielsen and Tingleff's method)    
  
      INTEGER :: model = 9
 
-!   specify the norm used. The norm is defined via ||v||^2 = v^T P v,
-!    and will define the preconditioner used for iterative methods.
-!    Possible values for P are
-!
-!     -3  user's own norm
-!     -2  P = limited-memory BFGS matrix (with %lbfgs_vectors history)
-!     -1  identity (= Euclidan two-norm)
-!      0  automatic (*not yet implemented*)
-!      1  diagonal, P = diag( max( Hessian, %min_diagonal ) )
-!      2  banded, P = band( Hessian ) with semi-bandwidth %semi_bandwidth
-!      3  re-ordered band, P=band(order(A)) with semi-bandwidth %semi_bandwidth
-!      4  full factorization, P = Hessian, Schnabel-Eskow modification
-!      5  full factorization, P = Hessian, GMPS modification (*not yet *)
-!      6  incomplete factorization of Hessian, Lin-More'
-!      7  incomplete factorization of Hessian, HSL_MI28
-!      8  incomplete factorization of Hessian, Munskgaard (*not yet *)
-!      9  expanding band of Hessian (*not yet implemented*)
-!
-!$$     INTEGER :: norm = 1
-
-
-     INTEGER :: nlls_method = 4
 
 !   specify the method used to solve the trust-region sub problem
 !      1 Powell's dogleg
 !      2 AINT method (of Yuji Nat.)
 !      3 More-Sorensen
 !      4 Galahad's DTRS
-!      ...
 
-!   specify the semi-bandwidth of the band matrix P if required
-
-!$$     INTEGER :: semi_bandwidth = 5
-
-!   number of vectors used by the L-BFGS matrix P if required
-
-!$$     INTEGER :: lbfgs_vectors = 10
-
-!   number of vectors used by the sparsity-based secant Hessian if required
-
-!$$     INTEGER :: max_dxg = 100
-
-!   number of vectors used by the Lin-More' incomplete factorization 
-!    matrix P if required
-
-!$$     INTEGER :: icfs_vectors = 10
-
-!  the maximum number of fill entries within each column of the incomplete 
-!  factor L computed by HSL_MI28. In general, increasing mi28_lsize improves
-!  the quality of the preconditioner but increases the time to compute
-!  and then apply the preconditioner. Values less than 0 are treated as 0
-
-!$$     INTEGER :: mi28_lsize = 10
-
-!  the maximum number of entries within each column of the strictly lower 
-!  triangular matrix R used in the computation of the preconditioner by 
-!  HSL_MI28.  Rank-1 arrays of size mi28_rsize *  n are allocated internally 
-!  to hold R. Thus the amount of memory used, as well as the amount of work
-!  involved in computing the preconditioner, depends on mi28_rsize. Setting
-!  mi28_rsize > 0 generally leads to a higher quality preconditioner than
-!  using mi28_rsize = 0, and choosing mi28_rsize >= mi28_lsize is generally 
-!  recommended
-
-!$$     INTEGER :: mi28_rsize = 10
+     INTEGER :: nlls_method = 4
 
 !  which linear least squares solver should we use?
      
@@ -192,12 +120,6 @@ module ral_nlls_internal
 
      REAL ( KIND = wp ) :: stop_g_absolute = tenm5
      REAL ( KIND = wp ) :: stop_g_relative = tenm8
-!$$     REAL ( KIND = wp ) :: stop_s = epsmch
-
-!   try to pick a good initial trust-region radius using %advanced_start
-!    iterates of a variant on the strategy of Sartenaer SISC 18(6)1990:1788-1803
-     
-!$$     INTEGER :: advanced_start = 0
      
 !   should we scale the initial trust region radius?
      
@@ -207,13 +129,12 @@ module ral_nlls_internal
 !   Madsen, Nielsen and Tingleff say pick this to be 1e-6, say, if x_0 is good,
 !   otherwise 1e-3 or even 1 would be good starts...
      
-     real (kind = wp) :: initial_radius_scale = 1.0!tenm3
+     real (kind = wp) :: initial_radius_scale = 1.0
 
 !   if relative_tr_radius /= 1, then set the 
 !   initial value for the trust-region radius (-ve => ||g_0||)
      
      REAL ( KIND = wp ) :: initial_radius = hundred
-
      
 !   maximum permitted trust-region radius
 
@@ -244,38 +165,15 @@ module ral_nlls_internal
 !    2 - continuous method of Hans Bruun Nielsen (IMM-REP-1999-05)
      integer :: tr_update_strategy = 1
        
-!   the smallest value the objective function may take before the problem
-!    is marked as unbounded
-
-!$$     REAL ( KIND = wp ) :: obj_unbounded = - epsmch ** ( - 2 )
-
 !   if model=7, then the value with which we switch on second derivatives
      
      real ( kind = wp ) :: hybrid_switch = 0.1_wp
-
-!   the maximum CPU time allowed (-ve means infinite)
-     
-!$$     REAL ( KIND = wp ) :: cpu_time_limit = - one
-
-!   the maximum elapsed clock time allowed (-ve means infinite)
-
-!$$     REAL ( KIND = wp ) :: clock_time_limit = - one
  
 !   shall we use explicit second derivatives, or approximate using a secant 
 !   method
      
-     LOGICAL :: exact_second_derivatives = .false.!.true.
+     LOGICAL :: exact_second_derivatives = .false.
       
-!   is the Hessian matrix of second derivatives available or is access only
-!    via matrix-vector products?
-
-!     LOGICAL :: hessian_available = .TRUE.
-
-!   use a direct (factorization) or (preconditioned) iterative method to 
-!    find the search direction
-
-!$$     LOGICAL :: subproblem_direct = .FALSE.
-
 !   use a factorization (dsyev) to find the smallest eigenvalue for the subproblem
 !    solve? (alternative is an iterative method (dsyevx)
      LOGICAL :: subproblem_eig_fact = .FALSE. ! undocumented....
@@ -286,37 +184,12 @@ module ral_nlls_internal
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
 !       tiny values get set to one       
 !   2 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
-!   3 - scale using the eigenvalues (not yet robust)     
      INTEGER :: scale = 1
      REAL(wp) :: scale_max = 1e11
      REAL(wp) :: scale_min = 1e-11
      LOGICAL :: scale_trim_min = .FALSE.
      LOGICAL :: scale_trim_max = .TRUE.
      LOGICAL :: scale_require_increase = .FALSE.
-
-!   is a retrospective strategy to be used to update the trust-region radius?
-
-!$$     LOGICAL :: retrospective_trust_region = .FALSE.
-
-!   should the radius be renormalized to account for a change in preconditioner?
-
-!$$     LOGICAL :: renormalize_radius = .FALSE.
-
-!   if %space_critical true, every effort will be made to use as little
-!    space as possible. This may result in longer computation time
-     
-!$$     LOGICAL :: space_critical = .FALSE.
-       
-!   if %deallocate_error_fatal is true, any array/pointer deallocation error
-!     will terminate execution. Otherwise, computation will continue
-
-!$$     LOGICAL :: deallocate_error_fatal = .FALSE.
-
-!  all output lines will be prefixed by %prefix(2:LEN(TRIM(%prefix))-1)
-!   where %prefix contains the required string enclosed in 
-!   quotes, e.g. "string" or 'string'
-
-!$$     CHARACTER ( LEN = 30 ) :: prefix = '""                            '    
 
      logical :: calculate_svd_J = .true.
 
@@ -357,11 +230,7 @@ module ral_nlls_internal
   TYPE, PUBLIC :: nlls_inform
      
 !  return status
-!   1 -- maximum number of iterations reached
-!   2 -- error from evaluating a function/Jacobian/Hessian
-!   3 -- unsupported choice of model
-!   4 -- error return from an lapack routine
-     
+!  (see ERROR type for descriptions)     
      INTEGER :: status = 0
 
 ! error message     
@@ -421,30 +290,6 @@ module ral_nlls_internal
 
      real(wp), allocatable :: largest_sv(:)
 
-!  the maximum number of factorizations in a sub-problem solve
-
-!$$     INTEGER :: factorization_max = 0
-
-!  the return status from the factorization
-
-!$$     INTEGER :: factorization_status = 0
-
-!   the maximum number of entries in the factors
-
-!$$     INTEGER ( KIND = long ) :: max_entries_factors = 0
-
-!  the total integer workspace required for the factorization
-
-!$$     INTEGER :: factorization_integer = - 1
-
-!  the total real workspace required for the factorization
-
-!$$     INTEGER :: factorization_real = - 1
-
-!  the average number of factorizations per sub-problem solve
-
-!$$     REAL ( KIND = wp ) :: factorization_average = zero
-
 !  the value of the objective function at the best estimate of the solution 
 !   determined by NLLS_solve
 
@@ -466,46 +311,6 @@ module ral_nlls_internal
 ! name of external program that threw and error
      
      CHARACTER ( LEN = 80 ) :: external_name = REPEAT( ' ', 80 )
-
-!  the total CPU time spent in the package
-
-!$$     REAL :: cpu_total = 0.0
-       
-!  the CPU time spent preprocessing the problem
-
-!$$     REAL :: cpu_preprocess = 0.0
-
-!  the CPU time spent analysing the required matrices prior to factorization
-
-!$$     REAL :: cpu_analyse = 0.0
-
-!  the CPU time spent factorizing the required matrices
-     
-!$$     REAL :: cpu_factorize = 0.0
-       
-!  the CPU time spent computing the search direction
-
-!$$     REAL :: cpu_solve = 0.0
-
-!  the total clock time spent in the package
-
-!$$     REAL ( KIND = wp ) :: clock_total = 0.0
-       
-!  the clock time spent preprocessing the problem
-
-!$$     REAL ( KIND = wp ) :: clock_preprocess = 0.0
-       
-!  the clock time spent analysing the required matrices prior to factorization
-
-!$$     REAL ( KIND = wp ) :: clock_analyse = 0.0
-       
-!  the clock time spent factorizing the required matrices
-
-!$$     REAL ( KIND = wp ) :: clock_factorize = 0.0
-     
-!  the clock time spent computing the search direction
-
-!$$     REAL ( KIND = wp ) :: clock_solve = 0.0
 
   END TYPE nlls_inform
   
@@ -666,7 +471,7 @@ module ral_nlls_internal
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, apply_scaling
-    public :: ERROR, nlls_strerror
+    public :: ERROR
     
 contains
 
@@ -701,7 +506,12 @@ contains
    END SUBROUTINE calculate_step
    
    subroutine apply_scaling(J,n,m,A,v,w,options,inform)
-     real(wp), intent(in) :: J(*)
+     !-------------------------------
+     ! apply_scaling
+     ! input :: Jacobian matrix, J
+     ! ouput :: scaled Hessisan, H, and J^Tf, v.
+     !-------------------------------
+     real(wp), intent(in) :: J(*) 
      integer, intent(in) :: n,m
      real(wp), intent(inout) :: A(:,:)
      real(wp), intent(inout) :: v(:)

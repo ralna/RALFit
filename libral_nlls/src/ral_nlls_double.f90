@@ -204,8 +204,6 @@ contains
 
     ! Perform a single iteration of the RAL_NLLS loop
     
-!    calculate_svd_J = .true. ! todo :: make a control variable 
-
     if (w%first_call == 1) then
        ! This is the first call...allocate arrays, and get initial 
        ! function evaluations
@@ -238,6 +236,7 @@ contains
        end if
 
        if ( options%calculate_svd_J ) then
+          ! calculate the svd of J (if needed)
           call get_svd_J(n,m,w%J,&
                w%smallest_sv(1), w%largest_sv(1), &
                options,svdstatus,w%get_svd_J_ws)
@@ -255,7 +254,6 @@ contains
        w%g = -w%g
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
-!       if (options%model == 8 .or. options%model == 9) w%normJFold = normJF
        w%normJFold = w%normJF
 
        if (options%model == 9) then
@@ -527,14 +525,12 @@ contains
     ! Error in eval_J
     inform%external_name = 'eval_J'
     inform%status = ERROR%EVALUATION
-!    call eval_error(options,inform,'eval_J')
     goto 4000
 
 4020 continue
     ! Error in eval_F
     inform%external_name = 'eval_F'
     inform%status = ERROR%EVALUATION
-!    call eval_error(options,inform,'eval_F')
     goto 4000
 
 4030 continue
