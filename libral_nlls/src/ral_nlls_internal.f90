@@ -510,6 +510,10 @@ contains
      ! apply_scaling
      ! input :: Jacobian matrix, J
      ! ouput :: scaled Hessisan, H, and J^Tf, v.
+     !
+     ! Calculates a diagonal scaling W, stored in w%diag
+     ! updates v(i) -> (1/W_i) * v(i)
+     !         A(i,j) -> (1 / (W_i * W_j)) * A(i,j)
      !-------------------------------
      real(wp), intent(in) :: J(*) 
      integer, intent(in) :: n,m
