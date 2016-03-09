@@ -1917,56 +1917,6 @@ contains
 
       end subroutine get_svd_J
       
-      subroutine nlls_strerror(inform)!,error_string)
-        type( nlls_inform ), intent(inout) :: inform
-        
-        if ( inform%status == ERROR%MAXITS ) then
-           inform%error_message = 'Maximum number of iterations reached'
-        elseif ( inform%status == ERROR%EVALUATION ) then
-           write(inform%error_message,'(a,a,a,i0)') & 
-                'Error code from user-supplied subroutine ',trim(inform%external_name), & 
-                ' passed error = ', inform%external_return
-        elseif ( inform%status == ERROR%UNSUPPORTED_MODEL ) then
-           inform%error_message = 'Unsupported model passed in options'
-        elseif ( inform%status == ERROR%FROM_EXTERNAL ) then
-           write(inform%error_message,'(a,a,a,i0)') & 
-                'The external subroutine ',trim(inform%external_name), & 
-                ' passed error = ', inform%external_return
-           ! todo: adapt this to give the last called subroutine?
-        elseif ( inform%status == ERROR%UNSUPPORTED_METHOD ) then
-           inform%error_message = 'Unsupported nlls_method passed in options'
-        elseif ( inform%status == ERROR%ALLOCATION ) then
-           write(inform%error_message,'(a,a)') &
-                'Bad allocation of memory in ', trim(inform%bad_alloc)
-        elseif ( inform%status == ERROR%MAX_TR_REDUCTIONS ) then
-           inform%error_message = 'The trust region was reduced the maximum number of times'
-        elseif ( inform%status == ERROR%X_NO_PROGRESS ) then
-           inform%error_message = 'No progress made in X'
-        elseif ( inform%status == ERROR%N_GT_M ) then
-           inform%error_message = 'The problem is overdetermined'
-        elseif ( inform%status == ERROR%BAD_TR_STRATEGY ) then
-           inform%error_message = 'Unsupported tr_update_stategy passed in options'
-        elseif ( inform%status == ERROR%FIND_BETA ) then
-           inform%error_message = 'Unable to find suitable scalar in findbeta subroutine'
-        elseif ( inform%status == ERROR%BAD_SCALING ) then
-           inform%error_message = 'Unsupported value of scale passed in options'
-        elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
-           inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
-        elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
-           inform%error_message = 'All eigenvalues are imaginary (nlls_method=2)'
-        elseif ( inform%status == ERROR%AINT_EIG_ODD ) then
-           inform%error_message = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
-        elseif ( inform%status == ERROR%MS_MAXITS ) then
-           inform%error_message = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
-        elseif ( inform%status == ERROR%MS_TOO_MANY_SHIFTS ) then
-           inform%error_message = 'Too many shifts taken in more_sorensen (nlls_method=3)'
-        elseif ( inform%status == ERROR%MS_NO_PROGRESS ) then
-           inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
-        else 
-           inform%error_message = 'Unknown error number'           
-        end if
-        
-      end subroutine nlls_strerror
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!                                                       !!
