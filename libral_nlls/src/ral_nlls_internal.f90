@@ -750,18 +750,18 @@ contains
               w%diag(ii) = temp
            end if
         end do
-     case (3)
-        ! assuming problems are small...do an eigen-decomposition of H
-        write(*,*) '***** Warning ********'
-        write(*,*) '*    not robust      *'
-        write(*,*) '**********************'
-        call all_eig_symm(A,n,w%tempvec,w%ev,w%all_eig_symm_ws,inform)
-        if (inform%status .ne. 0) goto 1000
-        do ii = 1,n
-           ! plain version...
-           w%diag(n + 1 - ii) = w%tempvec(ii)
-        end do
-        ! todo : require_increase, test for trimming
+!!$     case (3)
+!!$        ! assuming problems are small...do an eigen-decomposition of H
+!!$        write(*,*) '***** Warning ********'
+!!$        write(*,*) '*    not robust      *'
+!!$        write(*,*) '**********************'
+!!$        call all_eig_symm(A,n,w%tempvec,w%ev,w%all_eig_symm_ws,inform)
+!!$        if (inform%status .ne. 0) goto 1000
+!!$        do ii = 1,n
+!!$           ! plain version...
+!!$           w%diag(n + 1 - ii) = w%tempvec(ii)
+!!$        end do
+!!$        ! todo : require_increase, test for trimming
      case default
         inform%status = ERROR%BAD_SCALING
         return
