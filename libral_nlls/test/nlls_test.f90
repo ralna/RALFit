@@ -151,6 +151,25 @@ program nlls_test
      end if
      options%relative_tr_radius = 0
 
+     ! Let's use a weighted least squares method
+     options%nlls_method = 4
+     options%model = 9
+     allocate(w(m))
+     do i = 1, m
+        w(i) = 2.0
+     end do
+     call nlls_solve(n, m, X,                         &
+                    eval_F, eval_J, eval_H, params,  &
+                    options, status, w )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge (weighted):'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+     deallocate(w)
+
      ! Let's do one run with non-exact second derivatives 
      options%nlls_method = 4
      options%model = 9
@@ -402,23 +421,23 @@ program nlls_test
           work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
-        write(*,*) 'Error: unexpected error in apply_scaling when scale = 3'
+        write(*,*) 'Error: unexpected error in apply_scaling when scale = 2'
         write(*,*) 'status = ', status%status,' returned.'
         no_errors_helpers = no_errors_helpers + 1
         status%status = 0 
      end if
 
-     !** scale = 3 **
-     options%scale = 3
-     call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
-          options,status)
-     if (status%status .ne. 0 ) then
-        write(*,*) 'Error: unexpected error in apply_scaling when scale = 4'
-        write(*,*) 'status = ', status%status,' returned.'
-        no_errors_helpers = no_errors_helpers + 1
-        status%status = 0 
-     end if
+!!$     !** scale = 3 **
+!!$     options%scale = 3
+!!$     call apply_scaling(w,n,m,A,y,& 
+!!$          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+!!$          options,status)
+!!$     if (status%status .ne. 0 ) then
+!!$        write(*,*) 'Error: unexpected error in apply_scaling when scale = 3'
+!!$        write(*,*) 'status = ', status%status,' returned.'
+!!$        no_errors_helpers = no_errors_helpers + 1
+!!$        status%status = 0 
+!!$     end if
 
      !** scale undefined
      options%scale = 786
