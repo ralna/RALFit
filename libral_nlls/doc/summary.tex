@@ -1,10 +1,10 @@
 % The beginning summary section
 {\tt \fullpackagename} computes a solution to the non-linear least-squares problem
 \begin{equation}
-\min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_2^2,
+\min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_{\vW}^2,
 \label{eq:nlls_problem}
 \end{equation}
-where $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is the non-linear residual of
+where $\vW\in\mathbb{R}^{m\times m}$ is a diagonal, non-negative, weighting matrix, and $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is the non-linear residual of
 some data that needs fitting.
 % the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
 % ($m>n$).
@@ -14,11 +14,11 @@ some data that needs fitting.
 The algorithm is iterative.
 At each point, $\iter{\vx}$, a quadratic model of the function
 \[
-F(\iter{\vx}) \approx \iter{m}(\vx) := {\iter{\vg}}^T \vx + \frac{1}{2} {\vx}^T \iter{\vH} \vx.
+F(\iter{\vx}) \approx \iter{m}(\vx) := {\iter{\vg}}^T\vx + \frac{1}{2} {\vx}^T \iter{\vH} \vx.
 \]
 is built.
-The `ideal' values in this model are $\iter{\vg} = {\iter{\vJ}}^T\vr(\iter{\vx})$ and
-$\iter{\vH} = {\iter{\vJ}}^T\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \nabla^2 \comp{r}(\iter{\vx})$,
+The `ideal' values in this model are $\iter{\vg} = {\iter{\vJ}}^T\vW\vr(\iter{\vx})$ and
+$\iter{\vH} = {\iter{\vJ}}^T\vW\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \vW\nabla^2 \comp{r}(\iter{\vx})$,
 where $\iter{\vJ}$ denotes the $m \times n$ Jacobian of $\vr(\vx)$ at the point $\iter{\vx}$
 and $\iter{\vH}$ is the Hessian at $\iter{\vx}$.
 
@@ -27,7 +27,7 @@ Once the model has been formed, a trust-region sub-problem of the form
 \vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,
 \]
 is solved,
-where $\Delta$ is the trust region radius and $B$ is a given symmetric positive definite matrix.
+where $\Delta$ is the trust region radius and $B$ is a symmetric positive definite weighting matrix.
 The quantity
 \[\rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \vd)}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \vd)}\]
 is then calculated.
@@ -35,5 +35,10 @@ If this is sufficiently large, the point is accepted and  $\iter[k+1]{\vx}$ is s
 is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one --
 the trust-region radius is increased.
 
-This process continues until either the residual, $\|\vr(\iter{\vx})\|_2$, or a measure of the gradient,
-$\|{\iter{\vJ}}^T\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_2$, is sufficiently small.
+This process continues until either the residual, $\|\vr(\iter{\vx})\|_\vW$, or a measure of the gradient,
+$\|{\iter{\vJ}}^T\vW\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_\vW$, is sufficiently small.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "nlls_fortran"
+%%% End: 

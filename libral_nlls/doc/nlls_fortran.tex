@@ -15,6 +15,7 @@
 \newcommand{\ronearrayinteger}[1]{is a rank-1 array of type {\tt INTEGER} and size {\tt #1} }
 \newcommand{\ronearrayreal}[1]{is a rank-1 array of package type and size {\tt #1}\ }
 \newcommand{\ronearrayrealii}[1]{is an \intentin rank-1 array of package type and size {\tt #1} }
+\newcommand{\ronearrayrealiiopt}[1]{is an optional \intentin rank-1 array of package type and size {\tt #1} }
 \newcommand{\ronearrayrealio}[1]{is an \intentout rank-1 array of package type and size {\tt #1} }
 \newcommand{\ct}{\%}
 \begin{document}
@@ -53,6 +54,7 @@ Access to the package requires a {\tt USE} statement \\ \\
 \vspace{-0.1cm}
 \begin{description}
 \item {\tt NLLS\_SOLVE}  solves the non-linear least squares problem (\ref{eq:nlls_problem}).
+\item {\tt NLLS\_ITERATE} performs one iteration for the non-linear least squares solver.
 \end{description}
 
 %%%%%%%%%%%%%%%%%%%%%% derived types %%%%%%%%%%%%%%%%%%%%%%%%
@@ -76,6 +78,14 @@ in Sections~\ref{typeoptions} and \ref{typeinform}.
 
 %%%%%%%%%%%%%%%%%%%%%% argument lists %%%%%%%%%%%%%%%%%%%%%%%%
 \hslarguments
+\subsubsection{Optional arguments}\label{Optional arguments}
+
+We use square brackets {\tt [ ]} to indicate \optional\ arguments.
+In each
+call, optional arguments follow the argument {\tt inform}.  Since we
+reserve the right to add additional optional arguments in future
+releases of the code, {\bf we strongly recommend that all optional
+arguments be called by keyword, not by position}.
 
 \subsubsection{Integer and package types}
 %{\tt INTEGER} denotes default {\tt INTEGER} and
@@ -90,7 +100,7 @@ double precision real for the double precision version.
 To solve the non-linear least squares problem a call of the following form should be made:
 
 \begin{verbatim}
-   call nlls_solve(n, m, X, eval_r, eval_J, eval_Hf, params, options, inform)
+   call nlls_solve(n, m, X, eval_r, eval_J, eval_Hf, params, options, inform[, weights])
 \end{verbatim}
 
 \begin{description}
@@ -114,7 +124,7 @@ Further details of the format required are given in Section~\ref{sec::function_e
 
 \itt{eval\_Hf} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$
 and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at $\iter{\vx}$.
-Further details of the format required are given in Section~\ref{sec::function_eval}.
+Further details of the format required are given in Section~\ref{sec::function_eval}.  If $NLLS\_options\%exact\_second\_derivative = .false.$, then this is not referenced.
 
 \itt{params} is an \intentin\ scalar of class {\tt params\_base\_type} that holds parameters to
 be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_Hf}.
@@ -127,6 +137,8 @@ Further details of its use are given in Section~\ref{sec::function_eval}.
 {\tt NLLS\_inform}. Its components provide information about the execution
 of the subroutine, as explained in Section~\ref{typeinform}.
 
+\itt{weights} \ronearrayrealiiopt{m}.  If present, {\tt weights} holds the square-roots of the 
+diagonal entries of the weighting matrix, $\vW$, in (\ref{eq:nlls_problem}).  If absent, then the norm in (\ref{eq:nlls_problem}) is taken to be the 2-norm, that is, $\vW = I$.
 
 \end{description}
 
@@ -136,7 +148,7 @@ Alternatively, the user may step through the solution process one iteration at
 a time by making a call of the following form:
 
 \begin{verbatim}
-   call nlls_iterate(n, m, X, w, eval_F, eval_J, eval_HF, params, options, inform)
+   call nlls_iterate(n, m, X, w, eval_F, eval_J, eval_HF, params, options, inform[, weights])
 \end{verbatim}
 
 \begin{description}
@@ -213,8 +225,8 @@ end interface
       the {\tt nlls\_solve} subroutine will exit with an error.
 \end{description}
 
-\subsubsection{For evaluating the function $J = \nabla \vr(\iter{\vx})$}
-A subroutine must be supplied to calculate $J = \nabla \vr(\iter{\vx})$ for a given vector $x$. It
+\subsubsection{For evaluating the function $J = \nabla \vr(x)$}
+A subroutine must be supplied to calculate $J = \nabla \vr(x)$ for a given vector $x$. It
 must implement the following interface:
 
 \begin{verbatim}
@@ -246,8 +258,8 @@ end interface
       the {\tt ral\_nlls} subroutine will exit with an error.
 \end{description}
 
-\subsubsection{For evaluating the function $HF = \sum_{i=1}^m \vr_i(x) \nabla^2 \vr_i(x)$}
-A subroutine must be supplied to calculate $HF = \sum_{i=1}^m \vr_i(x) \nabla^2 \vr_i(x)$ for a given vector $x$. It must implement the following interface:
+\subsubsection{For evaluating the function $HF = \sum_{i=1}^m \vr_i(x) \vW \nabla^2 \vr_i(x)$}
+A subroutine must be supplied to calculate $HF = \sum_{i=1}^m \vr_i \nabla^2 \vr_i(x)$ for given vectors $x \in \mathbb{R}^n$ and $r \in \mathbb{R}^m$. It must implement the following interface:
 
 \begin{verbatim}
 abstract interface
@@ -269,10 +281,10 @@ end interface
 
    \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(x)$.
 
-   \itt{r} holds $\vr(x)$, as returned by a previous call to \texttt{eval\_r}.
+   \itt{r} holds $\vW\vr(x)$, the return from previous call to \texttt{eval\_r}, which will have been weighted, if appropriate, by {\tt ral\_nlls}.
 
-   \itt{Hf} must be set by the routine to holds the matrix
-      $\sum_{i = 1}^m \comp{r}(\iter{\vx})\nabla^2\comp{r}(\iter{\vx})$, held
+   \itt{Hf} must be set by the routine to hold the matrix
+      $\sum_{i = 1}^m \comp{r}\nabla^2\comp{r}(\iter{\vx})$, held
       by columns as a vector.
 
    \itt{status} is initialised to \texttt{0} before the routine is called.
