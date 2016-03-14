@@ -1,4 +1,4 @@
-! ral_nlls_double :: a nonlinear least squares solver
+! ral_nlls_internal :: internal subroutines for ral_nlls
 
 module ral_nlls_internal
 
