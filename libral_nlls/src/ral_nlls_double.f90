@@ -78,7 +78,7 @@ contains
   SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
                          eval_F, eval_J, eval_HF,   & 
                          params,                    &
-                         options, inform )
+                         options, inform, weights )
     
 !  -----------------------------------------------------------------------------
 !  RAL_NLLS, a fortran subroutine for finding a first-order critical
@@ -99,6 +99,7 @@ contains
     procedure( eval_j_type ) :: eval_J
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
+    real( wp ), dimension( m ), intent(in), optional :: weights
       
     integer  :: i
     
@@ -136,11 +137,19 @@ contains
 
     main_loop: do i = 1,options%maxit
        
-       call nlls_iterate(n, m, X,                   & 
-                         w, &
-                         eval_F, eval_J, eval_HF,   & 
-                         params,                    &
-                         inform, options)
+       if ( present(weights) ) then
+          call nlls_iterate(n, m, X,      & 
+               w,                         &
+               eval_F, eval_J, eval_HF,   & 
+               params,                    &
+               inform, options, weights)
+       else
+          call nlls_iterate(n, m, X,      & 
+               w,                         &
+               eval_F, eval_J, eval_HF,   & 
+               params,                    &
+               inform, options)
+       end if
        ! test the returns to see if we've converged
 
        if (inform%status < 0) then 
@@ -182,7 +191,7 @@ contains
                           w,                         & 
                           eval_F, eval_J, eval_HF,   & 
                           params,                    &
-                          inform, options)
+                          inform, options, weights)
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
@@ -193,6 +202,7 @@ contains
     procedure( eval_j_type ) :: eval_J
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
+    REAL( wp ), DIMENSION( m ), INTENT( IN ), optional :: weights
       
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
@@ -217,10 +227,22 @@ contains
        call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
        if (inform%external_return .ne. 0) goto 4020
+       if ( present(weights)) then
+          ! set f -> Wf
+          w%f(1:m) = weights(1:m)*w%f(1:m)
+       end if
 
+       
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
        if (inform%external_return .ne. 0) goto 4010
+       if ( present(weights) ) then
+          ! set J -> WJ
+          do i = 1, n
+             w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
+          end do
+       end if
+       
        if (options%relative_tr_radius == 1) then 
           ! first, let's get diag(J^TJ)
           Jmax = 0.0
@@ -276,7 +298,11 @@ contains
           w%hf(1:n**2) = zero
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
-             call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
+             if ( present(weights) ) then
+                call eval_HF(inform%external_return, n, m, X, weights(1:m)*w%f, w%hf, params)
+             else
+                call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
+             end if
              inform%h_eval = inform%h_eval + 1
              if (inform%external_return > 0) goto 4030
           else
@@ -322,6 +348,10 @@ contains
        call eval_F(inform%external_return, n, m, w%Xnew, w%fnew, params)
        inform%f_eval = inform%f_eval + 1
        if (inform%external_return .ne. 0) goto 4020
+       if ( present(weights) ) then
+          ! set f -> Wf
+          w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
+       end if       
        normFnew = norm2(w%fnew)
        
        !++++++++++++++++++++++++++++!
@@ -372,6 +402,13 @@ contains
     call eval_J(inform%external_return, n, m, X, w%J, params)
     inform%g_eval = inform%g_eval + 1
     if (inform%external_return .ne. 0) goto 4010
+    if ( present(weights) ) then
+       ! set J -> WJ
+       do i = 1, n
+          w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
+       end do
+    end if
+    
     if ( options%calculate_svd_J ) then
        call get_svd_J(n,m,w%J,&
             w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
@@ -401,10 +438,17 @@ contains
     case (1) ! first-order
        continue
     case (2) ! second order
-       call apply_second_order_info(n,m, & 
-            X,w, & 
-            eval_Hf, &
-            params,options,inform)
+       if (present(weights)) then
+          call apply_second_order_info(n,m, & 
+               X,w, & 
+               eval_Hf, &
+               params,options,inform, weights)
+       else
+          call apply_second_order_info(n,m, & 
+               X,w, & 
+               eval_Hf, &
+               params,options,inform)
+       end if
        if (inform%external_return .ne. 0) goto 4030
     case (9)
        ! First, check if we need to switch methods

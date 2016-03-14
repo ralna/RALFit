@@ -1209,7 +1209,7 @@ contains
           X,w, & !f,hf,
           eval_Hf,&
           !          d, y, y_sharp, & 
-          params,options,inform)
+          params,options,inform,weights)
        integer, intent(in)  :: n, m 
        real(wp), intent(in) :: X(:)!, f(:)
 !       real(wp), intent(inout) :: hf(:)
@@ -1219,11 +1219,17 @@ contains
        class( params_base_type ) :: params
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
+       real(wp), intent(in), optional :: weights(:)
+       
        
        real(wp) :: yts, alpha, dSks
 
        if (options%exact_second_derivatives) then
-          call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
+          if ( present(weights) ) then
+             call eval_HF(inform%external_return, n, m, X, weights(1:m)*w%f, w%hf, params)
+          else
+             call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
+          end if
           inform%h_eval = inform%h_eval + 1
        else
 
