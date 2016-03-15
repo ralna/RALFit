@@ -215,15 +215,20 @@ contains
     ! Perform a single iteration of the RAL_NLLS loop
     
     if (w%first_call == 1) then
-       ! This is the first call...allocate arrays, and get initial 
-       ! function evaluations
+       !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+       !! This is the first call...allocate arrays, and get initial !!
+       !! function evaluations                                      !!
+       !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
        if ( options%print_level >= 3 )  write( options%out , 3000 ) 
+
        ! first, check if n < m
        if (n > m) goto 4070
-
+       
+       ! allocate space for vectors that will be used throughout the algorithm
        call setup_workspaces(w,n,m,options,inform)
        if ( inform%alloc_status > 0) goto 4000
 
+       ! evaluate the residual
        call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
        if (inform%external_return .ne. 0) goto 4020
@@ -232,7 +237,7 @@ contains
           w%f(1:m) = weights(1:m)*w%f(1:m)
        end if
 
-       
+       ! and evaluate the jacobian
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
        if (inform%external_return .ne. 0) goto 4010
@@ -288,6 +293,8 @@ contains
        inform%norm_g = w%normJF
        inform%scaled_g = w%normJF/w%normF
 
+       ! if we need to output vectors of the history of the residual
+       ! and gradient, the set the initial values
        if (options%output_progress_vectors) then
           w%resvec(1) = inform%obj
           w%gradvec(1) = inform%norm_g
