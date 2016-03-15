@@ -95,6 +95,7 @@ program nlls_test
                  write(*,*) 'nlls_solve failed to converge:'
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', options%model
+                 write(*,*) 'TR_UPDATE = ', tr_update
                  no_errors_main = no_errors_main + 1
               end if
 
