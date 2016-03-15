@@ -282,11 +282,6 @@ contains
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
        w%normJFold = w%normJF
-
-       if (options%model == 9) then
-          ! make this relative....
-          w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5*(w%normF**2)) )
-       end if
        
        ! save some data 
        inform%obj = 0.5 * ( w%normF**2 )
@@ -299,10 +294,12 @@ contains
           w%resvec(1) = inform%obj
           w%gradvec(1) = inform%norm_g
        end if
-
+       
+       !! Select the order of the model to be used..
        select case (options%model)
        case (1) ! first-order
           w%hf(1:n**2) = zero
+          w%use_second_derivatives = .false.
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
              if ( present(weights) ) then
@@ -316,7 +313,10 @@ contains
              ! S_0 = 0 (see Dennis, Gay and Welsch)
              w%hf(1:n**2) = zero
           end if
+          w%use_second_derivatives = .true.
        case (9) ! hybrid (MNT)
+          ! set the tolerance :: make this relative
+          w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5*(w%normF**2)) )                   
           ! use first-order method initially
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
@@ -440,25 +440,9 @@ contains
        w%y_sharp = w%g_mixed - w%g
 
     end if
-
-    select case (options%model) ! only update hessians than change..
-    case (1) ! first-order
-       continue
-    case (2) ! second order
-       if (present(weights)) then
-          call apply_second_order_info(n,m, & 
-               X,w, & 
-               eval_Hf, &
-               params,options,inform, weights)
-       else
-          call apply_second_order_info(n,m, & 
-               X,w, & 
-               eval_Hf, &
-               params,options,inform)
-       end if
-       if (inform%external_return .ne. 0) goto 4030
-    case (9)
-       ! First, check if we need to switch methods
+    
+    if (options%model == 9) then
+       ! hybrid method -- check if we need second derivatives
        
        if (w%use_second_derivatives) then 
           if (w%normJF > w%normJFold) then 
@@ -480,26 +464,34 @@ contains
              w%hybrid_count = 0
           end if
        end if
-       
-       if (w%use_second_derivatives) then 
+
+       if( .not. w%use_second_derivatives) then
+          ! call apply_second_order_info anyway, so that we update the
+          ! second order approximation
           call apply_second_order_info(n,m, &
-               X, w, & 
-               eval_Hf, &
-               params,options,inform)
-          if (inform%external_return .ne. 0) goto 4030
-       elseif (.not. options%exact_second_derivatives) then 
-          ! if exact_second_derivatives are not needed,
-          ! call apply_second_order info so that we update the approximation
-           call apply_second_order_info(n,m, &
                X,w, &
                eval_Hf, &
                params,options,inform)
           if (inform%external_return .ne. 0) goto 4030
           w%hf(1:n**2) = zero
-       else 
-          w%hf(1:n**2) = zero
        end if
-    end select
+
+    end if
+
+    if ( w%use_second_derivatives ) then 
+       if (present(weights)) then
+          call apply_second_order_info(n,m, & 
+               X,w, & 
+               eval_Hf, &
+               params,options,inform, weights)
+       else
+          call apply_second_order_info(n,m, & 
+               X,w, & 
+               eval_Hf, &
+               params,options,inform)
+       end if
+       if (inform%external_return .ne. 0) goto 4030
+    end if
 
     ! update the stats 
     inform%obj = 0.5*(w%normF**2)
