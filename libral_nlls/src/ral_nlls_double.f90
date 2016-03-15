@@ -449,6 +449,7 @@ contains
              ! switch to Gauss-Newton             
              if (options%print_level .ge. 3) write(options%out,3120) 
              w%use_second_derivatives = .false.
+             w%hf(1:n**2) = zero
           end if
        else
           FunctionValue = 0.5 * (w%normF**2)
@@ -471,7 +472,7 @@ contains
           if (.not. options%exact_second_derivatives) then
              call rank_one_update(w%hf,w,n)
           end if
-          w%hf(1:n**2) = zero
+!          w%hf(1:n**2) = zero
        end if
 
     end if
