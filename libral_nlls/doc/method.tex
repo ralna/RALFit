@@ -14,24 +14,37 @@ reduces the model by an acceptable amount.
 \begin{algorithm}
 \caption{nlls\_solve}
 \label{alg:nlls_solve}
-  \begin{algorithmic}
-    \State $ {\tt {\bf function} \  \tx = nlls\_solve}(\iter[0]{\tx},{\tt options})$
-    \State $\iter[0]{\tr} = {\tt eval\_r}(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt eval\_J}(\iter[0]{\tx})$
+  \begin{algorithmic}[1]
+    \State $ {\tt {\bf function} \  \tx = nlls\_solve}(\iter[0]{\tx},{\tt options[,W]})$
+    \If {$W$ not present}
+    \State ${\tt W=I}$
+    \EndIf
+    \State $\iter[0]{\tr} =  {\tt W * eval\_r}(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt W * eval\_J}(\iter[0]{\tx})$    
     \Comment Evaluate residual and Jacobian at initial guess
     \State $\Delta = {\tt options\ct initial\_radius}$
     \State $ \iter[0]{\tg} = - {\iter[0]{\tJ}}^T\iter[0]{\tr}$
-    \If {second-order information needed for model}
-      \If { {\tt options\ct exact\_second\_derivatives} }
-        \State $\iter[0]{\thess} = {\tt eval\_HF(\iter[0]{\tx},\iter[0]{\tr})}$
-      \Else
-        \State $\iter[0]{\thess} = {\tt 0}$
-      \EndIf
+    \If {{\tt options\%model == 1}}
+    \Comment Gauss-Newton model 
+    \State $\iter[0]{\thess} = {\tt 0}$
+    \State {\tt use\_second\_derivatives = false}
+    \ElsIf {{\tt options\%model == 2}}
+    \Comment (Quasi-)Newton 
+    \State $\iter[0]{\thess} = {\tt eval\_HF(\iter[0]{\tx},W * \iter[0]{\tr})}$
+    \State {\tt use\_second\_derivatives = true}
+    \ElsIf {{\tt options\%model = 9}}
+    \Comment Hybrid algorithm
+    \State {\tt hybrid\_tol = options\%hybrid\_tol * }${\tt (\| \iter[0]{\tg} \| / (0.5 * \|\iter[0]{\tr}\|^2) )}$
+    \State $\iter[0]{\thess} = {\tt 0}$
+    \Comment Use first-order information only initially
+    \State {\tt use\_second\_derivatives = false}
     \EndIf
     \For { $k = 0, \dots, {\tt options\ct maxit}$}
       \While{ ${\tt success} \ne  1$ } 
-        \State Calculate a potential step $\td$
+        \State ${\td}$ = \Call{{\tt calculate\_step}}{{$\tt 
+            \iter[k]{\tJ}, \iter[k]{\tr}, \iter[k]{\thess},\iter[k]{\tg},\Delta$}}
+        \Comment Calculate a potential step $\td$
         \State $\iter[k+1]{\tx} = \iter[k]{\tx} + \td$
-        \State $\iter[k+1]{\tr} = {\tt eval\_r}(\iter[k]{\tx})$
+        \State $\iter[k+1]{\tr} = {\tt W * eval\_r}(\iter[k]{\tx})$
         \Comment Evaluate the residual at the new point
         \State $\rho = 0.5 (\| \iter[k+1]{\tr} \|^2 - \| \iter[k]{\tr}\|^2)/(m_k(0) - m_k(\td)) $ 
         \Comment If model is good, $\rho$ should be close to one
@@ -40,14 +53,39 @@ reduces the model by an acceptable amount.
         \EndIf
         \State $\Delta = {\tt update\_trust\_region\_radius}(\Delta,\rho)$
       \EndWhile
-      \State $\iter[k+1]{\tJ} = {\tt eval\_J}(\iter[k+1]{\tx})$
+      \State $\iter[k+1]{\tJ} = {\tt W * eval\_J}(\iter[k+1]{\tx})$
       \Comment Evaluate the Jacobian at the new point
       \State $\iter[k+1]{\tg} = -{\iter[k+1]{\tJ}}^T\iter[k+1]{\tr}$
-      \If { ${\tt options\ct exact\_second\_derivatives \ne true}$ } 
+      \If {{\tt options\%model == 9}}
+        \If {{\tt use\_second\_derivatives}}
+          \If { $\|\iter[k+1]{\tJ}\| > \|\iter[k]{\tJ} \| $}
+          \State {\tt use\_second\_derivatives = false}
+          \Comment Switch back to Gauss-Newton
+          \EndIf
+        \Else
+          \If { $\|\iter[k+1]{\tJ}\| / (0.5 * \|\iter[k+1]{\tr}\|^2 < \mathtt{hybrid\_tol})$}
+          \State {\tt hybrid\_count = hybrid\_count + 1}
+          \Comment Update the number of steps in a row this has failed
+          \If {{\tt hybrid\_count == options\%hybrid\_count\_switch\_its}}
+            \State {\tt use\_second\_derivatives = true}
+            \State {\tt hybrid\_count = 0}
+          \EndIf
+          \EndIf
+        \EndIf
       \EndIf
-      \If {second-order information needed for model}
+      \algstore{myalg}
+  \end{algorithmic}
+  
+\end{algorithm}
+
+\begin{algorithm}
+\caption{nlls\_solve (continued)}
+  \ContinuedFloat
+  \begin{algorithmic}
+    \algrestore{myalg}
+    \If { {\tt use\_second\_derivatives} } 
       \If { {\tt options\ct exact\_second\_derivatives} }
-        \State $\iter[k+1]{\thess} = {\tt eval\_HF(\iter[0]{\tx},\iter[0]{\tr})}$
+        \State $\iter[k+1]{\thess} = {\tt eval\_HF(\iter[0]{\tx},W\iter[0]{\tr})}$
       \Else
         \State $\ty = \iter[k]{\tg} - \iter[k+1]{\tg}$
         \State $\ty^\sharp = {\iter[k]{\tJ}}^T \iter[k+1]{\tr} - \iter[k+1]{\tg}$
@@ -56,10 +94,12 @@ reduces the model by an acceptable amount.
         \left(({\iter[k+1]{\ty}}^\sharp - \iter[k]{\thess}\td 
           )^T\td\right)/\ty^T\td$
       \EndIf
+    \ElsIf {{\tt options\%model==9}}
+    \State whats??
     \EndIf
     \EndFor
+
   \end{algorithmic}
-  
 \end{algorithm}
 
 
