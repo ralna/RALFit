@@ -468,11 +468,9 @@ contains
        if( .not. w%use_second_derivatives) then
           ! call apply_second_order_info anyway, so that we update the
           ! second order approximation
-          call apply_second_order_info(n,m, &
-               X,w, &
-               eval_Hf, &
-               params,options,inform)
-          if (inform%external_return .ne. 0) goto 4030
+          if (.not. options%exact_second_derivatives) then
+             call rank_one_update(w%hf,w,n)
+          end if
           w%hf(1:n**2) = zero
        end if
 
