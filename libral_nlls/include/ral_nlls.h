@@ -124,7 +124,8 @@ typedef int (*ral_nlls_eval_hf_type) (
 		     ral_nlls_eval_hf_type eval_hf,
 		     void const* params, 
 		     struct ral_nlls_options const* options,
-		     struct ral_nlls_inform *status
+		     struct ral_nlls_inform *status,
+		     ral_nllspkgtype_d_ weights[]
 		     );
 /* Initialise a workspace for use with ral_nlls_iterate_d() */
   void ral_nlls_init_workspace_d(void **w);
@@ -139,7 +140,8 @@ typedef int (*ral_nlls_eval_hf_type) (
 			ral_nlls_eval_hf_type eval_hf,
 			void const* params, 
 			struct ral_nlls_options const* options,
-			struct ral_nlls_inform *status
+			struct ral_nlls_inform *status,
+			ral_nllspkgtype_d_ weights[]
 			);
   /* get the error string */
   void nlls_strerror_d(

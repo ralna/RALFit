@@ -299,12 +299,12 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%output_progress_vectors = foptions%output_progress_vectors
 end subroutine ral_nlls_default_options_d
 
-subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform) bind(C)
+subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights) bind(C)
   use ral_nlls_ciface
   implicit none
 
   integer( C_INT ) , INTENT( IN ), value :: n, m
-  real( wp ), dimension(*) :: cx
+  real( c_double ), dimension(*) :: cx
   type( C_FUNPTR ), value :: r
   type( C_FUNPTR ), value :: j
   type( C_FUNPTR ), value :: hf
@@ -314,6 +314,9 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform) bind(C)
   type( params_wrapper ) :: fparams
   TYPE( f_nlls_options ) :: foptions
   TYPE( f_nlls_inform ) :: finform
+  TYPE( C_PTR ), value :: cweights
+  real( c_double ), dimension(:), pointer :: fweights
+!  real( wp ), dimension(*), optional :: cweights
 
   logical :: f_arrays
 
@@ -325,10 +328,19 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform) bind(C)
   call c_f_procpointer(hf, fparams%hf)
   fparams%params = params
 
-  call f_nlls_solve( n, m, cx, &
+  if (C_ASSOCIATED(cweights)) then
+     call c_f_pointer(cweights, fweights, shape = (/ m /) )
+     write(*,*) 'weights = ', fweights
+     call f_nlls_solve( n, m, cx, &
+       c_eval_r, c_eval_j,   &
+       c_eval_hf, fparams,   &
+       foptions,finform,fweights)
+  else
+     call f_nlls_solve( n, m, cx, &
        c_eval_r, c_eval_j,   &
        c_eval_hf, fparams,   &
        foptions,finform)
+  end if
 
   ! Copy data out
    call copy_info_out(finform, cinform)
@@ -363,12 +375,12 @@ subroutine ral_nlls_free_workspace_d(cw)
 end subroutine ral_nlls_free_workspace_d
 
 subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
-      cinform) bind(C)
+      cinform, cweights) bind(C)
   use ral_nlls_ciface
   implicit none
 
   integer( C_INT) , INTENT( IN ), value :: n, m
-  real( wp ), dimension(*) :: cx
+  real( c_double ), dimension(*) :: cx
   type( C_PTR), value :: cw
   type( C_FUNPTR ), value :: r
   type( C_FUNPTR ), value :: j
@@ -376,10 +388,12 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   type( C_PTR ), value :: params
   TYPE( nlls_options ) :: coptions
   TYPE( nlls_inform )  :: cinform
+  TYPE( C_PTR ), value :: cweights
 
   type( params_wrapper ) :: fparams
   TYPE( f_nlls_inform) :: finform
   TYPE( f_nlls_workspace ), pointer :: fw
+  real( c_double ), dimension(:), pointer :: fweights
   TYPE( f_nlls_options) :: foptions
 
   logical :: f_arrays
@@ -392,11 +406,20 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   call c_f_procpointer(hf, fparams%hf)
   call c_f_pointer(cw, fw)
   fparams%params = params
-
-  call f_nlls_iterate( n, m, cx, fw, &
-       c_eval_r, c_eval_j,   &
-       c_eval_hf, fparams,   &
-       finform, foptions)
+  
+  if (C_ASSOCIATED(cweights)) then
+     call c_f_pointer(cweights, fweights, shape = (/ m /) )
+     write(*,*) 'weights = ', fweights
+     call f_nlls_iterate( n, m, cx, fw, &
+          c_eval_r, c_eval_j,   &
+          c_eval_hf, fparams,   &
+          finform, foptions, fweights)
+  else
+     call f_nlls_iterate( n, m, cx, fw, &
+          c_eval_r, c_eval_j,   &
+          c_eval_hf, fparams,   &
+          finform, foptions)
+  end if
 
   ! Copy data out
   call copy_info_out(finform, cinform)

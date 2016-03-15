@@ -545,10 +545,10 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    if(!set_opts(&options, options_ptr)) goto fail;
    struct ral_nlls_inform inform;
    if(data.Hr) {
-      nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform);
+     nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform,NULL);
    } else {
       options.exact_second_derivatives = false;
-      nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform);
+      nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform,NULL);
    }
    switch(inform.status) {
    case 0: // Clean exit

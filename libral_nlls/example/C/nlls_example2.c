@@ -1,4 +1,4 @@
-// examples/C/nlls_example.c
+// examples/Fortran/nlls_example2.f90
 // 
 // Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 // For parameters x_1 and x_2, and input data (t_i, y_i)
@@ -77,12 +77,18 @@ int main(void) {
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
    struct ral_nlls_inform inform;
-   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, NULL);
+   double *weights;
+   weights =  malloc(m*sizeof(double)); // weights
+   for(int i=0; i<m; i++) weights[i] = 2.0;
+
+   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, weights);
    if(inform.status != 0) {
       printf("ral_nlls() returned with error flag %d\n", inform.status);
       return 1; // Error
    }
-
+   
+   free(weights);
+  
    // Print result
    printf ("Found a local optimum at x = %e %e\n", x[0], x[1]);
    printf ("Took %d iterations\n", inform.iter);

@@ -101,7 +101,8 @@ subroutine:
 \begin{verbatim}
    void nlls_solve( int n, int m, double X[], ral_nlls_eval_r_type eval_r,
       ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
-      void* params, struct nlls_options const* options, struct nlls_inform* inform)
+      void* params, struct nlls_options const* options, struct nlls_inform* inform,
+      double weights[])
 \end{verbatim}
 
 \begin{description}
@@ -136,6 +137,8 @@ of the subroutine, as explained in Section~\ref{typeinform}.
 \itt{options} specifies options that control the execution of the subroutine,
 see Section~\ref{typeoptions}.
 
+\itt{weights} may be {\tt NULL}, otherwise it is a rank-1 array of size {\tt m}. If present, {\tt weights} holds the square-roots of the 
+diagonal entries of the weighting matrix, $\vW$, in (\ref{eq:nlls_problem}).  If absent, then the norm in (\ref{eq:nlls_problem}) is taken to be the 2-norm, that is, $\vW = I$.
 \end{description}
 
 \subsubsection{To initialise a workspace for use with \texttt{ral\_nlls\_iterate()}}
@@ -159,12 +162,13 @@ a time by making a call of the following form:
 \begin{verbatim}
    void ral_nlls_iterate( int n, int m, double X[], void* workspace,
       ral_nlls_eval_r_type eval_r, ral_nlls_eval_j_type eval_j, ral_nlls_eval_hf_type eval_hf,
-      void* params, struct nlls_options const* options, struct nlls_inform* inform)
+      void* params, struct nlls_options const* options, struct nlls_inform* inform,
+      double weights[])
 \end{verbatim}
 
 \begin{description}
 
-\item[\normalfont \texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{options} and \texttt{inform}] are as described in Section~\ref{sec:solve}.
+\item[\normalfont \texttt{n}, \texttt{m}, \texttt{eval\_F}, \texttt{eval\_J}, \texttt{eval\_HF}, \texttt{params}, \texttt{options}, \texttt{inform}, and \texttt{weights}] are as described in Section~\ref{sec:solve}.
 
 \itt{X} is an array of size {\tt n}. On the first call, it must hold the initial guess for
 $\bm x$. On return it holds the value of $\bm x$ at the current iterate, and
@@ -243,7 +247,7 @@ non-zero return value will cause the least squares fitting to abort with an
 error code.
 
 \subsubsection{For evaluating the function $HF = \sum_{i=1}^m \vr_i(x) \nabla^2 \vr_i(x)$}
-A subroutine must be supplied to calculate $HF = \sum_{i=1}^m \vr_i(x) \nabla^2 \vr_i(x)$ for a given vector $x$. It must have the following signature
+A subroutine must be supplied to calculate $HF = \sum_{i=1}^m \vr_i \nabla^2 \vr_i(x)$ for given vectors $x \in \mathbb{R}^n$ and $r \in \mathbb{R}^m$. It must have the following signature
 
 \begin{verbatim}
 int eval_hf (int n, int m, void const* params, double const* x, double const* r, double* *HF);
