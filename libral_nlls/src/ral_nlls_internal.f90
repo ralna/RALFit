@@ -1250,7 +1250,7 @@ contains
           return
        end if
 
-       call mult_J(w%hf,n,n,w%d,w%Sks) ! hfs = S_k * d
+       call mult_J(hf,n,n,w%d,w%Sks) ! hfs = S_k * d
 
        w%ysharpSks = w%y_sharp - w%Sks
 
@@ -1258,18 +1258,18 @@ contains
        dSks = abs(dot_product(w%d,w%Sks))
        alpha = abs(dot_product(w%d,w%y_sharp))/ dSks
        alpha = min(one,alpha)
-       w%hf(:)  = alpha * w%hf(:)
+       hf(:)  = alpha * hf(:)
 
        ! update S_k (again, as in N&W, Section 10.2)
 
        ! hf = hf + (1/yts) (y# - Sk d)^T y:
        alpha = 1/yts
-       call dGER(n,n,alpha,w%ysharpSks,1,w%y,1,w%hf,n)
+       call dGER(n,n,alpha,w%ysharpSks,1,w%y,1,hf,n)
        ! hf = hf + (1/yts) y^T (y# - Sk d):
-       call dGER(n,n,alpha,w%y,1,w%ysharpSks,1,w%hf,n)
+       call dGER(n,n,alpha,w%y,1,w%ysharpSks,1,hf,n)
        ! hf = hf - ((y# - Sk d)^T d)/((yts)**2)) * y y^T
        alpha = -dot_product(w%ysharpSks,w%d)/(yts**2)
-       call dGER(n,n,alpha,w%y,1,w%y,1,w%hf,n)
+       call dGER(n,n,alpha,w%y,1,w%y,1,hf,n)
 
      end subroutine rank_one_update
 

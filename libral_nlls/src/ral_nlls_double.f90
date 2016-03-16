@@ -320,6 +320,10 @@ contains
           ! use first-order method initially
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
+          if (.not. options%exact_second_derivatives) then 
+             ! initialize hf_temp too 
+             w%hf_temp(1:n**2) = zero
+          end if
        case default
           goto 4040 ! unsupported model -- return to user
        end select
@@ -449,6 +453,8 @@ contains
              ! switch to Gauss-Newton             
              if (options%print_level .ge. 3) write(options%out,3120) 
              w%use_second_derivatives = .false.
+             ! save hf as hf_temp
+             w%hf_temp(1:n**2) = w%hf(1:n**2)
              w%hf(1:n**2) = zero
           end if
        else
@@ -460,6 +466,10 @@ contains
                 if (options%print_level .ge. 3) write(options%out,3130) 
                 w%use_second_derivatives = .true.
                 w%hybrid_count = 0
+                ! copy hf from hf_temp
+                if (.not. options%exact_second_derivatives) then
+                   w%hf(1:n**2) = w%hf_temp(1:n**2)
+                end if
              end if
           else 
              w%hybrid_count = 0
@@ -470,9 +480,8 @@ contains
           ! call apply_second_order_info anyway, so that we update the
           ! second order approximation
           if (.not. options%exact_second_derivatives) then
-             call rank_one_update(w%hf,w,n)
+             call rank_one_update(w%hf_temp,w,n)
           end if
-!          w%hf(1:n**2) = zero
        end if
 
     end if
