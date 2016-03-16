@@ -635,10 +635,11 @@ contains
      else if (norm2( alpha * w%d_sd ) >= Delta) then
         d = (Delta / norm2(w%d_sd) ) * w%d_sd
      else
-        w%ghat = w%d_gn - alpha * w%d_sd
-        call findbeta(w%d_sd,w%ghat,alpha,Delta,beta,inform)
+        w%d_sd = alpha * w%d_sd
+        w%ghat = w%d_gn - w%d_sd
+        call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
         if ( inform%status .ne. 0 ) goto 1000
-        d = alpha * w%d_sd + beta * w%ghat
+        d = w%d_sd + beta * w%ghat
      end if
 
      normd = norm2(d)
@@ -747,7 +748,7 @@ contains
 
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
-        call findbeta(w%q,y_hardcase(:,1),one,Delta,eta,inform)
+        call findbeta(w%q,y_hardcase(:,1),Delta,eta,inform)
         if ( inform%status .ne. 0 ) goto 1000
 
         !!!!!      ^^TODO^^    !!!!!
@@ -875,7 +876,7 @@ contains
            ! also good...exit
            goto 1050              
         end if
-        call findbeta(d,w%y1,one,Delta,alpha,inform)
+        call findbeta(d,w%y1,Delta,alpha,inform)
         if (inform%status .ne. 0 ) goto 1000  
         d = d + alpha * w%y1
         ! also good....exit
@@ -1102,35 +1103,44 @@ contains
               
      END SUBROUTINE solve_LLS
      
-     SUBROUTINE findbeta(d_sd,ghat,alpha,Delta,beta,inform)
+     SUBROUTINE findbeta(a, b, Delta, beta, inform)
 
 !  -----------------------------------------------------------------
 !  findbeta, a subroutine to find the optimal beta such that 
-!   || d || = Delta, where d = alpha * d_sd + beta * ghat
+!   || d || = Delta, where d = a + beta * b
+!   
+!   uses the approach from equation (3.20b), 
+!    "Methods for non-linear least squares problems" (2nd edition, 2004)
+!    by Madsen, Nielsen and Tingleff      
 !  -----------------------------------------------------------------
 
-     real(wp), dimension(:), intent(in) :: d_sd, ghat
-     real(wp), intent(in) :: alpha, Delta
+     real(wp), dimension(:), intent(in) :: a, b 
+     real(wp), intent(in) ::  Delta
      real(wp), intent(out) :: beta
      type( nlls_inform ), intent(out) :: inform
      
-     real(wp) :: a, b, c, discriminant
+     real(wp) :: c, normb2, norma2, discrim, denom
      
-     a = norm2(ghat)**2
-     b = 2.0 * alpha * dot_product( ghat, d_sd)
-     c = ( alpha * norm2( d_sd ) )**2 - Delta**2
-     
-     discriminant = b**2 - 4 * a * c
-     if ( discriminant < 0) then
+     c = dot_product(a,b)
+
+     norma2 = norm2(a)**2
+     normb2 = norm2(b)**2
+
+     discrim = c**2 + (normb2)*(Delta**2 - norma2);
+     if ( discrim < zero ) then
         inform%status = ERROR%FIND_BETA
         inform%external_name = 'findbeta'
         return
-     else
-        beta = (-b + sqrt(discriminant)) / (2.0 * a)
      end if
 
-     END SUBROUTINE findbeta
+     if (c .le. 0) then
+        beta = (-c + sqrt(discrim) ) / normb2
+     else
+        beta = (Delta**2 - norma2) / ( c + sqrt(discrim) )
+     end if
+        
 
+     END SUBROUTINE findbeta
      
      subroutine evaluate_model(f,J,hf,d,md,m,n,options,w)
 ! --------------------------------------------------

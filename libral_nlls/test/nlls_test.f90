@@ -735,7 +735,7 @@ program nlls_test
      x = (/ 1.0, 2.0, 3.0 /) 
      y = (/ 2.0, 1.0, 1.0 /)
 
-     call findbeta(x,y,1.0_wp,10.0_wp,alpha,status)
+     call findbeta(x,y,10.0_wp,alpha,status)
 
      if (status%status .ne. 0) then
         write(*,*) 'error -- findbeta did not work: info /= 0'
@@ -751,15 +751,17 @@ program nlls_test
      n = 2
      allocate(x(n),y(n),z(n))
      
-     x = 100.0_wp
+     x = 1e8_wp
      y = 1.0_wp
      alpha = 1e6
      beta = 0.0_wp
 
-     call findbeta(x,y,alpha,beta,gamma,status)
+     call findbeta(x,y,beta,gamma,status)
 
      if (status%status .ne. ERROR%FIND_BETA) then
         write(*,*) 'Expected an error from findbeta: info =', status%status
+        write(*,*) 'beta returned = ', gamma
+        write(*,*) '|| x + beta y|| = ', norm2( (alpha * x + gamma * y)-beta)
         no_errors_helpers = no_errors_helpers + 1
      end if
 
