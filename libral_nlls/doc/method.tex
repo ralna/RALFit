@@ -52,14 +52,14 @@ $F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt
       \State $\iter[k+1]{\tg} = -{\iter[k+1]{\tJ}}^T\iter[k+1]{\tr}$
       \If {{\tt options\%model == 9}}
         \If {{\tt use\_second\_derivatives}}
-          \If { $\|\iter[k+1]{\tJ}\| > \|\iter[k]{\tJ} \| $}
+          \If { $\|\iter[k+1]{\tg}\| > \|\iter[k]{\tg} \| $}
           \State {\tt use\_second\_derivatives = false}
           \Comment Switch back to Gauss-Newton
           \State ${\iter[temp]{\thess}} = \iter[k]{\thess}$, $\iter[k]{\thess} = 0$
           \Comment Copy Hessian back to temp array
           \EndIf
         \Else
-          \If { $\|\iter[k+1]{\tJ}\| / (0.5 * \|\iter[k+1]{\tr}\|^2 < \mathtt{hybrid\_tol})$}
+          \If { $\|\iter[k+1]{\tg}\| / (0.5 * \|\iter[k+1]{\tr}\|^2 < \mathtt{hybrid\_tol})$}
           \State {\tt hybrid\_count = hybrid\_count + 1}
           \Comment Update the number of steps in a row this has failed
           \If {{\tt hybrid\_count == options\%hybrid\_count\_switch\_its}}
@@ -134,7 +134,7 @@ the {\sc Galahad} [3] documentation for further details.
   \begin{algorithmic}[1]
     \State {\bf function} \Call{{\tt dogleg}}{{$\tt 
             \tJ, {\tr}, \thess, \tg,\Delta$}}
-        \State $\alpha = \|\tg\|^2 / \|\tJ\tg\|^2$
+        \State $\alpha = \|\tg\|^2 / \|\tJ * \tg\|^2$
         \State $\td_{\rm sd} = \alpha \,\tg$
         \State Solve $\td_{\rm gn} = \arg \min_{\tx}\|\tJ \tx- \tr\|_2$
         \If {$\|\td_{\rm gn}\| \leq \Delta$}
