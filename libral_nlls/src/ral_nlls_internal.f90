@@ -363,6 +363,8 @@ module ral_nlls_internal
        real(wp), allocatable :: work(:), ew_array(:)
        integer, allocatable :: nullindex(:)
        logical, allocatable :: vecisreal(:)
+       integer :: nullevs_cols
+       real(wp), allocatable :: nullevs(:,:)
     end type max_eig_work
 
     type, private :: solve_general_work ! workspace for subroutine solve_general
@@ -417,6 +419,7 @@ module ral_nlls_internal
        REAL(wp), allocatable :: A(:,:), LtL(:,:), v(:), B(:,:), p0(:), p1(:)
        REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
        REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
+       REAL(wp), allocatable :: y_hardcase(:,:)
     end type AINT_tr_work
 
     type, private :: dogleg_work ! workspace for subroutine dogleg
@@ -671,7 +674,6 @@ contains
      integer :: keep_p0, i, size_hard(2)
      real(wp) :: obj_p0, obj_p1
      REAL(wp) :: norm_p0, tau, lam, eta
-     REAL(wp), allocatable :: y_hardcase(:,:)     
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
@@ -725,14 +727,14 @@ contains
      w%M1(n+1:2*n,1:n) = -w%B
      w%M1(1:n,n+1:2*n) = -w%B
      
-     call max_eig(w%M0,w%M1,2*n,lam, w%y, y_hardcase, options, inform, w%max_eig_ws)
+     call max_eig(w%M0,w%M1,2*n,lam, w%y, w%y_hardcase, options, inform, w%max_eig_ws)
      if ( inform%status > 0 ) goto 1000
 
      if (norm2(w%y(1:n)) < tau) then
         ! Hard case
         ! overwrite H onto M0, and the outer prod onto M1...
-        size_hard = shape(y_hardcase)
-        call matmult_outer( matmul(w%B,y_hardcase), size_hard(2), n, w%M1_small)
+        size_hard = shape(w%y_hardcase)
+        call matmult_outer( matmul(w%B,w%y_hardcase), size_hard(2), n, w%M1_small)
         w%M0_small = w%A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model) 
@@ -748,14 +750,14 @@ contains
 
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
-        call findbeta(w%q,y_hardcase(:,1),Delta,eta,inform)
+        call findbeta(w%q,w%y_hardcase(:,1),Delta,eta,inform)
         if ( inform%status .ne. 0 ) goto 1000
 
         !!!!!      ^^TODO^^    !!!!!
         ! currently assumes B = I !!
         !!!!       fixme!!      !!!!
         
-        w%p1(:) = w%q(:) + eta * y_hardcase(:,1)
+        w%p1(:) = w%q(:) + eta * w%y_hardcase(:,1)
         
      else 
         select case (options%model)
@@ -1624,7 +1626,7 @@ contains
        real(wp), intent(inout) :: A(:,:), B(:,:)
        integer, intent(in) :: n 
        real(wp), intent(out) :: ew, ev(:)
-       real(wp), intent(out), allocatable :: nullevs(:,:)
+       real(wp), intent(inout), allocatable :: nullevs(:,:)
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        type( max_eig_work ) :: w
@@ -1677,8 +1679,14 @@ contains
                 w%nullindex(no_null) = i
              end if
           end do
-          allocate(nullevs(halfn,no_null))
-          nullevs(:,:) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
+!          allocate(nullevs(halfn,no_null))
+          if (no_null > size(nullevs,2)) then
+             ! increase the size of the allocated array only if we need to
+             if(allocated(nullevs)) deallocate( nullevs )
+             allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
+             if (inform%alloc_status > 0) goto 2000
+          end if 
+          nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
        end if
 
        ew = w%alphaR(maxindex(1))/w%beta(maxindex(1))
@@ -1692,7 +1700,11 @@ contains
 
 1010   continue
        inform%status = ERROR%AINT_EIG_ODD
-
+       return
+       
+2000   continue
+       inform%status = ERROR%ALLOCATION
+       inform%bad_alloc = "max_eig"
        return
 
      end subroutine max_eig
@@ -2175,6 +2187,8 @@ contains
        if (inform%alloc_status > 0) goto 9000
        allocate(w%LtL(n,n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
+       allocate(w%y_hardcase(n,2), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
        ! setup space for max_eig
        call setup_workspace_max_eig(n,m,w%max_eig_ws,options,inform)
        if (inform%status > 0) goto 9010
@@ -2216,6 +2230,7 @@ contains
        if(allocated( w%gtg )) deallocate(w%gtg)
        if(allocated( w%q )) deallocate(w%q)
        if(allocated( w%LtL )) deallocate(w%LtL)
+       if(allocated( w%y_hardcase )) deallocate(w%y_hardcase)
        ! setup space for max_eig
        call remove_workspace_max_eig(w%max_eig_ws,options)
        call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
