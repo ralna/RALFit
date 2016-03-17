@@ -1290,9 +1290,6 @@ contains
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        type( nlls_workspace ), intent(inout) :: w
-       !       real(wp), intent(inout) :: Delta ! trust region size
-       !      real(wp), intent(inout) :: nu ! scaling parameter (tr_update_strategy = 2)
-       !      integer, intent(in) :: p ! power (tr_update_strategy = 2)
 
        select case(options%tr_update_strategy)
        case(1) ! default, step-function
