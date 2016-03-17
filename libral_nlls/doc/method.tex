@@ -1,15 +1,7 @@
 % describe the method we use
 
 The algorithm uses a trust-region method to minimize the cost function
-$F(\vx)$ \ref{eq:nlls_problem}.  From a starting point $\vx_0$, the algorithm finds a direction $\vd$ that minimizes a quadratic model of the $F(\vx)$.
-
-The subroutine \texttt{nlls\_solve} simply calls the subroutine 
-\texttt{nlls\_iterate} in a loop until either the number of iterates reaches 
-\texttt{control\ct maxit}, or a convergence test is satisfied.
-
-The algorithm used by \texttt{nlls\_iterate} is given as Algorithm~\ref{alg:nlls_iterate}.
-This is a trust region method that calculates and returns step $\vd$ that 
-reduces the model by an acceptable amount.  
+$F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt{nlls\_solve} is given as Algorithm~\ref{alg:nlls_solve}.  This is a trust region method that, at each iteration, calculates and returns step $\vd$ that reduces the model by an acceptable amount. 
 
 \begin{algorithm}
 \caption{nlls\_solve}
@@ -37,6 +29,8 @@ reduces the model by an acceptable amount.
     \State $\iter[0]{\thess} = {\tt 0}$
     \Comment Use first-order information only initially
     \State {\tt use\_second\_derivatives = false}
+    \State ${\iter[temp]{\thess}} = {\tt 0}$
+    \Comment Build up a Hessian in parallel when Gauss-Newton used
     \EndIf
     \For { $k = 0, \dots, {\tt options\ct maxit}$}
       \While{ ${\tt success} \ne  1$ } 
@@ -61,6 +55,8 @@ reduces the model by an acceptable amount.
           \If { $\|\iter[k+1]{\tJ}\| > \|\iter[k]{\tJ} \| $}
           \State {\tt use\_second\_derivatives = false}
           \Comment Switch back to Gauss-Newton
+          \State ${\iter[temp]{\thess}} = \iter[k]{\thess}$, $\iter[k]{\thess} = 0$
+          \Comment Copy Hessian back to temp array
           \EndIf
         \Else
           \If { $\|\iter[k+1]{\tJ}\| / (0.5 * \|\iter[k+1]{\tr}\|^2 < \mathtt{hybrid\_tol})$}
@@ -69,10 +65,11 @@ reduces the model by an acceptable amount.
           \If {{\tt hybrid\_count == options\%hybrid\_count\_switch\_its}}
             \State {\tt use\_second\_derivatives = true}
             \State {\tt hybrid\_count = 0}
+            \State ${\iter[temp]{\thess}} = {\iter[k]{\thess}}$
+            \Comment Copy approximate Hessian back
           \EndIf
           \EndIf
         \EndIf
-      \EndIf
       \algstore{myalg}
   \end{algorithmic}
   
@@ -83,19 +80,24 @@ reduces the model by an acceptable amount.
   \ContinuedFloat
   \begin{algorithmic}
     \algrestore{myalg}
+      \If {{\tt ({\bf not} use\_second\_derivatives) {\bf and} ({\bf not} options\%exact\_second\_derivatives) } }
+      \State ${\iter[temp]{\thess}} = \Call{{\tt rank\_one\_update}}{\td ,\iter[k]{\tg},\iter[k+1]{\tg}, \iter[k+1]{\tr},\iter[k]{\tJ},\iter[temp]{\thess}}$
+      \EndIf
+    \EndIf
+
     \If { {\tt use\_second\_derivatives} } 
       \If { {\tt options\ct exact\_second\_derivatives} }
         \State $\iter[k+1]{\thess} = {\tt eval\_HF(\iter[0]{\tx},W\iter[0]{\tr})}$
       \Else
-        \State $\ty = \iter[k]{\tg} - \iter[k+1]{\tg}$
-        \State $\ty^\sharp = {\iter[k]{\tJ}}^T \iter[k+1]{\tr} - \iter[k+1]{\tg}$
-        \State $\widehat{\iter[k]{\thess}} = \min\left( 1, \frac{|\td^T\ty^\sharp|}{|\td^T\iter[k]{\thess}\td|}\right) \iter[k]{\thess}$
-        \State $\iter[k+1]{\thess} = \widehat{\iter[k]{\thess}} + 
-        \left(({\iter[k+1]{\ty}}^\sharp - \iter[k]{\thess}\td 
-          )^T\td\right)/\ty^T\td$
+        \State ${\iter[k+1]{\thess}} = \Call{{\tt rank\_one\_update}}{\td ,\iter[k]{\tg},\iter[k+1]{\tg}, \iter[k+1]{\tr},\iter[k]{\tJ},\iter[k]{\thess}}$
       \EndIf
-    \ElsIf {{\tt options\%model==9}}
-    \State whats??
+    \EndIf
+    \If {$ \tt\|\iter[k+1]{\tr}\| < max(options\%stop\_g\_absolute, options\%stop\_g\_relative * \|\iter[k]{\tr}\|)$}
+    \State {\tt break}
+    \Comment converged due to residual being small
+    \ElsIf{$ \tt\frac{\|\iter[k+1]{\tg}\|}{\|\iter[k+1]{\tr}\|} < max\left(options\%stop\_g\_absolute, options\%stop\_g\_relative * \left(\frac{\|\iter[0]{\tg}\|}{\|\iter[0]{\tr}\|}\right)\right)$}
+    \State {\tt break}
+    \Comment converged due to gradient being small
     \EndIf
     \EndFor
 
@@ -103,7 +105,114 @@ reduces the model by an acceptable amount.
 \end{algorithm}
 
 
+The subroutine \texttt{nlls\_iterate} performs one iteration of the algorithm
+\texttt{nlls\_solve}, allowing the user greater control over control stopping and/or to monitor the progress of the algorithm.
 
+The main algorithm (Algorithm \ref{alg:nlls_solve}) calls a number of subroutines.  
+The most vital is the subroutine {\tt calculate\_step}, which solves the trust region 
+subproblem (\ref{eq:tr_subproblem}) (or an approximation to it). The method used to solve
+this is dependent on the control parameter {\tt options\%nlls\_method}. The algorithms called for each of the options are listed below:
+\begin{description}
+\item {\tt options\%nlls\_method = 1}: this approximates the solution to (\ref{eq:tr_subproblem}) by using Powell's dogleg method.  This takes as the step a linear combination of the Gauss-Newton step and the steepest descent step, and the method used is described in Algorithm \ref{alg:dogleg}.
+\item {\tt options\%nlls\_method = 2}: this solves the trust region subproblem using the trust region solver of  Adachi, Iwata, Nakatsukasa, and Takeda.  This reformulates the 
+problem (\ref{eq:tr_subproblem}) as a generalized eigenvalue problem, and solves that.  See
+[1] for more details.
+\item {\tt options\%nlls\_method = 3}: this solves the trust region subproblem using 
+a variant of the More-Sorensen method.  In particular, we implement Algorithm 7.3.6
+ in Trust Region Methods by Conn, Gould and Toint [2].
+\item {\tt options\%nlls\_method = 4}: this solves the trust region subproblem by first 
+converting our problem into the form
+$$\min_p w^T p + \frac{1}{2} p^T D p \quad {\rm s.t.} \quad \|p\| \leq \Delta,$$
+where $D$ is a diagonal matrix.  We do this by performing an eigen-decomposition of 
+the Hessian in the model.  Then, we call the {\sc Galahad} routine {\sc DTRS}; see 
+the {\sc Galahad} [3] documentation for further details.
+\end{description}
+
+\begin{algorithm}
+\caption{dogleg}
+\label{alg:dogleg}
+  \begin{algorithmic}[1]
+    \State {\bf function} \Call{{\tt dogleg}}{{$\tt 
+            \tJ, {\tr}, \thess, \tg,\Delta$}}
+        \State $\alpha = \|\tg\|^2 / \|\tJ\tg\|^2$
+        \State $\td_{\rm sd} = \alpha \,\tg$
+        \State Solve $\td_{\rm gn} = \arg \min_{\tx}\|\tJ \tx- \tr\|_2$
+        \If {$\|\td_{\rm gn}\| \leq \Delta$}
+        \State $\td = \td_{\rm gn}$
+        \ElsIf {$\|\alpha \, \td_{\rm sd}\| \geq \Delta$}
+        \State $\td = (\Delta / \|\td_{\rm sd}\|) \td_{\rm sd}$
+        \Else
+        \State $\td = \alpha \, \td_{\rm sd} + \beta\, (\td_{\rm gn} - \alpha \td_{\rm sd})$, where $\beta$ is chosen such that $\|\td\| = \Delta$
+        \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+Another vital component of the algorithm is the mechanism for updating the trust region radius.  We support two options: if {\tt options\%tr\_update\_strategy = 1}, then we use a step-function to 
+  decide whether or not to increase or decrease the trust region radius.  Alternatively, if
+{\tt options\%tr\_update\_strategy = 2}, then we use a continuous function to make the 
+decision.  The method used is outlined in Algorithm~\ref{alg:update_tr}.
+
+\begin{algorithm}
+\caption{update\_trust\_region}
+\label{alg:update_tr}
+\begin{algorithmic}[1]    
+  \State {\bf function} $\Delta = $ \Call{{\tt update\_trust\_region\_radius}}{{$\Delta, \rho$}}
+    \If {{\tt options\%tr\_update\_strategy == 1}}
+      \If {{$\tt \rho \leq options\%eta\_success\_but\_reduce$}}
+      \State $\tt \Delta = options\%radius\_reduce * \Delta$
+      \Comment reduce $\Delta$
+      \ElsIf{{$\tt \rho \leq options\%eta\_very\_successful$}}
+      \State $\tt \Delta = \Delta$
+      \Comment $\Delta$ stays unchanged
+      \ElsIf{{$\tt \rho \leq options\%eta\_too\_successful$}}
+      \State $\tt \Delta = options\%radius\_increase * \Delta$
+      \Comment increase $\Delta$
+      \ElsIf{{$\tt \rho > options\%eta\_too\_successful$}}
+      \State $\tt \Delta = \Delta$
+      \Comment too successful: accept step, but don't change $\Delta$
+      \EndIf
+    \ElsIf{{\tt options\%tr\_update\_strategy == 2}}
+    \State [on first call, set $\nu = 2.0$]
+      \If{{$\tt \rho \geq options\%eta\_too\_successful$}}
+        \State $\Delta = \Delta$
+        \Comment $\Delta$ stays unchanged
+      \ElsIf{{$\tt \rho > options\%eta\_successful$}}
+        \State $\tt \Delta = \Delta * \min\left(options\%radius\_increase,  
+          1 - \left( (options\%radius\_increase -1)*((1 - 2*\rho)^3)  \right)\right)$
+        \State $\tt \nu = options\%radius\_reduce$
+      \ElsIf{{$\tt \rho \leq options\%eta\_successful$}}
+        \State $ \Delta = \nu * \Delta$
+        \State $ \nu = 0.5 * \nu$
+      \EndIf
+    \EndIf
+  \end{algorithmic}
+\end{algorithm}
+
+Finally, we allow the application of a Quasi-Newton method when exact second derivatives are not available.  We use the method of Dennis, Gay, and Welsch, and implement it as described by Nocedal and Wright [4, Chapter 10]; see Algorithm~\ref{alg:rank_one_update}.
+
+\begin{algorithm}
+\caption{{\tt rank\_one\_update}}
+\label{alg:rank_one_update}
+  \begin{algorithmic}
+    \State {\bf function} $\iter[k+1]{\thess} = $ \Call{{\tt rank\_one\_update}}{$\td ,\iter[k]{\tg},\iter[k+1]{\tg}, \iter[k+1]{\tr},\iter[k]{\tJ},\iter[k]{\thess}$}
+    \State $\ty = \iter[k]{\tg} - \iter[k+1]{\tg}$ \State
+    $\ty^\sharp = {\iter[k]{\tJ}}^T \iter[k+1]{\tr} -
+    \iter[k+1]{\tg}$ \State $\widehat{\iter[k]{\thess}} = \min\left(
+      1, \frac{|\td^T\ty^\sharp|}{|\td^T\iter[k]{\thess}\td|}\right)
+    \iter[k]{\thess}$ \State $\iter[k+1]{\thess} =
+    \widehat{\iter[k]{\thess}} + \left(({\iter[k+1]{\ty}}^\sharp -
+      \iter[k]{\thess}\td )^T\td\right)/\ty^T\td$
+
+  \end{algorithmic}
+\end{algorithm}
+
+\hslreferences\\
+$[1]$ Adachi, Satoru and Iwata, Satoru and Nakatsukasa, Yuji and Takeda, Akiko (2015).
+Solving the trust region subproblem by a generalized eigenvalue problem.
+Technical report, Mathematical Engineering, The University of Tokyo.\\
+$[2]$ Conn, A. R., Gould, N. I., \& Toint, P. L. (2000). Trust region methods. SIAM.\\
+$[3]$ Gould, N. I., Orban, D., \& Toint, P. L. (2003). GALAHAD, a library of thread-safe Fortran 90 packages for large-scale nonlinear optimization. ACM Transactions on Mathematical Software (TOMS), 29(4), 353-372.\\
+$[4]$ Nocedal, J., \& Wright, S. (2006). Numerical optimization. Springer Science \& Business Media.
 
 %%% Local Variables: 
 %%% mode: latex

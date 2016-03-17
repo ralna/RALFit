@@ -3,6 +3,7 @@
 \usepackage{amsfonts,bm,amsmath}
 \usepackage{verbatim}
 \usepackage{algorithm, algpseudocode}
+\usepackage{caption}
 
 
 \input{nlls_header.tex}
@@ -50,7 +51,7 @@ Access to the package requires a {\tt USE} statement \\ \\
 % must be renamed in one of the {\tt USE} statements.
 \medskip
 
-\noindent The user can then call the procedure:
+\noindent The user can then call one of the procedures:
 \vspace{-0.1cm}
 \begin{description}
 \item {\tt NLLS\_SOLVE}  solves the non-linear least squares problem (\ref{eq:nlls_problem}).
@@ -108,7 +109,7 @@ To solve the non-linear least squares problem a call of the following form shoul
 variables to be fitted; i.e., $n$ is the length of the unknown vector $\bm x$.
 
 \itt{m} \scalarintegerii that holds the number $m$ of
-data points available; i.e., $m$ is the number of functions $f_i$.
+data points available; i.e., $m$ is the number of residuals $r_i$.
 \textbf{Restriction:} \texttt{m},\texttt{n}$>$\texttt{0}
 
 \itt{X} is an \intentinout\  rank-1 array of package type
@@ -124,10 +125,10 @@ Further details of the format required are given in Section~\ref{sec::function_e
 
 \itt{eval\_Hf} is a {\tt PROCEDURE} that, given a point $\iter{\vx}$
 and function $\vr(\iter{\vx})$, returns the second-order terms of the Hessian at $\iter{\vx}$.
-Further details of the format required are given in Section~\ref{sec::function_eval}.  If $NLLS\_options\%exact\_second\_derivative = .false.$, then this is not referenced.
+Further details of the format required are given in Section~\ref{sec::function_eval}.  If $\tt NLLS\_options\%exact\_second\_derivative = .false.$, then this is not referenced.
 
 \itt{params} is an \intentin\ scalar of class {\tt params\_base\_type} that holds parameters to
-be passed to the user-defined routines {\tt eval\_f}, {\tt eval\_j}, and {\tt eval\_Hf}.
+be passed to the user-defined routines {\tt eval\_r}, {\tt eval\_J}, and {\tt eval\_Hf}.
 Further details of its use are given in Section~\ref{sec::function_eval}.
 
 \itt{options}is an \intentin\  scalar  of type {\tt NLLS\_options}
@@ -172,7 +173,7 @@ converged.
 
 \subsection{User-supplied function evaluation routines}
 \label{sec::function_eval}
-In order to evaluate the function, Jacobian and Hessian at a point, the user
+In order to evaluate the residual, Jacobian and Hessian at a point, the user
 must supply subroutines that perform this operation that the code
 {\tt ral\_nlls} will call internally.
 
@@ -442,7 +443,7 @@ be output on unit {\tt NLLS\_options$\%$error}.
 
 \hslio
    Error messages on unit {\tt NLLS\_options$\%$error} and warning
-   and diagnostic messages on unit {\tt NLLS\_options$\%$out},
+   and diagnostic messages on unit \newline{\tt NLLS\_options$\%$out},
    respectively. These have default value {\tt 6};
    printing of these messages is suppressed if the relevant unit number
    is negative or if {\tt NLLS\_options$\%$print\_level} is negative.
@@ -451,7 +452,7 @@ be output on unit {\tt NLLS\_options$\%$error}.
 \hslmethod
 \label{method}
 
-%\input{method.tex}
+\input{method.tex}
 % todo!
 
 \hslexample

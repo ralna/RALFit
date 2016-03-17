@@ -23,9 +23,9 @@ where $\iter{\vJ}$ denotes the $m \times n$ Jacobian of $\vr(\vx)$ at the point 
 and $\iter{\vH}$ is the Hessian at $\iter{\vx}$.
 
 Once the model has been formed, a trust-region sub-problem of the form
-\[
-\vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,
-\]
+\begin{equation}
+\vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,\label{eq:tr_subproblem}
+\end{equation}
 is solved,
 where $\Delta$ is the trust region radius and $B$ is a symmetric positive definite weighting matrix.
 The quantity
