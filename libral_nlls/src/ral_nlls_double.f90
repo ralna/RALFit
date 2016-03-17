@@ -2,7 +2,6 @@
 
 module ral_nlls_double
 
-!  use RAL_NLLS_DTRS_double
   use ral_nlls_internal
 
   implicit none
@@ -268,7 +267,7 @@ contains
                w%smallest_sv(1), w%largest_sv(1), &
                options,svdstatus,w%get_svd_J_ws)
           if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
-             write(*,*) 'warning! svdstatus = ', svdstatus
+             write(options%out,'(a,i0)') 'warning! svdstatus = ', svdstatus
              write( options%out, 3140 ) svdstatus
           end if
        end if
