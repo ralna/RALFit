@@ -59,8 +59,8 @@ contains
    end subroutine eval_J
    ! Calculate
    ! HF = sum_i r_i H_i
-   ! Where H_i = [ 1                t_i e^(x_2 t_i)    ]
-   !             [ t_i e^(x_2 t_i)  t_i^2 e^(x_2 t_i)  ]
+   ! Where H_i = [ 0                t_i e^(x_2 t_i)    ]
+   !             [ t_i e^(x_2 t_i)  t_i^2 x_1 e^(x_2 t_i)  ]
    subroutine eval_HF(status, n, m, x, r, HF, params)
       integer, intent(out) :: status
       integer, intent(in) :: n
@@ -76,10 +76,10 @@ contains
       x2 = x(2)
       select type(params)
       type is(params_type)
-         HF(    1) = sum(r(1:m) * 1)                                     ! H_11
+         HF(    1) = sum(r(1:m) * 0)                                     ! H_11
          HF(    2) = sum(r(1:m) * params%t(:) * exp(x2*params%t(:)))     ! H_21
          HF(1*n+1) = HF(2)                                               ! H_12
-         HF(1*n+2) = sum(r(1:m) * params%t(:)**2 * exp(x2*params%t(:)))  ! H_22
+         HF(1*n+2) = sum(r(1:m) * (params%t(:)**2) * x1 * exp(x2*params%t(:)))! H_22
       end select
 
       status = 0 ! Success

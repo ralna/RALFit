@@ -44,8 +44,8 @@ int eval_J(int n, int m, void const* params, double const* x, double* J) {
 
 // Calculate:
 // HF = sum_i r_i H_i
-// Where H_i = [ 1                t_i e^(x_2 t_i)    ]
-//             [ t_i e^(x_2 t_i)  t_i^2 e^(x_2 t_i)  ]
+// Where H_i = [ 0                t_i e^(x_2 t_i)        ]
+//             [ t_i e^(x_2 t_i)  t_i^2 x_1 e^(x_2 t_i)  ]
 int eval_HF(int n, int m, void const* params, double const* x, double const* r, double* HF) {
    double x1 = x[0];
    double x2 = x[1];
@@ -53,9 +53,9 @@ int eval_HF(int n, int m, void const* params, double const* x, double const* r, 
 
    for(int i=0; i<n*n; i++) HF[i] = 0.0;
    for(int i=0; i<m; i++) {
-      HF[    0] += r[i];                              // H_11
-      HF[    1] += r[i] * t[i] * exp(x2*t[i]);        // H_21
-      HF[1*n+1] += r[i] * t[i]*t[i] * exp(x2*t[i]);   // H_22
+      HF[    0] += 0;                                      // H_11
+      HF[    1] += r[i] * t[i] * exp(x2*t[i]);             // H_21
+      HF[1*n+1] += r[i] * t[i]*t[i] * x1 * exp(x2*t[i]);   // H_22
    }
    HF[1*n+0] = HF[1]; // H_12 by symmetry of Hessian
 
