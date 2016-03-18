@@ -1,11 +1,15 @@
 % The beginning summary section
-{\tt \fullpackagename} computes a solution to the non-linear least-squares problem
+{\tt \fullpackagename} computes a solution $\vx$ to the non-linear least-squares problem
 \begin{equation}
 \min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_{\vW}^2,
 \label{eq:nlls_problem}
 \end{equation}
-where $\vW\in\mathbb{R}^{m\times m}$ is a diagonal, non-negative, weighting matrix, and $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is the non-linear residual of
-some data that needs fitting.
+where $\vW\in\mathbb{R}^{m\times m}$ is a diagonal, non-negative, weighting matrix, and $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is a non-linear function.
+
+A typical use may be to fit a function $f(\vx)$ to the data $y_i, \ t_i$, weighted by the uncertainty of the data, $\sigma_i$, so that
+$$r_i(\vx) := y_i - f(\vx;t_i),$$
+and $\vW$ is the diagonal matrix such that $\vW_{ii} = (1/\sqrt{\sigma_i}).$  For this reason 
+we refer to the function $\vr$ as the \emph{residual} function.
 % the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
 % ($m>n$).
 % The $n$ variables that are fitted are $\vx=(x_1,x_2,...,x_n)^T$.
@@ -20,18 +24,18 @@ is built.
 The `ideal' values in this model are $\iter{\vg} = {\iter{\vJ}}^T\vW\vr(\iter{\vx})$ and
 $\iter{\vH} = {\iter{\vJ}}^T\vW\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \vW\nabla^2 \comp{r}(\iter{\vx})$,
 where $\iter{\vJ}$ denotes the $m \times n$ Jacobian of $\vr(\vx)$ at the point $\iter{\vx}$
-and $\iter{\vH}$ is the Hessian at $\iter{\vx}$.
+and $\iter{\vH}$ is the Hessian of $F(\vx)$ at $\iter{\vx}$.
 
 Once the model has been formed, a trust-region sub-problem of the form
 \begin{equation}
 \vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,\label{eq:tr_subproblem}
 \end{equation}
 is solved,
-where $\Delta$ is the trust region radius and $B$ is a symmetric positive definite weighting matrix.
+where $\Delta$ is the trust region radius and $B$ is a symmetric positive definite weighting matrix that is calculated by the algorithm.
 The quantity
 \[\rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \vd)}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \vd)}\]
 is then calculated.
-If this is sufficiently large, the point is accepted and  $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \vd$; if not, the trust-region radius, $\Delta$,
+If this is sufficiently large we accept the step, and $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \vd$; if not, the trust-region radius, $\Delta$,
 is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one --
 the trust-region radius is increased.
 

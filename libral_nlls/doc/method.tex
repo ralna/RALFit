@@ -1,56 +1,56 @@
 % describe the method we use
 
 The algorithm uses a trust-region method to minimize the cost function
-$F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt{nlls\_solve} is given as Algorithm~\ref{alg:nlls_solve}.  This is a trust region method that, at each iteration, calculates and returns step $\vd$ that reduces the model by an acceptable amount. 
+$F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt{nlls\_solve} is given as Algorithm~\ref{alg:nlls_solve}.  This is a trust region method that, at each iteration, calculates and returns step $\vd$ that reduces the model by an acceptable amount by solving (or approximating a solution to) the trust-region subproblem (\ref{eq:tr_subproblem}). 
 
 \begin{algorithm}
 \caption{nlls\_solve}
 \label{alg:nlls_solve}
   \begin{algorithmic}[1]
-    \State $ {\tt {\bf function} \  \tx = nlls\_solve}(\iter[0]{\tx},{\tt options[,W]})$
-    \If {$W$ not present}
+    \State  {\tt {\bf function} \tx }$=${\tt nlls\_solve}$(\iter[0]{\tx},\text{\tt options}{\tt[,W]})$
+    \If {${\tt W}$ not present}
     \State ${\tt W=I}$
     \EndIf
-    \State $\iter[0]{\tr} =  {\tt W * eval\_r}(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt W * eval\_J}(\iter[0]{\tx})$    
+    \State $\iter[0]{\tr} =  {\tt W * }${\tt eval\_r}$(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt W *}$ {\tt eval\_J}$(\iter[0]{\tx})$    
     \Comment Evaluate residual and Jacobian at initial guess
-    \State $\Delta = {\tt options\ct initial\_radius}$
+    \State $\Delta = ${\tt options\ct initial\_radius}
     \State $ \iter[0]{\tg} = - {\iter[0]{\tJ}}^T\iter[0]{\tr}$
-    \If {{\tt options\%model == 1}}
+    \If {{\tt options\ct model == 1}}
     \Comment Gauss-Newton model 
     \State $\iter[0]{\thess} = {\tt 0}$
     \State {\tt use\_second\_derivatives = false}
-    \ElsIf {{\tt options\%model == 2}}
+    \ElsIf {{\tt options\ct model == 2}}
     \Comment (Quasi-)Newton 
-    \State $\iter[0]{\thess} = {\tt eval\_HF(\iter[0]{\tx},W * \iter[0]{\tr})}$
+    \State $\iter[0]{\thess} = ${\tt eval\_HF}${\tt (\iter[0]{\tx},W * \iter[0]{\tr})}$
     \State {\tt use\_second\_derivatives = true}
-    \ElsIf {{\tt options\%model = 9}}
+    \ElsIf {{\tt options\ct model = 9}}
     \Comment Hybrid algorithm
-    \State {\tt hybrid\_tol = options\%hybrid\_tol * }${\tt (\| \iter[0]{\tg} \| / (0.5 * \|\iter[0]{\tr}\|^2) )}$
+    \State {\tt hybrid\_tol = options\ct hybrid\_tol * }${\tt (\| \iter[0]{\tg} \| / (0.5 * \|\iter[0]{\tr}\|^2) )}$
     \State $\iter[0]{\thess} = {\tt 0}$
     \Comment Use first-order information only initially
     \State {\tt use\_second\_derivatives = false}
     \State ${\iter[temp]{\thess}} = {\tt 0}$
     \Comment Build up a Hessian in parallel when Gauss-Newton used
     \EndIf
-    \For { $k = 0, \dots, {\tt options\ct maxit}$}
+    \For { $k = {\tt 0}, \dots, \text{\tt options\ct maxit}$}
       \While{ ${\tt success} \ne  1$ } 
         \State ${\td}$ = \Call{{\tt calculate\_step}}{{$\tt 
             \iter[k]{\tJ}, \iter[k]{\tr}, \iter[k]{\thess},\iter[k]{\tg},\Delta$}}
         \Comment Calculate a potential step $\td$
         \State $\iter[k+1]{\tx} = \iter[k]{\tx} + \td$
-        \State $\iter[k+1]{\tr} = {\tt W * eval\_r}(\iter[k]{\tx})$
+        \State $\iter[k+1]{\tr} = {\tt W * \text{\tt eval\_r}}(\iter[k]{\tx})$
         \Comment Evaluate the residual at the new point
-        \State $\rho = 0.5 (\| \iter[k+1]{\tr} \|^2 - \| \iter[k]{\tr}\|^2)/(m_k(0) - m_k(\td)) $ 
+        \State $\rho = \tt 0.5 (\| \iter[k+1]{\tr} \|^2 - \| \iter[k]{\tr}\|^2)/(m_k(0) - m_k(\td)) $ 
         \Comment If model is good, $\rho$ should be close to one
-          \If{ $\rho > {\tt control\ct eta\_successful}$}
+          \If{ ${\tt \rho } >$ {\tt control\ct eta\_successful}}
           \State ${\tt success} = 1$
         \EndIf
-        \State $\Delta = {\tt update\_trust\_region\_radius}(\Delta,\rho)$
+        \State ${\tt \Delta = }${\tt update\_trust\_region\_radius}${\tt (\Delta,\rho)}$
       \EndWhile
-      \State $\iter[k+1]{\tJ} = {\tt W * eval\_J}(\iter[k+1]{\tx})$
+      \State $\iter[k+1]{\tJ} = {\tt W * \text{\tt eval\_J}}(\iter[k+1]{\tx})$
       \Comment Evaluate the Jacobian at the new point
       \State $\iter[k+1]{\tg} = -{\iter[k+1]{\tJ}}^T\iter[k+1]{\tr}$
-      \If {{\tt options\%model == 9}}
+      \If {{\tt \text{\tt options\ct model} == 9}}
         \If {{\tt use\_second\_derivatives}}
           \If { $\|\iter[k+1]{\tg}\| > \|\iter[k]{\tg} \| $}
           \State {\tt use\_second\_derivatives = false}
@@ -59,10 +59,10 @@ $F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt
           \Comment Copy Hessian back to temp array
           \EndIf
         \Else
-          \If { $\|\iter[k+1]{\tg}\| / (0.5 * \|\iter[k+1]{\tr}\|^2 < \mathtt{hybrid\_tol})$}
+          \If { $\|\iter[k+1]{\tg}\| / (0.5 * \|\iter[k+1]{\tr}\|^2 < \text{\tt hybrid\_tol})$}
           \State {\tt hybrid\_count = hybrid\_count + 1}
           \Comment Update the number of steps in a row this has failed
-          \If {{\tt hybrid\_count == options\%hybrid\_count\_switch\_its}}
+          \If {{\tt hybrid\_count == options\ct hybrid\_count\_switch\_its}}
             \State {\tt use\_second\_derivatives = true}
             \State {\tt hybrid\_count = 0}
             \State ${\iter[temp]{\thess}} = {\iter[k]{\thess}}$
@@ -76,54 +76,52 @@ $F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt
 \end{algorithm}
 
 \begin{algorithm}
-\caption{nlls\_solve (continued)}
   \ContinuedFloat
   \begin{algorithmic}
     \algrestore{myalg}
-      \If {{\tt ({\bf not} use\_second\_derivatives) {\bf and} ({\bf not} options\%exact\_second\_derivatives) } }
+      \If {{\tt ({\bf not} use\_second\_derivatives) {\bf and} ({\bf not} options\ct exact\_second\_derivatives) } }
       \State ${\iter[temp]{\thess}} = \Call{{\tt rank\_one\_update}}{\td ,\iter[k]{\tg},\iter[k+1]{\tg}, \iter[k+1]{\tr},\iter[k]{\tJ},\iter[temp]{\thess}}$
       \EndIf
     \EndIf
 
     \If { {\tt use\_second\_derivatives} } 
       \If { {\tt options\ct exact\_second\_derivatives} }
-        \State $\iter[k+1]{\thess} = {\tt eval\_HF(\iter[0]{\tx},W\iter[0]{\tr})}$
+        \State $\iter[k+1]{\thess} = {\tt \text{\tt eval\_HF}(\iter[0]{\tx},W\iter[0]{\tr})}$
       \Else
         \State ${\iter[k+1]{\thess}} = \Call{{\tt rank\_one\_update}}{\td ,\iter[k]{\tg},\iter[k+1]{\tg}, \iter[k+1]{\tr},\iter[k]{\tJ},\iter[k]{\thess}}$
       \EndIf
     \EndIf
-    \If {$ \tt\|\iter[k+1]{\tr}\| < max(options\%stop\_g\_absolute, options\%stop\_g\_relative * \|\iter[k]{\tr}\|)$}
-    \State {\tt break}
+    \If {$ \tt\|\iter[k+1]{\tr}\| < max(${\tt options\ct stop\_g\_absolute}, {\tt options\ct stop\_g\_relative}$* \|\iter[k]{\tr}\|)$}
+    \State {\tt return}
     \Comment converged due to residual being small
-    \ElsIf{$ \tt\frac{\|\iter[k+1]{\tg}\|}{\|\iter[k+1]{\tr}\|} < max\left(options\%stop\_g\_absolute, options\%stop\_g\_relative * \left(\frac{\|\iter[0]{\tg}\|}{\|\iter[0]{\tr}\|}\right)\right)$}
-    \State {\tt break}
+    \ElsIf{$ \tt\frac{\|\iter[k+1]{\tg}\|}{\|\iter[k+1]{\tr}\|} < max( \text{\tt options\ct stop\_g\_absolute}, \text{\tt options\ct stop\_g\_relative} * \left(\frac{\|\iter[0]{\tg}\|}{\|\iter[0]{\tr}\|}\right))$}
+    \State {\tt return}
     \Comment converged due to gradient being small
     \EndIf
     \EndFor
-
   \end{algorithmic}
 \end{algorithm}
 
 
 The subroutine \texttt{nlls\_iterate} performs one iteration of the algorithm
-\texttt{nlls\_solve}, allowing the user greater control over control stopping and/or to monitor the progress of the algorithm.
+\texttt{nlls\_solve}, allowing the user greater control over stopping and/or monitoring the progress of the algorithm.
 
 The main algorithm (Algorithm \ref{alg:nlls_solve}) calls a number of subroutines.  
 The most vital is the subroutine {\tt calculate\_step}, which solves the trust region 
 subproblem (\ref{eq:tr_subproblem}) (or an approximation to it). The method used to solve
-this is dependent on the control parameter {\tt options\%nlls\_method}. The algorithms called for each of the options are listed below:
+this is dependent on the control parameter {\tt options\ct nlls\_method}. The algorithms called for each of the options are listed below:
 \begin{description}
-\item {\tt options\%nlls\_method = 1}: this approximates the solution to (\ref{eq:tr_subproblem}) by using Powell's dogleg method.  This takes as the step a linear combination of the Gauss-Newton step and the steepest descent step, and the method used is described in Algorithm \ref{alg:dogleg}.
-\item {\tt options\%nlls\_method = 2}: this solves the trust region subproblem using the trust region solver of  Adachi, Iwata, Nakatsukasa, and Takeda.  This reformulates the 
+\item {\tt options\ct nlls\_method = 1}: this approximates the solution to (\ref{eq:tr_subproblem}) by using Powell's dogleg method.  This takes as the step a linear combination of the Gauss-Newton step and the steepest descent step, and the method used is described in Algorithm \ref{alg:dogleg}.
+\item {\tt options\ct nlls\_method = 2}: this solves the trust region subproblem using the trust region solver of  Adachi, Iwata, Nakatsukasa, and Takeda.  This reformulates the 
 problem (\ref{eq:tr_subproblem}) as a generalized eigenvalue problem, and solves that.  See
 [1] for more details.
-\item {\tt options\%nlls\_method = 3}: this solves the trust region subproblem using 
+\item {\tt options\ct nlls\_method = 3}: this solves the trust region subproblem using 
 a variant of the More-Sorensen method.  In particular, we implement Algorithm 7.3.6
  in Trust Region Methods by Conn, Gould and Toint [2].
-\item {\tt options\%nlls\_method = 4}: this solves the trust region subproblem by first 
-converting our problem into the form
-$$\min_p w^T p + \frac{1}{2} p^T D p \quad {\rm s.t.} \quad \|p\| \leq \Delta,$$
-where $D$ is a diagonal matrix.  We do this by performing an eigen-decomposition of 
+\item {\tt options\ct nlls\_method = 4}: this solves the trust region subproblem by first 
+converting the problem into the form
+$$\min_\vp \vw^T \vp + \frac{1}{2} \vp^T \vD \vp \quad {\rm s.t.} \quad \|\vp\| \leq \Delta,$$
+where $\vD$ is a diagonal matrix.  We do this by performing an eigen-decomposition of 
 the Hessian in the model.  Then, we call the {\sc Galahad} routine {\sc DTRS}; see 
 the {\sc Galahad} [3] documentation for further details.
 \end{description}
@@ -147,9 +145,10 @@ the {\sc Galahad} [3] documentation for further details.
   \end{algorithmic}
 \end{algorithm}
 
-Another vital component of the algorithm is the mechanism for updating the trust region radius.  We support two options: if {\tt options\%tr\_update\_strategy = 1}, then we use a step-function to 
+Another vital component of the algorithm is the mechanism for updating the trust region radius.  The package supports two options: if {\tt options\ct tr\_update\_strategy = 1}, then 
+a step-function is used to 
   decide whether or not to increase or decrease the trust region radius.  Alternatively, if
-{\tt options\%tr\_update\_strategy = 2}, then we use a continuous function to make the 
+{\tt options\ct tr\_update\_strategy = 2}, then a continuous function is used to make the 
 decision.  The method used is outlined in Algorithm~\ref{alg:update_tr}.
 
 \begin{algorithm}
@@ -157,30 +156,30 @@ decision.  The method used is outlined in Algorithm~\ref{alg:update_tr}.
 \label{alg:update_tr}
 \begin{algorithmic}[1]    
   \State {\bf function} $\Delta = $ \Call{{\tt update\_trust\_region\_radius}}{{$\Delta, \rho$}}
-    \If {{\tt options\%tr\_update\_strategy == 1}}
-      \If {{$\tt \rho \leq options\%eta\_success\_but\_reduce$}}
-      \State $\tt \Delta = options\%radius\_reduce * \Delta$
+    \If {{\tt options\ct tr\_update\_strategy == 1}}
+      \If {{$\tt \rho \leq \text{\tt options\ct eta\_success\_but\_reduce}$}}
+      \State $\tt \Delta = \text{\tt options\ct radius\_reduce} * \Delta$
       \Comment reduce $\Delta$
-      \ElsIf{{$\tt \rho \leq options\%eta\_very\_successful$}}
+      \ElsIf{{$\tt \rho \leq  \text{\tt options\ct eta\_very\_successful}$}}
       \State $\tt \Delta = \Delta$
       \Comment $\Delta$ stays unchanged
-      \ElsIf{{$\tt \rho \leq options\%eta\_too\_successful$}}
-      \State $\tt \Delta = options\%radius\_increase * \Delta$
+      \ElsIf{{$\tt \rho \leq \text{\tt options\ct eta\_too\_successful}$}}
+      \State $\tt \Delta = \text{\tt options\ct radius\_increase} * \Delta$
       \Comment increase $\Delta$
-      \ElsIf{{$\tt \rho > options\%eta\_too\_successful$}}
+      \ElsIf{{$\tt \rho > \text{\tt options\ct eta\_too\_successful}$}}
       \State $\tt \Delta = \Delta$
       \Comment too successful: accept step, but don't change $\Delta$
       \EndIf
-    \ElsIf{{\tt options\%tr\_update\_strategy == 2}}
+    \ElsIf{{\tt options\ct tr\_update\_strategy == 2}}
     \State [on first call, set $\nu = 2.0$]
-      \If{{$\tt \rho \geq options\%eta\_too\_successful$}}
+      \If{{$\tt \rho \geq \text{\tt options\ct eta\_too\_successful}$}}
         \State $\Delta = \Delta$
         \Comment $\Delta$ stays unchanged
-      \ElsIf{{$\tt \rho > options\%eta\_successful$}}
-        \State $\tt \Delta = \Delta * \min\left(options\%radius\_increase,  
-          1 - \left( (options\%radius\_increase -1)*((1 - 2*\rho)^3)  \right)\right)$
-        \State $\tt \nu = options\%radius\_reduce$
-      \ElsIf{{$\tt \rho \leq options\%eta\_successful$}}
+      \ElsIf{{$\tt \rho > \text{\tt options\ct eta\_successful}$}}
+        \State $\tt \Delta = \Delta * \min\left(\text{\tt options\ct radius\_increase},  
+          1 - \left( (\text{\tt options\ct radius\_increase} -1)*((1 - 2*\rho)^3)  \right)\right)$
+        \State $\tt \nu = \text{\tt options\ct radius\_reduce}$
+      \ElsIf{{$\tt \rho \leq \text{\tt options\ct eta\_successful}$}}
         \State $ \Delta = \nu * \Delta$
         \State $ \nu = 0.5 * \nu$
       \EndIf
@@ -188,7 +187,7 @@ decision.  The method used is outlined in Algorithm~\ref{alg:update_tr}.
   \end{algorithmic}
 \end{algorithm}
 
-Finally, we allow the application of a Quasi-Newton method when exact second derivatives are not available.  We use the method of Dennis, Gay, and Welsch, and implement it as described by Nocedal and Wright [4, Chapter 10]; see Algorithm~\ref{alg:rank_one_update}.
+Finally, the application of a Quasi-Newton method is supported when exact second derivatives are not available.  The method of Dennis, Gay, and Welsch  is used, and implemented as described by Nocedal and Wright [4, Chapter 10]; see Algorithm~\ref{alg:rank_one_update}.
 
 \begin{algorithm}
 \caption{{\tt rank\_one\_update}}
@@ -196,11 +195,11 @@ Finally, we allow the application of a Quasi-Newton method when exact second der
   \begin{algorithmic}
     \State {\bf function} $\iter[k+1]{\thess} = $ \Call{{\tt rank\_one\_update}}{$\td ,\iter[k]{\tg},\iter[k+1]{\tg}, \iter[k+1]{\tr},\iter[k]{\tJ},\iter[k]{\thess}$}
     \State $\ty = \iter[k]{\tg} - \iter[k+1]{\tg}$ \State
-    $\ty^\sharp = {\iter[k]{\tJ}}^T \iter[k+1]{\tr} -
+    $\widehat{\ty} = {\iter[k]{\tJ}}^T \iter[k+1]{\tr} -
     \iter[k+1]{\tg}$ \State $\widehat{\iter[k]{\thess}} = \min\left(
-      1, \frac{|\td^T\ty^\sharp|}{|\td^T\iter[k]{\thess}\td|}\right)
+      1, \frac{|\td^T\widehat{\ty}|}{|\td^T\iter[k]{\thess}\td|}\right)
     \iter[k]{\thess}$ \State $\iter[k+1]{\thess} =
-    \widehat{\iter[k]{\thess}} + \left(({\iter[k+1]{\ty}}^\sharp -
+    \widehat{\iter[k]{\thess}} + \left(({\iter[k+1]{\widehat{\ty}}} -
       \iter[k]{\thess}\td )^T\td\right)/\ty^T\td$
 
   \end{algorithmic}

@@ -4,21 +4,39 @@ Consider fitting the function $y(t) = x_1e^{x_2 t}$ to data $(\bm{t}, \bm{y})$
 using a non-linear least squares fit.\\
 The residual function is given by
 $$
-   r_i(\vx; t_i, y_i) = x_1 e^{x_2 t_i} - y_i.
+   r_i(\vx)  = x_1 e^{x_2 t_i} - y_i.
 $$
-We can calculate the Jacobian and Hessian as
+We can calculate the Jacobian and Hessian of the residual as
 $$
-   J_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
+   \nabla r_i(\vx) = \left(\begin{array}{cc}
       e^{x_2 t_i} &
       t_i x_1 e^{x_2 t_i}
-      \end{array}\right)
+      \end{array}\right),
 $$
 $$
-   H_i(\vx; t_i, y_i) = \left(\begin{array}{cc}
-      1                 & t_i e^{x_2 t_i}    \\
-      t_i e^{x_2 t_i}   & t_i^2 e^{x_2 t_i}
-   \end{array}\right)
+   \nabla^2 r_i(\vx) = \left(\begin{array}{cc}
+      0                 & t_i e^{x_2 t_i}    \\
+      t_i e^{x_2 t_i}     & x_1 t_i^2 e^{x_2 t_i}
+   \end{array}\right).
 $$
+
+For some data points, $y_i$, $t_i$, $(i = 1,\dots,m)$ the user must return
+$$  r(\vx) = \begin{bmatrix}
+      r_1(\vx)\\
+      \vdots \\
+      r_m(\vx)
+    \end{bmatrix}, \quad   J(\vx) = 
+    \begin{bmatrix}
+      \nabla r_1(\vx) \\
+      \vdots \\
+      \nabla r_m(\vx) \\
+    \end{bmatrix}, \quad 
+    H_f(\vx) = 
+    \sum_{i=1}^m
+    (\vr)_i \nabla^2 r_i(\vx),
+$$
+where, in the case of the Hessian, $(\vr)_i$ is the $i$th component of a residual vector passed to the user.
+
 Given the data
 \begin{center}
    \begin{tabular}{l|*{5}{r}}
@@ -28,4 +46,10 @@ Given the data
       $y_i$ & 3 & 4 & 6 & 11 & 20
    \end{tabular}
 \end{center}
-and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit.
+and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit (with no 
+weightings, i.e., $W = I$).
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "nlls_fortran"
+%%% End: 
