@@ -214,8 +214,11 @@ def plot_prof(control_files,no_tests,prob_list):
         testset = "CUTEst tests"
 
     os.chdir("data")
-    subprocess.call(["pprof","5","iterations",data_files,testset])
-    subprocess.call(["pprof","6","fevals",data_files,testset])
+    try:
+        subprocess.call(["pprof","5","iterations",data_files,testset])
+        subprocess.call(["pprof","6","fevals",data_files,testset])
+    except:
+        print "Performance profiles not available: ensure pprof is in the path"
 
     os.chdir("..")
 
