@@ -51,7 +51,7 @@ program nlls_test
           
      number_of_models = 4
      allocate(model_to_test(number_of_models))
-     model_to_test = (/ 0, 1, 2, 9 /)
+     model_to_test = (/ 0, 1, 2, 3 /)
 
      allocate( x(n) )
 
@@ -138,7 +138,7 @@ program nlls_test
 
      ! Let's use a relative tr radius
      options%nlls_method = 4
-     options%model = 9
+     options%model = 3
      options%exact_second_derivatives = .true.
      options%relative_tr_radius = 1
      call nlls_solve(n, m, X,                         &
@@ -154,7 +154,7 @@ program nlls_test
 
      ! Let's use a weighted least squares method
      options%nlls_method = 4
-     options%model = 9
+     options%model = 3
      allocate(w(m))
      do i = 1, m
         w(i) = 2.0
@@ -173,7 +173,7 @@ program nlls_test
 
      ! Let's do one run with non-exact second derivatives 
      options%nlls_method = 4
-     options%model = 9
+     options%model = 3
      options%tr_update_strategy = 1
      options%exact_second_derivatives = .false.
      X = 0.0_wp
@@ -204,7 +204,7 @@ program nlls_test
      
      ! Let's get the method to switch to second-order
      options%nlls_method = 4
-     options%model = 9
+     options%model = 3
      options%exact_second_derivatives = .true.
      options%relative_tr_radius = 1
      options%stop_g_absolute = 1e-14

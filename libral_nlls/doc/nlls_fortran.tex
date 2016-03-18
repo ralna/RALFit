@@ -341,7 +341,7 @@ of iterations the algorithm is allowed to take before being stopped.  The defaul
   \item{\tt 1} Gauss-Newton (no Hessian).
   \item{\tt 2} Newton (exact Hessian).
 %  \item{\tt 3} Barely second-order (Hessian matrix approximated by the identity).
-  \item{\tt 9} Hybrid method (mixture of Gauss-Newton/(Quasi-)Newton, as determined by the package).
+  \item{\tt 3} Hybrid method (mixture of Gauss-Newton/(Quasi-)Newton, as determined by the package).
 \end{description}
 The default is {\tt model = 1}.
 
@@ -379,7 +379,7 @@ but keep the trust-region radius unchanged.
 
 \itt{radius\_reduce} \scalarreal that specifies the factor to decrease the trust-region radius by.
 
-\itt{hybrid\_switch} \scalarreal that specifies the value, if {\tt model = 9},
+\itt{hybrid\_switch} \scalarreal that specifies the value, if {\tt model = 3},
 at which second derivatives are used.
 
 \itt{exact\_second\_derivatives} \scalarlogical that, if {\tt true}, signifies that the

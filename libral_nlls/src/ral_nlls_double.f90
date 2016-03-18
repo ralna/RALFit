@@ -313,7 +313,7 @@ contains
              w%hf(1:n**2) = zero
           end if
           w%use_second_derivatives = .true.
-       case (9) ! hybrid (MNT)
+       case (3) ! hybrid (MNT)
           ! set the tolerance :: make this relative
           w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5*(w%normF**2)) )                   
           ! use first-order method initially
@@ -444,7 +444,7 @@ contains
 
     end if
     
-    if (options%model == 9) then
+    if (options%model == 3) then
        ! hybrid method -- check if we need second derivatives
        
        if (w%use_second_derivatives) then 

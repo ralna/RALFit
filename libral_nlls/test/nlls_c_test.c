@@ -115,7 +115,7 @@ int main(void){
   int no_methods = 4;
   int status = 0;
   // passing tests....
-  int model_array[4] = {1,2,9,0};
+  int model_array[4] = {1,2,3,0};
   for(int i=0; i<4;i++) { // loop over the methods
     for (int method=1;method<no_methods+1;method++){
       status = generic_test(model_array[i],method);

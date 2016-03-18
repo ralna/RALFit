@@ -96,9 +96,9 @@ module ral_nlls_internal
 !      0  dynamic (*not yet implemented*)
 !      1  Gauss-Newton (no 2nd derivatives)
 !      2  second-order (exact Hessian)
-!      9  hybrid (using Madsen, Nielsen and Tingleff's method)    
+!      3  hybrid (using Madsen, Nielsen and Tingleff's method)    
  
-     INTEGER :: model = 9
+     INTEGER :: model = 3
 
 
 !   specify the method used to solve the trust-region sub problem
@@ -1858,7 +1858,7 @@ contains
           allocate(workspace%hf(n*n), stat = inform%alloc_status)
           if (inform%alloc_status > 0) goto 1000
        end if
-       if( options%model == 9 ) then
+       if( options%model == 3 ) then
           if( .not. allocated(workspace%hf_temp)) then 
              allocate(workspace%hf_temp(n*n), stat = inform%alloc_status)
              if (inform%alloc_status > 0) goto 1000
