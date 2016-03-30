@@ -187,9 +187,9 @@ module ral_nlls_internal
      INTEGER :: scale = 1
      REAL(wp) :: scale_max = 1e11
      REAL(wp) :: scale_min = 1e-11
-     LOGICAL :: scale_trim_min = .FALSE.
+     LOGICAL :: scale_trim_min = .TRUE.
      LOGICAL :: scale_trim_max = .TRUE.
-     LOGICAL :: scale_require_increase = .FALSE.
+     LOGICAL :: scale_require_increase = .FALSE.!.TRUE.
 
      logical :: calculate_svd_J = .true.
 
