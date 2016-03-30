@@ -45,7 +45,7 @@ for i in range(no_tests-1):
     
     try:
         subprocess.call(["cp", "control_files/"+control_files[i], \
-                         cutestdir+"/src/"+package+"/"+package.upper()+".SPC"])
+                         "cutest/sif/"+package.upper()+".SPC"])
     except:
         print "Error: No control file " + control_files[i] + "found"
     
