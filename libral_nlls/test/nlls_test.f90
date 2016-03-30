@@ -96,6 +96,7 @@ program nlls_test
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', options%model
                  write(*,*) 'TR_UPDATE = ', tr_update
+                 write(*,*) 'info%status = ', status%status
                  no_errors_main = no_errors_main + 1
               end if
 
