@@ -164,7 +164,7 @@ contains
      end do main_loop
     
      ! If we reach here, then we're over maxits     
-     if (options%print_level > 0 ) write(options%out,1040) 
+     if (options%print_level > 0 ) write(options%error,1040) 
      inform%status = ERROR%MAXITS
      goto 1000
     
@@ -218,8 +218,8 @@ contains
        !! This is the first call...allocate arrays, and get initial !!
        !! function evaluations                                      !!
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
-       if ( options%print_level >= 3 )  write( options%out , 3000 ) 
-
+       if ( options%print_level >= 3 ) write( options%out, 3000 ) 
+       if ( options%print_level >= 1 ) write( options%out, 1000 )
        ! first, check if n < m
        if (n > m) goto 4070
        
@@ -256,7 +256,6 @@ contains
              if (JtJdiag > Jmax) Jmax = JtJdiag
           end do
           w%Delta = options%initial_radius_scale * (Jmax**2)
-          if (options%print_level .ge. 3) write(options%out,3110) w%Delta
        else
           w%Delta = options%initial_radius
        end if
@@ -423,7 +422,7 @@ contains
        call get_svd_J(n,m,w%J,&
             w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
             options,svdstatus,w%get_svd_J_ws)
-       if ((svdstatus .ne. 0).and.(options%print_level > 2)) then 
+       if ((svdstatus .ne. 0).and.(options%print_level >= 3)) then 
           write( options%out, 3140 ) svdstatus
        end if
     end if
@@ -509,8 +508,9 @@ contains
        w%gradvec(w%iter + 1) = inform%norm_g
     end if
     
-    if (options%print_level >=3) write(options%out,3010) inform%obj
-    if (options%print_level >=3) write(options%out,3060) w%normJF/w%normF
+    if (options%print_level >=1) then
+       write(options%out,1010) w%iter, w%Delta, inform%obj, inform%norm_g, inform%scaled_g
+    end if
 
     !++++++++++++++++++!
     ! Test convergence !
@@ -519,7 +519,7 @@ contains
     if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
     if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
 
-    if (options%print_level > 2 ) write(options%out,3100) rho
+    if (options%print_level >= 3 ) write(options%out,3100) rho
 
 ! Non-executable statements
 
@@ -527,7 +527,12 @@ contains
 
 !1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
+1000 FORMAT('iter',4x,'Delta',9x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
+1010 FORMAT(   i4, 2x,ES12.4,2x,ES12.4,2x,ES12.4,2x,ES12.4)
+
 ! print level > 1
+
+
 
 ! print level > 2
 3000 FORMAT(/,'* Running RAL_NLLS *')
@@ -541,6 +546,9 @@ contains
 3120 FORMAT('** Switching to Gauss-Newton **')
 3130 FORMAT('** Switching to (Quasi-)Newton **')
 3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
+
+
+
 ! error returns
 4000 continue
     ! generic end of algorithm
