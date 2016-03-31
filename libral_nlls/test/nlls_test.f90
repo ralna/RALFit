@@ -781,7 +781,7 @@ program nlls_test
      alpha = 2.0_wp ! normf
      beta =  1.0_wp ! normfnew
      gamma = 1.5_wp ! md
-     call calculate_rho(alpha, beta, gamma, delta)
+     call calculate_rho(alpha, beta, gamma, delta,options)
      if ( abs(delta - 3.0_wp) > 1e-10) then
         write(*,*) 'Unexpected answer from calculate_rho'
         write(*,*) 'Expected 3.0, got ', delta
@@ -790,7 +790,7 @@ program nlls_test
      
      ! now, let's check one is returned if alpha = beta
      beta = 2.0_wp
-     call calculate_rho(alpha,beta,gamma, delta)
+     call calculate_rho(alpha,beta,gamma, delta, options)
      if (abs(delta - 1.0_wp) > 1e-10) then
         write(*,*) 'Unexpected answer from calculate_rho'
         write(*,*) 'Expected 1.0, got ', delta
@@ -800,7 +800,7 @@ program nlls_test
 
      ! finally, check that 1 is returned if denominator = 0
      gamma = 2.0_wp
-     call calculate_rho(alpha,beta,gamma, delta)
+     call calculate_rho(alpha,beta,gamma, delta, options)
      if (abs(delta - 1.0_wp) > 1e-10) then
         write(*,*) 'Unexpected answer from calculate_rho'
         write(*,*) 'Expected 1.0, got ', delta

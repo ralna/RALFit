@@ -1186,7 +1186,7 @@ contains
 
      end subroutine evaluate_model
      
-     subroutine calculate_rho(normf,normfnew,md,rho)
+     subroutine calculate_rho(normf,normfnew,md,rho,options)
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
        !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
@@ -1200,6 +1200,7 @@ contains
        real(wp), intent(in)  :: normfnew ! ||f(x_k + d)||
        real(wp), intent(in)  :: md       !    m_k(d)
        real(wp), intent(out) :: rho      ! act_red / pred_red (close to 1 == good)
+       TYPE( nlls_options ), INTENT( IN ) :: options
 
        real(wp) :: actual_reduction, predicted_reduction
        

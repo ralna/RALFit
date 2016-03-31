@@ -378,7 +378,7 @@ contains
        !                                                          !
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-       call calculate_rho(w%normF,normFnew,md,rho)
+       call calculate_rho(w%normF,normFnew,md,rho,options)
        if (rho > options%eta_successful) success = .true.
        
        !++++++++++++++++++++++!
