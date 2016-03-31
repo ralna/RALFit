@@ -931,7 +931,6 @@ contains
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
         if (inform%status .ne. 0) goto 1000
-        ! ^^^ this shouldn't happen
         
         nd = norm2(d)
 
