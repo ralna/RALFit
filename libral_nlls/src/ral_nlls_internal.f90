@@ -935,6 +935,7 @@ contains
              1, one, w%LtL, n, w%q, n )
         
         nq = norm2(w%q)
+        if (options%print_level >= 3) write(options%out,6080) nq
         
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
         if (abs(sigma_shift) < epsmch * abs(sigma) ) then
@@ -1003,7 +1004,8 @@ contains
 6040 FORMAT('Sigma tiny, so exit')  
 6050 FORMAT('||d|| = Delta, so exit')   
 6060 FORMAT('Return d + alpha*y_1') 
-6070 FORMAT('Converged! ||d|| = Delta at iteration ',i4)       
+6070 FORMAT('Converged! ||d|| = Delta at iteration ',i4)      
+6080 FORMAT('nq = ',ES12.4)
 
    end subroutine more_sorensen
    
