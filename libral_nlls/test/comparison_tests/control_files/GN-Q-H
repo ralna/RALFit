@@ -1,8 +1,8 @@
 6                     error unit
 6                     normal output unit
 1                     controls the amount of printing --- set to 0, 1, 2 or 3
-4                     method used (1=dogleg, 2=AINT, 3=More-Sorensen, 4=gltr)
-2                     model used (1=first order, 2=Newton)
+3                     method used (1=dogleg, 2=AINT, 3=More-Sorensen, 4=gltr)
+3                     model used (1=first order, 2=Newton)
 1000                  maxits
 1                     TR update strategy		      
 0                     relative trust region? (1=relative)
@@ -27,6 +27,6 @@ F                     scale_require_increase
 T                     output_progress_vectors
 F                     exact second derivatives
 44                    summary unit (not + = don't write)
-QuasiNewton.out       summary file (max 20 chars)
+GN-Q-H.out            summary file (max 20 chars)
 45                    iteration summary (not + = don't write)		    
-QuasiNewton_iter.out  iteration summary file (max 20 chars)		      
+GN-Q-H_iter.out       iteration summary file (max 20 chars)		      
