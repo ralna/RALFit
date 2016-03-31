@@ -25,121 +25,380 @@ sifdecoder -A pc64.lnx.gfo -st   RAT43.SIF
           45 Newton_s_iter.out   
  calling the minimizer...
  sending to nlls_solve
- print_level =            3
 
 * Running RAL_NLLS *
-iter    Delta         0.5||f||^2    ||J'f||       ||J'f||/||f||
+iter    2nd order?  Delta         0.5||f||^2    ||J'f||       ||J'f||/||f||
 s1 =   3.5678E+02    sn =   3.2936E+00
 k(J) =   1.0832E+02
-== Starting iteration 1 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.2536E+00, ||H|| = 1.0000E+00, lambda_min = -1.6184E-01
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 8.215455925261250E-02 9.974146359147724E-01 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 3.389004532117212E-06 1.058080638752892E+00 6.066600283811918E-02
+    it     ||x||-radius             lambda               d_lambda
+ G   3 0.000000000000000E+00 1.058083320323678E+00 2.681570786089438E-06
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   1.2511E+06
+Actual reduction (in cost function) =   2.7001E+05
+Predicted reduction (in model) =   2.8209E+05
+rho returned =   9.5717E-01
 Very successful step -- increasing Delta to  2.0000E+02
 s1 =   3.7457E+02    sn =   4.8582E+00
 k(J) =   7.7101E+01
-   1    2.0000E+02    1.2631E+06    3.8530E+05    2.4241E+02
+   1    Y           2.0000E+02    1.2631E+06    3.8530E+05    2.4241E+02
 Step was successful -- rho =  9.5717E-01
-== Starting iteration 2 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.5448E+00, ||H|| = 1.0000E+00, lambda_min = -2.6345E-02
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 1.297138840438933E+00 3.202751267862269E-01 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 1.204691097756871E-02 4.758051626845030E-01 1.555300358982761E-01
+    it     ||x||-radius             lambda               d_lambda
+ L   3 1.380757730373716E-10 4.779859167916058E-01 2.180754107102834E-03
+    it     ||x||-radius             lambda               d_lambda
+ G   4 4.440892098500626E-16 4.779859168167154E-01 2.510952556988855E-11
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   8.6531E+05
+Actual reduction (in cost function) =   3.7936E+05
+Predicted reduction (in model) =   3.9783E+05
+rho returned =   9.5357E-01
 Very successful step -- increasing Delta to  4.0000E+02
 s1 =   3.3068E+02    sn =   5.3645E+00
 k(J) =   6.1641E+01
-   2    4.0000E+02    8.8378E+05    1.4760E+05    1.1102E+02
+   2    Y           4.0000E+02    8.8378E+05    1.4760E+05    1.1102E+02
 Step was successful -- rho =  9.5357E-01
-== Starting iteration 3 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0862E+00, ||H|| = 1.0000E+00, lambda_min =  2.2470E-03
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 1.596779006498187E+01 0.000000000000000E+00 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 5.648532684510107E+00 1.659393348578024E-02 1.659393348578024E-02
+    it     ||x||-radius             lambda               d_lambda
+ L   3 4.117640707400576E-01 2.002267037838965E-01 1.836327702981162E-01
+    it     ||x||-radius             lambda               d_lambda
+ L   4 1.135364020732332E-04 2.436156999784440E-01 4.338899619454750E-02
+    it     ||x||-radius             lambda               d_lambda
+ G   5 0.000000000000000E+00 2.436293805788318E-01 1.368060038786645E-05
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.2380E+05
+Actual reduction (in cost function) =   4.4607E+05
+Predicted reduction (in model) =   4.5999E+05
+rho returned =   9.6974E-01
 Very successful step -- increasing Delta to  8.0000E+02
 s1 =   4.5588E+02    sn =   9.5362E+00
 k(J) =   4.7805E+01
-   3    8.0000E+02    4.3771E+05    1.1087E+04    1.1849E+01
+   3    Y           8.0000E+02    4.3771E+05    1.1087E+04    1.1849E+01
 Step was successful -- rho =  9.6974E-01
-== Starting iteration 4 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0222E+00, ||H|| = 1.0000E+00, lambda_min = -1.7068E-03
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 2.168665646725440E+00 7.708929589119633E-03 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 9.233635033514092E-01 1.601230765200324E-02 8.303378062883610E-03
+    it     ||x||-radius             lambda               d_lambda
+ L   3 3.227915643418071E-01 3.636656035397332E-02 2.035425270197007E-02
+    it     ||x||-radius             lambda               d_lambda
+ L   4 8.099358528982137E-03 5.487379882999657E-02 1.850723847602326E-02
+    it     ||x||-radius             lambda               d_lambda
+ L   5 8.220668590297464E-10 5.541258496060193E-02 5.387861306053593E-04
+    it     ||x||-radius             lambda               d_lambda
+ L   6 4.440892098500626E-16 5.541258501544544E-02 5.484350473761168E-11
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   5.5578E+04
+Actual reduction (in cost function) =   2.4659E+05
+Predicted reduction (in model) =   3.8214E+05
+rho returned =   6.4530E-01
 Successful step -- Delta staying at  8.0000E+02
 s1 =   2.1934E+03    sn =   6.0678E+01
 k(J) =   3.6148E+01
-   4    8.0000E+02    1.9112E+05    9.7997E+05    1.5850E+03
+   4    Y           8.0000E+02    1.9112E+05    9.7997E+05    1.5850E+03
 Step was successful -- rho =  6.4530E-01
-== Starting iteration 5 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.1258E+00, ||H|| = 1.0000E+00, lambda_min = -6.4645E-03
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 3.814532690670420E-01 3.799814326857017E-02 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 1.755189785850320E-04 4.291749430553840E-02 4.919351036968229E-03
+    it     ||x||-radius             lambda               d_lambda
+ G   3 0.000000000000000E+00 4.292014432535356E-02 2.650019815156335E-06
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =  -1.3121E+04
+Actual reduction (in cost function) =   1.5594E+05
+Predicted reduction (in model) =   2.0424E+05
+rho returned =   7.6353E-01
 Successful step -- Delta staying at  8.0000E+02
 s1 =   2.0918E+03    sn =   5.4251E+01
 k(J) =   3.8558E+01
-   5    8.0000E+02    3.5176E+04    2.1515E+05    8.1116E+02
+   5    Y           8.0000E+02    3.5176E+04    2.1515E+05    8.1116E+02
 Step was successful -- rho =  7.6353E-01
-== Starting iteration 6 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0192E+00, ||H|| = 1.0000E+00, lambda_min = -6.1057E-02
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 1.966863149321068E-01 7.164618032473051E-02 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 1.903985999973656E-07 7.186767532098026E-02 2.214949962497520E-04
+    it     ||x||-radius             lambda               d_lambda
+ L   3 3.552713678800501E-15 7.186767553993043E-02 2.189501635552205E-10
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =  -2.9411E+04
+Actual reduction (in cost function) =   2.1935E+03
+Predicted reduction (in model) =   6.4587E+04
+rho returned =   3.3962E-02
 Successful step -- Delta staying at  8.0000E+02
 s1 =   2.2215E+03    sn =   3.8508E+01
 k(J) =   5.7688E+01
-   6    8.0000E+02    3.2983E+04    4.3627E+05    1.6986E+03
+   6    Y           8.0000E+02    3.2983E+04    4.3627E+05    1.6986E+03
 Step was successful -- rho =  3.3962E-02
-== Starting iteration 7 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0027E+00, ||H|| = 1.0000E+00, lambda_min =  6.6874E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 9.175552634350794E+01 0.000000000000000E+00 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 8.122976030060247E-02 9.076589292581377E-03 9.076589292581377E-03
+    it     ||x||-radius             lambda               d_lambda
+ L   3 1.588497511306741E-08 9.196528640138951E-03 1.199393475575742E-04
+    it     ||x||-radius             lambda               d_lambda
+ G   4 0.000000000000000E+00 9.196528663885730E-03 2.374677884886545E-11
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =  -6.1836E+03
+Actual reduction (in cost function) =   2.4129E+04
+Predicted reduction (in model) =   3.9166E+04
+rho returned =   6.1606E-01
 Successful step -- Delta staying at  8.0000E+02
 s1 =   2.3041E+03    sn =   1.8369E+01
 k(J) =   1.2543E+02
-   7    8.0000E+02    8.8538E+03    2.1819E+05    1.6396E+03
+   7    Y           8.0000E+02    8.8538E+03    2.1819E+05    1.6396E+03
 Step was successful -- rho =  6.1606E-01
-== Starting iteration 8 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0157E+00, ||H|| = 1.0000E+00, lambda_min = -1.3823E-02
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 9.270078289480566E-02 1.450583347137740E-02 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 1.760284362717357E-09 1.450970380615050E-02 3.870334773095965E-06
+    it     ||x||-radius             lambda               d_lambda
+ L   3 1.421085471520200E-14 1.450970380622441E-02 7.391136314094382E-14
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =  -1.0973E+04
+Actual reduction (in cost function) =  -1.0083E+20
+Predicted reduction (in model) =   1.9827E+04
+rho returned =  -5.0854E+15
 Unsuccessful step -- decreasing Delta to  4.0000E+02
+   8    Y           4.0000E+02    unsuccessful step
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0157E+00, ||H|| = 1.0000E+00, lambda_min = -1.3823E-02
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 1.798215911634582E-01 1.518906277832430E-02 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 2.214537122569027E-07 1.522007862639389E-02 3.101584806958733E-05
+    it     ||x||-radius             lambda               d_lambda
+ L   3 3.552713678800501E-15 1.522007866547488E-02 3.908099364957618E-11
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   2.7214E+02
+Actual reduction (in cost function) =  -8.4830E+03
+Predicted reduction (in model) =   8.5817E+03
+rho returned =  -9.8851E-01
 Unsuccessful step -- decreasing Delta to  2.0000E+02
+   8    Y           2.0000E+02    unsuccessful step
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0157E+00, ||H|| = 1.0000E+00, lambda_min = -1.3823E-02
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 3.349531422061220E-01 1.655552139221810E-02 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 3.253219538823515E-05 1.681729213450188E-02 2.617707422837776E-04
+    it     ||x||-radius             lambda               d_lambda
+ G   3 0.000000000000000E+00 1.681732016670742E-02 2.803220554292718E-08
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   3.2713E+03
+Actual reduction (in cost function) =   2.7729E+03
+Predicted reduction (in model) =   5.5825E+03
+rho returned =   4.9671E-01
 Successful step -- Delta staying at  2.0000E+02
 s1 =   2.7531E+03    sn =   1.6264E+01
 k(J) =   1.6927E+02
-   8    2.0000E+02    6.0809E+03    1.0508E+05    9.5284E+02
+   8    Y           2.0000E+02    6.0809E+03    1.0508E+05    9.5284E+02
 Step was successful -- rho =  4.9671E-01
-== Starting iteration 9 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0243E+00, ||H|| = 1.0000E+00, lambda_min =  2.7628E-03
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-1.872427357876369E+00 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.9791E+03
+Actual reduction (in cost function) =   9.9937E+02
+Predicted reduction (in model) =   1.1018E+03
+rho returned =   9.0701E-01
 Very successful step -- increasing Delta to  3.2218E+02
 s1 =   2.8141E+03    sn =   1.5475E+01
 k(J) =   1.8185E+02
-   9    3.2218E+02    5.0816E+03    6.3940E+03    6.3425E+01
+   9    Y           3.2218E+02    5.0816E+03    6.3940E+03    6.3425E+01
 Step was successful -- rho =  9.0701E-01
-== Starting iteration 10 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0501E+00, ||H|| = 1.0000E+00, lambda_min = -9.6295E-05
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1 6.280287346038449E-02 1.034536661468339E-03 0.000000000000000E+00
+    it     ||x||-radius             lambda               d_lambda
+ L   2 1.421085471520200E-13 1.034802444392804E-03 2.657829244645700E-07
+ Normal stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.7341E+03
+Actual reduction (in cost function) =   2.0123E+02
+Predicted reduction (in model) =   3.4750E+02
+rho returned =   5.7907E-01
 Successful step -- Delta staying at  3.2218E+02
 s1 =   2.6090E+03    sn =   1.4573E+01
 k(J) =   1.7903E+02
-  10    3.2218E+02    4.8803E+03    3.8875E+04    3.9349E+02
+  10    Y           3.2218E+02    4.8803E+03    3.8875E+04    3.9349E+02
 Step was successful -- rho =  5.7907E-01
-== Starting iteration 11 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0019E+00, ||H|| = 1.0000E+00, lambda_min =  1.3163E-03
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-1.865633322002581E+01 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.7131E+03
+Actual reduction (in cost function) =   2.1801E+02
+Predicted reduction (in model) =   1.6726E+02
+rho returned =   1.3034E+00
 Very successful step -- increasing Delta to  3.6819E+02
 s1 =   2.4514E+03    sn =   1.4772E+01
 k(J) =   1.6595E+02
-  11    3.6819E+02    4.6623E+03    1.2853E+04    1.3311E+02
+  11    Y           3.6819E+02    4.6623E+03    1.2853E+04    1.3311E+02
 Step was successful -- rho =  1.3034E+00
-== Starting iteration 12 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0148E+00, ||H|| = 1.0000E+00, lambda_min =  7.0020E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-2.424029111881899E+01 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.5411E+03
+Actual reduction (in cost function) =   1.3392E+02
+Predicted reduction (in model) =   1.2122E+02
+rho returned =   1.1048E+00
 Very successful step -- increasing Delta to  6.0045E+02
 s1 =   2.2680E+03    sn =   1.4308E+01
 k(J) =   1.5851E+02
-  12    6.0045E+02    4.5284E+03    2.3002E+04    2.4170E+02
+  12    Y           6.0045E+02    4.5284E+03    2.3002E+04    2.4170E+02
 Step was successful -- rho =  1.1048E+00
-== Starting iteration 13 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0039E+00, ||H|| = 1.0000E+00, lambda_min =  8.8724E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-8.704218326526188E+01 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.4532E+03
+Actual reduction (in cost function) =   9.3646E+01
+Predicted reduction (in model) =   7.5258E+01
+rho returned =   1.2443E+00
 Very successful step -- increasing Delta to  2.6039E+02
 s1 =   2.1743E+03    sn =   1.4192E+01
 k(J) =   1.5320E+02
-  13    2.6039E+02    4.4348E+03    5.4205E+03    5.7556E+01
+  13    Y           2.6039E+02    4.4348E+03    5.4205E+03    5.7556E+01
 Step was successful -- rho =  1.2443E+00
-== Starting iteration 14 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0179E+00, ||H|| = 1.0000E+00, lambda_min =  5.0306E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-6.087723372333588E+01 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.4050E+03
+Actual reduction (in cost function) =   3.4122E+01
+Predicted reduction (in model) =   2.9766E+01
+rho returned =   1.1463E+00
 Very successful step -- increasing Delta to  3.5459E+02
 s1 =   2.0695E+03    sn =   1.3893E+01
 k(J) =   1.4896E+02
-  14    3.5459E+02    4.4006E+03    5.7236E+03    6.1010E+01
+  14    Y           3.5459E+02    4.4006E+03    5.7236E+03    6.1010E+01
 Step was successful -- rho =  1.1463E+00
-== Starting iteration 15 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0026E+00, ||H|| = 1.0000E+00, lambda_min =  4.8773E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-2.003307153791507E+02 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.3944E+03
+Actual reduction (in cost function) =   7.0699E+00
+Predicted reduction (in model) =   6.2899E+00
+rho returned =   1.1240E+00
 Very successful step -- increasing Delta to  1.1538E+02
 s1 =   2.0318E+03    sn =   1.3831E+01
 k(J) =   1.4691E+02
-  15    1.1538E+02    4.3936E+03    7.2485E+02    7.7325E+00
+  15    Y           1.1538E+02    4.3936E+03    7.2485E+02    7.7325E+00
 Step was successful -- rho =  1.1240E+00
-== Starting iteration 16 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0093E+00, ||H|| = 1.0000E+00, lambda_min =  3.8608E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-4.845349150434583E+02 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.3932E+03
+Actual reduction (in cost function) =   3.6894E-01
+Predicted reduction (in model) =   3.5560E-01
+rho returned =   1.0375E+00
 Very successful step -- increasing Delta to  4.2924E+01
 s1 =   2.0187E+03    sn =   1.3801E+01
 k(J) =   1.4628E+02
-  16    4.2924E+01    4.3932E+03    7.7675E+01    8.2866E-01
+  16    Y           4.2924E+01    4.3932E+03    7.7675E+01    8.2866E-01
 Step was successful -- rho =  1.0375E+00
-== Starting iteration 17 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0025E+00, ||H|| = 1.0000E+00, lambda_min =  3.7152E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-2.026139152305906E+03 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.3932E+03
+Actual reduction (in cost function) =   1.4427E-03
+Predicted reduction (in model) =   1.4388E-03
+rho returned =   1.0027E+00
 Very successful step -- increasing Delta to  2.2144E+00
 s1 =   2.0180E+03    sn =   1.3799E+01
 k(J) =   1.4624E+02
-  17    2.2144E+00    4.3932E+03    2.3749E-01    2.5336E-03
+  17    Y           2.2144E+00    4.3932E+03    2.3749E-01    2.5336E-03
 Step was successful -- rho =  1.0027E+00
-== Starting iteration 18 ==
+*** Solving the trust region subproblem using DTRS ***
+ ||c|| = 1.0058E+00, ||H|| = 1.0000E+00, lambda_min =  3.6995E-04
+    ---------------------------- phase two ----------------------------
+    it     ||x||-radius             lambda               d_lambda
+ L   1-3.477127331920897E+04 0.000000000000000E+00
+ Interior stopping criteria satisfied
+*** Trust region subproblem solution found ***
+Model evauated successfully.  m_k(d) =   4.3932E+03
+Actual reduction (in cost function) =   2.5513E-08
+Predicted reduction (in model) =   2.5519E-08
+rho returned =   9.9979E-01
 Very successful step -- increasing Delta to  1.1150E-02
 s1 =   2.0180E+03    sn =   1.3799E+01
 k(J) =   1.4624E+02
-  18    1.1150E-02    4.3932E+03    5.4201E-06    5.7823E-08
+  18    Y           1.1150E-02    4.3932E+03    5.4201E-06    5.7823E-08
 RAL_NLLS converged (on gradient test) at iteration 18
 status = 0       iter = 18
 

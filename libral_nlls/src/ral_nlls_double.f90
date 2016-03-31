@@ -208,6 +208,7 @@ contains
     real(wp) :: rho, normFnew, md, Jmax, JtJdiag
     real(wp) :: FunctionValue
     logical :: success
+    character :: second
     
     ! todo: make max_tr_decrease a control variable
 
@@ -218,7 +219,7 @@ contains
        !! This is the first call...allocate arrays, and get initial !!
        !! function evaluations                                      !!
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
-       if ( options%print_level >= 3 ) write( options%out, 3000 ) 
+       if ( options%print_level >= 2 ) write( options%out, 2000 ) 
        if ( options%print_level >= 1 ) write( options%out, 1000 )
        ! first, check if n < m
        if (n > m) goto 4070
@@ -330,7 +331,6 @@ contains
     end if
 
     w%iter = w%iter + 1
-    if ( options%print_level >= 3 )  write( options%out , 3030 ) w%iter
     inform%iter = w%iter
     
     rho  = -one ! intialize rho as a negative value
@@ -389,6 +389,17 @@ contains
        
        if (.not. success) then
           ! finally, check d makes progress
+          if ( options%print_level >= 1 ) then
+             if (.not. w%use_second_derivatives) then 
+                second = 'N';
+             elseif (options%exact_second_derivatives) then 
+                second = 'Y';
+             else
+                second = 'A';
+             end if
+             
+             write(options%out,1020) w%iter, second, w%Delta
+          end if
           if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
        end if
     end do
@@ -509,7 +520,15 @@ contains
     end if
     
     if (options%print_level >=1) then
-       write(options%out,1010) w%iter, w%Delta, inform%obj, inform%norm_g, inform%scaled_g
+       if (.not. w%use_second_derivatives) then 
+          second = 'N';
+       elseif (options%exact_second_derivatives) then 
+          second = 'Y';
+       else
+          second = 'A';
+       end if
+       write(options%out,1010) w%iter, second, w%Delta, inform%obj, &
+            inform%norm_g, inform%scaled_g
     end if
 
     !++++++++++++++++++!
@@ -527,20 +546,14 @@ contains
 
 !1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
-1000 FORMAT('iter',4x,'Delta',9x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
-1010 FORMAT(   i4, 2x,ES12.4,2x,ES12.4,2x,ES12.4,2x,ES12.4)
-
+1000 FORMAT('iter',4x,'2nd order?',2x,'Delta',9x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
+1010 FORMAT(   i4, 4x,      A,9x,ES12.4,  2x,ES12.4      ,2x,ES12.4,    2x,ES12.4)
+1020 FORMAT(   i4, 4x,      A,9x,ES12.4,  4x,'unsuccessful step')
 ! print level > 1
-
+2000 FORMAT(/,'* Running RAL_NLLS *')
 
 
 ! print level > 2
-3000 FORMAT(/,'* Running RAL_NLLS *')
-3010 FORMAT('0.5 ||f||^2 = ',ES12.4)
-3030 FORMAT('== Starting iteration ',i0,' ==')
-3060 FORMAT('||J''f||/||f|| = ',ES12.4)
-
-!3090 FORMAT('Step was unsuccessful -- rho =', ES12.4)
 3100 FORMAT('Step was successful -- rho =', ES12.4)
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
 3120 FORMAT('** Switching to Gauss-Newton **')
@@ -625,14 +638,14 @@ contains
 ! convergence 
 5000 continue
     ! convegence test satisfied
-    if (options%print_level > 2) then
+    if (options%print_level >= 2) then
        write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
             w%iter
     end if
     goto 4000
 
 5010 continue
-    if (options%print_level > 2) then
+    if (options%print_level >= 2) then
        write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
             w%iter
     end if

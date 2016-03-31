@@ -495,16 +495,26 @@ contains
      select case (options%nlls_method)
         
      case (1) ! Powell's dogleg
+        if (options%print_level >= 2) write(options%out,3000) 'dogleg'
         call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
      case (2) ! The AINT method
+        if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
         call AINT_TR(J,f,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
      case (3) ! More-Sorensen
+        if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
         call more_sorensen(J,f,hf,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
      case (4) ! Galahad
+        if (options%print_level >= 2) write(options%out,3000) 'DTRS'
         call solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_dtrs_ws)
      case default
         inform%status = ERROR%UNSUPPORTED_METHOD
      end select
+
+     if (options%print_level >= 2) write(options%out,3010)
+     
+3000 FORMAT('*** Solving the trust region subproblem using ',A,' ***')
+3010 FORMAT('*** Trust region subproblem solution found ***')
+     
 
    END SUBROUTINE calculate_step
    
@@ -843,6 +853,7 @@ contains
      if (inform%status .eq. 0) then
         ! A is symmetric positive definite....
         sigma = zero
+        if (options%print_level >=3) write(options%out,6000)
      else
         ! reset the error calls -- handled in the code....
         inform%status = 0
@@ -851,6 +862,7 @@ contains
         call min_eig_symm(w%A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws) 
         if (inform%status .ne. 0) goto 1000
         sigma = -(sigma - local_ms_shift)
+        if (options%print_level >= 3) write(options%out,6010) sigma
         no_shifts = 1
 100     continue
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
@@ -863,33 +875,42 @@ contains
            no_shifts = no_shifts + 1
            if ( no_shifts == 10 ) goto 3000
            sigma =  sigma + (10**no_shifts) * local_ms_shift
-           if (options%print_level >=3) write(options%out,2000) sigma
+           if (options%print_level >=3) write(options%out,6010) sigma
            goto 100 
         end if
+        if (options%print_level >=3) write(options%out,6020)
      end if
      
      nd = norm2(d)
      if (nd .le. Delta) then
         ! we're within the tr radius from the start!
+        if (options%print_level >= 3) write(options%out,6030)
         if ( abs(sigma) < options%more_sorensen_tiny ) then
            ! we're good....exit
-           goto 1050
+           if (options%print_level >= 3) write(options%out,6040)
+           goto 1020
         else if ( abs( nd - Delta ) < options%more_sorensen_tiny ) then
            ! also good...exit
-           goto 1050              
+           if (options%print_level >= 3) write(options%out,6050)
+           goto 1020              
         end if
         call findbeta(d,w%y1,Delta,alpha,inform)
         if (inform%status .ne. 0 ) goto 1000  
         d = d + alpha * w%y1
+        if (options%print_level >= 3) write(options%out,6060)
         ! also good....exit
-        goto 1050
+        goto 1020
      end if
 
+     if (options%print_level >= 2) write(options%out,5000)
      ! now, we're not in the trust region initally, so iterate....
+     sigma_shift = zero
      do i = 1, options%more_sorensen_maxits
-
+        if (options%print_level >= 2) write(options%out,5010) i-1, nd, sigma, sigma_shift
+        
         if ( abs(nd - Delta) <= options%more_sorensen_tol * Delta) then
-           goto 1020 ! converged!
+           if (options%print_level >= 3) write(options%out,6070) i-1
+           goto 4000 ! converged!
         end if
         
         w%q = d ! w%q = R'\d
@@ -915,7 +936,8 @@ contains
         nd = norm2(d)
 
      end do
-     
+     if (options%print_level >= 2) write(options%out,5010)
+
      goto 1040
      
 1000 continue 
@@ -923,24 +945,15 @@ contains
      goto 4000
      
 1020 continue
-     ! Converged!
-     if ( options%print_level >= 3 ) then
-        write(options%out,'(a,i0)') 'More-Sorensen converged at iteration ', i
-     end if
+     ! inital point was successful
+     if (options%print_level==2) write(options%out,5040)
      goto 4000
-     
+
 1040 continue
      ! maxits reached, not converged
+     if (options%print_level >=2) write(options%out,5020)
      inform%status = ERROR%MS_MAXITS
      goto 4000
-
-1050 continue
-     if ( options%print_level >= 3 ) then
-        write(options%out,'(a)') 'More-Sorensen: first point within trust region'
-     end if
-     goto 4000
-
-2000 format('Non-spd system in more_sorensen. Increasing sigma to ',es12.4)
 
 3000 continue
      ! too many shifts
@@ -957,6 +970,25 @@ contains
         end do
      end if
      return 
+
+! Printing statements
+! print_level >= 2 
+5000 FORMAT('iter',4x,'nd',12x,'sigma',9x,'sigma_shift')
+5010 FORMAT(i4,2x,ES12.4,2x,ES12.4,2x,ES12.4)
+5020 FORMAT('More-Sorensen failed to converge within max number of iterations')   
+5030 FORMAT('More-Sorensen converged at iteration ',i4)
+5040 FORMAT('Acceptable step found without needing to iterate')     
+  
+! print_level >= 3 
+6000 FORMAT('A is symmetric positive definite')     
+6010 FORMAT('Trying a shift of sigma = ',ES12.4)     
+6020 FORMAT('A + sigma I is symmetric positive definite') 
+6030 FORMAT('We''re within the trust region radius initially')     
+6040 FORMAT('Sigma tiny, so exit')  
+6050 FORMAT('||d|| = Delta, so exit')   
+6060 FORMAT('Return d + alpha*y_1') 
+6070 FORMAT('Converged! ||d|| = Delta at iteration ',i4)       
+
    end subroutine more_sorensen
    
    subroutine solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w)
@@ -1041,6 +1073,9 @@ contains
         end if
      end do
 
+     dtrs_options%error = options%error
+     dtrs_options%out = options%out
+     dtrs_options%print_level = options%print_level - 1
      call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
      if ( dtrs_inform%status .ne. 0) then
         inform%external_return = dtrs_inform%status
@@ -1183,6 +1218,9 @@ contains
           call mult_J(hf,n,n,d,w%Hd)
           md = md + 0.5 * dot_product(d,w%Hd)
        end select
+       if (options%print_level >= 3) write(options%out,1000) md
+
+1000   FORMAT('Model evauated successfully.  m_k(d) = ',ES12.4)
 
      end subroutine evaluate_model
      
@@ -1215,6 +1253,13 @@ contains
           rho = actual_reduction / predicted_reduction
        end if
 
+       if (options%print_level >= 3) write(options%out,1000) actual_reduction
+       if (options%print_level >= 3) write(options%out,1010) predicted_reduction
+       if (options%print_level >= 3) write(options%out,1020) rho
+       
+1000   FORMAT('Actual reduction (in cost function) = ', ES12.4)
+1010   FORMAT('Predicted reduction (in model) = ', ES12.4)
+1020   FORMAT('rho returned = ', ES12.4)       
 
      end subroutine calculate_rho
 
@@ -1317,7 +1362,7 @@ contains
              if (options%print_level > 2) write(options%out,3040) w%Delta 
           else
              ! just incase (NaNs and the like...)
-             if (options%print_level > 2) write(options%out,3010) w%Delta 
+             if (options%print_level > 2) write(options%out,3050) w%Delta 
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -one ! set to be negative, so that the logic works....
           end if
@@ -1332,14 +1377,14 @@ contains
                   max(options%radius_reduce, & 
                   1 - ( (options%radius_increase - 1) * ((1 - 2*rho)**w%tr_p)) ))
              w%tr_nu = options%radius_reduce
-             if (options%print_level > 2) write(options%out,3050) w%Delta 
+             if (options%print_level > 2) write(options%out,3060) w%Delta 
           else if ( rho <= options%eta_successful ) then 
              w%Delta = w%Delta * w%tr_nu
              w%tr_nu =  w%tr_nu * 0.5_wp
              if (options%print_level > 2) write(options%out,3010) w%Delta
           else
              ! just incase (NaNs and the like...)
-             if (options%print_level > 2) write(options%out,3010) w%Delta 
+             if (options%print_level > 2) write(options%out,3050) w%Delta 
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta 
              rho = -one ! set to be negative, so that the logic works....
           end if
@@ -1355,8 +1400,9 @@ contains
 3010   FORMAT('Unsuccessful step -- decreasing Delta to', ES12.4)      
 3020   FORMAT('Successful step -- Delta staying at', ES12.4)     
 3030   FORMAT('Very successful step -- increasing Delta to', ES12.4)
-3040   FORMAT('Step too successful -- Delta staying at', ES12.4)   
-3050   FORMAT('Chaning Delta to ', ES12.4)
+3040   FORMAT('Step too successful -- Delta staying at', ES12.4) 
+3050   FORMAT('NaN encountered -- reduced Delta to', ES12.4)   
+3060   FORMAT('Changing Delta to ', ES12.4)
 
 
      end subroutine update_trust_region_radius
@@ -1751,7 +1797,7 @@ contains
        call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1, & 
             w%work, lwork, status )
        if ( (status .ne. 0) .and. (options%print_level > 3) ) then 
-          write(options%out,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
+          write(options%error,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
                status
           s1 = -1.0
           sn = -1.0
