@@ -645,14 +645,17 @@ contains
      
      if (norm2(w%d_gn) <= Delta) then
         d = w%d_gn
+        if (options%print_level >=2) write(options%out,2000)
      else if (norm2( alpha * w%d_sd ) >= Delta) then
         d = (Delta / norm2(w%d_sd) ) * w%d_sd
+        if (options%print_level >=2) write(options%out,2010)
      else
         w%d_sd = alpha * w%d_sd
         w%ghat = w%d_gn - w%d_sd
         call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
         if ( inform%status .ne. 0 ) goto 1000
         d = w%d_sd + beta * w%ghat
+        if (options%print_level >=2) write(options%out,2020)
      end if
 
      normd = norm2(d)
@@ -663,7 +666,11 @@ contains
      ! bad error return from solve_LLS
      return
 
-     
+! Printing commands
+2000 FORMAT('Gauss Newton step taken')
+2010 FORMAT('Steepest descent step taken')
+2020 FORMAT('Dogleg step taken')
+
    END SUBROUTINE dogleg
      
    SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,normd,options,inform,w)
@@ -724,6 +731,7 @@ contains
      if (norm_p0 < Delta) then
         keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
+        if (options%print_level >=3) write(options%out,2000) 'p0'     
         call evaluate_model(f,J,hf,w%p0,obj_p0,m,n,options,w%evaluate_model_ws)
      end if
 
@@ -742,6 +750,7 @@ contains
 
      if (norm2(w%y(1:n)) < tau) then
         ! Hard case
+        if ( options%print_level >= 3) write(options%out, 2010)
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(w%y_hardcase)
         call matmult_outer( matmul(w%B,w%y_hardcase), size_hard(2), n, w%M1_small)
@@ -783,13 +792,16 @@ contains
      end if
      
      ! get obj_p1 : the value of the model at p1
+     if (options%print_level >=3) write(options%out,2000) 'p1'     
      call evaluate_model(f,J,hf,w%p1,obj_p1,m,n,options,w%evaluate_model_ws)
 
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
         d = w%p0
+        if (options%print_level >=2) write(options%out,2030) 'p0'
      else 
         d = w%p1
+        if (options%print_level >=2) write(options%out,2030) 'p1'
      end if
 
      normd = norm2(d)
@@ -800,6 +812,11 @@ contains
      ! bad error return from external package
      return
 
+! print statements   
+2000 FORMAT('Evaluating the model at ',A2,':')
+2010 FORMAT('Hard case identified')
+2030 FORMAT(A2,' chosen as d')
+ 
 
    END SUBROUTINE AINT_tr
 
