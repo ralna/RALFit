@@ -171,7 +171,7 @@ def compute(no_tests,control_files,problems,i):
             
         try:
             subprocess.call(["cp", "control_files/"+control_files[j], \
-                             cutestdir+"/src/"+package+"/"+package.upper()+".SPC"])
+                             "cutest/sif/"+package.upper()+".SPC"])
         except:
             raise Error("No control file " + control_files[j] + " found")
            
