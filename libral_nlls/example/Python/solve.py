@@ -48,7 +48,7 @@ x0 = numpy.array([2.5, 0.25])
 # Call fitting routine
 (x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=(t,y),
         options = {
-            'print_level': 1
+            'print_level': 0
             }
         )
 
