@@ -840,9 +840,8 @@ contains
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( more_sorensen_work ) :: w
 
-     real(wp) :: nq
+     real(wp) :: nq, epsilon
      real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
-     integer :: i, no_shifts
      logical :: successful_shift
      
      ! The code finds 
@@ -892,18 +891,19 @@ contains
      if (options%print_level >= 2) write(options%out,5000)
      ! now, we're not in the trust region initally, so iterate....
      sigma_shift = zero
+     ! set 'small' in the context of the algorithm
+     epsilon = max( options%more_sorensen_tol * Delta, options%more_sorensen_tiny )
      do i = 1, options%more_sorensen_maxits
         if (options%print_level >= 2) write(options%out,5010) i-1, nd, sigma, sigma_shift
-        
-        
-        if (nd .le. (1 + options%more_sorensen_tol) * Delta) then
-           ! we're within the tr radius from the start!
+                
+        if (nd .le. Delta + epsilon) then
+           ! we're within the tr radius
            if (options%print_level >= 3) write(options%out,6030)
            if ( abs(sigma) < options%more_sorensen_tiny ) then
               ! we're good....exit
               if (options%print_level >= 3) write(options%out,6040)
               goto 1020
-           else if ( abs( nd - Delta ) < options%more_sorensen_tol * Delta ) then
+           else if ( abs( nd - Delta ) < epsilon ) then
               ! also good...exit
               if (options%print_level >= 3) write(options%out,6050)
               goto 1020              
