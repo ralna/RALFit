@@ -881,24 +881,9 @@ contains
         if (inform%status .ne. 0) goto 1000
         sigma = -(sigma - local_ms_shift)
         if (options%print_level >= 3) write(options%out,6010) sigma
-        no_shifts = 0
-        successful_shift = .false.
-        do while( .not. successful_shift )
-           call shift_matrix(w%A,sigma,w%AplusSigma,n)
-           call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
-           if ( inform%status .ne. 0 ) then
-              ! reset the error calls -- handled in the code....
-              inform%status = 0
-              inform%external_return = 0
-              inform%external_name = REPEAT( ' ', 80 )
-              no_shifts = no_shifts + 1
-              if ( no_shifts == 10 ) goto 3000 ! too many shifts -- exit
-              sigma =  sigma + (10**no_shifts) * local_ms_shift
-              if (options%print_level >=3) write(options%out,6010) sigma
-           else
-              successful_shift = .true.
-           end if
-        end do
+        ! find a shift that makes (A + sigma I) positive definite
+        call get_pd_shift(n,sigma,d,options,inform,w)
+        if (inform%status .ne. 0) goto 4000
         if (options%print_level >=3) write(options%out,6020)
      end if
      
@@ -931,11 +916,6 @@ contains
            goto 1020
         end if
 
-        !if ( abs(nd - Delta) <= options%more_sorensen_tol * Delta) then
-        !   if (options%print_level >= 3) write(options%out,6070) i-1
-        !   goto 4000 ! converged!
-        !end if
-        
         w%q = d ! w%q = R'\d
         CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
              1, one, w%LtL, n, w%q, n )
@@ -1012,6 +992,56 @@ contains
 6080 FORMAT('nq = ',ES12.4)
 
    end subroutine more_sorensen
+
+   subroutine get_pd_shift(n,sigma,d,options,inform,w)
+
+     !--------------------------------------------------
+     ! get_pd_shift
+     !
+     ! Given an indefinite matrix w%A, find a shift sigma
+     ! such that (A + sigma I) is positive definite
+     !--------------------------------------------------
+     
+     integer, intent(in) :: n 
+     real(wp), intent(inout) :: sigma
+     real(wp), intent(inout) :: d(:)
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+     type( more_sorensen_work ), intent(inout) :: w
+
+     integer :: no_shifts
+     logical :: successful_shift
+     
+     no_shifts = 0
+     successful_shift = .false.
+     do while( .not. successful_shift )
+        call shift_matrix(w%A,sigma,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
+        if ( inform%status .ne. 0 ) then
+           ! reset the error calls -- handled in the code....
+           inform%status = 0
+           inform%external_return = 0
+           inform%external_name = REPEAT( ' ', 80 )
+           no_shifts = no_shifts + 1
+           if ( no_shifts == 10 ) goto 3000 ! too many shifts -- exit
+           sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
+           if (options%print_level >=3) write(options%out,6010) sigma
+        else
+           successful_shift = .true.
+        end if
+     end do
+
+     return
+
+3000 continue
+     ! too many shifts
+     inform%status = ERROR%MS_TOO_MANY_SHIFTS
+     return     
+
+6010 FORMAT('Trying a shift of sigma = ',ES12.4)
+     
+
+   end subroutine get_pd_shift
    
    subroutine solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w)
 
