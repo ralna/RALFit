@@ -214,7 +214,7 @@ must have the following signature:
    \itt{n, m, params} are passed unchanged as provided in the call to
       {\tt ral\_nlls}.
 
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx}$.
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx})$.
 
    \itt{r} must be set by the routine to hold the residual function
       evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
@@ -368,7 +368,7 @@ below which we consider numbers to be essentially zero.
 \itt{double more\_sorensen\_tol} if {\tt nlls\_method = 3}, specifies the tolerance
 to be used in the More-Sorensen method.
 
-\itt{double hybrid\_tol} if \(\|J^T f \| < \mathtt{hybrid\_tol} * 0.5 \|f\|^2\), switches to a (quasi-)Newton method.
+\itt{double hybrid\_tol} if \(\|J^T r \| < \mathtt{hybrid\_tol} * 0.5 \|r\|^2\), switches to a (quasi-)Newton method.
 
 \itt{int hybrid\_switch\_its} sets how many iterates in a row must
 the condition in the definition of {\tt hybrid\_tol} hold before a switch.
