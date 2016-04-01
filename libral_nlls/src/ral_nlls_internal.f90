@@ -843,6 +843,7 @@ contains
      real(wp) :: nq
      real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
      integer :: i, no_shifts
+     logical :: successful_shift
      
      ! The code finds 
      !  d = arg min_p   v^T p + 0.5 * p^T A p
@@ -880,21 +881,24 @@ contains
         if (inform%status .ne. 0) goto 1000
         sigma = -(sigma - local_ms_shift)
         if (options%print_level >= 3) write(options%out,6010) sigma
-        no_shifts = 1
-100     continue
-        call shift_matrix(w%A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
-        if ( inform%status .ne. 0 ) then
-           ! reset the error calls -- handled in the code....
-           inform%status = 0
-           inform%external_return = 0
-           inform%external_name = REPEAT( ' ', 80 )
-           no_shifts = no_shifts + 1
-           if ( no_shifts == 10 ) goto 3000
-           sigma =  sigma + (10**no_shifts) * local_ms_shift
-           if (options%print_level >=3) write(options%out,6010) sigma
-           goto 100 
-        end if
+        no_shifts = 0
+        successful_shift = .false.
+        do while( .not. successful_shift )
+           call shift_matrix(w%A,sigma,w%AplusSigma,n)
+           call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
+           if ( inform%status .ne. 0 ) then
+              ! reset the error calls -- handled in the code....
+              inform%status = 0
+              inform%external_return = 0
+              inform%external_name = REPEAT( ' ', 80 )
+              no_shifts = no_shifts + 1
+              if ( no_shifts == 10 ) goto 3000
+              sigma =  sigma + (10**no_shifts) * local_ms_shift
+              if (options%print_level >=3) write(options%out,6010) sigma
+           else
+              successful_shift = .true.
+           end if
+        end do
         if (options%print_level >=3) write(options%out,6020)
      end if
      
@@ -906,7 +910,7 @@ contains
            ! we're good....exit
            if (options%print_level >= 3) write(options%out,6040)
            goto 1020
-        else if ( abs( nd - Delta ) < options%more_sorensen_tiny ) then
+        else if ( abs( nd - Delta ) < options%more_sorensen_tol * Delta ) then
            ! also good...exit
            if (options%print_level >= 3) write(options%out,6050)
            goto 1020              
