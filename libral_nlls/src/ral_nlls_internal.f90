@@ -902,37 +902,40 @@ contains
         if (options%print_level >=3) write(options%out,6020)
      end if
      
-     nd = norm2(d)
-     if (nd .le. Delta) then
-        ! we're within the tr radius from the start!
-        if (options%print_level >= 3) write(options%out,6030)
-        if ( abs(sigma) < options%more_sorensen_tiny ) then
-           ! we're good....exit
-           if (options%print_level >= 3) write(options%out,6040)
-           goto 1020
-        else if ( abs( nd - Delta ) < options%more_sorensen_tol * Delta ) then
-           ! also good...exit
-           if (options%print_level >= 3) write(options%out,6050)
-           goto 1020              
-        end if
-        call findbeta(d,w%y1,Delta,alpha,inform)
-        if (inform%status .ne. 0 ) goto 1000  
-        d = d + alpha * w%y1
-        if (options%print_level >= 3) write(options%out,6060)
-        ! also good....exit
-        goto 1020
-     end if
 
+     nd = norm2(d)
+     
      if (options%print_level >= 2) write(options%out,5000)
      ! now, we're not in the trust region initally, so iterate....
      sigma_shift = zero
      do i = 1, options%more_sorensen_maxits
         if (options%print_level >= 2) write(options%out,5010) i-1, nd, sigma, sigma_shift
         
-        if ( abs(nd - Delta) <= options%more_sorensen_tol * Delta) then
-           if (options%print_level >= 3) write(options%out,6070) i-1
-           goto 4000 ! converged!
+        
+        if (nd .le. (1 + options%more_sorensen_tol) * Delta) then
+           ! we're within the tr radius from the start!
+           if (options%print_level >= 3) write(options%out,6030)
+           if ( abs(sigma) < options%more_sorensen_tiny ) then
+              ! we're good....exit
+              if (options%print_level >= 3) write(options%out,6040)
+              goto 1020
+           else if ( abs( nd - Delta ) < options%more_sorensen_tol * Delta ) then
+              ! also good...exit
+              if (options%print_level >= 3) write(options%out,6050)
+              goto 1020              
+           end if
+           call findbeta(d,w%y1,Delta,alpha,inform)
+           if (inform%status .ne. 0 ) goto 1000  
+           d = d + alpha * w%y1
+           if (options%print_level >= 3) write(options%out,6060)
+           ! also good....exit
+           goto 1020
         end if
+
+        !if ( abs(nd - Delta) <= options%more_sorensen_tol * Delta) then
+        !   if (options%print_level >= 3) write(options%out,6070) i-1
+        !   goto 4000 ! converged!
+        !end if
         
         w%q = d ! w%q = R'\d
         CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
