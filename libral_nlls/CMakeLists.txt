@@ -23,8 +23,8 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
 # Set flags
-set(CMAKE_C_FLAGS "-g -O2 -std=c99 -fPIC")
-set(CMAKE_Fortran_FLAGS "-g -O2 -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC")
 if(TestCoverage)
    INCLUDE(CodeCoverage)
    set(CMAKE_C_FLAGS_DEBUG "-pg -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage")
