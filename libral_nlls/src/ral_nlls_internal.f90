@@ -892,7 +892,7 @@ contains
               inform%external_return = 0
               inform%external_name = REPEAT( ' ', 80 )
               no_shifts = no_shifts + 1
-              if ( no_shifts == 10 ) goto 3000
+              if ( no_shifts == 10 ) goto 3000 ! too many shifts -- exit
               sigma =  sigma + (10**no_shifts) * local_ms_shift
               if (options%print_level >=3) write(options%out,6010) sigma
            else
@@ -902,7 +902,6 @@ contains
         if (options%print_level >=3) write(options%out,6020)
      end if
      
-
      nd = norm2(d)
      
      if (options%print_level >= 2) write(options%out,5000)
@@ -981,9 +980,7 @@ contains
 
 3000 continue
      ! too many shifts
-     if ( options%print_level > 0 ) then 
-        inform%status = ERROR%MS_TOO_MANY_SHIFTS
-     end if 
+     inform%status = ERROR%MS_TOO_MANY_SHIFTS
      goto 4000
      
 4000 continue
