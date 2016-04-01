@@ -539,7 +539,7 @@ program nlls_test
      call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. ERROR%MS_TOO_MANY_SHIFTS) then
-        write(*,*) 'Error: test passed, when fail expected'
+        write(*,*) 'Error: MS too many shifts test passed, when fail expected'
         no_errors_helpers = no_errors_helpers + 1
      end if
      status%status = 0
