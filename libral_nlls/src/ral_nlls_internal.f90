@@ -842,7 +842,8 @@ contains
 
      real(wp) :: nq, epsilon
      real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
-     logical :: successful_shift
+     integer :: i, no_restarts
+
      
      ! The code finds 
      !  d = arg min_p   v^T p + 0.5 * p^T A p
@@ -891,6 +892,7 @@ contains
      if (options%print_level >= 2) write(options%out,5000)
      ! now, we're not in the trust region initally, so iterate....
      sigma_shift = zero
+     no_restarts = 0
      ! set 'small' in the context of the algorithm
      epsilon = max( options%more_sorensen_tol * Delta, options%more_sorensen_tiny )
      do i = 1, options%more_sorensen_maxits
@@ -924,14 +926,21 @@ contains
         if (options%print_level >= 3) write(options%out,6080) nq
         
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
-        if (abs(sigma_shift) < epsmch * abs(sigma) ) then
-           inform%status = ERROR%MS_NO_PROGRESS
-           goto 4000
-           ! we're not going to make progress...jump out 
+        if (abs(sigma_shift) < options%more_sorensen_tiny * abs(sigma) ) then
+           if (no_restarts < 1) then 
+              ! find a shift that makes (A + sigma I) positive definite
+              call get_pd_shift(n,sigma,d,options,inform,w)
+              if (inform%status .ne. 0) goto 4000
+              no_restarts = no_restarts + 1
+           else
+              ! we're not going to make progress...jump out 
+              inform%status = ERROR%MS_NO_PROGRESS
+              goto 4000
+           end if
+        else 
+           sigma = sigma + sigma_shift
         end if
 
-        sigma = sigma + sigma_shift
-        
         call shift_matrix(w%A,sigma,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
         if (inform%status .ne. 0) goto 1000
