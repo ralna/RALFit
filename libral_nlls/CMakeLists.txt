@@ -76,7 +76,7 @@ if(CompileMiniLAPACK)
          lapack/dsteqr.f lapack/dsterf.f lapack/dsyev.f lapack/dsyevx.f
          lapack/dsytd2.f lapack/dsytrd.f lapack/dtgevc.f lapack/dtrtrs.f
          lapack/ieeeck.f lapack/iladlc.f lapack/iladlr.f lapack/ilaenv.f
-         lapack/iparmq.f)
+         lapack/iparmq.f lapack/dlamch.f)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
    find_package(BLAS REQUIRED)
 endif()
