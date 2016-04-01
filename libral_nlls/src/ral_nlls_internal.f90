@@ -987,7 +987,7 @@ contains
 5010 FORMAT(i4,2x,ES12.4,2x,ES12.4,2x,ES12.4)
 5020 FORMAT('More-Sorensen failed to converge within max number of iterations')   
 5030 FORMAT('More-Sorensen converged at iteration ',i4)
-5040 FORMAT('Acceptable step found without needing to iterate')     
+5040 FORMAT('Leaving More-Sorensen')
   
 ! print_level >= 3 
 6000 FORMAT('A is symmetric positive definite')     
