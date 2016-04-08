@@ -6,9 +6,17 @@
 \usepackage{caption}
 
 \input{nlls_header.tex}
-\newcommand{\scalarintegera}[1]{\itt{int #1}}
-\newcommand{\scalarreala}[1]{\itt{double #1}}
-\newcommand{\scalarlogicala}[1]{\itt{bool #1}}
+\newcommand{\scalarinteger}[1]{\itt{int #1}}
+\newcommand{\scalarreal}[1]{\itt{double #1}}
+\newcommand{\scalarlogical}[1]{\itt{bool #1}}
+\newcommand{\ronearrayreal}[2]{\itt{double *#1}}
+\newcommand{\scalarcharacter}[2]{
+  % need to advance the size by one for the c version compared to the fortran version...
+  \newcount\charsize
+  \charsize=#2 
+  \advance\charsize by 1 % 
+  \itt{character #1[\the\charsize]}
+}
 \newcommand{\ct}{.}
 \newcommand{\fortranonly}[1]{}
 \newcommand{\conly}[1]{#1}
@@ -284,28 +292,8 @@ error code.
 
 \subsection{The derived data type for holding information}
 \label{typeinform}
-The structure of type {\tt struct ral\_nlls\_inform} is used
-to hold information from the execution of {\tt ral\_nlls}.
-The members are:
-\begin{description}
-\itt{int status} gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.
-\itt{char error\_message[81]} holds the error message corresponding to the exit status.
-\itt{int alloc\_status} gives the status of the last attempted allocation/deallocation.
-\itt{char bad\_alloc[81]} holds the name of the array that was being allocated when an error was flagged.
-\itt{int iter} gives the total number of iterations performed.
-\itt{int f\_eval} gives the total number of evaluations of the objective function.
-\itt{int g\_eval} gives the total number of evaluations of the gradient of the objective function.
-\itt{int h\_eval} gives the total number of evaluations of the Hessian of the objective function.
-\itt{int convergence\_normf} tells us if the test on the size of \(f\) is satisfied.
-\itt{int convergence\_normg} tells us if the test on the size of the gradient is satisfied.
-%\itt{double *resvec} holds the vector of residuals
-%\itt{double *gradvec} holds the vector of gradients.
-\itt{double obj} holds the value of the objective function at the best estimate of the solution determined by the algorithm.
-\itt{double norm\_g} holds the 2-norm of the  gradient of the objective function at the best estimate of the solution determined by the algorithm.
-\itt{double scaled\_g} holds the norm gradient of the objective function at the best estimate of the solution determined by the algorithm, where the norm used is the matrix norm associated with the scaling matrix.
-\itt{int external\_return} gives the error code that was returned by a call to an external routine.
-\itt{char external\_name[81]} holds the name of the external code that flagged an error.
-\end{description}
+
+\input{info_type.tex}
 
 %%%%%%%%%%%%%%%%%%%%%% Warning and error messages %%%%%%%%%%%%%%%%%%%%%%%%
 
