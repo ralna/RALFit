@@ -6,7 +6,12 @@
 \usepackage{caption}
 
 \input{nlls_header.tex}
+\newcommand{\scalarintegera}[1]{\itt{int #1}}
+\newcommand{\scalarreala}[1]{\itt{double #1}}
+\newcommand{\scalarlogicala}[1]{\itt{bool #1}}
 \newcommand{\ct}{.}
+\newcommand{\fortranonly}[1]{}
+\newcommand{\conly}[1]{#1}
 \begin{document}
 
 \hslheader
@@ -275,108 +280,7 @@ error code.
 \subsection{The options derived data type}
 \label{typeoptions}
 
-The structure of type {\tt struct ral\_nlls\_options} is used to hold
-controlling data. The components must be initialised through a call to
-\texttt{ral\_nlls\_default\_options()}.
-
-\vspace{2mm}
-
-\noindent {\bf Components that control printing}
-\begin{description}
-
-\itt{int error} with default value {\tt 6}
-is used as the Fortran unit number for error messages. If it is negative, these
-messages will be suppressed.
-
-\itt{int out} with default value {\tt 6}
-is used as the Fortran unit number for general messages. If it is negative, these messages will be suppressed.
-
-\itt{int print\_level} with default value {\tt 0} that
-controls the level of output required.
-\begin{description}
-\item{\tt $\leq$ 0} No informational output will occur.
-\item{\tt = 1} As 0, plus gives a one-line summary for each iteration.
-\item{\tt = 2} As 1, plus gives a summary of the inner iteration for each iteration.
-\item{\tt > 3} As 3, and gives increasingly verbose (debugging) output.
-\end{description}
-The default is {\tt diagnostics\_level} $=$ 0.
-\end{description}
-
-\noindent {\bf Components that control the main iteration}.
-
-\begin{description}
-
-\itt{int maxit} gives an upper bound on the number
-of iterations the algorithm is allowed to take before being stopped.  The default value is {\tt 100}.
-
-\itt{int model} specifies the model, $m_k(\cdot)$, used.  Possible values are
-\begin{description}
-  \item{\tt 1} Gauss-Newton (no Hessian).
-  \item{\tt 2} Newton (exact Hessian).
-%  \item{\tt 3} Barely second-order (Hessian matrix approximated by the identity).
-  \item{\tt 3} Hybrid method (mixture of Gauss-Newton/Newton as appropriate).
-\end{description}
-The default is {\tt model = 1}.
-
-\itt{int nlls\_method} specifies the method used to solve
-(or approximate the solution to) the trust-region sub problem.  Possible values are
-\begin{description}
-  \item{\tt 1} Powell's dogleg method (approximates the solution).
-  \item{\tt 2} The Adachi-Iwata-Nakatsukasa-Takeda (AINT) method.
-  \item{\tt 3} The More-Sorensen method.
-  \item{\tt 4} Galahad's DTRS method
-\end{description}
-The default is {\tt nlls\_method = 1}.
-
-\itt{double stop\_g\_absolute} specifies the absolute tolerance for convergence.
-
-\itt{double stop\_g\_relative} specifies the relative tolerance for convergence.
-
-\itt{double relative\_tr\_radius} specifies whether the initial trust region
-radius should be scaled.
-
-\itt{double initial\_radius\_scale} specifies the scaling parameter for the initial trust region radius, which is only used if {\tt relative\_tr\_radius = 1}.
-
-\itt{double initial\_radius} specifies the initial trust-region radius, $\Delta$.
-
-\itt{double maximum\_radius} specifies the maximum size permitted for the trust-region radius.
-
-\itt{double eta\_successful} specifies the smallest value of $\rho$ such that we accept the step.
-
-\itt{double eta\_very\_successful} specifies the value of $\rho$ after which we increase the trust-region radius.
-
-\itt{double eta\_too\_successful} specifies that value of $\rho$ after which we accept the step,
-but keep the trust-region radius unchanged.
-
-\itt{double radius\_increase} specifies the factor to increase the trust-region radius by.
-
-\itt{double radius\_reduce} specifies the factor to decrease the trust-region radius by.
-
-\itt{double hybrid\_switch} specifies the value, if {\tt nlls\_method = 9},
-at which we switch to second derivatives.
-
-\itt{bool exact\_second\_derivatives} if {\tt true}, signifies that the
-exact second derivatives are available (and, if {\tt false}, approximates them using a secant method).
-
-\itt{int more\_sorensen\_maxits} if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
-
-\itt{double more\_sorensen\_shift} if {\tt nlls\_method = 3}, specifies the shift to be used in the More-Sorensen method.
-
-\itt{double more\_sorensen\_tiny} if {\tt nlls\_method = 3}, specifies the value
-below which we consider numbers to be essentially zero.
-
-\itt{double more\_sorensen\_tol} if {\tt nlls\_method = 3}, specifies the tolerance
-to be used in the More-Sorensen method.
-
-\itt{double hybrid\_tol} if \(\|J^T r \| < \mathtt{hybrid\_tol} * 0.5 \|r\|^2\), switches to a (quasi-)Newton method.
-
-\itt{int hybrid\_switch\_its} sets how many iterates in a row must
-the condition in the definition of {\tt hybrid\_tol} hold before a switch.
-
-\itt{bool output\_progress\_vectors} if true, outputs the progress vectors at the end of the routine.
-
-\end{description}
-
+\input{options_type.tex}
 
 \subsection{The derived data type for holding information}
 \label{typeinform}

@@ -51,8 +51,8 @@ contains
       x2 = x(2)
       select type(params)
       type is(params_type)
-         J(  1:  m) = exp(x2*params%t(:))                      ! J_i1
-         J(m+1:2*m) = params%t(:) * x1 * exp(x2*params%t(:))   ! J_i2
+         J(  1:  m) = exp(x2*params%t(1:m))                     ! J_i1
+         J(m+1:2*m) = params%t(1:m) * x1 * exp(x2*params%t(1:m))! J_i2
       end select
 
       status = 0 ! Success
@@ -76,10 +76,10 @@ contains
       x2 = x(2)
       select type(params)
       type is(params_type)
-         HF(    1) = sum(r(1:m) * 0)                                     ! H_11
-         HF(    2) = sum(r(1:m) * params%t(:) * exp(x2*params%t(:)))     ! H_21
-         HF(1*n+1) = HF(2)                                               ! H_12
-         HF(1*n+2) = sum(r(1:m) * (params%t(:)**2) * x1 * exp(x2*params%t(:)))! H_22
+         HF(    1) = sum(r(1:m) * 0)                                      ! H_11
+         HF(    2) = sum(r(1:m) * params%t(1:m) * exp(x2*params%t(1:m)))  ! H_21
+         HF(1*n+1) = HF(2)                                                ! H_12
+         HF(1*n+2) = sum(r(1:m) * (params%t(1:m)**2) * x1 * exp(x2*params%t(1:m)))! H_22
       end select
 
       status = 0 ! Success
@@ -94,19 +94,21 @@ program nlls_example
    type(nlls_options) :: options
    type(nlls_inform) :: inform
 
-   integer :: m
-   real(wp), dimension(2) :: x
+   integer :: m,n
+   real(wp), allocatable :: x(:)
    type(params_type) :: params
 
    ! Data to be fitted
    m = 5
-   allocate(params%t(5), params%y(5))
+   allocate(params%t(m), params%y(m))
    params%t(:) = (/ 1.0, 2.0, 4.0,  5.0,  8.0 /)
    params%y(:) = (/ 3.0, 4.0, 6.0, 11.0, 20.0 /)
 
    ! Call fitting routine
-   x(:) = (/ 2.5, 0.25 /) ! Initial guess
-   call nlls_solve(2, m, x, eval_r, eval_J, eval_HF, params, options, inform)
+   n = 2
+   allocate(x(n))
+   x = (/ 2.5, 0.25 /) ! Initial guess
+   call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform)
    if(inform%status.ne.0) then
       print *, "ral_nlls() returned with error flag ", inform%status
       stop

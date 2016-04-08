@@ -21,17 +21,17 @@ $$
 $$
 
 For some data points, $y_i$, $t_i$, $(i = 1,\dots,m)$ the user must return
-$$  r(\vx) = \begin{bmatrix}
+$$  \vr(\vx) = \begin{bmatrix}
       r_1(\vx)\\
       \vdots \\
       r_m(\vx)
-    \end{bmatrix}, \quad   J(\vx) = 
+    \end{bmatrix}, \quad   \vJ(\vx) = 
     \begin{bmatrix}
       \nabla r_1(\vx) \\
       \vdots \\
       \nabla r_m(\vx) \\
     \end{bmatrix}, \quad 
-    H_f(\vx) = 
+    Hf(\vx) = 
     \sum_{i=1}^m
     (\vr)_i \nabla^2 r_i(\vx),
 $$
@@ -47,7 +47,7 @@ Given the data
    \end{tabular}
 \end{center}
 and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit (with no 
-weightings, i.e., $W = I$).
+weightings, i.e., $\vW = \vI$).
 
 %%% Local Variables: 
 %%% mode: latex

@@ -23,7 +23,7 @@ $F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt
     \Comment (Quasi-)Newton 
     \State $\iter[0]{\thess} = ${\tt eval\_HF}${\tt (\iter[0]{\tx},W * \iter[0]{\tr})}$
     \State {\tt use\_second\_derivatives = true}
-    \ElsIf {{\tt options\ct model = 9}}
+    \ElsIf {{\tt options\ct model == 3}}
     \Comment Hybrid algorithm
     \State {\tt hybrid\_tol = options\ct hybrid\_tol * }${\tt (\| \iter[0]{\tg} \| / (0.5 * \|\iter[0]{\tr}\|^2) )}$
     \State $\iter[0]{\thess} = {\tt 0}$
@@ -50,7 +50,7 @@ $F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt
       \State $\iter[k+1]{\tJ} = {\tt W * \text{\tt eval\_J}}(\iter[k+1]{\tx})$
       \Comment Evaluate the Jacobian at the new point
       \State $\iter[k+1]{\tg} = -{\iter[k+1]{\tJ}}^T\iter[k+1]{\tr}$
-      \If {{\tt \text{\tt options\ct model} == 9}}
+      \If {{\tt \text{\tt options\ct model} == 3}}
         \If {{\tt use\_second\_derivatives}}
           \If { $\|\iter[k+1]{\tg}\| > \|\iter[k]{\tg} \| $}
           \State {\tt use\_second\_derivatives = false}
@@ -63,7 +63,7 @@ $F(\vx)$, as in equation (\ref{eq:nlls_problem}).  The algorithm used by \texttt
           \State {\tt hybrid\_count = hybrid\_count + 1}
           \Comment Update the number of steps in a row this has failed
           \If {{\tt hybrid\_count == options\ct hybrid\_count\_switch\_its}}
-            \State {\tt use\_second\_derivatives = true}
+            \State {\tt use\_second\_derivatives = true}x
             \State {\tt hybrid\_count = 0}
             \State ${\iter[temp]{\thess}} = {\iter[k]{\thess}}$
             \Comment Copy approximate Hessian back

@@ -7,18 +7,23 @@
 
 
 \input{nlls_header.tex}
+\newcommand{\scalarintegera}[1]{\itt{#1} is a scalar of type {\tt INTEGER} }
 \newcommand{\scalarinteger}{is a scalar of type {\tt INTEGER} }
+\newcommand{\scalarlogicala}[1]{\itt{#1} is a scalar of type {\tt LOGICAL} }
 \newcommand{\scalarlogical}{is a scalar of type {\tt LOGICAL} }
 \newcommand{\scalarcharacter}[1]{is a scalar of type {\tt CHARACTER} and length {\tt #1} }
 \newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER} }
 \newcommand{\scalarintegerii}{is an \intentin scalar of type {\tt INTEGER} }
 \newcommand{\scalarreal}{is a scalar of package type\ }
+\newcommand{\scalarreala}[1]{\itt{#1} is a scalar of package type}
 \newcommand{\ronearrayinteger}[1]{is a rank-1 array of type {\tt INTEGER} and size {\tt #1} }
 \newcommand{\ronearrayreal}[1]{is a rank-1 array of package type and size {\tt #1}\ }
 \newcommand{\ronearrayrealii}[1]{is an \intentin rank-1 array of package type and size {\tt #1} }
 \newcommand{\ronearrayrealiiopt}[1]{is an optional \intentin rank-1 array of package type and size {\tt #1} }
 \newcommand{\ronearrayrealio}[1]{is an \intentout rank-1 array of package type and size {\tt #1} }
 \newcommand{\ct}{\%}
+\newcommand{\fortranonly}[1]{#1}
+\newcommand{\conly}[1]{}
 \begin{document}
 
 \hslheader
@@ -263,7 +268,7 @@ end interface
 \end{description}
 
 \subsubsection{For evaluating the function $Hf = \sum_{i=1}^m r_i(\vx) \vW \nabla^2 r_i(\vx)$}
-A subroutine must be supplied to calculate $Hf = \sum_{i=1}^m (\vr)_i \nabla^2 r_i(\vx)$ for given vectors $\vx \in \mathbb{R}^n$ and $\vr \in \mathbb{R}^m$. It must implement the following interface:
+A subroutine must be supplied to calculate $Hf = \sum_{i=1}^m (\vr)_i \nabla^2 r_i(\vx)$ for given vectors $\vx \in \mathbb{R}^n$ and $\vr \in \mathbb{R}^m$; here \((\vr)_i\) denotes the $i$th component of the vector $\vr$. The subroutine must implement the following interface:
 
 \begin{verbatim}
 abstract interface
@@ -283,9 +288,9 @@ end interface
    \itt{n, m, params} are passed unchanged as provided in the call to
       {\tt nlls\_solve}.
 
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(x)$.
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\vx)$.
 
-   \itt{r} holds $\vW\vr(x)$, the (weighted) residual, as computed from vector returned by the last call to \texttt{eval\_r}.
+   \itt{r} holds $\vW\vr(\vx)$, the (weighted) residual, as computed from vector returned by the last call to \texttt{eval\_r}.
 
    \itt{Hf} must be set by the routine to hold the matrix
       $\sum_{i = 1}^m (\vr)_i \nabla^2\comp{r}(\iter{\vx})$, held
@@ -302,108 +307,8 @@ end interface
 \subsection{The options derived data type}
 \label{typeoptions}
 
-The derived data type {\tt NLLS\_options}
-is used to hold controlling data. The components  are automatically
-given default values in the definition of the type.
 
-\vspace{2mm}
-
-\noindent {\bf Components that control printing}
-\begin{description}
-
-\itt{error} is a scalar of type {\tt INTEGER} with default value {\tt 6} that
-is used as the output stream for error messages. If it is negative, these
-messages will be suppressed.
-
-\itt{out} is a scalar of type {\tt INTEGER} with default value {\tt 6}
-that is used as the output stream for general messages. If it is negative, these messages will be suppressed.
-
-\itt{print\_level} is a scalar of type {\tt INTEGER} with default value {\tt 0} that
-controls the level of output required.
-\begin{description}
-\item{\tt $\leq$ 0} No informational output will occur.
-\item{\tt = 1} Gives a one-line summary for each iteration.
-\item{\tt = 2} As 1, plus gives a summary of the inner iteration for each iteration.
-\item{\tt > 2} As 2, and gives increasingly verbose (debugging) output.
-\end{description}
-The default is {\tt diagnostics\_level} $=$ 0.
-\end{description}
-
-\noindent {\bf Components that control the main iteration}.
-
-\begin{description}
-
-\itt{maxit} \scalarinteger that gives an upper bound on the number
-of iterations the algorithm is allowed to take before being stopped.  The default value is {\tt 100}.  This is not accessed if {\tt nlls\_iterate} is used.
-
-\itt{model} \scalarinteger that specifies the model, $m_k(\cdot)$, used.  Possible values are
-\begin{description}
-  \item{\tt 1} Gauss-Newton (no Hessian).
-  \item{\tt 2} Newton (exact Hessian).
-%  \item{\tt 3} Barely second-order (Hessian matrix approximated by the identity).
-  \item{\tt 3} Hybrid method (mixture of Gauss-Newton/(Quasi-)Newton, as determined by the package).
-\end{description}
-The default is {\tt model = 1}.
-
-\itt{nlls\_method} \scalarinteger that specifies the method used to solve
-(or approximate the solution to) the trust-region sub problem.  Possible values are
-\begin{description}
-  \item{\tt 1} Powell's dogleg method (approximates the solution).
-  \item{\tt 2} The Adachi-Iwata-Nakatsukasa-Takeda (AINT) method.
-  \item{\tt 3} The More-Sorensen method.
-  \item{\tt 4} {\sc Galahad}'s {\sc DTRS} method
-\end{description}
-The default is {\tt nlls\_method = 1}.
-
-\itt{stop\_g\_absolute} \scalarreal that specifies the absolute tolerance for convergence.
-
-\itt{stop\_g\_relative} \scalarreal that specifies the relative tolerance for convergence.
-
-\itt{relative\_tr\_radius} \scalarinteger that specifies whether the initial trust region
-radius should be scaled.
-
-\itt{initial\_radius\_scale} \scalarreal that specifies the scaling parameter for the initial trust region radius, which is only used if {\tt relative\_tr\_radius = 1}.
-
-\itt{initial\_radius} \scalarreal that specifies the initial trust-region radius, $\Delta$.
-
-\itt{maximum\_radius} \scalarreal that specifies the maximum size permitted for the trust-region radius.
-
-\itt{eta\_successful} \scalarreal that specifies the smallest value of $\rho$ such that the step is accepted.
-
-\itt{eta\_very\_successful} \scalarreal that specifies the value of $\rho$ after which the trust-region radius is increased.
-
-\itt{eta\_too\_successful} \scalarreal that specifies that value of $\rho$ after which the step is accepted,
-but keep the trust-region radius unchanged.
-
-\itt{radius\_increase} \scalarreal that specifies the factor to increase the trust-region radius by.
-
-\itt{radius\_reduce} \scalarreal that specifies the factor to decrease the trust-region radius by.
-
-\itt{hybrid\_switch} \scalarreal that specifies the value, if {\tt model = 3},
-at which second derivatives are used.
-
-\itt{exact\_second\_derivatives} \scalarlogical that, if {\tt true}, signifies that the
-exact second derivatives are available (and, if {\tt false}, approximates them using a secant method).
-
-\itt{more\_sorensen\_maxits} \scalarinteger that, if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
-
-\itt{more\_sorensen\_shift} \scalarreal that, if {\tt nlls\_method = 3}, specifies the shift to be used in the More-Sorensen method.
-
-\itt{more\_sorensen\_tiny} \scalarreal that, if {\tt nlls\_method = 3}, specifies the value
-below which numbers are considered to be essentially zero.
-
-\itt{more\_sorensen\_tol} \scalarreal that, if {\tt nlls\_method = 3}, specifies the tolerance
-to be used in the More-Sorensen method.
-
-\itt{hybrid\_tol} \scalarreal that, if \(\|{\iter{\vJ}}^T \vW \vr(\vx_k) \|_2 < \mathtt{hybrid\_tol} * 0.5 \|\vr(\vx_k)\|_\vW^2\), switches to a \newline(quasi-)Newton method.
-
-\itt{hybrid\_switch\_its} \scalarinteger that sets how many iterates in a row must
-the condition in the definition of {\tt hybrid\_tol} hold before a switch.
-
-\itt{output\_progress\_vectors} \scalarlogical that, if true, outputs the progress vectors {\tt nlls\_inform\%resvec} and {\tt nlls\_inform\%gradvec} at the end of the routine.
-
-\end{description}
-
+\input{options_type.tex}
 
 \subsection{The derived data type for holding information}
 \label{typeinform}
