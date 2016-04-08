@@ -1,0 +1,34 @@
+\fortranonly{
+The derived data type {\tt NLLS\_inform} is used to hold information from the execution of {\tt nlls\_solve} and {\tt nlls\_iterate}.
+}
+\conly{
+The structure of type {\tt struct ral\_nlls\_inform} is used to hold information from the execution of {\tt ral\_nlls}.
+}
+
+The components are:
+\begin{description}
+\scalarinteger{status}
+that gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.
+\scalarcharacter{error\_message}{80} that holds the error message corresponding to the exit status.
+\scalarinteger{alloc\_status} that gives the status of the last attempted allocation/deallocation.
+\scalarcharacter{bad\_alloc}{80} that holds the name of the array that was being allocated when an error was flagged.
+\scalarinteger{iter} that gives the total number of iterations performed.
+\scalarinteger{f\_eval} that gives the total number of evaluations of the objective function.
+\scalarinteger{g\_eval} that gives the total number of evaluations of the gradient of the objective function.
+\scalarinteger{h\_eval} that gives the total number of evaluations of the Hessian of the objective function.
+\scalarinteger{convergence\_normf} that tells us if the test on the size of \(\vr\) is satisfied.
+\scalarinteger{convergence\_normg} that tells us if the test on the size of the gradient is satisfied.
+\ronearrayreal{resvec}{iter+1} that, if {\tt nlls\_options\ct output\_progress\_vectors=true}, holds the vector of residuals.
+\ronearrayreal{gradvec}{iter+1} that, if {\tt nlls\_options\ct output\_progress\_vectors=true}, holds the vector of gradients.
+\scalarreal{obj} that holds the value of the objective function at the best estimate of the solution determined by the algorithm.
+\scalarreal{norm\_g} that holds the gradient of the objective function at the best estimate of the solution determined by the package.
+\scalarreal{scaled\_g} that holds the gradient of the objective function at the best estimate of the solution determined by the package.
+\scalarinteger{external\_return} that gives the error code that was returned by a call to an external routine.
+\scalarcharacter{external\_name}{80} that holds the name of the external code that flagged an error.
+\end{description}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "nlls_fortran"
+%%% End: 

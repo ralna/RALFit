@@ -1,0 +1,29 @@
+% subroutine for eval_j
+
+
+\begin{description}
+   \itt{n, m, params} are passed unchanged as provided in the call to
+      \mainroutine/\onestep.
+
+   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate
+      $\vJ(\iter{\vx})$.
+
+   \itt{J} must be set by the routine to hold the Jacobian of the residual
+      function evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
+      \vecentry{J}{i*m+j} must be set to hold $\nabla_{x_j} r_i(\iter{\vx})$.
+
+   \fortranonly{
+     \itt{status} is initialised to \texttt{0} before the routine is
+     called. If it is set to a non-zero value by the routine, then
+     \mainroutine/\onestep \ will exit with an error.
+   }
+\end{description}
+\conly{
+  \textbf{Return value:} The function should return \texttt{0} on success. A
+non-zero return value will cause the least squares fitting to abort with an
+error code.
+}
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "nlls_fortran"
+%%% End: 

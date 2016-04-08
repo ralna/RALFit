@@ -1,0 +1,192 @@
+% the options derived data type
+
+\fortranonly{
+The derived data type {\tt NLLS\_options}
+is used to hold controlling data. The components  are automatically
+given default values in the definition of the type.
+}
+\conly{
+The structure of type {\tt struct ral\_nlls\_options} is used to hold
+controlling data. The components must be initialised through a call to
+\texttt{ral\_nlls\_default\_options()}.
+}
+
+\vspace{2mm}
+
+\noindent {\bf Components that control printing}
+\begin{description}
+
+\scalarinteger{error}
+with default value {\tt 6} that is used as the \conly{Fortran }unit number for error messages. 
+If it is negative, these messages will be suppressed.
+
+\scalarinteger{out}
+with default value {\tt 6} that is used as the \conly{Fortran }unit number for general messages. If it is negative, these messages will be suppressed.
+
+\scalarinteger{print\_level} 
+with default value {\tt 0} that controls the level of output required.
+\begin{description}
+\item{\tt $\leq$ 0} No informational output will occur.
+\item{\tt = 1} Gives a one-line summary for each iteration.
+\item{\tt = 2} As 1, plus gives a summary of the inner iteration for each iteration.
+\item{\tt > 2} As 2, and gives increasingly verbose (debugging) output.
+\end{description}
+The default is {\tt print\_level} $=$ 0.
+\end{description}
+
+\noindent {\bf Components that control the main iteration}.
+
+\begin{description}
+
+\scalarinteger{maxit} 
+of iterations the algorithm is allowed to take before being stopped.  The default value is {\tt 100}.  This is not accessed if {\tt nlls\_iterate} is used.
+
+\scalarinteger{model}
+that specifies the model, $m_k(\cdot)$, used.  Possible values are
+\begin{description}
+  \item{\tt 1} Gauss-Newton (no Hessian).
+  \item{\tt 2} Newton (exact Hessian).
+%  \item{\tt 3} Barely second-order (Hessian matrix approximated by the identity).
+  \item{\tt 3} Hybrid method (mixture of Gauss-Newton/(Quasi-)Newton, as determined by the package).
+\end{description}
+The default is {\tt model = 1}.
+
+\scalarinteger{nlls\_method}
+that specifies the method used to solve (or approximate the solution to) the trust-region sub problem.  Possible values are
+\begin{description}
+  \item{\tt 1} Powell's dogleg method (approximates the solution).
+  \item{\tt 2} The Adachi-Iwata-Nakatsukasa-Takeda (AINT) method.
+  \item{\tt 3} The More-Sorensen method.
+  \item{\tt 4} {\sc Galahad}'s {\sc DTRS} method
+\end{description}
+The default is {\tt nlls\_method = 1}.
+
+\scalarreal{stop\_g\_absolute}
+that specifies the absolute tolerance for convergence.
+The default value is {\tt stop\_g\_absolute = 1e{-5}}.
+
+\scalarreal{stop\_g\_relative}
+that specifies the relative tolerance for convergence.
+The default value is {\tt stop\_g\_relative = 1e{-8}}.
+
+\scalarinteger{relative\_tr\_radius}
+that specifies whether the initial trust region radius should be scaled.
+The default value is {\tt relative\_tr\_radius = 0}.
+
+\scalarreal{initial\_radius\_scale}
+that specifies the scaling parameter for the initial trust region radius, which is only used if {\tt relative\_tr\_radius = 1}.
+The default value is {\tt initial\_radius\_scale = 1.0}.
+
+\scalarreal{initial\_radius}
+that specifies the initial trust-region radius, $\Delta$.
+The default value is {\tt initial\_radius = 100.0}.
+
+\scalarreal{maximum\_radius}
+that specifies the maximum size permitted for the trust-region radius.
+The default value is {\tt maximum\_radius = 1e8}.
+
+\scalarreal{eta\_successful}
+that specifies the smallest value of $\rho$ such that the step is accepted.
+The default value is {\tt eta\_successful = 1e-8}.
+
+% success_but_reduce is also available, but not documented
+
+\scalarreal{eta\_very\_successful}
+that specifies the value of $\rho$ after which the trust-region radius is increased.
+The default value is {\tt eta\_very\_successful = 0.9}.
+
+\scalarreal{eta\_too\_successful}
+that specifies that value of $\rho$ after which the step is accepted, but keep the trust-region radius unchanged.
+The default value is {\tt eta\_too\_successful = 2.0}.
+
+\scalarreal{radius\_increase}
+that specifies the factor to increase the trust-region radius by.
+The default value is {\tt radius\_increase = 2.0}.
+
+\scalarreal{radius\_reduce}
+that specifies the factor to decrease the trust-region radius by.
+The default value is {\tt radius\_reduce = 0.5}.
+
+\scalarreal{hybrid\_switch}
+that specifies the value, if {\tt model = 3}, at which second derivatives are used
+The default value is {\tt hybrid\_switch = 0.1}.
+
+\scalarlogical{exact\_second\_derivatives}
+that, if {\tt true}, signifies that the exact second derivatives are available (and, if {\tt false}, approximates them using a secant method).
+The default value is {\tt false}.
+
+\scalarinteger{scale}
+that specifies how, if at all, we scale the Jacobian.  We calculate a diagonal scaling matrix, ${\tt D}$, as follows: 
+\begin{description}
+\item{\tt 0} No scaling is applied ${\tt D} ={\tt I}$.
+\item{\tt = 1} Scale using the rows of the Jacobian, \({\tt D}_{i,i} = \|{\tt J}(i,:)\|_2^2\).
+\item{\tt = 2} Scale using the rows of the Hessian,  \({\tt D}_{i,i} = \|{\tt H}(i,:)\|_2^2\), where ${\tt H}$ is the (approximation to) the Hessian matrix.
+\end{description}
+The default value is {\tt scale = 1}
+
+\scalarlogical{scale\_trim\_max}
+that specifies whether or not to trim large values of the scaling matrix, ${\tt D}$.
+If {\tt true}, ${\tt D}_{i,i} \leftarrow min({\tt D}_{i,i}, {\tt scale\_max})$.
+The default value is {\tt true}.
+
+\scalarreal{scale\_max}
+that specifies the maximum value allowed if {\tt scale\_trim\_max = true}.
+The default value is {\tt 1e11}.
+
+\scalarlogical{scale\_trim\_min}
+that specifies whether or not to trim small values of the scaling matrix, ${\tt D}$.
+If {\tt true}, ${\tt D}_{i,i} \leftarrow max({\tt D}_{i,i}, {\tt scale\_max})$.
+The default value is {\tt true}.
+
+\scalarreal{scale\_min}
+that specifies the minimum value allowed if {\tt scale\_trim\_max = true}.
+The default value is {\tt 1e-11}.
+
+\scalarlogical{scale\_require\_increase}
+that specifies whether or not to require ${\tt D}_{i,i}$ to increase before updating it.
+The default value is {\tt false}.
+
+\scalarlogical{calculate\_svd\_J}
+that specifies whether or not to calculate the singular value decomposition of ${\tt J}$
+at each iteration.  
+The default value is {\tt true}.
+
+% missing the scale and calculate svd controls
+
+\scalarinteger{more\_sorensen\_maxits}
+that, if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
+The default value is {\tt more\_sorensen\_maxits = 500}.
+
+\scalarreal{more\_sorensen\_shift}
+that, if {\tt nlls\_method = 3}, specifies the shift to be used in the More-Sorensen method.
+The default value is {\tt more\_sorensen\_shift = 1e-13}.
+
+\scalarreal{more\_sorensen\_tiny}
+that, if {\tt nlls\_method = 3}, specifies the value below which numbers are considered to be essentially zero.
+The default value is {\tt more\_sorensen\_tiny = 10.0 * eps}.
+
+\scalarreal{more\_sorensen\_tol}
+that, if {\tt nlls\_method = 3}, specifies the tolerance to be used in the More-Sorensen method.
+The default value is {\tt more\_sorensen\_tol = 1e-3}.
+
+\scalarreal{hybrid\_tol}
+that, if \(\|{\iter{\vJ}}^T \vW \vr(\vx_k) \|_2 < \mathtt{hybrid\_tol} * 0.5 \|\vr(\vx_k)\|_\vW^2\), switches to a \newline(quasi-)Newton method.
+The default value is {\tt hybrid\_tol = 2.0}.
+
+\scalarreal{hybrid\_switch\_its}
+that sets how many iterates in a row must the condition in the definition of {\tt hybrid\_tol} hold before a switch.
+The default value is {\tt hybrid\_switch\_its = false}.
+
+\fortranonly{
+\scalarlogical{output\_progress\_vectors}
+that, if true, outputs the progress vectors {\tt nlls\_inform\%resvec} and {\tt nlls\_inform\%gradvec} at the end of the routine.
+The default value is {\tt false}.
+}
+
+\end{description}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "nlls_fortran"
+%%% End: 
