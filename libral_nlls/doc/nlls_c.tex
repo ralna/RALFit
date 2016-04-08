@@ -17,7 +17,10 @@
   \advance\charsize by 1 % 
   \itt{character #1[\the\charsize]}
 }
+\newcommand{\mainroutine}{{\tt nlls\_solve}}
+\newcommand{\onestep}{{\tt ral\_nlls\_iterate}}
 \newcommand{\ct}{.}
+\newcommand{\vecentry}[2]{\texttt{#1[#2]}}
 \newcommand{\fortranonly}[1]{}
 \newcommand{\conly}[1]{#1}
 \begin{document}
@@ -215,72 +218,35 @@ In order to pass user-defined data into the evaluation calls, the parameter
 \texttt{params} is passed unaltered to the callback functions. Typically this
 will be a pointer to a user defined structure that stores the data to be fitted.
 
-\subsubsection{For evaluating the function $r(x)$}
-A subroutine must be supplied to calculate $r(x)$ for a given vector $x$. It
-must have the following signature:
+\subsubsection{For evaluating the function $\vr(\vx)$}
 
+A subroutine must be supplied to calculate $\vr(\vx)$ for a given vector $\vx$. 
+It must have the following signature:
 \begin{verbatim}
-   int eval_r (int n, int m, void const* params, double const* x, double* r);
+  int eval_r (int n, int m, void const* params, double const* x, double* r);
 \end{verbatim}
 
-\begin{description}
-   \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt ral\_nlls}.
-
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx})$.
-
-   \itt{r} must be set by the routine to hold the residual function
-      evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
-\end{description}
-\textbf{Return value:} The function should return \texttt{0} on success. A
-non-zero return value will cause the least squares fitting to abort with an
-error code.
-
+\input{eval_r.tex}
 
 \subsubsection{For evaluating the function $J = \nabla \vr(\iter{\vx})$}
-A subroutine must be supplied to calculate $J = \nabla \vr(\iter{\vx})$ for a given vector $x$. It must have the following signature:
+A subroutine must be supplied to calculate $J = \nabla \vr(\iter{\vx})$ for a given vector $\vx$. It must have the following signature:
 
 \begin{verbatim}
    int eval_j (int n, int m, void const* params, double const* x, double* J);
 \end{verbatim}
 
-\begin{description}
-   \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt ral\_nlls}.
+\input{eval_j.tex}
 
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate
-      $J(\iter{\vx})$.
-
-   \itt{J} must be set by the routine to hold the Jacobian of the residual
-      function evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
-      \texttt{J[i*m+j]} must be set to hold $\nabla_{x_j} r_i(\iter{\vx})$.
-\end{description}
-\textbf{Return value:} The function should return \texttt{0} on success. A
-non-zero return value will cause the least squares fitting to abort with an
-error code.
-
-\subsubsection{For evaluating the function $HF = \sum_{i=1}^m \vr_i(x) \nabla^2 \vr_i(x)$}
-A subroutine must be supplied to calculate $HF = \sum_{i=1}^m \vr_i \nabla^2 \vr_i(x)$ for given vectors $x \in \mathbb{R}^n$ and $r \in \mathbb{R}^m$. It must have the following signature
+\subsubsection{For evaluating the function $Hf = \sum_{i=1}^m r_i(\vx) \vW  \nabla^2 \vr_i(x)$}
+A subroutine must be supplied to calculate $Hf = \sum_{i=1}^m (\vr)_i \nabla^2 r_i(\vx)$ for given vectors $\vx \in \mathbb{R}^n$ and $\vr \in \mathbb{R}^m$; here \((\vr)_i\) denotes the $i$th component of the vector $\vr$.  
+It must have the following signature
 
 \begin{verbatim}
-int eval_hf (int n, int m, void const* params, double const* x, double const* r, double* *HF);
+int eval_hf (int n, int m, void const* params, double const* x, double const* r, double* Hf);
 \end{verbatim}
 
-\begin{description}
-   \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt ral\_nlls}.
+\input{eval_hf.tex}
 
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $rx)$.
-
-   \itt{r} holds $\vr(x)$, as returned by a previous call to \texttt{eval\_r}.
-
-   \itt{HF} must be set by the routine to holds the matrix
-      $\sum_{i = 1}^m \comp{\vr}(\iter{\vx})\nabla^2\comp{\vr}(\iter{\vx})$, held
-      by columns as a vector.
-\end{description}
-\textbf{Return value:} The function should return \texttt{0} on success. A
-non-zero return value will cause the least squares fitting to abort with an
-error code.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 

@@ -8,22 +8,30 @@
 
 
 \input{nlls_header.tex}
+% data types for the derived types
 \newcommand{\scalarinteger}[1]{\itt{#1} is a scalar of type {\tt INTEGER} }
 \newcommand{\scalarlogical}[1]{\itt{#1} is a scalar of type {\tt LOGICAL} }
 \newcommand{\scalarcharacter}[2]{
   \itt{#1} is a scalar of type {\tt CHARACTER} and length {\tt #2} 
 }
-\newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER} }
-\newcommand{\scalarintegerii}{is an \intentin scalar of type {\tt INTEGER} }
 \newcommand{\scalarreal}[1]{\itt{#1} is a scalar of package type}
 \newcommand{\ronearrayinteger}[1]{is a rank-1 array of type {\tt INTEGER} and size {\tt #1} }
 \newcommand{\ronearrayreal}[2]{\itt{#1} is a rank-1 array of package type and size {\tt #2}\ }
+% data types for the calling sequences
+\newcommand{\scalarintegerio}{is an \intentout scalar of type {\tt INTEGER} }
+\newcommand{\scalarintegerii}{is an \intentin scalar of type {\tt INTEGER} }
+
 \newcommand{\ronearrayrealii}[1]{is an \intentin rank-1 array of package type and size {\tt #1} }
 \newcommand{\ronearrayrealiiopt}[1]{is an optional \intentin rank-1 array of package type and size {\tt #1} }
 \newcommand{\ronearrayrealio}[1]{is an \intentout rank-1 array of package type and size {\tt #1} }
+% Fortran calling routine
+\newcommand{\mainroutine}{{\tt nlls\_solve}}
+\newcommand{\onestep}{{\tt nlls\_iterate}}
+% Fortran customization
 \newcommand{\ct}{\%}
 \newcommand{\fortranonly}[1]{#1}
 \newcommand{\conly}[1]{}
+\newcommand{\vecentry}[2]{\texttt{#1(#2)}}
 \begin{document}
 
 \hslheader
@@ -204,8 +212,9 @@ construct:
 \end{verbatim}
 
 \subsubsection{For evaluating the function $\vr(\vx)$}
-A subroutine must be supplied to calculate $\vr(\vx)$ for a given vector $\vx$. It
-must implement the following interface:
+
+A subroutine must be supplied to calculate $\vr(\vx)$ for a given vector $\vx$. 
+It must implement the following interface:
 
 \begin{verbatim}
 abstract interface
@@ -220,19 +229,7 @@ abstract interface
 end interface
 \end{verbatim}
 
-\begin{description}
-   \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt nlls\_solve}.
-
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\iter{\vx})$.
-
-   \itt{r} must be set by the routine to hold the residual function
-      evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
-
-   \itt{status} is initialised to \texttt{0} before the routine is
-      called. If it is set to a non-zero value by the routine, then 
-      {\tt nlls\_solve}/{\tt nlls\_iterate} will exit with an error.
-\end{description}
+\input{eval_r.tex}
 
 \subsubsection{For evaluating the function $\vJ = \nabla \vr(\vx)$}
 A subroutine must be supplied to calculate $\vJ = \nabla \vr(\vx)$ for a given vector $\vx$. It
@@ -251,21 +248,7 @@ abstract interface
 end interface
 \end{verbatim}
 
-\begin{description}
-   \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt nlls\_solve}.
-
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate
-      $\vJ(\iter{\vx})$.
-
-   \itt{J} must be set by the routine to hold the Jacobian of the residual
-      function evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
-      \texttt{J(i*m+j)} must be set to hold $\nabla_{x_j} r_i(\iter{\vx})$.
-
-   \itt{status} is initialised to \texttt{0} before the routine is
-      called. If it is set to a non-zero value by the routine, then
-      {\tt nlls\_solve}/{\tt nlls\_iterate} will exit with an error.
-\end{description}
+\input{eval_j.tex}
 
 \subsubsection{For evaluating the function $Hf = \sum_{i=1}^m r_i(\vx) \vW \nabla^2 r_i(\vx)$}
 A subroutine must be supplied to calculate $Hf = \sum_{i=1}^m (\vr)_i \nabla^2 r_i(\vx)$ for given vectors $\vx \in \mathbb{R}^n$ and $\vr \in \mathbb{R}^m$; here \((\vr)_i\) denotes the $i$th component of the vector $\vr$. The subroutine must implement the following interface:
@@ -284,22 +267,8 @@ abstract interface
 end interface
 \end{verbatim}
 
-\begin{description}
-   \itt{n, m, params} are passed unchanged as provided in the call to
-      {\tt nlls\_solve}.
+\input{eval_hf.tex}
 
-   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\vr(\vx)$.
-
-   \itt{r} holds $\vW\vr(\vx)$, the (weighted) residual, as computed from vector returned by the last call to \texttt{eval\_r}.
-
-   \itt{Hf} must be set by the routine to hold the matrix
-      $\sum_{i = 1}^m (\vr)_i \nabla^2\comp{r}(\iter{\vx})$, held
-      by columns as a vector.
-
-   \itt{status} is initialised to \texttt{0} before the routine is called.
-      If it is set to a non-zero value by the routine, then {\tt nlls\_solve}/
-      {\tt nlls\_iterate} will exit with an error.
-\end{description}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
