@@ -1745,3 +1745,1514 @@
    END MODULE RAL_NLLS_DTRS_double
 
 
+! THIS VERSION: RAL_NLLS 1.1 - 04/03/2016 AT 14:00 GMT.
+
+!-*-*-*-*-*-*-*-  R A L _ N L L S _ R Q S  double  M O D U L E  *-*-*-*-*-*-*-
+
+!  Copyright reserved, Gould/Orban/Toint, for GALAHAD productions
+!  Principal author: Nick Gould
+
+!  History -
+!   extracted from GALAHAD package RQS, March 4th, 2016
+
+!  For full documentation, see
+!   http://galahad.rl.ac.uk/galahad-www/specs.html
+
+   MODULE RAL_NLLS_DRQS_double
+
+!       --------------------------------------------
+!      |                                            |
+!      | Solve the reguarized quadratic subproblem  |
+!      |                                            |
+!      |    minimize     1/2 <x, H x> + <c, x> + f  |
+!      |                   + (sigma/p) ||x||_2^p    |
+!      |                                            |
+!      | where H is diagonal                        |
+!      |                                            |
+!       --------------------------------------------
+
+      USE RAL_NLLS_SYMBOLS
+      USE RAL_NLLS_ROOTS_double
+
+      IMPLICIT NONE
+
+      PRIVATE
+      PUBLIC :: DRQS_initialize, DRQS_solve, DRQS_solve_main
+
+!--------------------
+!   P r e c i s i o n
+!--------------------
+
+      INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+
+!----------------------
+!   P a r a m e t e r s
+!----------------------
+
+      INTEGER, PARAMETER :: history_max = 100
+      INTEGER, PARAMETER :: max_degree = 3
+      REAL ( KIND = wp ), PARAMETER :: zero = 0.0_wp
+      REAL ( KIND = wp ), PARAMETER :: half = 0.5_wp
+      REAL ( KIND = wp ), PARAMETER :: point4 = 0.4_wp
+      REAL ( KIND = wp ), PARAMETER :: one = 1.0_wp
+      REAL ( KIND = wp ), PARAMETER :: two = 2.0_wp
+      REAL ( KIND = wp ), PARAMETER :: three = 3.0_wp
+      REAL ( KIND = wp ), PARAMETER :: six = 6.0_wp
+      REAL ( KIND = wp ), PARAMETER :: sixth = one / six
+      REAL ( KIND = wp ), PARAMETER :: ten = 10.0_wp
+      REAL ( KIND = wp ), PARAMETER :: twentyfour = 24.0_wp
+      REAL ( KIND = wp ), PARAMETER :: largest = HUGE( one )
+      REAL ( KIND = wp ), PARAMETER :: lower_default = - half * largest
+      REAL ( KIND = wp ), PARAMETER :: upper_default = largest
+      REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
+      REAL ( KIND = wp ), PARAMETER :: teneps = ten * epsmch
+      REAL ( KIND = wp ), PARAMETER :: roots_tol = teneps
+      LOGICAL :: roots_debug = .FALSE.
+
+!--------------------------
+!  Derived type definitions
+!--------------------------
+
+!  - - - - - - - - - - - - - - - - - - - - - - -
+!   control derived type with component defaults
+!  - - - - - - - - - - - - - - - - - - - - - - -
+
+      TYPE, PUBLIC :: DRQS_control_type
+
+!  unit for error messages
+
+        INTEGER :: error = 6
+
+!  unit for monitor output
+
+        INTEGER :: out = 6
+
+!  unit to write problem data into file problem_file
+
+        INTEGER :: problem = 0
+
+!  controls level of diagnostic output
+
+        INTEGER :: print_level = 0
+
+!  maximum degree of Taylor approximant allowed
+
+        INTEGER :: taylor_max_degree = 3
+
+!  any entry of H that is smaller than h_min * MAXVAL( H ) we be treated as zero
+
+        REAL ( KIND = wp ) :: h_min = epsmch
+
+!  any entry of C that is smaller than c_min * MAXVAL( C ) we be treated as zero
+
+        REAL ( KIND = wp ) :: c_min = epsmch
+
+!  lower and upper bounds on the multiplier, if known
+
+        REAL ( KIND = wp ) :: lower = - half * HUGE( one )
+        REAL ( KIND = wp ) :: upper =  HUGE( one )
+
+!  stop when | ||x|| - (multiplier/sigma)^(1/(p-2)) | <=
+!    max( stop_normal * max( ||x||, (multiplier/sigma)^(1/(p-2)) ),
+!         stop_absolute_normal )
+
+        REAL ( KIND = wp ) :: stop_normal = epsmch
+        REAL ( KIND = wp ) :: stop_absolute_normal = epsmch
+
+!  name of file into which to write problem data
+
+        CHARACTER ( LEN = 30 ) :: problem_file =                               &
+         'rqs_problem.data' // REPEAT( ' ', 14 )
+
+!  all output lines will be prefixed by
+!    prefix(2:LEN(TRIM(%prefix))-1)
+!  where prefix contains the required string enclosed in quotes,
+!  e.g. "string" or 'string'
+
+        CHARACTER ( LEN = 30 ) :: prefix  = '""                            '
+      END TYPE
+
+!  - - - - - - - - - - - - - - - - - - - - - - - -
+!   history derived type with component defaults
+!  - - - - - - - - - - - - - - - - - - - - - - - -
+
+      TYPE, PUBLIC :: DRQS_history_type
+
+!  value of lambda
+
+        REAL ( KIND = wp ) :: lambda = zero
+
+!  corresponding value of ||x(lambda)||_M
+
+        REAL ( KIND = wp ) :: x_norm = zero
+      END TYPE
+
+!  - - - - - - - - - - - - - - - - - - - - - - -
+!   inform derived type with component defaults
+!  - - - - - - - - - - - - - - - - - - - - - - -
+
+      TYPE, PUBLIC :: DRQS_inform_type
+
+!   reported return status:
+!      0 the solution has been found
+!     -3 n and/or sigma is not positive and/or p < 2
+!     -7 the problem is unbounded from below when p = 2
+!    -16 ill-conditioning has prevented furthr progress
+
+        INTEGER :: status = 0
+
+!  STAT value after allocate failure
+
+        INTEGER :: alloc_status = 0
+
+!  the number of (||x||_M,lambda) pairs in the history
+
+        INTEGER :: len_history = 0
+
+!  the value of the quadratic function
+
+        REAL ( KIND = wp ) :: obj = HUGE( one )
+
+!  the value of the regularized quadratic function
+
+        REAL ( KIND = wp ) :: obj_regularized = HUGE( one )
+
+!  the M-norm of x, ||x||_M
+
+        REAL ( KIND = wp ) :: x_norm = zero
+
+!  the Lagrange multiplier corresponding to the regularization
+
+        REAL ( KIND = wp ) :: multiplier = zero
+
+!  a lower bound max(0,-lambda_1), where lambda_1 is the left-most
+!  eigenvalue of (H,M)
+
+        REAL ( KIND = wp ) :: pole = zero
+
+!  has the hard case occurred?
+
+        LOGICAL :: hard_case = .FALSE.
+
+!  history information
+
+        TYPE ( DRQS_history_type ), DIMENSION( history_max ) :: history
+      END TYPE
+
+!  interface to BLAS: two norm
+
+     INTERFACE NRM2
+
+       FUNCTION SNRM2( n, X, incx )
+       REAL :: SNRM2
+       INTEGER, INTENT( IN ) :: n, incx
+       REAL, INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
+       END FUNCTION SNRM2
+
+       FUNCTION DNRM2( n, X, incx )
+       DOUBLE PRECISION :: DNRM2
+       INTEGER, INTENT( IN ) :: n, incx
+       DOUBLE PRECISION, INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
+       END FUNCTION DNRM2
+
+     END INTERFACE
+
+    CONTAINS
+
+!-*-*-*-*-*-*-  D R Q S _ I N I T I A L I Z E   S U B R O U T I N E   -*-*-*-*-
+
+      SUBROUTINE DRQS_initialize( control, inform )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+!
+!  .  Set initial values for the DRQS control parameters  .
+!
+!  Arguments:
+!  =========
+!
+!   control  a structure containing control information. See DRQS_control_type
+!   inform   a structure containing information. See DRQS_inform_type
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+!---------------------------------
+!   D u m m y   A r g u m e n t s
+!---------------------------------
+
+      TYPE ( DRQS_CONTROL_TYPE ), INTENT( OUT ) :: control
+      TYPE ( DRQS_inform_type ), INTENT( OUT ) :: inform
+
+      inform%status = RAL_NLLS_ok
+
+!  Set initial control parameter values
+
+      control%stop_normal = epsmch ** 0.75
+      control%stop_absolute_normal = epsmch ** 0.75
+
+      RETURN
+
+!  End of subroutine DRQS_initialize
+
+      END SUBROUTINE DRQS_initialize
+
+!-*-*-*-*-*-*-*-*-  D R Q S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-*-
+
+      SUBROUTINE DRQS_solve( n, p, sigma, f, C, H, X, control, inform )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Solve the reguarized quadratic subproblem
+!
+!      minimize     1/2 <x, H x> + <c, x> + f + (sigma/p) ||x||_2^p
+!
+!  where H is diagonal using a secular iteration
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Arguments:
+!  =========
+!
+!   n - the number of unknowns
+!
+!   p - the order of the regularization
+!
+!   sigma - the regularization weight
+!
+!   f - the value of constant term for the quadratic function
+!
+!   C - a vector of values for the linear term c
+!
+!   H -  a vector of values for the diagonal matrix H
+!
+!   X - the required solution vector x
+!
+!   control - a structure containing control information. See DRQS_control_type
+!
+!   inform - a structure containing information. See DRQS_inform_type
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: n
+      REAL ( KIND = wp ), INTENT( IN ) :: p, sigma, f
+      REAL ( KIND = wp ), INTENT( IN ), DIMENSION( n ) :: C, H
+      REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
+      TYPE ( DRQS_control_type ), INTENT( IN ) :: control
+      TYPE ( DRQS_inform_type ), INTENT( INOUT ) :: inform
+
+!  local variables
+
+      INTEGER :: i
+      REAL ( KIND = wp ) :: scale_h, scale_c, f_scale, sigma_scale
+      REAL ( KIND = wp ), DIMENSION( n ) :: C_scale, H_scale
+      TYPE ( DRQS_control_type ) :: control_scale
+
+!  scale the problem to solve instead
+
+!  minimize    q_s(x_s) = 1/2 <x_s, H_s x_s> + <c_s, x_s> + f_s
+!                + (sigma_s/p) ||x_s||_2^p
+
+!  where H_s = H / s_h and c_s = c / s_c for scale factors s_h and s_c
+
+!  This corresponds to
+!    sigma_s = ( s_h / s_c^2 ) ( s_c / s_h )^p,
+!    f_s = ( s_h / s_c^2 ) f
+!  and the solution may be recovered as
+!    x = ( s_c / s_h ) x_s
+!    lambda = s_h lambda_s
+!    q(x) = ( s_c^2 / s_ h ) q_s(x_s)
+
+!write(6,"( A2, 5ES13.4E3 )" ) 'H', H
+!write(6,"( A2, 5ES13.4E3 )" ) 'C', C
+
+!  scale H by the largest H and remove relatively tiny H
+
+      scale_h = MAXVAL( ABS( H ) )
+      IF ( scale_h > zero ) THEN
+        DO i = 1, n
+          IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
+            H_scale( i ) = H( i ) / scale_h
+          ELSE
+            H_scale( i ) = zero
+          END IF
+        END DO
+      ELSE
+        scale_h = one
+        H_scale = zero
+      END IF
+
+!  scale c by the largest c and remove relatively tiny c
+
+      scale_c = MAXVAL( ABS( C ) )
+      IF ( scale_c > zero ) THEN
+        DO i = 1, n
+          IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
+            C_scale( i ) = C( i ) / scale_c
+          ELSE
+            C_scale( i ) = zero
+          END IF
+        END DO
+      ELSE
+        scale_c = one
+        C_scale = zero
+      END IF
+
+      sigma_scale                                                              &
+        = sigma * ( scale_h / scale_c ** 2 ) * ( scale_c / scale_h ) ** p
+      f_scale = f * ( scale_h / scale_c ** 2 )
+
+      control_scale = control
+      IF ( control_scale%lower /= lower_default )                              &
+        control_scale%lower = control_scale%lower / scale_h
+      IF ( control_scale%upper /= upper_default )                              &
+        control_scale%upper = control_scale%upper / scale_h
+
+      CALL DRQS_solve_main( n, p, sigma_scale, f_scale, C_scale, H_scale, X,   &
+                            control_scale, inform )
+
+!  unscale the solution, function value, multiplier and related values
+
+      X = ( scale_c / scale_h ) * X
+      inform%obj = ( scale_c ** 2 / scale_h ) * inform%obj
+      inform%obj_regularized                                                   &
+        = ( scale_c ** 2 / scale_h ) * inform%obj_regularized
+      inform%multiplier = scale_h * inform%multiplier
+      inform%pole = scale_h * inform%pole
+      DO i = 1, inform%len_history
+        inform%history( i )%lambda = scale_h * inform%history( i )%lambda
+        inform%history( i )%x_norm                                             &
+          = ( scale_c / scale_h ) * inform%history( i )%x_norm
+      END DO
+
+      RETURN
+
+!  End of subroutine DRQS_solve
+
+      END SUBROUTINE DRQS_solve
+
+!-*-*-*-*-*-*-  D R Q S _ S O L V E _ M A I N   S U B R O U T I N E  -*-*-*-*-*-
+
+      SUBROUTINE DRQS_solve_main( n, p, sigma, f, C, H, X, control, inform )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Solve the reguarized quadratic subproblem
+!
+!      minimize     1/2 <x, H x> + <c, x> + f + (sigma/p) ||x||_2^p
+!
+!  where H is diagonal using a secular iteration
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Arguments:
+!  =========
+!
+!   n - the number of unknowns
+!
+!   p - the order of the regularization
+!
+!   sigma - the regularization weight
+!
+!   f - the value of constant term for the quadratic function
+!
+!   C - a vector of values for the linear term c
+!
+!   H -  a vector of values for the diagonal matrix H
+!
+!   X - the required solution vector x
+!
+!   control - a structure containing control information. See DRQS_control_type
+!
+!   inform - a structure containing information. See DRQS_inform_type
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: n
+      REAL ( KIND = wp ), INTENT( IN ) :: p, sigma, f
+      REAL ( KIND = wp ), INTENT( IN ), DIMENSION( n ) :: C, H
+      REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
+      TYPE ( DRQS_control_type ), INTENT( IN ) :: control
+      TYPE ( DRQS_inform_type ), INTENT( INOUT ) :: inform
+
+!-----------------------------------------------
+!   L o c a l   V a r i a b l e s
+!-----------------------------------------------
+
+      INTEGER :: i, it, out, nroots, print_level, max_order, n_lambda, i_hard
+      REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda, target
+      REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2
+      REAL ( KIND = wp ) :: beta, z_norm2, pm2, oopm2, oos, oos2
+      REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, topm2
+      REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max, c2
+      REAL ( KIND = wp ), DIMENSION( 4 ) :: roots
+      REAL ( KIND = wp ), DIMENSION( 9 ) :: lambda_new
+      REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: x_norm2
+      REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: pi_beta, theta_beta
+      LOGICAL :: printi, printt, printd, problem_file_exists
+      CHARACTER ( LEN = 1 ) :: region
+
+      INTEGER :: ii( 1 ), j
+      REAL ( KIND = wp ) :: a_4
+
+!  prefix for all output
+
+      CHARACTER ( LEN = LEN( TRIM( control%prefix ) ) - 2 ) :: prefix
+      IF ( LEN( TRIM( control%prefix ) ) > 2 )                                 &
+        prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
+
+!  output problem data
+
+      IF ( control%problem > 0 ) THEN
+        INQUIRE( FILE = control%problem_file, EXIST = problem_file_exists )
+        IF ( problem_file_exists ) THEN
+          OPEN( control%problem, FILE = control%problem_file,                  &
+                FORM = 'FORMATTED', STATUS = 'OLD' )
+          REWIND control%problem
+        ELSE
+          OPEN( control%problem, FILE = control%problem_file,                  &
+                FORM = 'FORMATTED', STATUS = 'NEW' )
+        END IF
+        WRITE( control%problem, * ) n, COUNT( C( : n ) /= zero ),              &
+          COUNT( H( : n ) /= zero )
+        WRITE( control%problem, * ) p, sigma, f
+        DO i = 1, n
+          IF ( C( i ) /= zero ) WRITE( control%problem, * ) i, C( i )
+        END DO
+        DO i = 1, n
+          IF ( H( i ) /= zero ) WRITE( control%problem, * ) i, i, H( i )
+        END DO
+        CLOSE( control%problem )
+      END IF
+
+!  set initial values
+
+      X = zero ; inform%x_norm = zero
+      inform%obj = f ; inform%obj_regularized = f
+
+      inform%hard_case = .FALSE.
+      delta_lambda = zero
+
+!  record desired output level
+
+      out = control%out
+      print_level = control%print_level
+      printi = out > 0 .AND. print_level > 0
+      printt = out > 0 .AND. print_level > 1
+      printd = out > 0 .AND. print_level > 2
+
+!  compute the two-norm of c and the extreme eigenvalues of H
+
+      c_norm = TWO_NORM( C )
+      lambda_min = MINVAL( H( : n ) )
+      lambda_max = MAXVAL( H( : n ) )
+
+      IF ( printi ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
+     &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
+          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
+
+      region = 'L'
+      IF ( printt )                                                            &
+        WRITE( out, "( A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )" ) prefix
+      IF ( printi ) WRITE( out, 2030 ) prefix
+
+!  check for the trivial cases: ||c|| = 0 & H positive semi-definite
+
+      IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
+        lambda = zero ; target = zero
+        IF ( printi ) THEN
+          WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region,              &
+            it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+          WRITE( out, "( A,                                                    &
+      &    ' Normal stopping criteria satisfied' )" ) prefix
+        END IF
+        inform%status = RAL_NLLS_ok
+        GO TO 900
+      END IF
+
+!  p = 2
+
+      IF ( p == two ) THEN
+        IF ( lambda_min + sigma > zero ) THEN
+          X = - C / ( H + sigma )
+        ELSE IF ( lambda_min + sigma < zero ) THEN
+          inform%status = RAL_NLLS_error_unbounded
+          lambda = zero
+          GO TO 900
+        ELSE
+          DO i = 1, n
+            IF ( H( i ) + sigma <= zero .AND. C( i ) /= zero ) THEN
+              inform%status = RAL_NLLS_error_unbounded
+              lambda = zero
+              GO TO 900
+            ELSE
+              X( i ) = - C( i ) / ( H( i ) + sigma )
+            END IF
+          END DO
+        END IF
+        lambda = sigma ; target = sigma
+        inform%x_norm = TWO_NORM( X )
+        inform%obj_regularized = f + half * DOT_PRODUCT( C, X )
+        inform%obj = inform%obj_regularized - half * sigma * inform%x_norm ** 2
+        inform%status = RAL_NLLS_ok
+        GO TO 900
+      END IF
+
+!  reccord useful constants
+
+      oos = one / sigma ; oos2 = oos * oos
+      pm2 = p - two ; oopm2 = one / pm2 ; topm2 = two / pm2
+
+!  construct values lambda_l and lambda_u for which lambda_l <= lambda_optimal
+!   <= lambda_u, and ensure that all iterates satisfy lambda_l <= lambda
+!   <= lambda_u
+
+      lambda_l =                                                               &
+        MAX( control%lower, zero, - lambda_min,                                &
+             DRQS_lambda_root( lambda_max, c_norm * sigma ** oopm2, oopm2 ) )
+      lambda_u =                                                               &
+        MIN( control%upper, MAX( zero,                                         &
+             DRQS_lambda_root( lambda_min, c_norm * sigma ** oopm2, oopm2 ) ) )
+      lambda = lambda_l
+
+!  check for the "hard case"
+
+      IF ( lambda == - lambda_min ) THEN
+        c2 = zero
+        inform%hard_case = .TRUE.
+        DO i = 1, n
+          IF ( H( i ) == lambda_min ) THEN
+            IF ( ABS( C( i ) ) > epsmch * c_norm ) THEN
+              inform%hard_case = .FALSE.
+              c2 = c2 + C( i ) ** 2
+            ELSE
+              i_hard = i
+            END IF
+          END IF
+        END DO
+
+!  the hard case may occur
+
+        IF ( inform%hard_case ) THEN
+          DO i = 1, n
+            IF ( H( i ) /= lambda_min ) THEN
+              X( i )  = - C( i ) / ( H( i ) + lambda )
+            ELSE
+              X( i ) = zero
+            END IF
+          END DO
+          inform%x_norm = TWO_NORM( X )
+
+!  compute the target value ( lambda / sigma )^(1/(p-2))
+
+          target = ( lambda / sigma ) ** oopm2
+
+!  the hard case does occur
+
+          IF ( inform%x_norm <= target ) THEN
+            IF ( inform%x_norm < target ) THEN
+
+!  compute the step alpha so that X + alpha E_i_hard lies on the trust-region
+!  boundary and gives the smaller value of q
+
+              utx = X( i_hard ) / target
+              distx = ( target - inform%x_norm ) *                             &
+                ( ( target + inform%x_norm ) / target )
+              alpha = sign( distx / ( abs( utx ) +                             &
+                            sqrt( utx ** 2 + distx / target ) ), utx )
+
+!  record the optimal values
+
+              X( i_hard ) = X( i_hard ) + alpha
+            END IF
+            inform%x_norm = TWO_NORM( X )
+            inform%obj =                                                       &
+                f + half * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
+            inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
+
+            IF ( printi ) THEN
+              WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region,          &
+                it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+              WRITE( out, "( A,                                                &
+          &    ' Normal stopping criteria satisfied' )" ) prefix
+            END IF
+            inform%status = RAL_NLLS_ok
+            GO TO 900
+
+!  the hard case didn't occur after all
+
+          ELSE
+            inform%hard_case = .FALSE.
+
+!  compute the first derivative of ||x|(lambda)||^2  ...
+
+            w_norm2 = zero
+            DO i = 1, n
+              IF ( H( i ) /= lambda_min )                                      &
+                w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
+            END DO
+            x_norm2( 1 ) = - two * w_norm2
+
+!  ... and ( lambda / sigma )^(2/(p-2))
+
+            IF ( p == three ) THEN
+              theta_beta( 1 ) = two * lambda * oos2
+            ELSE
+              theta_beta( 1 ) =                                                &
+                topm2 * ( lambda ** ( topm2 - one ) ) / ( sigma ** topm2 )
+            END IF
+
+!  compute the Newton correction
+
+            lambda = lambda + ( inform%x_norm ** 2 - target ** 2 ) /           &
+                              ( x_norm2( 1 ) - theta_beta( 1 ) )
+            lambda_l = MAX( lambda_l, lambda )
+          END IF
+
+!  there is a singularity at lambda. Compute the point for which the
+!  sum of squares of the singular terms is equal to target^2
+
+        ELSE
+          lambda = MAX( epsmch,                                                &
+            DRQS_lambda_root( lambda_min, SQRT( c2 ) * sigma ** oopm2, oopm2 ) )
+          lambda_l = MAX( lambda_l, lambda )
+        END IF
+
+!  lambda lies above the largest singularity.
+
+      ELSE
+
+!  compute the value of ||x(lambda)||
+
+!       IF ( p == three ) THEN   !! For the time being, only p == 3
+        IF ( .FALSE. ) THEN
+          w_norm2 = zero
+          DO i = 1, n
+            w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 2
+          END DO
+          w_norm2 = SQRT( w_norm2 )
+
+!  an upper bound on the required lambda occurs when this value is equal to
+!  ( lambda / sigma )^(1/(p-2))
+
+          ii = MINLOC( H )
+          j = ii( 1)
+          WRITE( out , * ) ' upper lambda = ', sigma * w_norm2, lambda_u
+          lambda_u = MIN( sigma * w_norm2, lambda_u )
+
+!  the function ||x(lambda)|| is no smaller than h(lambda)
+!  c_j^2 / (lambda + lambda_j)^2 + sum_i/=j c_i^2 / (lambda_u + lambda_i)^2,
+!  so the required lambda is no smaller than the largest root of
+!  h(lambda) = ( lambda / sigma )^(2/(p-2))
+
+          w_norm2 = zero
+          DO i = 1, n
+            IF ( i /= j )                                                      &
+              w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda_u ) ** 2
+          END DO
+          w_norm2 = w_norm2 * sigma ** 2
+
+          a_0 = - ( sigma * C( j ) ) ** 2 - w_norm2 * H( j ) ** 2
+          a_1 =  - two * w_norm2 * H( j )
+          a_2 = H( j ) ** 2 - w_norm2
+          a_3 = two * H( j )
+          a_4 = one
+          a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ),                     &
+                       ABS( a_3 ), ABS( a_4 ) )
+          IF ( a_max > zero ) THEN
+            a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+            a_2 = a_2 / a_max ; a_3 = a_3 / a_max ; a_4 = a_4 / a_max
+          END IF
+          CALL ROOTS_quartic( a_0, a_1, a_2, a_3, a_4, roots_tol, nroots,      &
+                            roots( 1 ), roots( 2 ), roots( 3 ), roots( 4 ),    &
+                            roots_debug )
+          WRITE( out, * ) ' starting lambda = ', roots( : nroots )
+          lambda = roots( nroots )
+        END IF
+      END IF
+
+!  the iterates will all be in the L region. Prepare for the main loop
+
+      it = 0
+      max_order = MAX( 1, MIN( max_degree, control%taylor_max_degree ) )
+
+!  start the main loop
+
+!write(6,*) ' H ', H
+!write(6,*) ' C ', C
+!write(6,*) ' sigma ', sigma
+
+      DO
+        it = it + 1
+
+
+!  if H(lambda) is positive definite, solve  H(lambda) x = - c
+
+        DO i = 1, n
+          X( i )  = - C( i ) / ( H( i ) + lambda )
+        END DO
+
+!  compute the M-norm of x, ||x||_M
+
+        inform%x_norm = TWO_NORM( X )
+        x_norm2( 0 ) = inform%x_norm ** 2
+
+!  compute the target value ( lambda / sigma )^(1/(p-2))
+
+        target = ( lambda / sigma ) ** oopm2
+
+!  the current estimate gives a good approximation to the required root
+
+        IF ( ABS( inform%x_norm - target ) <=                                  &
+             MAX( control%stop_normal * MAX( one, inform%x_norm, target ),     &
+                  control%stop_absolute_normal  ) ) THEN
+          IF ( inform%x_norm > target ) THEN
+            region = 'L'
+            lambda_l = MAX( lambda_l, lambda )
+          ELSE
+            region = 'G'
+            lambda_u = MIN( lambda_u, lambda )
+          END IF
+          IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
+          IF ( printi ) THEN
+            WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region,            &
+              it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+            WRITE( out, "( A,                                                  &
+        &    ' Normal stopping criteria satisfied' )" ) prefix
+          END IF
+          inform%status = RAL_NLLS_ok
+          EXIT
+        END IF
+
+        lambda_l = MAX( lambda_l, lambda )
+
+!  a lambda in L has been found. It is now simply a matter of applying
+!  a variety of Taylor-series-based methods starting from this lambda
+
+        IF ( printi ) WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix,          &
+          region, it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+
+!  precaution against rounding producing lambda outside L
+
+        IF ( lambda > lambda_u ) THEN
+          inform%status = RAL_NLLS_error_ill_conditioned
+          IF ( printi ) THEN
+            WRITE( out, 2030 ) prefix
+            WRITE( out, "( A, 2X, I4, 3ES22.15, /, A,                          &
+           &               ' normal exit with lambda outside L' )" )           &
+              prefix, it, ABS( inform%x_norm - target ),                       &
+              lambda, ABS( delta_lambda ), prefix
+          END IF
+          EXIT
+        END IF
+
+!  compute first derivatives of x^T M x
+
+!  form ||w||^2 = x^T H^-1(lambda) x
+
+        w_norm2 = zero
+        DO i = 1, n
+          w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
+        END DO
+
+!  compute the first derivative of x_norm2 = x^T M x
+
+        x_norm2( 1 ) = - two * w_norm2
+
+!  count the number of corrections computed
+
+        n_lambda = 0
+
+!  compute Taylor approximants of degree one;
+!  special (but frequent) case when p = 3
+
+        IF ( p == three ) THEN
+
+!  compute pi_beta = ||x||^beta and its first derivative when beta = 2
+
+          beta = two
+          CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
+
+!  compute the Newton correction (for beta = 2)
+
+          a_0 = pi_beta( 0 ) - target ** 2
+          a_1 = pi_beta( 1 ) - two * lambda * oos2
+          a_2 = - oos2
+          a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ) )
+          IF ( a_max > zero ) THEN
+            a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
+          END IF
+          CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
+                                roots( 1 ), roots( 2 ), roots_debug )
+          lambda_plus = lambda + roots( 2 )
+          IF (  lambda_plus < lambda ) THEN
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda_plus
+          END IF
+
+!  compute pi_beta = ||x||^beta and its first derivative when beta = 1
+
+          beta = one
+          CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
+
+!  compute the Newton correction (for beta = 1)
+
+          delta_lambda = - ( pi_beta( 0 ) - target ) / ( pi_beta( 1 ) - oos )
+          lambda_plus = lambda + delta_lambda
+          IF (  lambda_plus < lambda ) THEN
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda_plus
+          END IF
+
+!  compute pi_beta = ||x||^beta and its first derivative when beta = - 1
+
+          beta = - one
+          CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
+
+!  compute the Newton correction (for beta = -1)
+
+          a_0 = pi_beta( 0 ) * lambda - sigma
+          a_1 = pi_beta( 0 ) + lambda * pi_beta( 1 )
+          a_2 = pi_beta( 1 )
+          a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ) )
+          IF ( a_max > zero ) THEN
+            a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
+          END IF
+          CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
+                                roots( 1 ), roots( 2 ), roots_debug )
+          lambda_plus = lambda + roots( 2 )
+          IF (  lambda_plus < lambda ) THEN
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda_plus
+          END IF
+
+!  more general p
+
+        ELSE
+
+!  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
+!  their first derivatives when beta = p-2
+
+          beta = pm2
+          CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
+          CALL DRQS_theta_derivs( 1, beta / pm2, lambda, sigma,                &
+                                  theta_beta( : 1 )  )
+
+!  compute the "linear Taylor approximation" correction (for beta = p-2)
+
+          delta_lambda = - ( pi_beta( 0 ) - theta_beta( 0 ) ) /                &
+                           ( pi_beta( 1 ) - theta_beta( 1 ) )
+          lambda_plus = lambda + delta_lambda
+          IF (  lambda_plus < lambda ) THEN
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda_plus
+          END IF
+
+!  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
+!  their first derivatives when beta = (p-2)/2
+
+          beta = pm2 / two
+          CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
+          CALL DRQS_theta_derivs( 1, beta / pm2, lambda, sigma,                &
+                                 theta_beta( : 1 )  )
+
+!  compute the "linear Taylor approximation" correction (for beta = (p-2)/2)
+
+          delta_lambda = - ( pi_beta( 0 ) - theta_beta( 0 ) ) /                &
+                           ( pi_beta( 1 ) - theta_beta( 1 ) )
+          lambda_plus = lambda + delta_lambda
+          IF (  lambda_plus < lambda ) THEN
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda_plus
+          END IF
+
+!  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
+!  their first derivatives when beta = max(2-p,-1)
+
+          beta = max( - pm2, - one )
+          CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
+          CALL DRQS_theta_derivs( 1, beta / pm2, lambda, sigma,                &
+                                 theta_beta( : 1 ) )
+
+!  compute the "linear Taylor approximation" correction (for beta = max(2-p,-1))
+
+          delta_lambda = - ( pi_beta( 0 ) - theta_beta( 0 ) ) /                &
+                           ( pi_beta( 1 ) - theta_beta( 1 ) )
+          lambda_plus = lambda + delta_lambda
+          IF (  lambda_plus < lambda ) THEN
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda_plus
+          END IF
+        END IF
+
+        IF ( max_order >= 3 ) THEN
+
+!  compute the second derivative of x^T x
+
+          z_norm2 = zero
+          DO i = 1, n
+            z_norm2 = z_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 4
+          END DO
+          x_norm2( 2 ) = six * z_norm2
+
+!  compute the third derivatives of x^T x
+
+          v_norm2 = zero
+          DO i = 1, n
+            v_norm2 = v_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 5
+          END DO
+          x_norm2( 3 ) = - twentyfour * v_norm2
+
+!  compute pi_beta = ||x||^beta and its derivatives for various beta
+!  and the resulting Taylor series approximants
+
+!  special (but frequent) case when p = 3
+
+          IF ( p == three ) THEN
+
+!  compute pi_beta = ||x||^beta and its derivatives when beta = 2
+
+            beta = two
+            CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
+
+!  compute the "cubic Taylor approximaton" step (beta = 2)
+
+            a_0 = pi_beta( 0 ) - target ** 2
+            a_1 = pi_beta( 1 ) - two * lambda * oos2
+            a_2 = half * pi_beta( 2 ) - oos2
+            a_3 = sixth * pi_beta( 3 )
+            a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+            IF ( a_max > zero ) THEN
+              a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+              a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+            END IF
+            CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
+                              roots( 1 ), roots( 2 ), roots( 3 ),              &
+                              roots_debug )
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda + roots( 1 )
+
+!  compute pi_beta = ||x||^beta and its derivatives when beta = 1
+
+            beta = one
+            CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
+
+!  compute the "cubic Taylor approximaton" step (beta = 1)
+
+            a_0 = pi_beta( 0 ) - target
+            a_1 = pi_beta( 1 ) - oos
+            a_2 = half * pi_beta( 2 )
+            a_3 = sixth * pi_beta( 3 )
+            a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+            IF ( a_max > zero ) THEN
+              a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+              a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+            END IF
+            CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
+                              roots( 1 ), roots( 2 ), roots( 3 ),              &
+                              roots_debug )
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda + roots( 1 )
+
+!  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^beta and
+!  their derivatives when beta = - 0.4
+
+            beta = - point4
+            CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
+            CALL DRQS_theta_derivs( 3, beta, lambda, sigma,                    &
+                                    theta_beta( : 3 )  )
+
+!  compute the "cubic Taylor approximaton" step (beta = - 0.4)
+
+            a_0 = pi_beta( 0 ) - theta_beta( 0 )
+            a_1 = pi_beta( 1 ) - theta_beta( 1 )
+            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+            IF ( a_max > zero ) THEN
+              a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+              a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+            END IF
+            CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
+                               roots( 1 ), roots( 2 ), roots( 3 ),             &
+                               roots_debug )
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda + roots( 1 )
+
+!  more general p
+
+          ELSE
+
+!  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
+!  their derivatives when beta = p-2
+
+            beta = pm2
+            CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
+            CALL DRQS_theta_derivs( 3, beta / pm2, lambda, sigma,              &
+                                    theta_beta( : 3 )  )
+
+!  compute the "cubic Taylor approximation" correction (for beta = p-2)
+
+            a_0 = pi_beta( 0 ) - theta_beta( 0 )
+            a_1 = pi_beta( 1 ) - theta_beta( 1 )
+            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+            IF ( a_max > zero ) THEN
+              a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+              a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+            END IF
+            CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
+                              roots( 1 ), roots( 2 ), roots( 3 ),              &
+                              roots_debug )
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda +                                  &
+              DRQS_required_root( .TRUE., nroots, roots( : 3 ) )
+
+!  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
+!  their derivatives when beta = (p-2)/2
+
+            beta = pm2 / two
+            CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
+            CALL DRQS_theta_derivs( 3, beta / pm2, lambda, sigma,              &
+                                    theta_beta( : 3 )  )
+
+!  compute the "cubic Taylor approximation" correction (for beta = (p-2)/2)
+
+            a_0 = pi_beta( 0 ) - theta_beta( 0 )
+            a_1 = pi_beta( 1 ) - theta_beta( 1 )
+            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+            IF ( a_max > zero ) THEN
+              a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+              a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+            END IF
+            CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
+                              roots( 1 ), roots( 2 ), roots( 3 ),              &
+                              roots_debug )
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda +                                  &
+              DRQS_required_root( .TRUE., nroots, roots( : 3 ) )
+
+!  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
+!  their derivatives when beta = max(2-p,-0.4)
+
+            beta = max( - pm2, - point4 )
+            CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
+            CALL DRQS_theta_derivs( 3, beta / pm2, lambda, sigma,              &
+                                    theta_beta( : 3 )  )
+
+!  compute the "cubic Taylor approximation" correction (for beta=max(2-p,-0.4))
+
+            a_0 = pi_beta( 0 ) - theta_beta( 0 )
+            a_1 = pi_beta( 1 ) - theta_beta( 1 )
+            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
+            IF ( a_max > zero ) THEN
+              a_0 = a_0 / a_max ; a_1 = a_1 / a_max
+              a_2 = a_2 / a_max ; a_3 = a_3 / a_max
+            END IF
+            CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
+                              roots( 1 ), roots( 2 ), roots( 3 ),              &
+                              roots_debug )
+            n_lambda = n_lambda + 1
+            lambda_new( n_lambda ) = lambda +                                  &
+              DRQS_required_root( .TRUE., nroots, roots( : 3 ) )
+          END IF
+        END IF
+
+!  record all of the estimates of the optimal lambda
+
+        IF ( printd ) THEN
+          WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
+            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
+            lambda_new( : MIN( 3, n_lambda ) )
+          IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
+            prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+        END IF
+
+!  compute the best Taylor improvement
+
+        lambda_plus = MAXVAL( lambda_new( : n_lambda ) )
+        delta_lambda = lambda_plus - lambda
+        lambda = lambda_plus
+
+!  improve the lower bound if possible
+
+        lambda_l = MAX( lambda_l, lambda_plus )
+
+!  check that the best Taylor improvement is significant
+
+        IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
+          inform%status = RAL_NLLS_ok
+          IF ( printi ) WRITE( out, "( A, ' normal exit with no ',             &
+         &                     'significant Taylor improvement' )" ) prefix
+          EXIT
+        END IF
+
+!  End of main iteration loop
+
+      END DO
+
+!  Record the optimal obective value
+
+      inform%obj = f + half * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
+      inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
+      IF ( printi ) WRITE( out,                                                &
+        "( A, ' estimated, true objective values =', 2ES21.13 )" ) prefix,     &
+          inform%obj_regularized, f + DOT_PRODUCT( C, X ) +                    &
+            half * DOT_PRODUCT( X, H( : n ) * X ) +                            &
+          ( sigma / p ) * inform%x_norm ** p
+
+!  ----
+!  Exit
+!  ----
+
+ 900  CONTINUE
+      inform%multiplier = lambda
+      inform%pole = MAX( zero, - lambda_min )
+      RETURN
+
+
+! Non-executable statements
+
+ 2030 FORMAT( A, '    it    ||x||-target              lambda ',                &
+                 '              d_lambda' )
+ 2050 FORMAT( A, ' time( SLS_solve ) = ', F0.2 )
+
+!  End of subroutine DRQS_solve_main
+
+      END SUBROUTINE DRQS_solve_main
+
+!-*-*-*-*-*-  D R Q S _ P I _ D E R I V S   S U B R O U T I N E   -*-*-*-*-*-
+
+      SUBROUTINE DRQS_pi_derivs( max_order, beta, x_norm2, pi_beta )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Compute pi_beta = ||x||^beta and its derivatives
+!
+!  Arguments:
+!  =========
+!
+!  Input -
+!   max_order - maximum order of derivative
+!   beta - power
+!   x_norm2 - (0) value of ||x||^2,
+!             (i) ith derivative of ||x||^2, i = 1, max_order
+!  Output -
+!   pi_beta - (0) value of ||x||^beta,
+!             (i) ith derivative of ||x||^beta, i = 1, max_order
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: max_order
+      REAL ( KIND = wp ), INTENT( IN ) :: beta, x_norm2( 0 : max_order )
+      REAL ( KIND = wp ), INTENT( OUT ) :: pi_beta( 0 : max_order )
+
+!-----------------------------------------------
+!   L o c a l   V a r i a b l e
+!-----------------------------------------------
+
+      REAL ( KIND = wp ) :: hbeta
+
+      hbeta = half * beta
+      pi_beta( 0 ) = x_norm2( 0 ) ** hbeta
+      pi_beta( 1 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - one ) ) * x_norm2( 1 )
+      IF ( max_order == 1 ) RETURN
+      pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - two ) ) *             &
+        ( ( hbeta - one ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
+      IF ( max_order == 2 ) RETURN
+      pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - three ) ) *           &
+        ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - one ) *                 &
+          ( three * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +               &
+            ( hbeta - two ) * x_norm2( 1 ) ** 3 ) )
+
+      RETURN
+
+!  End of subroutine DRQS_pi_derivs
+
+      END SUBROUTINE DRQS_pi_derivs
+
+!-*-*-*-*-  D R Q S _ T H E T A _ D E R I V S   S U B R O U T I N E   -*-*-*-*-
+
+      SUBROUTINE DRQS_theta_derivs( max_order, beta, lambda, sigma, theta_beta )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Compute theta_beta = (lambda/sigma)^beta and its derivatives
+!
+!  Arguments:
+!  =========
+!
+!  Input -
+!   max_order - maximum order of derivative
+!   beta - power
+!   lambda, sigma - lambda and sigma
+!  Output -
+!   theta_beta - (0) value of (lambda/sigma)^beta,
+!             (i) ith derivative of (lambda/sigma)^beta, i = 1, max_order
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      INTEGER, INTENT( IN ) :: max_order
+      REAL ( KIND = wp ), INTENT( IN ) :: beta, lambda, sigma
+      REAL ( KIND = wp ), INTENT( OUT ) :: theta_beta( 0 : max_order )
+
+!-----------------------------------------------
+!   L o c a l   V a r i a b l e
+!-----------------------------------------------
+
+      REAL ( KIND = wp ) :: los, oos
+
+      los = lambda / sigma
+      oos = one / sigma
+
+      theta_beta( 0 ) = los ** beta
+      theta_beta( 1 ) = beta * ( los ** ( beta - one ) ) * oos
+      IF ( max_order == 1 ) RETURN
+      theta_beta( 2 ) = beta * ( los ** ( beta - two ) ) *                     &
+                        ( beta - one ) * oos ** 2
+      IF ( max_order == 2 ) RETURN
+      theta_beta( 3 ) = beta * ( los ** ( beta - three ) ) *                   &
+                        ( beta - one ) * ( beta - two ) * oos ** 3
+
+      RETURN
+
+!  End of subroutine DRQS_theta_derivs
+
+      END SUBROUTINE DRQS_theta_derivs
+
+!-*-*-*-*-*-  D R Q S _ R E Q U I R E D _ R O O T  F U C T I O N   -*-*-*-*-*-
+
+      FUNCTION DRQS_required_root( positive, nroots, roots )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Determine the required root of the three roots of the secular equation.
+!  This is either the most positive root (positive=.TRUE.) or the least
+!  negative one (positive=.FALSE.)
+!
+!  Arguments:
+!  =========
+!
+!  Input -
+!   positive - .TRUE. if the largest positive root is required,
+!               .FALSE. if the least negative one
+!   nroots - number of roots
+!   roots - roots in increasing order
+!  Output -
+!   DRQS_required root - the required root
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      REAL ( KIND = wp ) :: DRQS_required_root
+      INTEGER, INTENT( IN ) :: nroots
+      REAL ( KIND = wp ), INTENT( IN ), DIMENSION( : ) :: roots
+      LOGICAL, INTENT( IN ) :: positive
+
+      IF ( positive ) THEN
+        IF ( SIZE( roots ) == 3 ) THEN
+          IF ( nroots == 3 ) THEN
+            DRQS_required_root = roots( 3 )
+          ELSE IF ( nroots == 2 ) THEN
+            DRQS_required_root = roots( 2 )
+          ELSE
+            DRQS_required_root = roots( 1 )
+          END IF
+        ELSE
+          IF ( nroots == 2 ) THEN
+            DRQS_required_root = roots( 2 )
+          ELSE
+            DRQS_required_root = roots( 1 )
+          END IF
+        END IF
+      ELSE
+        IF ( SIZE( roots ) == 3 ) THEN
+          IF ( nroots == 3 ) THEN
+            IF ( roots( 3 ) > zero ) THEN
+              IF ( roots( 2 ) > zero ) THEN
+                DRQS_required_root = roots( 1 )
+              ELSE
+                DRQS_required_root = roots( 2 )
+              END IF
+            ELSE
+              DRQS_required_root = roots( 3 )
+            END IF
+          ELSE IF ( nroots == 2 ) THEN
+            IF ( roots( 2 ) > zero ) THEN
+              DRQS_required_root = roots( 1 )
+            ELSE
+              DRQS_required_root = roots( 2 )
+            END IF
+          ELSE
+            DRQS_required_root = roots( 1 )
+          END IF
+        ELSE
+          IF ( nroots == 2 ) THEN
+            IF ( roots( 2 ) > zero ) THEN
+              DRQS_required_root = roots( 1 )
+            ELSE
+              DRQS_required_root = roots( 2 )
+            END IF
+          ELSE
+            DRQS_required_root = roots( 1 )
+          END IF
+        END IF
+      END IF
+      RETURN
+
+!  End of function DRQS_required_root
+
+      END FUNCTION DRQS_required_root
+
+!-*-*-*-*-*-*-  D R Q S _ L A M B D A  _ R O O T  F U C T I O N   -*-*-*-*-*-*-
+
+      FUNCTION DRQS_lambda_root( a, b, power )
+
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+!
+!  Find the positive root of lambda + a = b/lambda^power
+!
+!  Arguments:
+!  =========
+!
+!  Input -
+!   a, b, power - data for the above problem (with b, power > 0)
+!  Output -
+!   DRQS_lambda root - the required root
+!
+! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+!-----------------------------------------------
+!   D u m m y   A r g u m e n t s
+!-----------------------------------------------
+
+      REAL ( KIND = wp ) :: DRQS_lambda_root
+      REAL ( KIND = wp ), INTENT( IN ) :: a, b, power
+
+!-----------------------------------------------
+!   L o c a l   V a r i a b l e
+!-----------------------------------------------
+
+      INTEGER :: nroots, it
+!     INTEGER, PARAMETER :: newton_max = 10000
+      INTEGER, PARAMETER :: newton_max = 20
+      REAL ( KIND = wp ) :: lambda, phi, phip, d_lambda, other, power_plus_1
+
+!write(6,*) ' a, b, p', a, b, power
+
+!  special case: a = 0 = b
+
+      IF ( a == zero .AND. b == zero ) THEN
+        DRQS_lambda_root = zero ; RETURN
+      END IF
+
+      power_plus_1 = power + one
+
+!  compute as initial lower bound on the root
+
+      IF ( power == one ) THEN
+        CALL ROOTS_quadratic( - b , a, one, roots_tol, nroots, other, lambda,  &
+                              roots_debug )
+      ELSE
+
+!  when power > 1, 1/lambda <= 1/lambda^p for lambda in (0,1]
+
+        IF ( power > one ) THEN
+          CALL ROOTS_quadratic( - b , a, one, roots_tol, nroots, other,        &
+                                lambda, roots_debug )
+          lambda = MIN( one, lambda )
+        ELSE
+          lambda = epsmch
+        END IF
+
+!  check if lambda = 1 is acceptable
+
+        IF ( one + a <= b ) lambda = MAX( lambda, one )
+
+!  when a > 0, find where the tangent to b/lambda^power at
+!  lambda = b^(1/power+1) intersects lambda + a
+
+        IF ( a >= zero ) THEN
+          lambda = MAX( lambda, b ** ( one / power_plus_1 ) - a / power_plus_1 )
+
+!  when a < 0, both the lambda-intercept of lambda + a and the interection
+!  of lambda with beta / lambda^(1/power+1) give lower bounds on the root
+
+        ELSE
+          lambda = MAX( lambda, - a, b ** ( one / power_plus_1 ) )
+        END IF
+
+!  perform Newton's method to refine the root
+
+        DO it = 1, newton_max
+          phi = lambda + a - b / ( lambda ** power )
+!         write(6,*) ' lambda ', lambda, phi
+          IF ( ABS( phi ) <= ten * epsmch *                                   &
+                 MAX(  lambda + a, b / ( lambda ** power ) ) ) EXIT
+          phip = one + b * power / ( lambda ** power_plus_1 )
+          d_lambda = - phi / phip
+          IF ( ABS( d_lambda ) <= epsmch * MAX( one, lambda ) ) EXIT
+          lambda = lambda + d_lambda
+        END DO
+      END IF
+      DRQS_lambda_root = lambda
+
+      RETURN
+
+!  End of function DRQS_lambda_root
+
+      END FUNCTION DRQS_lambda_root
+
+!-*-*-*-*-*-*-*-*-*-  T W O  _ N O R M   F U N C T I O N   -*-*-*-*-*-*-*-*-*-
+
+       FUNCTION TWO_NORM( X )
+
+!  Compute the l_2 norm of the vector X
+
+!  Dummy arguments
+
+       REAL ( KIND = wp ) :: TWO_NORM
+       REAL ( KIND = wp ), INTENT( IN ), DIMENSION( : ) :: X
+
+!  Local variable
+
+       INTEGER :: n
+       n = SIZE( X )
+
+       IF ( n > 0 ) THEN
+         TWO_NORM = NRM2( n, X, 1 )
+       ELSE
+         TWO_NORM = zero
+       END IF
+       RETURN
+
+!  End of function TWO_NORM
+
+       END FUNCTION TWO_NORM
+
+!-*-*-*-*-*-  End of R A L _ N L L S _ R Q S  double  M O D U L E  *-*-*-*-*-*-
+
+   END MODULE RAL_NLLS_DRQS_double
+
