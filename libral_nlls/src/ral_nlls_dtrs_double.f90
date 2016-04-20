@@ -1244,7 +1244,7 @@
           lambda = zero
         END IF
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,             &
+          WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,             &
           0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
           WRITE( out, "( A,                                                    &
        &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1322,7 +1322,7 @@
             inform%obj =                                                       &
                 f + half * ( DOT_PRODUCT( C, X ) - lambda * radius ** 2 )
             IF ( printi ) THEN
-              WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,         &
+              WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,         &
               0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
               WRITE( out, "( A,                                                &
            &    ' Hard-case stopping criteria satisfied' )" ) prefix
@@ -1389,7 +1389,7 @@
           inform%status = RAL_NLLS_ok
           region = 'L'
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 2ES22.15 )" ) prefix,                    &
+            WRITE( out, "( A, A2, I4, 2ES22.13 )" ) prefix,                    &
               region, it, inform%x_norm - radius, lambda
             WRITE( out, "( A, ' Interior stopping criteria satisfied')" ) prefix
           END IF
@@ -1409,7 +1409,7 @@
           END IF
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,           &
+            WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,           &
             it, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
             WRITE( out, "( A,                                                  &
          &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1428,7 +1428,7 @@
           WRITE( out, "( A, 3ES20.12 )") prefix, lambda, inform%x_norm, radius
         ELSE IF ( printi ) THEN
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
-          WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region, it,          &
+          WRITE( out, "( A, A2, I4, 3ES22.13 )" ) prefix, region, it,          &
             ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
         END IF
 
