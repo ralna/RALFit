@@ -27,10 +27,10 @@ program nlls_test
 
   type( NLLS_workspace ) :: work
 
-  open(unit = 17, file="nlls_test.out")
-  open(unit = 18, file="nlls_test_error.out")
   options%error = 18
   options%out   = 17 
+  open(unit = options%out, file="nlls_test.out")
+  open(unit = options%error, file="nlls_test_error.out")
   
   test_all = .true.
   test_subs = .true.
