@@ -20,6 +20,7 @@ module ral_nlls_double
   real (kind = wp), parameter :: zero = 0.0
   real (kind = wp), parameter :: one = 1.0
   real (kind = wp), parameter :: two = 2.0
+  real (kind = wp), parameter :: three = 3.0
   real (kind = wp), parameter :: half = 0.5
   real (kind = wp), parameter :: sixteenth = 0.0625
 
@@ -299,6 +300,9 @@ contains
        case (1) ! first-order
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
+          if ( options%type_of_method == 2) then ! regularization method
+             w%reg_order = two
+          end if
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
              if ( present(weights) ) then
@@ -313,12 +317,18 @@ contains
              w%hf(1:n**2) = zero
           end if
           w%use_second_derivatives = .true.
+          if ( options%type_of_method == 2) then ! regularization method
+             w%reg_order = three
+          end if
        case (3) ! hybrid (MNT)
           ! set the tolerance :: make this relative
           w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5*(w%normF**2)) )                   
           ! use first-order method initially
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
+          if ( options%type_of_method == 2) then ! regularization method
+             w%reg_order = two
+          end if
           if (.not. options%exact_second_derivatives) then 
              ! initialize hf_temp too 
              w%hf_temp(1:n**2) = zero
@@ -346,6 +356,8 @@ contains
        !    d                                      !   
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
+       w%calculate_step_ws%solve_galahad_ws%reg_order = w%reg_order 
+       ! todo: fix this...don't copy over...
        call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,w%normd,options,inform,& 
             w%calculate_step_ws)
        if (inform%status .ne. 0) goto 4000
@@ -462,6 +474,9 @@ contains
              ! switch to Gauss-Newton             
              if (options%print_level .ge. 3) write(options%out,3120) 
              w%use_second_derivatives = .false.
+             if (options%type_of_method == 2) then 
+                w%reg_order = two
+             end if
              ! save hf as hf_temp
              w%hf_temp(1:n**2) = w%hf(1:n**2)
              w%hf(1:n**2) = zero
@@ -474,6 +489,9 @@ contains
                 ! use (Quasi-)Newton
                 if (options%print_level .ge. 3) write(options%out,3130) 
                 w%use_second_derivatives = .true.
+                if (options%type_of_method == 3) then
+                   w%reg_order = three
+                end if
                 w%hybrid_count = 0
                 ! copy hf from hf_temp
                 if (.not. options%exact_second_derivatives) then

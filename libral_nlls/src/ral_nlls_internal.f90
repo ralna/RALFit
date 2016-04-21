@@ -21,6 +21,7 @@ module ral_nlls_internal
   real (kind = wp), parameter :: zero = 0.0
   real (kind = wp), parameter :: one = 1.0
   real (kind = wp), parameter :: two = 2.0
+  real (kind = wp), parameter :: three = 3.0
   real (kind = wp), parameter :: half = 0.5
   real (kind = wp), parameter :: sixteenth = 0.0625
 
@@ -405,6 +406,7 @@ module ral_nlls_internal
         
     type, private :: solve_galahad_work ! workspace for subroutine dtrs_work
        real(wp), allocatable :: A(:,:), ev(:,:), ew(:), v(:), v_trans(:), d_trans(:)
+       real(wp) :: reg_order
        type( all_eig_symm_work ) :: all_eig_symm_ws
        type( apply_scaling_work ) :: apply_scaling_ws
     end type solve_galahad_work
@@ -454,6 +456,7 @@ module ral_nlls_internal
        real(wp) :: normJFold, normJF_Newton
        real(wp) :: Delta
        real(wp) :: normd
+       real(wp) :: reg_order = two ! reg. by + 1/p || \sigma || ** p
        logical :: use_second_derivatives = .false.
        integer :: hybrid_count = 0
        real(wp) :: hybrid_tol = 1.0
@@ -1161,7 +1164,8 @@ contains
         drqs_options%out = options%out
         drqs_options%print_level = options%print_level - 1
         call drqs_solve & 
-             (n,2.0_wp,1/Delta, zero, w%v_trans, w%ew, w%d_trans, drqs_options, drqs_inform)
+             (n,w%reg_order,1/Delta, zero, w%v_trans, w%ew, w%d_trans, & 
+              drqs_options, drqs_inform)
         if ( drqs_inform%status .ne. 0) then
            inform%external_return = drqs_inform%status
            inform%external_name = 'galahad_drqs'
