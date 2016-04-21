@@ -1435,10 +1435,20 @@ contains
              if (options%print_level > 2) write(options%out,3020) w%Delta 
           else if (rho < options%eta_too_successful ) then
              ! more than very successful -- increase delta
-             w%Delta = min(options%maximum_radius, &
-                  options%radius_increase * w%Delta)
-             ! increase based on Delta to ensure the 
-             ! regularized case works too
+             select case(options%type_of_method)
+             case(1)
+                w%Delta = min(options%maximum_radius, &
+                     options%radius_increase * w%normd )
+                ! if we have a trust region method, then we 
+                ! increase based on ||d||, not on Delta, as there's 
+                ! no point increasing the radius if we're within the 
+                ! trust region
+             case(2)
+                w%Delta = min(options%maximum_radius, &
+                     options%radius_increase * w%Delta )
+                ! increase based on Delta to ensure the 
+                ! regularized case works too
+          end select
              if (options%print_level > 2) write(options%out,3030) w%Delta
           else if (rho >= options%eta_too_successful) then
              ! too successful....accept step, but don't change w%Delta
