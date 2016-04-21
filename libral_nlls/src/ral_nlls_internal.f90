@@ -3,7 +3,8 @@
 module ral_nlls_internal
 
   use RAL_NLLS_DTRS_double
-
+  use RAL_NLLS_DRQS_double
+  
   implicit none
 
   private
@@ -396,11 +397,11 @@ module ral_nlls_internal
        type( all_eig_symm_work ) :: all_eig_symm_ws
     end type apply_scaling_work
         
-    type, private :: solve_dtrs_work ! workspace for subroutine dtrs_work
+    type, private :: solve_galahad_work ! workspace for subroutine dtrs_work
        real(wp), allocatable :: A(:,:), ev(:,:), ew(:), v(:), v_trans(:), d_trans(:)
        type( all_eig_symm_work ) :: all_eig_symm_ws
        type( apply_scaling_work ) :: apply_scaling_ws
-    end type solve_dtrs_work
+    end type solve_galahad_work
         
     type, private :: more_sorensen_work ! workspace for subroutine more_sorensen
  !      type( solve_spd_work ) :: solve_spd_ws
@@ -432,12 +433,12 @@ module ral_nlls_internal
        type( AINT_tr_work ) :: AINT_tr_ws
        type( dogleg_work ) :: dogleg_ws
        type( more_sorensen_work ) :: more_sorensen_ws
-       type( solve_dtrs_work ) :: solve_dtrs_ws
+       type( solve_galahad_work ) :: solve_galahad_ws
     end type calculate_step_work
 
     type, private :: get_svd_J_work ! workspace for subroutine get_svd_J
        real(wp), allocatable :: Jcopy(:), S(:), work(:)
-       
+
     end type get_svd_J_work
 
     type, public :: NLLS_workspace ! all workspaces called from the top level
@@ -466,7 +467,7 @@ module ral_nlls_internal
        integer :: tr_p = 3
     end type NLLS_workspace
 
-    public :: setup_workspaces, solve_dtrs, findbeta, mult_j
+    public :: setup_workspaces, solve_galahad, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
     public :: matmult_outer, outer_product, min_eig_symm, max_eig
     public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
@@ -505,7 +506,7 @@ contains
         call more_sorensen(J,f,hf,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
      case (4) ! Galahad
         if (options%print_level >= 2) write(options%out,3000) 'DTRS'
-        call solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_dtrs_ws)
+        call solve_galahad(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
      case default
         inform%status = ERROR%UNSUPPORTED_METHOD
      end select
@@ -1052,10 +1053,10 @@ contains
 
    end subroutine get_pd_shift
    
-   subroutine solve_dtrs(J,f,hf,n,m,Delta,d,normd,options,inform,w)
+   subroutine solve_galahad(J,f,hf,n,m,Delta,d,normd,options,inform,w)
 
      !---------------------------------------------
-     ! solve_dtrs
+     ! solve_galahad
      ! Solve the trust-region subproblem using
      ! the DTRS method from Galahad
      ! 
@@ -1069,16 +1070,19 @@ contains
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
-     type( solve_dtrs_work ) :: w
+     type( solve_galahad_work ) :: w
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
      TYPE ( DTRS_CONTROL_TYPE ) :: dtrs_options
      TYPE ( DTRS_inform_type )  :: dtrs_inform
+     TYPE ( DRQS_CONTROL_TYPE ) :: drqs_options
+     TYPE ( DRQS_inform_type )  :: drqs_inform
 
 !     real(wp), allocatable :: diag(:)
      integer :: ii
-     
+     integer :: tr_or_reg
+
      ! The code finds 
      !  d = arg min_p   w^T p + 0.5 * p^T D p
      !       s.t. ||p|| \leq Delta
@@ -1123,8 +1127,7 @@ contains
      call mult_Jt(w%ev,n,n,w%v,w%v_trans)
 
      ! we've now got the vectors we need, pass to dtrs_solve
-     call dtrs_initialize( dtrs_options, dtrs_inform ) 
-     
+      
      do ii = 1,n
         if (abs(w%v_trans(ii)) < epsmch) then
            w%v_trans(ii) = zero
@@ -1134,18 +1137,36 @@ contains
         end if
      end do
 
-     dtrs_options%error = options%error
-     dtrs_options%out = options%out
-     dtrs_options%print_level = options%print_level - 1
-     call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
-     if ( dtrs_inform%status .ne. 0) then
-        inform%external_return = dtrs_inform%status
-        inform%external_name = 'galahad_dtrs'
-        inform%status = ERROR%FROM_EXTERNAL
-        goto 1000
-     end if
-     
-     ! and return the un-transformed vector
+     tr_or_reg = 1
+
+     select case (tr_or_reg)
+     case (1)
+        call dtrs_initialize( dtrs_options, dtrs_inform ) 
+        dtrs_options%error = options%error
+        dtrs_options%out = options%out
+        dtrs_options%print_level = options%print_level - 1
+        call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
+        if ( dtrs_inform%status .ne. 0) then
+           inform%external_return = dtrs_inform%status
+           inform%external_name = 'galahad_dtrs'
+           inform%status = ERROR%FROM_EXTERNAL
+           goto 1000
+        end if
+     case(2)
+        call drqs_initialize( drqs_options, drqs_inform ) 
+        drqs_options%error = options%error
+        drqs_options%out = options%out
+        drqs_options%print_level = options%print_level - 1
+        call drqs_solve & 
+             (n,2.0_wp,1/Delta, zero, w%v_trans, w%ew, w%d_trans, drqs_options, drqs_inform)
+        if ( drqs_inform%status .ne. 0) then
+           inform%external_return = drqs_inform%status
+           inform%external_name = 'galahad_drqs'
+           inform%status = ERROR%FROM_EXTERNAL
+           goto 1000
+        end if
+     end select
+  ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
 
      normd = norm2(d) ! ||d||_D
@@ -1162,7 +1183,7 @@ contains
      ! bad error return from external package
      return
      
-   end subroutine solve_dtrs
+   end subroutine solve_galahad
 
 
    SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
@@ -2004,8 +2025,8 @@ contains
           if (inform%alloc_status > 0) goto 1010
 
        case (4) ! dtrs (Galahad)
-          call setup_workspace_solve_dtrs(n,m, & 
-               workspace%calculate_step_ws%solve_dtrs_ws, options, inform)
+          call setup_workspace_solve_galahad(n,m, & 
+               workspace%calculate_step_ws%solve_galahad_ws, options, inform)
           if (inform%alloc_status > 0) goto 1010
        end select
 
@@ -2078,8 +2099,8 @@ contains
                workspace%calculate_step_ws%more_sorensen_ws,options)
 
        case (4) ! dtrs (Galahad)
-          call remove_workspace_solve_dtrs(& 
-               workspace%calculate_step_ws%solve_dtrs_ws, options)
+          call remove_workspace_solve_galahad(& 
+               workspace%calculate_step_ws%solve_galahad_ws, options)
 
        end select
 
@@ -2542,9 +2563,9 @@ contains
 
      end subroutine remove_workspace_solve_general
 
-     subroutine setup_workspace_solve_dtrs(n,m,w,options,inform)
+     subroutine setup_workspace_solve_galahad(n,m,w,options,inform)
        integer, intent(in) :: n,m
-       type( solve_dtrs_work ) :: w
+       type( solve_galahad_work ) :: w
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(out) :: inform
 
@@ -2573,16 +2594,16 @@ contains
 
 9000   continue ! allocation error here
        inform%status = ERROR%ALLOCATION
-       inform%bad_alloc = "solve_dtrs"
+       inform%bad_alloc = "solve_galahad"
        return
 
 9010   continue  ! allocation error from called subroutine
        return
 
-     end subroutine setup_workspace_solve_dtrs
+     end subroutine setup_workspace_solve_galahad
 
-     subroutine remove_workspace_solve_dtrs(w,options)
-       type( solve_dtrs_work ) :: w
+     subroutine remove_workspace_solve_galahad(w,options)
+       type( solve_galahad_work ) :: w
        type( nlls_options ), intent(in) :: options
 
        if(allocated( w%A )) deallocate(w%A)
@@ -2599,7 +2620,7 @@ contains
 
        return
 
-     end subroutine remove_workspace_solve_dtrs
+     end subroutine remove_workspace_solve_galahad
 
      subroutine setup_workspace_all_eig_symm(n,m,w,options,inform)
        integer, intent(in) :: n,m

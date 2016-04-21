@@ -617,7 +617,7 @@ program nlls_test
      deallocate(x,y,z,w)
      call nlls_finalize(work,options)
 
-     !! solve_dtrs
+     !! solve_galahad
      options%nlls_method = 4
      n = 2
      m = 5
@@ -634,9 +634,9 @@ program nlls_test
 
      alpha = 0.02_wp
      
-     call solve_dtrs(x,y,z,n,m,alpha,w,beta,& 
+     call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
           options,status, &
-          work%calculate_step_ws%solve_dtrs_ws )
+          work%calculate_step_ws%solve_galahad_ws )
 
      if ( status%status .ne. 0 ) then
         write(*,*) 'DTRS test failed, status = ', status%status
@@ -656,9 +656,9 @@ program nlls_test
 
      alpha = -100.0_wp
      
-     call solve_dtrs(x,y,z,n,m,alpha,w,beta,& 
+     call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
           options,status,& 
-          work%calculate_step_ws%solve_dtrs_ws)
+          work%calculate_step_ws%solve_galahad_ws)
 
      if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
         write(*,*) 'DTRS test failed, expected status = ', ERROR%FROM_EXTERNAL
