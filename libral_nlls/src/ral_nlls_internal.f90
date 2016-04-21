@@ -101,7 +101,13 @@ module ral_nlls_internal
  
      INTEGER :: model = 3
 
-
+!   trust region or regularization?
+!
+!      1  trust region method
+!      2  regularization
+     
+     INTEGER :: type_of_method = 1
+     
 !   specify the method used to solve the trust-region sub problem
 !      1 Powell's dogleg
 !      2 AINT method (of Yuji Nat.)
@@ -1081,7 +1087,6 @@ contains
 
 !     real(wp), allocatable :: diag(:)
      integer :: ii
-     integer :: tr_or_reg
 
      ! The code finds 
      !  d = arg min_p   w^T p + 0.5 * p^T D p
@@ -1136,10 +1141,8 @@ contains
            w%ew(ii) = zero
         end if
      end do
-
-     tr_or_reg = 1
-
-     select case (tr_or_reg)
+ 
+    select case (options%type_of_method)
      case (1)
         call dtrs_initialize( dtrs_options, dtrs_inform ) 
         dtrs_options%error = options%error

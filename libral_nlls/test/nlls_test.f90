@@ -618,59 +618,79 @@ program nlls_test
      call nlls_finalize(work,options)
 
      !! solve_galahad
-     options%nlls_method = 4
-     n = 2
-     m = 5
-     call setup_workspaces(work,n,m,options,status) 
+     do i = 1,2
+        options%type_of_method = i
+        options%nlls_method = 4
+        n = 2
+        m = 5
+        call setup_workspaces(work,n,m,options,status) 
 
-     allocate(w(n))
-     allocate(x(m*n))
-     allocate(y(m))
-     allocate(z(n*n))
-     ! x -> J, y-> f, x -> hf, w-> d
-     x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
-     y = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
-     z = 1.0_wp
+        allocate(w(n))
+        allocate(x(m*n))
+        allocate(y(m))
+        allocate(z(n*n))
+        ! x -> J, y-> f, x -> hf, w-> d
+        x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
+        y = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
+        z = 1.0_wp
 
-     alpha = 0.02_wp
+        alpha = 0.02_wp
+        
+        call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
+             options,status, &
+             work%calculate_step_ws%solve_galahad_ws )
+        
+        if ( status%status .ne. 0 ) then
+           select case (i)
+              case(1)
+                 write(*,*) 'DTRS test failed, status = ', status%status
+              case(2)
+                 write(*,*) 'DRQS test failed, status = ', status%status
+              end select
+              no_errors_helpers = no_errors_helpers + 1
+        end if
      
-     call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
-          options,status, &
-          work%calculate_step_ws%solve_galahad_ws )
+        if (i == 1) then
+           ! check result lies within the trust region
+           if ( abs(dot_product(w,w) - alpha**2) > 1e-12 ) then
+              select case (i)
+              case (1)
+                 write(*,*) 'dtrs failed'
+              case (2)
+                 write(*,*) 'drqs failed'
+              end select
+              write(*,*) 'Delta = ', alpha, '||d|| = ', dot_product(w,w)
+              no_errors_helpers = no_errors_helpers + 1
+           end if
+        end if
 
-     if ( status%status .ne. 0 ) then
-        write(*,*) 'DTRS test failed, status = ', status%status
-        no_errors_helpers = no_errors_helpers + 1
-     end if
+        ! Flag an error from dtrs...
+        x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
+        y = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
+        z = 1.0_wp
+
+        alpha = -100.0_wp
+        
+        call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
+             options,status,& 
+             work%calculate_step_ws%solve_galahad_ws)
+
+        if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
+           select case (i)
+           case (1)
+              write(*,*) 'DTRS test failed, expected status = ', ERROR%FROM_EXTERNAL
+           case (2)
+              write(*,*) 'DRQS test failed, expected status = ', ERROR%FROM_EXTERNAL
+           end select
+           write(*,*) ' but got status = ', status%status
+           no_errors_helpers = no_errors_helpers + 1
+        end if
+        status%status = 0
+
      
-     if ( abs(dot_product(w,w) - alpha**2) > 1e-12 ) then
-        write(*,*) 'dtrs failed'
-        write(*,*) 'Delta = ', alpha, '||d|| = ', dot_product(w,w)
-        no_errors_helpers = no_errors_helpers + 1
-     end if
-
-     ! Flag an error from dtrs...
-     x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
-     y = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
-     z = 1.0_wp
-
-     alpha = -100.0_wp
-     
-     call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
-          options,status,& 
-          work%calculate_step_ws%solve_galahad_ws)
-
-     if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
-        write(*,*) 'DTRS test failed, expected status = ', ERROR%FROM_EXTERNAL
-        write(*,*) ' but got status = ', status%status
-        no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = 0
-
-     
-     deallocate(x,y,z,w)
-     call nlls_finalize(work,options)
-
+        deallocate(x,y,z,w)
+        call nlls_finalize(work,options)
+     end do
      !! solve_LLS 
      options%nlls_method = 1 ! dogleg
      call setup_workspaces(work,n,m,options,status) 
