@@ -99,6 +99,7 @@ module ral_nlls_internal
 !      1  Gauss-Newton (no 2nd derivatives)
 !      2  second-order (exact Hessian)
 !      3  hybrid (using Madsen, Nielsen and Tingleff's method)    
+!      4  tensor model
  
      INTEGER :: model = 3
 
@@ -381,7 +382,7 @@ module ral_nlls_internal
     end type solve_general_work
 
     type, private :: evaluate_model_work ! workspace for subroutine evaluate_model
-       real(wp), allocatable :: Jd(:), Hd(:)
+       real(wp), allocatable :: Jd(:), dH(:), Hd(:), dHd(:)
     end type evaluate_model_work
 
     type, private :: solve_LLS_work ! workspace for subroutine solve_LLS
@@ -1294,11 +1295,18 @@ contains
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd)
        
-       ! First, get the base 
-       ! 0.5 (f^T f + f^T J d + d^T' J ^T J d )
-       md = 0.5 * norm2(f + w%Jd)**2
+       if (options%model == 4) then
+          ! tensor model...
+          
+          md = 0.5 * norm2( f + w%Jd + w%dHd )**2
+       else 
+          ! First, get the base 
+          ! 0.5 (f^T f + f^T J d + d^T' J ^T J d )
+          md = 0.5 * norm2(f + w%Jd)**2
+       end if
+       
        select case (options%model)
-       case (1) ! first-order (no Hessian)
+       case (1,4) ! first-order (no Hessian)
           ! nothing to do here...
           continue
        case default
@@ -2277,6 +2285,10 @@ contains
 
        allocate( w%Jd(m), stat = inform%alloc_status )
        if (inform%alloc_status > 0) goto 9000
+       allocate( w%dH(n**2), stat = inform%alloc_status ) 
+       if (inform%alloc_status > 0) goto 9000
+       allocate( w%dHd(m), stat = inform%alloc_status ) 
+       if (inform%alloc_status > 0) goto 9000
        allocate( w%Hd(n), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
 
@@ -2293,6 +2305,7 @@ contains
        type( nlls_options ), intent(in) :: options
 
        if(allocated( w%Jd )) deallocate( w%Jd ) 
+       if(allocated( w%dHd )) deallocate( w%dHd ) 
        if(allocated( w%Hd )) deallocate( w%Hd ) 
 
        return
