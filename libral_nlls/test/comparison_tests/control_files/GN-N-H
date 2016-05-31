@@ -3,6 +3,7 @@
 2                     controls the amount of printing --- set to 0, 1, 2 or 3
 3                     method used (1=dogleg, 2=AINT, 3=More-Sorensen, 4=gltr)
 3                     model used (1=first order, 2=Newton)
+1                     type_of_method
 1000                  maxits
 1                     TR update strategy		      
 0                     relative trust region? (1=relative)
