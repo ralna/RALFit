@@ -35,6 +35,8 @@ def main(argv):
 
     no_probs = len(problems)
 
+    print "Testing ",no_probs," problems with ",no_tests," minimizers"
+
     for i in range(no_probs):
         if compute_results:
             # let's run the tests!
@@ -89,6 +91,9 @@ def main(argv):
     all_iterates = [data[j]['iter'] for j in range(no_tests)]
     all_func = [data[j]['func'] for j in range(no_tests)]
     all_status = [data[j]['status'] for j in range(no_tests)]
+    
+    normalized_mins = [data[j]['res'] for j in range(no_tests)]
+    smallest_resid = np.amin(normalized_mins, axis = 0)
 
     # finally, run through the data....
     for j in range (0,no_tests):
@@ -108,6 +113,7 @@ def main(argv):
             else:
                 average_iterates[j] += all_iterates[j][i]
                 average_funeval[j] += all_func[j][i]
+            normalized_mins[j][i] = normalized_mins[j][i]/smallest_resid[i]
         minvalue = np.absolute(local_iterates).min()
         if (minvalue == 9999) or (minvalue == 1000): continue
         minima = np.where( local_iterates == minvalue )
@@ -115,11 +121,27 @@ def main(argv):
             clear_best[ minima[0][0] ] += 1
         for j in range(0,minima[0].shape[0]):
             best[ minima[0][j] ] += 1
+    
 
     for j in range(0,no_tests):
         average_funeval[j] = average_funeval[j] / (no_probs - no_failures[j])
         average_iterates[j] = average_iterates[j] / (no_probs - no_failures[j])
-
+        
+    normalized_mins = np.transpose(normalized_mins)
+    print problems.size
+    print normalized_mins.size
+    output = open('data/normalized_mins.txt','w')
+    for i in range(0,no_probs):
+        output.write(problems[i])
+        for j in range(0,no_tests):
+            output.write(' '+str(normalized_mins[i][j]))
+        output.write('\n')
+    output.close()
+#    f.write(pri
+#    for i in range(0,no_probs):
+ #       print np.array([(problems[i],normalized_mins[i])])
+ #   np.savetxt('data/normalized_mins.txt',np.transpose(normalized_mins))
+  #  np.savetxt('data/problems.txt',np.transpose(problems))
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
     for j in range(0,no_tests):
