@@ -27,7 +27,7 @@ def main(argv):
         control_files[i] = argv[i]
 
     # get the list of problems...
-    #prob_list = "nist"
+#    prob_list = "nist"
 #    prob_list = "nist_average"
     prob_list = "names_nist_first"
     #prob_list = "names_minus_boxbod"
@@ -128,20 +128,9 @@ def main(argv):
         average_iterates[j] = average_iterates[j] / (no_probs - no_failures[j])
         
     normalized_mins = np.transpose(normalized_mins)
-    print problems.size
-    print normalized_mins.size
-    output = open('data/normalized_mins.txt','w')
-    for i in range(0,no_probs):
-        output.write(problems[i])
-        for j in range(0,no_tests):
-            output.write(' '+str(normalized_mins[i][j]))
-        output.write('\n')
-    output.close()
-#    f.write(pri
-#    for i in range(0,no_probs):
- #       print np.array([(problems[i],normalized_mins[i])])
- #   np.savetxt('data/normalized_mins.txt',np.transpose(normalized_mins))
-  #  np.savetxt('data/problems.txt',np.transpose(problems))
+
+    print_res_to_html(no_probs, no_tests, problems, normalized_mins,control_files)
+    
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
     for j in range(0,no_tests):
@@ -175,6 +164,50 @@ def main(argv):
         print "\n"
 
     plot_prof(control_files,no_tests,prob_list)
+
+def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_files):
+
+    # first, let's set the background colours...
+    good = '#00ff00'
+    averagegood = '#7fff00'
+    average = '#ffff00'
+    badaverage = '#ff7f00'
+    bad = '#ff0000'
+
+    output = open('data/normalized_mins.html','w')
+    output.write('<!DOCTYPE html>\n')
+    output.write('<html>\n')
+    output.write('<body>\n \n')
+
+    output.write('<table>\n')
+    output.write('  <tr>\n')
+    output.write('    <td></td>\n')
+    for j in range(0,no_tests):
+        output.write('    <td>'+control_files[j]+'</td>\n')
+    output.write('  </tr>\n')
+        
+
+    for i in range(0,no_probs):
+        output.write('  <tr>\n')
+        output.write('    <td>'+problems[i]+'</td>')
+        for j in range(0,no_tests):
+            if normalized_mins[i][j] < 1.1:
+                colour = good
+            elif normalized_mins[i][j] < 1.33:
+                colour = averagegood
+            elif normalized_mins[i][j] < 1.75:
+                colour = average
+            elif normalized_mins[i][j] < 3.0:
+                colour = badaverage
+            else:
+                colour = bad
+            output.write('    <td bgcolor='+colour+'>'+str(normalized_mins[i][j])+'</td>')
+        output.write('\n')
+        output.write('  </tr>\n')
+    output.write('</table>\n\n')
+    output.write('</body>\n')
+    output.write('</html>\n')
+    output.close()
 
 def compute(no_tests,control_files,problems,i):
     # read the cutest directory from the environment variables
