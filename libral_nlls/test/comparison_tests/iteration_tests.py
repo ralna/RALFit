@@ -94,7 +94,9 @@ def main(argv):
     
     normalized_mins = [data[j]['res'] for j in range(no_tests)]
     smallest_resid = np.amin(normalized_mins, axis = 0)
-
+    failure = np.zeros((no_probs, no_tests))
+    print failure
+    
     # finally, run through the data....
     for j in range (0,no_tests):
         if j == 0:
@@ -107,9 +109,12 @@ def main(argv):
         for j in range (0,no_tests):
             if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
                 all_iterates[j][i] = -9999 
+                failure[i][j] = 1 
             local_iterates[j] = all_iterates[j][i]
             if (all_iterates[j][i] < 0):
                 no_failures[j] += 1
+                if (failure[i][j] != 1):
+                    failure[i][j] = 2
             else:
                 average_iterates[j] += all_iterates[j][i]
                 average_funeval[j] += all_func[j][i]
@@ -122,6 +127,7 @@ def main(argv):
         for j in range(0,minima[0].shape[0]):
             best[ minima[0][j] ] += 1
     
+    print failure
 
     for j in range(0,no_tests):
         average_funeval[j] = average_funeval[j] / (no_probs - no_failures[j])
@@ -129,7 +135,7 @@ def main(argv):
         
     normalized_mins = np.transpose(normalized_mins)
 
-    print_res_to_html(no_probs, no_tests, problems, normalized_mins,control_files)
+    print_res_to_html(no_probs, no_tests, problems, normalized_mins,control_files,failure)
     
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
@@ -165,7 +171,7 @@ def main(argv):
 
     plot_prof(control_files,no_tests,prob_list)
 
-def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_files):
+def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_files,failure):
 
     # first, let's set the background colours...
     good = '#00ff00'
@@ -181,6 +187,25 @@ def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_fil
 
     output.write('<table>\n')
     output.write('  <tr>\n')
+    output.write('    <td bgcolor = '+good+'> x &lt;1.1 </td>\n')
+    output.write('    <td bgcolor = '+averagegood+'> 1.1 &le; x &lt; 1.33 </td>\n')
+    output.write('    <td bgcolor = '+average+'> 1.33 &le; x &lt; 1.75 </td>\n')
+    output.write('    <td bgcolor = '+badaverage+'> 1.75 &le; x &lt; 3.0 </td>\n')
+    output.write('    <td bgcolor = '+bad+'>  x &ge; 3.0 </td>\n')
+    output.write('  </tr>\n')
+    output.write('</table>\n')
+
+    output.write('<table>\n')
+    output.write('  <tr>\n')
+    output.write('    <td>&dagger; denotes problems where the method failed </td>\n')
+    output.write('  </tr>\n')
+    output.write('  <tr>\n')
+    output.write('    <td>&Dagger; denotes problems where the max number of iterations was reached </td> \n')
+    output.write('  </tr>\n')
+    output.write('</table>\n')
+    
+    output.write('<table>\n')
+    output.write('  <tr>\n')
     output.write('    <td></td>\n')
     for j in range(0,no_tests):
         output.write('    <td>'+control_files[j]+'</td>\n')
@@ -191,6 +216,12 @@ def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_fil
         output.write('  <tr>\n')
         output.write('    <td>'+problems[i]+'</td>')
         for j in range(0,no_tests):
+            if failure[i][j] == 1:
+                label = '&dagger;'
+            elif failure[i][j] == 2:
+                label = '&Dagger;'
+            else:
+                label = ''
             if normalized_mins[i][j] < 1.1:
                 colour = good
             elif normalized_mins[i][j] < 1.33:
@@ -201,7 +232,7 @@ def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_fil
                 colour = badaverage
             else:
                 colour = bad
-            output.write('    <td bgcolor='+colour+'>'+str(normalized_mins[i][j])+'</td>')
+            output.write('    <td bgcolor='+colour+'>'+str(normalized_mins[i][j])+label+'</td>')
         output.write('\n')
         output.write('  </tr>\n')
     output.write('</table>\n\n')
