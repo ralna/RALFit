@@ -333,6 +333,10 @@ contains
              ! initialize hf_temp too 
              w%hf_temp(1:n**2) = zero
           end if
+          
+       case (4) ! tensor model....
+          ! do nothing for the time being....
+
        case default
           goto 4040 ! unsupported model -- return to user
        end select
@@ -358,7 +362,8 @@ contains
        !+++++++++++++++++++++++++++++++++++++++++++!
        w%calculate_step_ws%solve_galahad_ws%reg_order = w%reg_order 
        ! todo: fix this...don't copy over...
-       call calculate_step(w%J,w%f,w%hf,w%g,n,m,w%Delta,w%d,w%normd,options,inform,& 
+       call calculate_step(w%J,w%f,w%hf,w%g,X,n,m,w%Delta,eval_HF, params, & 
+            w%d,w%normd,options,inform,& 
             w%calculate_step_ws)
        if (inform%status .ne. 0) goto 4000
        

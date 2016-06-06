@@ -8,7 +8,7 @@
 1                     TR update strategy		      
 0                     relative trust region? (1=relative)
 1.0                   TR scaling parameter
-100.0                 initial TR radius
+10.0                  initial TR radius
 1e-8                  eta_successful
 1e-8                  eta_success_but_reduce
 0.9                   eta_very_successful

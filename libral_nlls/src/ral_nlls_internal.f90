@@ -99,7 +99,7 @@ module ral_nlls_internal
 !      1  Gauss-Newton (no 2nd derivatives)
 !      2  second-order (exact Hessian)
 !      3  hybrid (using Madsen, Nielsen and Tingleff's method)    
-!      4  tensor model
+!      4  tensor model (model must = 2)
  
      INTEGER :: model = 3
 
@@ -180,7 +180,7 @@ module ral_nlls_internal
  
 !   shall we use explicit second derivatives, or approximate using a secant 
 !   method
-     
+      
      LOGICAL :: exact_second_derivatives = .false.
       
 !   use a factorization (dsyev) to find the smallest eigenvalue for the subproblem
@@ -326,6 +326,17 @@ module ral_nlls_internal
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
+
+  type, public :: tensor_params_base_type
+     ! deliberately empty
+  end type tensor_params_base_type
+
+  type, extends( tensor_params_base_type ) :: tensor_params_type
+     ! blank?
+     real(wp), dimension(:), allocatable :: f
+     real(wp), dimension(:), allocatable :: J
+     real(wp), dimension(:,:,:), allocatable :: Hi
+  end type tensor_params_type
   
   abstract interface
      subroutine eval_f_type(status, n, m, x, f, params)
@@ -489,37 +500,53 @@ module ral_nlls_internal
     
 contains
 
-  SUBROUTINE calculate_step(J,f,hf,g,n,m,Delta,d,normd,options,inform,w)
+  SUBROUTINE calculate_step(J,f,hf,g,X,n,m,Delta,eval_HF,params, &
+                            d,normd,options,inform,w)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), Delta
-     integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
-     real(wp), intent(out) :: normd
-     TYPE( nlls_options ), INTENT( IN ) :: options
-     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-     TYPE( calculate_step_work ) :: w
-
-     select case (options%nlls_method)
+    REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), X(:), Delta
+    procedure( eval_hf_type ) :: eval_HF       
+    class( params_base_type ) :: params  
+    integer, intent(in)  :: n, m
+    real(wp), intent(out) :: d(:)
+    real(wp), intent(out) :: normd
+    TYPE( nlls_options ), INTENT( IN ) :: options
+    TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+    TYPE( calculate_step_work ) :: w
         
-     case (1) ! Powell's dogleg
-        if (options%print_level >= 2) write(options%out,3000) 'dogleg'
-        call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
-     case (2) ! The AINT method
-        if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
-        call AINT_TR(J,f,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
-     case (3) ! More-Sorensen
-        if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
-        call more_sorensen(J,f,hf,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
-     case (4) ! Galahad
-        if (options%print_level >= 2) write(options%out,3000) 'DTRS'
-        call solve_galahad(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
-     case default
-        inform%status = ERROR%UNSUPPORTED_METHOD
-     end select
+    type( nlls_options ) :: tensor_options
+
+    tensor_options = options
+     
+     if ( options%model == 4 ) then
+        ! tensor model -- call ral_nlls again
+
+        call solve_newton_tensor(n, m, f, J, X, d, eval_HF, params, options, inform)      
+        
+     else 
+        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
+
+        select case (options%nlls_method)        
+        case (1) ! Powell's dogleg
+           if (options%print_level >= 2) write(options%out,3000) 'dogleg'
+           call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
+        case (2) ! The AINT method
+           if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
+           call AINT_TR(J,f,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+        case (3) ! More-Sorensen
+           if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
+           call more_sorensen(J,f,hf,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
+        case (4) ! Galahad
+           if (options%print_level >= 2) write(options%out,3000) 'DTRS'
+           call solve_galahad(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
+        case default
+           inform%status = ERROR%UNSUPPORTED_METHOD
+        end select
+
+     end if
 
      if (options%print_level >= 2) write(options%out,3010)
      
@@ -1390,7 +1417,6 @@ contains
 
      end subroutine apply_second_order_info
 
-
      subroutine rank_one_update(hf,w,n)
 
        real(wp), intent(inout) :: hf(:)
@@ -1918,6 +1944,118 @@ contains
 
      end subroutine get_svd_J
 
+
+     ! routines needed for the Newton tensor model
+     
+     subroutine solve_newton_tensor(n, m, f, J, X, d, eval_HF, params, options, inform)
+       
+       integer, intent(in)   :: n,m 
+       real(wp), intent(in)  :: f(:), J(:), X(:)
+       real(wp), intent(out) :: d(:)
+       procedure( eval_hf_type ) :: eval_HF
+       class( params_base_type ) :: params              
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(inout) :: inform
+
+       type( nlls_options ) :: tensor_options
+       
+       type( tensor_params_type ) :: tparams
+       integer :: i
+       
+       ! copy options onto tensor_options
+       tensor_options = options
+
+       tensor_options%model = 3 ! use a hybrid method for the inner loop...
+       ! make sure we use regularization:
+       tensor_options%type_of_method = 2
+       ! make sure that we use galahad's subproblem solver (for now...)
+       tensor_options%nlls_method = 4
+
+       ! We need to solve the problem 
+       !   min 1/2 \sum_{i=1}^m t_{ik}^2(s) + 1/p \sigma_k ||s||^p_p
+       ! where 
+       !   t_{ik}(s) := r_i(x_k) + s' g_i(x_k) + 1/2 s' B_ik s 
+       ! and where B_ik is a symmetric approx to Hi(x), the Hessian of r_i(x).
+       ! 
+       ! To do this, we call ral_nlls recursively.
+
+       ! First, we need to set up the eval_r/J/Hf functions needed here.
+       
+       ! save the residual to params
+       allocate(tparams%f(m))
+       tparams%f(1:m) = f(1:m)
+       ! save the Jacobian to params
+       allocate(tparams%J(n*n))
+       tparams%J(1:n*n) = J(1:n*n)
+       ! now, let's get all the Hi's...
+       allocate(tparams%Hi(n,n,m))
+       do i = 1,m
+          call get_Hi(n, m, X, params, i, tparams%Hi(:,:,i), eval_HF, inform)
+       end do
+
+       ! get evaltensor_f
+       
+       ! get evaltensor_J
+
+       ! get evaltensor_Hf
+
+       ! send to ral_nlls
+
+
+     end subroutine solve_newton_tensor
+
+     subroutine evaltensor_f(status, n, m, s, f, params)
+       integer, intent(out) :: status
+       integer, intent(in)  :: n
+       integer, intent(in)  :: m
+       real(wp), dimension(*), intent(in)    :: s
+       real(wp), intent(out)   :: f
+       class( tensor_params_base_type ), intent(in) :: params
+
+       real(wp) :: t_ik
+       integer :: i
+
+       ! The function we need to minimize is 
+       !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
+       
+       select type(params)
+       type is(tensor_params_type)
+          f = zero
+          do i = 1,m
+             t_ik = params%f(i)
+             t_ik = t_ik + dot_product(s(1:n),params%J((m-1)*i + 1:n))
+             t_ik = t_ik ! + s' H s
+             f = f + t_ik ** 2 
+          end do
+          f = 0.5 * f
+       end select
+
+
+     end subroutine evaltensor_f
+
+     subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
+       integer, intent(in) :: n, m 
+       real(wp), intent(in) :: X(:)
+       class( params_base_type) :: params
+       integer, intent(in) :: i 
+       real(wp), intent(out) :: Hi(:,:)
+       procedure( eval_hf_type ) :: eval_HF
+       type( nlls_inform ), intent( inout ) :: inform
+       real( wp ), dimension( m ), intent( in ), optional :: weights
+
+       real( wp ) :: ei( m )
+
+       ei = zero
+       ei(i) = one
+
+       if ( present(weights) ) then
+          call eval_HF(inform%external_return, n, m, X, weights(1:m)*ei, Hi, params)
+       else
+          call eval_HF(inform%external_return, n, m, X, ei, Hi, params)
+       end if
+       
+       
+     end subroutine get_Hi
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!                                                       !!
