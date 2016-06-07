@@ -94,7 +94,10 @@ def main(argv):
     
     normalized_mins = [data[j]['res'] for j in range(no_tests)]
     smallest_resid = np.amin(normalized_mins, axis = 0)
+    normalized_iterates = [data[j]['iter'] for j in range(no_tests)]
+    smallest_iterates = np.amin(np.absolute(normalized_iterates), axis = 0)
     failure = np.zeros((no_probs, no_tests))
+
     print failure
     
     # finally, run through the data....
@@ -115,10 +118,12 @@ def main(argv):
                 no_failures[j] += 1
                 if (failure[i][j] != 1):
                     failure[i][j] = 2
+                    normalized_iterates[j][i] = -normalized_iterates[j][i]
             else:
                 average_iterates[j] += all_iterates[j][i]
                 average_funeval[j] += all_func[j][i]
             normalized_mins[j][i] = normalized_mins[j][i]/smallest_resid[i]
+            normalized_iterates[j][i] = normalized_iterates[j][i]  + 1 - smallest_iterates[i]
         minvalue = np.absolute(local_iterates).min()
         if (minvalue == 9999) or (minvalue == 1000): continue
         minima = np.where( local_iterates == minvalue )
@@ -134,8 +139,13 @@ def main(argv):
         average_iterates[j] = average_iterates[j] / (no_probs - no_failures[j])
         
     normalized_mins = np.transpose(normalized_mins)
-
-    print_res_to_html(no_probs, no_tests, problems, normalized_mins,control_files,failure)
+    normalized_iterates = np.transpose(normalized_iterates)
+    mins_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
+    iter_boundaries = np.array([2, 5, 10, 30])
+    print_to_html(no_probs, no_tests, problems, normalized_mins, mins_boundaries,
+                  'normalized_mins', control_files, failure)
+    print_to_html(no_probs, no_tests, problems, normalized_iterates, iter_boundaries,
+                  'normalized_iters', control_files, failure)
     
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
@@ -171,7 +181,8 @@ def main(argv):
 
     plot_prof(control_files,no_tests,prob_list)
 
-def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_files,failure):
+def print_to_html(no_probs, no_tests, problems, data, boundaries, 
+                  filename, control_files,failure):
 
     # first, let's set the background colours...
     good = '#00ff00'
@@ -180,18 +191,22 @@ def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_fil
     badaverage = '#ff7f00'
     bad = '#ff0000'
 
-    output = open('data/normalized_mins.html','w')
+    print filename
+    output = open('data/'+filename+'.html','w')
     output.write('<!DOCTYPE html>\n')
     output.write('<html>\n')
     output.write('<body>\n \n')
 
     output.write('<table>\n')
     output.write('  <tr>\n')
-    output.write('    <td bgcolor = '+good+'> x &lt;1.1 </td>\n')
-    output.write('    <td bgcolor = '+averagegood+'> 1.1 &le; x &lt; 1.33 </td>\n')
-    output.write('    <td bgcolor = '+average+'> 1.33 &le; x &lt; 1.75 </td>\n')
-    output.write('    <td bgcolor = '+badaverage+'> 1.75 &le; x &lt; 3.0 </td>\n')
-    output.write('    <td bgcolor = '+bad+'>  x &ge; 3.0 </td>\n')
+    output.write('    <td bgcolor = '+good+'> x &lt; '+str(boundaries[0])+'</td>\n')
+    output.write('    <td bgcolor = '+averagegood+'>') 
+    output.write(str(boundaries[0])+' &le; x &lt; '+str(boundaries[1])+' </td>\n')
+    output.write('    <td bgcolor = '+average+'>') 
+    output.write(str(boundaries[1])+' &le; x &lt; '+str(boundaries[2])+' </td>\n')
+    output.write('    <td bgcolor = '+badaverage+'>')
+    output.write(str(boundaries[2])+' &le; x &lt; '+str(boundaries[3])+' </td>\n')
+    output.write('    <td bgcolor = '+bad+'>  x &ge; '+str(boundaries[3])+' </td>\n')
     output.write('  </tr>\n')
     output.write('</table>\n')
 
@@ -222,17 +237,17 @@ def print_res_to_html(no_probs, no_tests, problems, normalized_mins, control_fil
                 label = '&Dagger;'
             else:
                 label = ''
-            if normalized_mins[i][j] < 1.1:
+            if data[i][j] < boundaries[0]:
                 colour = good
-            elif normalized_mins[i][j] < 1.33:
+            elif data[i][j] < boundaries[1]:
                 colour = averagegood
-            elif normalized_mins[i][j] < 1.75:
+            elif data[i][j] < boundaries[2]:
                 colour = average
-            elif normalized_mins[i][j] < 3.0:
+            elif data[i][j] < boundaries[3]:
                 colour = badaverage
             else:
                 colour = bad
-            output.write('    <td bgcolor='+colour+'>'+str(normalized_mins[i][j])+label+'</td>')
+            output.write('    <td bgcolor='+colour+'>'+str(data[i][j])+label+'</td>')
         output.write('\n')
         output.write('  </tr>\n')
     output.write('</table>\n\n')
