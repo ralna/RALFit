@@ -93,13 +93,10 @@ def main(argv):
     all_status = [data[j]['status'] for j in range(no_tests)]
     
     normalized_mins = [data[j]['res'] for j in range(no_tests)]
-    smallest_resid = np.amin(normalized_mins, axis = 0)
-    normalized_iterates = [data[j]['iter'] for j in range(no_tests)]
-    smallest_iterates = np.amin(np.absolute(normalized_iterates), axis = 0)
+    tiny = 1e-8
+    normalized_iterates = np.copy(all_iterates)#[data[j]['iter'] for j in range(no_tests)]
     failure = np.zeros((no_probs, no_tests))
 
-    print failure
-    
     # finally, run through the data....
     for j in range (0,no_tests):
         if j == 0:
@@ -113,6 +110,7 @@ def main(argv):
             if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
                 all_iterates[j][i] = -9999 
                 failure[i][j] = 1 
+                normalized_iterates[j][i] = 9999
             local_iterates[j] = all_iterates[j][i]
             if (all_iterates[j][i] < 0):
                 no_failures[j] += 1
@@ -122,8 +120,11 @@ def main(argv):
             else:
                 average_iterates[j] += all_iterates[j][i]
                 average_funeval[j] += all_func[j][i]
-            normalized_mins[j][i] = normalized_mins[j][i]/smallest_resid[i]
-            normalized_iterates[j][i] = normalized_iterates[j][i]  + 1 - smallest_iterates[i]
+            if normalized_mins[j][i] < tiny:
+                # truncate anything smaller than tiny
+                normalized_mins[j][i] = tiny 
+#            normalized_mins[j][i] = normalized_mins[j][i]/smallest_resid[i]
+#            normalized_iterates[j][i] = normalized_iterates[j][i]  + 1 - smallest_iterates[i]
         minvalue = np.absolute(local_iterates).min()
         if (minvalue == 9999) or (minvalue == 1000): continue
         minima = np.where( local_iterates == minvalue )
@@ -132,20 +133,22 @@ def main(argv):
         for j in range(0,minima[0].shape[0]):
             best[ minima[0][j] ] += 1
     
-    print failure
-
     for j in range(0,no_tests):
         average_funeval[j] = average_funeval[j] / (no_probs - no_failures[j])
         average_iterates[j] = average_iterates[j] / (no_probs - no_failures[j])
-        
+
+    smallest_resid = np.amin(normalized_mins, axis = 0)
+    smallest_iterates = np.amin(np.absolute(normalized_iterates), axis = 0)        
     normalized_mins = np.transpose(normalized_mins)
     normalized_iterates = np.transpose(normalized_iterates)
     mins_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
     iter_boundaries = np.array([2, 5, 10, 30])
-    print_to_html(no_probs, no_tests, problems, normalized_mins, mins_boundaries,
-                  'normalized_mins', control_files, failure)
-    print_to_html(no_probs, no_tests, problems, normalized_iterates, iter_boundaries,
-                  'normalized_iters', control_files, failure)
+    additive = 0
+    print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
+                  mins_boundaries, 'normalized_mins', control_files, failure, additive)
+    additive = 1
+    print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates, 
+                  iter_boundaries, 'normalized_iters', control_files, failure, additive)
     
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
@@ -181,8 +184,8 @@ def main(argv):
 
     plot_prof(control_files,no_tests,prob_list)
 
-def print_to_html(no_probs, no_tests, problems, data, boundaries, 
-                  filename, control_files,failure):
+def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries, 
+                  filename, control_files, failure, additive):
 
     # first, let's set the background colours...
     good = '#00ff00'
@@ -197,6 +200,14 @@ def print_to_html(no_probs, no_tests, problems, data, boundaries,
     output.write('<html>\n')
     output.write('<body>\n \n')
 
+    output.write('Data is shown below.  The best value is shown in ')
+    output.write('<span style=background-color:'+good+'>green</span> ')
+    output.write('and the others are colour-coded depending on the size of ')
+    if additive:
+        output.write('|value - best|')
+    else:
+        output.write('|value / best|')
+    output.write(', as shown in the key:\n')
     output.write('<table>\n')
     output.write('  <tr>\n')
     output.write('    <td bgcolor = '+good+'> x &lt; '+str(boundaries[0])+'</td>\n')
@@ -231,29 +242,41 @@ def print_to_html(no_probs, no_tests, problems, data, boundaries,
         output.write('  <tr>\n')
         output.write('    <td>'+problems[i]+'</td>')
         for j in range(0,no_tests):
+            if additive:
+                current_value = data[i][j] - smallest[i] + 1
+            else:
+                current_value = data[i][j] / smallest[i]
             if failure[i][j] == 1:
                 label = '&dagger;'
             elif failure[i][j] == 2:
                 label = '&Dagger;'
             else:
                 label = ''
-            if data[i][j] < boundaries[0]:
+            if current_value < boundaries[0]:
                 colour = good
-            elif data[i][j] < boundaries[1]:
+            elif current_value < boundaries[1]:
                 colour = averagegood
-            elif data[i][j] < boundaries[2]:
+            elif current_value < boundaries[2]:
                 colour = average
-            elif data[i][j] < boundaries[3]:
+            elif current_value < boundaries[3]:
                 colour = badaverage
             else:
                 colour = bad
-            output.write('    <td bgcolor='+colour+'>'+str(data[i][j])+label+'</td>')
+            output.write('    <td bgcolor='+colour+'>'+str(format(data[i][j]))+label+'</td>')
         output.write('\n')
         output.write('  </tr>\n')
     output.write('</table>\n\n')
     output.write('</body>\n')
     output.write('</html>\n')
     output.close()
+
+def format(number):
+    if isinstance(number, int):
+        return number
+    elif isinstance(number, float):
+        return "%.4g" % number
+
+
 
 def compute(no_tests,control_files,problems,i):
     # read the cutest directory from the environment variables
