@@ -507,7 +507,8 @@ contains
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-    REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), X(:), Delta
+    REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), X(:) 
+    REAL(wp), intent(inout) :: Delta
     procedure( eval_hf_type ) :: eval_HF       
     class( params_base_type ) :: params  
     integer, intent(in)  :: n, m
@@ -1103,7 +1104,8 @@ contains
      ! main output :: d, the soln to the TR subproblem
      !--------------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
+     REAL(wp), intent(in) :: J(:), f(:), hf(:) 
+     REAL(wp), intent(inout) :: Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
@@ -1118,6 +1120,7 @@ contains
 
 !     real(wp), allocatable :: diag(:)
      integer :: ii
+     logical :: proceed
 
      ! The code finds 
      !  d = arg min_p   w^T p + 0.5 * p^T D p
@@ -1191,15 +1194,30 @@ contains
         drqs_options%error = options%error
         drqs_options%out = options%out
         drqs_options%print_level = options%print_level - 1
-        call drqs_solve & 
-             (n,w%reg_order,1/Delta, zero, w%v_trans, w%ew, w%d_trans, & 
-              drqs_options, drqs_inform)
-        if ( drqs_inform%status .ne. 0) then
-           inform%external_return = drqs_inform%status
-           inform%external_name = 'galahad_drqs'
-           inform%status = ERROR%FROM_EXTERNAL
-           goto 1000
-        end if
+        
+        proceed = .false.
+        do while (.not. proceed)          
+           call drqs_solve & 
+                (n,w%reg_order,1.0_wp/Delta, zero, w%v_trans, w%ew, w%d_trans, & 
+                drqs_options, drqs_inform)
+           if ( drqs_inform%status == -7 ) then
+              ! drqs_solve has failed because the matrix
+              !     J'J + *1/(2*Delta) * I 
+              ! is not spd. Fix this by decreasing Delta until it's big enough
+              Delta =  Delta / ten
+              ! alternatively, we could use a higher order regularization:
+              ! call drqs_solve(n,3.0_wp,1.0_wp/Delta, zero, w%v_trans,&
+              !                 w%ew, w%d_trans,drqs_options, drqs_inform)
+              continue
+           elseif ( drqs_inform%status .ne. 0) then
+              inform%external_return = drqs_inform%status
+              inform%external_name = 'galahad_drqs'
+              inform%status = ERROR%FROM_EXTERNAL
+              goto 1000
+           else
+              proceed = .true.
+           end if
+        end do
      end select
   ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d)
