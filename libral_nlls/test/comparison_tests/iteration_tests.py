@@ -95,6 +95,7 @@ def main(argv):
     normalized_mins = [data[j]['res'] for j in range(no_tests)]
     tiny = 1e-8
     normalized_iterates = np.copy(all_iterates)#[data[j]['iter'] for j in range(no_tests)]
+    normalized_func = np.copy(all_func)
     failure = np.zeros((no_probs, no_tests))
 
     # finally, run through the data....
@@ -111,12 +112,14 @@ def main(argv):
                 all_iterates[j][i] = -9999 
                 failure[i][j] = 1 
                 normalized_iterates[j][i] = 9999
+                normalized_func[j][i] = 9999
             local_iterates[j] = all_iterates[j][i]
             if (all_iterates[j][i] < 0):
                 no_failures[j] += 1
                 if (failure[i][j] != 1):
                     failure[i][j] = 2
                     normalized_iterates[j][i] = -normalized_iterates[j][i]
+                    normalized_func[j][i] = -normalized_func[j][i]
             else:
                 average_iterates[j] += all_iterates[j][i]
                 average_funeval[j] += all_func[j][i]
@@ -139,16 +142,21 @@ def main(argv):
 
     smallest_resid = np.amin(normalized_mins, axis = 0)
     smallest_iterates = np.amin(np.absolute(normalized_iterates), axis = 0)        
+    smallest_func = np.amin(np.absolute(normalized_func), axis = 0)        
     normalized_mins = np.transpose(normalized_mins)
     normalized_iterates = np.transpose(normalized_iterates)
+    normalized_func = np.transpose(normalized_func)
     mins_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
     iter_boundaries = np.array([2, 5, 10, 30])
+    func_boundaries = np.array([2, 5, 10, 30])
     additive = 0
     print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
                   mins_boundaries, 'normalized_mins', control_files, failure, additive)
     additive = 1
     print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates, 
                   iter_boundaries, 'normalized_iters', control_files, failure, additive)
+    print_to_html(no_probs, no_tests, problems, normalized_func, smallest_func, 
+                  func_boundaries, 'normalized_func', control_files, failure, additive)
     
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
