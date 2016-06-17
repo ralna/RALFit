@@ -4,6 +4,7 @@ module ral_nlls_internal
 
   use RAL_NLLS_DTRS_double
   use RAL_NLLS_DRQS_double
+  use ral_nlls_double, only: nlls_solve
   
   implicit none
 
@@ -327,11 +328,7 @@ module ral_nlls_internal
      ! deliberately empty
   end type params_base_type
 
-  type, public :: tensor_params_base_type
-     ! deliberately empty
-  end type tensor_params_base_type
-
-  type, extends( tensor_params_base_type ) :: tensor_params_type
+  type, extends( params_base_type ) :: tensor_params_type
      ! blank?
      real(wp), dimension(:), allocatable :: f
      real(wp), dimension(:), allocatable :: J
@@ -519,6 +516,7 @@ contains
     TYPE( calculate_step_work ) :: w
         
     type( nlls_options ) :: tensor_options
+    real(wp), allocatable :: s(:)
 
     tensor_options = options
      
@@ -1968,18 +1966,19 @@ contains
      subroutine solve_newton_tensor(n, m, f, J, X, d, eval_HF, params, options, inform)
        
        integer, intent(in)   :: n,m 
-       real(wp), intent(in)  :: f(:), J(:), X(:)
+       real(wp), intent(in)  :: f(:), J(:)
+       real(wp) , intent(in) :: X(:)
        real(wp), intent(out) :: d(:)
        procedure( eval_hf_type ) :: eval_HF
-       class( params_base_type ) :: params              
+       type( params_base_type ) :: params              
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
 
        type( nlls_options ) :: tensor_options
-       
-       type( tensor_params_type ) :: tparams
-       integer :: i
-       
+       !class( tensor_params_type ), pointer :: tparams
+       type( tensor_params_type ), target :: tparams
+       integer :: i     
+    
        ! copy options onto tensor_options
        tensor_options = options
 
@@ -2000,6 +1999,7 @@ contains
        ! First, we need to set up the eval_r/J/Hf functions needed here.
        
        ! save the residual to params
+!       select type(params)
        allocate(tparams%f(m))
        tparams%f(1:m) = f(1:m)
        ! save the Jacobian to params
@@ -2019,16 +2019,21 @@ contains
 
        ! send to ral_nlls
 
+       call nlls_solve(n,m,d, & 
+                       evaltensor_f, evaltensor_J, evaltensor_HF, &
+                       tparams, & 
+                       tensor_options, inform )
 
      end subroutine solve_newton_tensor
 
      subroutine evaltensor_f(status, n, m, s, f, params)
+       
        integer, intent(out) :: status
        integer, intent(in)  :: n
        integer, intent(in)  :: m
        real(wp), dimension(*), intent(in)    :: s
-       real(wp), intent(out)   :: f
-       class( tensor_params_base_type ), intent(in) :: params
+       real(wp), dimension(*), intent(out)   :: f
+       class( params_base_type ), intent(in) :: params
 
        real(wp) :: t_ik
        integer :: i
@@ -2038,18 +2043,86 @@ contains
        
        select type(params)
        type is(tensor_params_type)
-          f = zero
+          f(1:n) = zero
           do i = 1,m
              t_ik = params%f(i)
              t_ik = t_ik + dot_product(s(1:n),params%J((m-1)*i + 1:n))
              t_ik = t_ik ! + s' H s
-             f = f + t_ik ** 2 
+             f(i) = f(i) + t_ik ** 2 
           end do
-          f = 0.5 * f
+          f(1:n) = 0.5 * f(1:n)
+       end select
+
+     end subroutine evaltensor_f
+
+
+     subroutine evaltensor_J(status, n, m, s, J, params)
+       integer, intent(out) :: status
+       integer, intent(in)  :: n
+       integer, intent(in)  :: m
+       real(wp), dimension(*), intent(in)    :: s
+       real(wp), dimension(*), intent(out)   :: J
+       class( params_base_type ), intent(in) :: params
+
+       integer :: ii, jj, kk
+
+       ! The function we need to return is 
+       !  g_i + H_i s 
+       ! where h_i and H_i are the gradient and hessians of the original problem
+
+       real(wp), allocatable :: Hs(:)
+       
+       allocate(Hs(n))
+       
+       select type(params)
+       type is(tensor_params_type)
+          J(1:n*m) = zero
+          ! first, copy in the original J...
+          J(1:n*m) = params%J(1:n*m)
+          do ii = 1,m
+             do jj = 1,n
+                Hs(jj) = zero
+                do kk = 1,n
+                   Hs(jj) = params%Hi(jj,kk,ii)*s(kk)
+                end do
+             end do
+             do jj = 1,n
+                J( (jj-1)*n + ii) = J( (jj-1)*n + ii) + Hs(jj)
+             end do
+             ! This should work, but can be streamlined...
+          end do
+       end select
+
+     end subroutine evaltensor_J
+
+
+     subroutine evaltensor_HF(status, n, m, s, f, HF, params)
+       integer, intent(out) :: status
+       integer, intent(in)  :: n
+       integer, intent(in)  :: m
+       real(wp), dimension(*), intent(in)    :: s
+       real(wp), dimension(*), intent(in)   :: f
+       real(wp), dimension(*), intent(out) :: HF
+       class( params_base_type ), intent(in) :: params
+
+       integer :: ii, jj, kk
+
+       HF(1:n*n) = zero
+       select type(params)
+       type is (tensor_params_type)
+          do ii = 1,m
+             do jj = 1,n*n
+                do kk = 1,n
+                   HF( (jj - 1)*n + kk ) = HF( (jj -1)*n + kk) + & 
+                        f(ii)*params%Hi(jj,kk,ii)
+                end do
+             end do
+          end do
        end select
 
 
-     end subroutine evaltensor_f
+     end subroutine evaltensor_HF
+       
 
      subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
        integer, intent(in) :: n, m 
