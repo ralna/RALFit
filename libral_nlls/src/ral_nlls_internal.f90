@@ -1192,16 +1192,11 @@ contains
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( calculate_step_work ) :: w
         
-    type( nlls_options ) :: tensor_options
-    real(wp), allocatable :: s(:)
-
-    tensor_options = options
-     
      if ( options%model == 4 ) then
         ! tensor model -- call ral_nlls again
 
         call solve_newton_tensor(n, m, f, J, X, d, eval_HF, params, options, inform)      
-        
+
      else 
         ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
@@ -2352,13 +2347,10 @@ contains
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(n,n)
-       integer :: lengthJ
 
        ! Takes an m x n matrix J and forms the 
        ! n x n matrix A given by
        ! A = J' * J
-
-       lengthJ = n*m
 
        call dgemm('T','N',n, n, m, one,&
             J, m, J, m, & 
@@ -2372,13 +2364,10 @@ contains
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(m,m)
-       integer :: lengthJ
 
        ! Takes an m x n matrix J and forms the 
        ! m x m matrix A given by
        ! A = J * J'
-
-       lengthJ = n*m
 
        call dgemm('N','T',m, m, n, one,&
             J, m, J, m, & 
@@ -2647,7 +2636,7 @@ contains
        real(wp) , intent(in) :: X(:)
        real(wp), intent(out) :: d(:)
        procedure( eval_hf_type ) :: eval_HF
-       type( params_base_type ) :: params              
+       class( params_base_type ) :: params              
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
 
@@ -2684,6 +2673,12 @@ contains
        tparams%J(1:n*n) = J(1:n*n)
        ! now, let's get all the Hi's...
        allocate(tparams%Hi(n,n,m))
+
+!!$       select type(params)
+!!$       type is(params_type)
+!!$          write(*,*) 'here!'
+!!$       end select
+       
        do i = 1,m
           call get_Hi(n, m, X, params, i, tparams%Hi(:,:,i), eval_HF, inform)
        end do
@@ -2697,9 +2692,9 @@ contains
        ! send to ral_nlls
 
        call nlls_solve(n,m,d, & 
-                       evaltensor_f, evaltensor_J, evaltensor_HF, &
-                       tparams, & 
-                       tensor_options, inform )
+                      evaltensor_f, evaltensor_J, evaltensor_HF, &
+                      tparams, & 
+                      tensor_options, inform )
 
      end subroutine solve_newton_tensor
 
@@ -2713,19 +2708,28 @@ contains
        class( params_base_type ), intent(in) :: params
 
        real(wp) :: t_ik
-       integer :: i
+       integer :: ii, jj, kk
+       
+       real(wp), allocatable :: Hs(:)
+       
+       allocate(Hs(n))
 
        ! The function we need to minimize is 
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
-       
        select type(params)
        type is(tensor_params_type)
           f(1:n) = zero
-          do i = 1,m
-             t_ik = params%f(i)
-             t_ik = t_ik + dot_product(s(1:n),params%J((m-1)*i + 1:n))
-             t_ik = t_ik ! + s' H s
-             f(i) = f(i) + t_ik ** 2 
+          do ii = 1,m
+             t_ik = params%f(ii)
+             t_ik = t_ik + dot_product(s(1:n),params%J((m-1)*ii + 1:n))
+             do jj = 1, n
+                Hs(jj) = zero
+                do kk = 1,n
+                   Hs(jj) = params%Hi(jj,kk,ii) * s(kk)
+                end do
+             end do
+             t_ik = t_ik + dot_product(s(1:n),Hs(1:n))
+             f(ii) = f(ii) + t_ik ** 2 
           end do
           f(1:n) = 0.5 * f(1:n)
        end select
@@ -2804,7 +2808,7 @@ contains
      subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
        integer, intent(in) :: n, m 
        real(wp), intent(in) :: X(:)
-       class( params_base_type) :: params
+       class( params_base_type ) :: params
        integer, intent(in) :: i 
        real(wp), intent(out) :: Hi(:,:)
        procedure( eval_hf_type ) :: eval_HF
