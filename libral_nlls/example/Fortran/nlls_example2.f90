@@ -111,6 +111,8 @@ program nlls_example2
    options%model = 4
    options%type_of_method = 2
    options%nlls_method = 4
+   
+   options%print_level = 1
 
    x = (/ 2.5, 0.25 /) ! Initial guess
    call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform)
