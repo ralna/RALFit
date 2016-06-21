@@ -7,6 +7,7 @@
 galahad/*
 libral_nlls/build/*
 libral_nlls/build_cov/*
+libral_nlls/build_test_install/*
 libral_nlls/debug/*
 libral_nlls/build-compiled-lapack/*
 src/data/*
@@ -40,3 +41,5 @@ libral_nlls/test/comparison_tests/RANGE.f
 *~
 *#
 *.fdb_latexmk
+/doc/results
+/doc/results2
