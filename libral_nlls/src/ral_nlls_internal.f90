@@ -633,7 +633,7 @@ contains
       
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, normFnew, md, Jmax, JtJdiag
+    real(wp) :: rho, normFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue
     logical :: success
     character :: second
@@ -811,8 +811,11 @@ contains
        ! Get the value of the model !
        !      md :=   m_k(d)        !
        ! evaluated at the new step  !
+       ! and the value of the       !
+       ! Gauss-Newton model too     ! 
+       !     md := m_k^gn(d)        !
        !++++++++++++++++++++++++++++!
-       call evaluate_model(w%f,w%J,w%hf,w%d,md,m,n,options,w%evaluate_model_ws)
+       call evaluate_model(w%f,w%J,w%hf,w%d,md,md_gn,m,n,options,w%evaluate_model_ws)
        
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
@@ -1403,7 +1406,7 @@ contains
      type( AINT_tr_work ) :: w
         
      integer :: keep_p0, i, size_hard(2)
-     real(wp) :: obj_p0, obj_p1
+     real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
@@ -1446,7 +1449,7 @@ contains
         keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
         if (options%print_level >=3) write(options%out,2000) 'p0'     
-        call evaluate_model(f,J,hf,w%p0,obj_p0,m,n,options,w%evaluate_model_ws)
+        call evaluate_model(f,J,hf,w%p0,obj_p0,obj_p0_gn,m,n,options,w%evaluate_model_ws)
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -1507,7 +1510,7 @@ contains
      
      ! get obj_p1 : the value of the model at p1
      if (options%print_level >=3) write(options%out,2000) 'p1'     
-     call evaluate_model(f,J,hf,w%p1,obj_p1,m,n,options,w%evaluate_model_ws)
+     call evaluate_model(f,J,hf,w%p1,obj_p1,obj_p1_gn,m,n,options,w%evaluate_model_ws)
 
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
@@ -1992,7 +1995,7 @@ contains
 
      END SUBROUTINE findbeta
      
-     subroutine evaluate_model(f,J,hf,d,md,m,n,options,w)
+     subroutine evaluate_model(f,J,hf,d,md,md_gn,m,n,options,w)
 ! --------------------------------------------------
 ! Input:
 ! f = f(x_k), J = J(x_k), 
@@ -2012,6 +2015,7 @@ contains
        real(wp), intent(in) :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
        integer, intent(in) :: m,n
        real(wp), intent(out) :: md  ! m_k(d)
+       real(wp), intent(out) :: md_gn
        TYPE( nlls_options ), INTENT( IN ) :: options
        type( evaluate_model_work ) :: w
        
@@ -2025,18 +2029,21 @@ contains
        else 
           ! First, get the base 
           ! 0.5 (f^T f + f^T J d + d^T' J ^T J d )
-          md = 0.5 * norm2(f + w%Jd)**2
+          md_gn = 0.5 * norm2(f + w%Jd)**2
        end if
        
        select case (options%model)
-       case (1,4) ! first-order (no Hessian)
+       case (1) ! first-order (no Hessian)
+          md = md_gn
+          continue
+       case (4) ! tensor model 
           ! nothing to do here...
           continue
        case default
           ! these have a dynamic H -- recalculate
           ! H = J^T J + HF, HF is (an approx?) to the Hessian
           call mult_J(hf,n,n,d,w%Hd)
-          md = md + 0.5 * dot_product(d,w%Hd)
+          md = md_gn + 0.5 * dot_product(d,w%Hd)
        end select
        if (options%print_level >= 3) write(options%out,1000) md
 
