@@ -893,14 +893,6 @@ contains
     w%normF = normFnew
     w%normJF = norm2(w%g)
     
-    ! setup the vectors needed if second derivatives are not available
-    if (.not. options%exact_second_derivatives) then 
-       
-       w%y       = w%g_old   - w%g
-       w%y_sharp = w%g_mixed - w%g
-
-    end if
-    
     if (options%model == 3) then
        ! hybrid method -- check if we need second derivatives
        
@@ -2127,6 +2119,9 @@ contains
        integer, intent(in) :: n
       
        real(wp) :: yts, alpha, dSks
+
+       w%y       = w%g_old   - w%g
+       w%y_sharp = w%g_mixed - w%g
 
        yts = dot_product(w%d,w%y)
        if ( abs(yts) < 10 * epsmch ) then
