@@ -503,7 +503,7 @@ contains
   !!******************************************************!!
   !!******************************************************!!
 
-  SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
+  RECURSIVE SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
                          eval_F, eval_J, eval_HF,   & 
                          params,                    &
                          options, inform, weights )
@@ -614,7 +614,7 @@ contains
   !!******************************************************!!
   !!******************************************************!!
 
-  subroutine nlls_iterate(n, m, X,                   & 
+   recursive subroutine nlls_iterate(n, m, X,                   & 
                           w,                         & 
                           eval_F, eval_J, eval_HF,   & 
                           params,                    &
@@ -1174,7 +1174,7 @@ contains
 
 ! below are the truly internal subroutines...
 
-  SUBROUTINE calculate_step(J,f,hf,g,X,n,m,Delta,eval_HF,params, &
+  RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,n,m,Delta,eval_HF,params, &
                             d,normd,options,inform,w)
 
 ! -------------------------------------------------------
@@ -1211,7 +1211,11 @@ contains
            if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
            call more_sorensen(J,f,hf,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
         case (4) ! Galahad
-           if (options%print_level >= 2) write(options%out,3000) 'DTRS'
+           if (options%type_of_method == 1) then
+              if (options%print_level >= 2) write(options%out,3000) 'DTRS'
+           elseif (options%type_of_method == 2) then 
+              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
+           end if           
            call solve_galahad(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
         case default
            inform%status = ERROR%UNSUPPORTED_METHOD
@@ -1222,7 +1226,8 @@ contains
      if (options%print_level >= 2) write(options%out,3010)
      
 3000 FORMAT('*** Solving the trust region subproblem using ',A,' ***')
-3010 FORMAT('*** Trust region subproblem solution found ***')
+3010 FORMAT('*** Subproblem solution found ***')
+3020 FORMAT('*** Solving the regularized subproblem using ',A,' ***')
      
 
    END SUBROUTINE calculate_step
@@ -1852,7 +1857,8 @@ contains
         dtrs_options%error = options%error
         dtrs_options%out = options%out
         dtrs_options%print_level = options%print_level - 1
-        call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, dtrs_options, dtrs_inform )
+        call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, & 
+                        dtrs_options, dtrs_inform )
         if ( dtrs_inform%status .ne. 0) then
            inform%external_return = dtrs_inform%status
            inform%external_name = 'galahad_dtrs'
@@ -1906,6 +1912,8 @@ contains
      ! bad error return from external package
      return
      
+2000 FORMAT('Regularization order used = ',ES12.4)
+
    end subroutine solve_galahad
 
 
@@ -2711,8 +2719,13 @@ contains
        integer :: ii, jj, kk
        
        real(wp), allocatable :: Hs(:)
+       real(wp), allocatable :: temp(:)
+
+       allocate(temp(n*m))
+       temp = (/ ((ii), ii = 1, n*m) /)
        
        allocate(Hs(n))
+       
 
        ! The function we need to minimize is 
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
@@ -2721,7 +2734,7 @@ contains
           f(1:n) = zero
           do ii = 1,m
              t_ik = params%f(ii)
-             t_ik = t_ik + dot_product(s(1:n),params%J((m-1)*ii + 1:n))
+             t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
              do jj = 1, n
                 Hs(jj) = zero
                 do kk = 1,n

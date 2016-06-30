@@ -636,9 +636,12 @@ program nlls_test
 
         alpha = 0.02_wp
         
+        write(*,*) 'call solve_galahad, i = ', i
+        work%calculate_step_ws%solve_galahad_ws%reg_order = 2.0_wp
         call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
              options,status, &
              work%calculate_step_ws%solve_galahad_ws )
+        write(*,*) 'done'
         
         if ( status%status .ne. 0 ) then
            select case (i)
