@@ -769,7 +769,7 @@ contains
        end select
        
        if (options%print_level > 0 ) then 
-          write(options%out,1010) w%iter, ' ', w%Delta, inform%obj, &
+          write(options%out,1010) w%iter, ' ', w%Delta, rho, inform%obj, &
             inform%norm_g, inform%scaled_g
        end if
        
@@ -865,7 +865,7 @@ contains
                 second = 'A';
              end if
              
-             write(options%out,1020) w%iter, second, w%Delta
+             write(options%out,1020) w%iter, second, w%Delta, rho
           end if
           if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
        end if
@@ -987,7 +987,6 @@ contains
     if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
     if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
 
-    if (options%print_level >= 3 ) write(options%out,3100) rho
 
 ! Non-executable statements
 
@@ -995,15 +994,14 @@ contains
 
 !1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
 
-1000 FORMAT('iter',4x,'2nd order?',2x,'Delta',9x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
-1010 FORMAT(   i4, 4x,      A,9x,ES12.4,  2x,ES12.4      ,2x,ES12.4,    2x,ES12.4)
-1020 FORMAT(   i4, 4x,      A,9x,ES12.4,  4x,'unsuccessful step')
+1000 FORMAT('iter',4x,'2nd order?',2x,'Delta',9x,'rho',11x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
+1010 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,ES12.4      ,2x,ES12.4,    2x,ES12.4)
+1020 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,'unsuccessful step')
 ! print level > 1
 2000 FORMAT(/,'* Running RAL_NLLS *')
 
 
 ! print level > 2
-3100 FORMAT('Step was successful -- rho =', ES12.4)
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
 3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
 
