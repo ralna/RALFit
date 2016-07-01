@@ -633,7 +633,7 @@ contains
       
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, normFnew, md, md_gn, Jmax, JtJdiag
+    real(wp) :: rho, rho_gn, normFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue
     logical :: success
     character :: second
@@ -826,7 +826,23 @@ contains
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
        call calculate_rho(w%normF,normFnew,md,rho,options)
-       if (rho > options%eta_successful) success = .true.
+       if (rho > options%eta_successful) then
+          success = .true.
+       else
+          if ( (w%use_second_derivatives) .and.  &
+               (options%model == 3) .and. & 
+               (no_reductions==1) ) then
+             ! recalculate rho based on the approx GN model	
+             ! (i.e. the Gauss-Newton model evaluated at the Quasi-Newton step)
+             call calculate_rho(w%normF,normFnew,md_gn,rho_gn,options)
+             if (rho_gn > options%eta_successful) then
+                ! don't trust this model -- switch to GN
+                call switch_to_gauss_newton(w,n,options)
+                w%hf_temp(:) = zero
+                cycle
+             end if
+          end if
+       end if
        
        !++++++++++++++++++++++!
        ! Update the TR radius !
@@ -898,15 +914,8 @@ contains
        
        if (w%use_second_derivatives) then 
           if (w%normJF > w%normJFold) then 
-             ! switch to Gauss-Newton             
-             if (options%print_level .ge. 3) write(options%out,3120) 
-             w%use_second_derivatives = .false.
-             if (options%type_of_method == 2) then 
-                w%reg_order = two
-             end if
-             ! save hf as hf_temp
-             w%hf_temp(1:n**2) = w%hf(1:n**2)
-             w%hf(1:n**2) = zero
+             ! switch to Gauss-Newton      
+             call switch_to_gauss_newton(w,n,options)
           end if
        else
           FunctionValue = 0.5 * (w%normF**2)
@@ -914,16 +923,7 @@ contains
              w%hybrid_count = w%hybrid_count + 1
              if (w%hybrid_count == options%hybrid_switch_its) then
                 ! use (Quasi-)Newton
-                if (options%print_level .ge. 3) write(options%out,3130) 
-                w%use_second_derivatives = .true.
-                if (options%type_of_method == 3) then
-                   w%reg_order = three
-                end if
-                w%hybrid_count = 0
-                ! copy hf from hf_temp
-                if (.not. options%exact_second_derivatives) then
-                   w%hf(1:n**2) = w%hf_temp(1:n**2)
-                end if
+                call switch_to_quasi_newton(w,n,options)
              end if
           else 
              w%hybrid_count = 0
@@ -1001,8 +1001,6 @@ contains
 ! print level > 2
 3100 FORMAT('Step was successful -- rho =', ES12.4)
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
-3120 FORMAT('** Switching to Gauss-Newton **')
-3130 FORMAT('** Switching to (Quasi-)Newton **')
 3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
 
 
@@ -1318,6 +1316,40 @@ contains
      return
 
    end subroutine apply_scaling
+
+   subroutine switch_to_gauss_newton(w, n, options)
+     type (nlls_workspace), intent(inout) :: w
+     integer, intent(in) :: n
+     type (nlls_options), intent(in) :: options
+     
+     if (options%print_level .ge. 3) write(options%out,3120) 
+     w%use_second_derivatives = .false.
+     if (options%type_of_method == 2) then 
+        w%reg_order = two
+     end if
+     ! save hf as hf_temp
+     w%hf_temp(1:n**2) = w%hf(1:n**2)
+     w%hf(1:n**2) = zero
+3120 FORMAT('** Switching to Gauss-Newton **')
+   end subroutine switch_to_gauss_newton
+
+   subroutine switch_to_quasi_newton(w, n, options)
+     type (nlls_workspace), intent(inout) :: w
+     integer, intent(in) :: n 
+     type (nlls_options), intent(in) :: options
+     
+     if (options%print_level .ge. 3) write(options%out,3130) 
+     w%use_second_derivatives = .true.
+     if (options%type_of_method == 3) then
+        w%reg_order = three
+     end if
+     w%hybrid_count = 0
+     ! copy hf from hf_temp
+     if (.not. options%exact_second_derivatives) then
+        w%hf(1:n**2) = w%hf_temp(1:n**2)
+     end if
+3130 FORMAT('** Switching to (Quasi-)Newton **')
+   end subroutine switch_to_quasi_newton
 
    SUBROUTINE dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w)
 ! -----------------------------------------
