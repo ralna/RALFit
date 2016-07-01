@@ -768,6 +768,8 @@ contains
           goto 4040 ! unsupported model -- return to user
        end select
        
+       write(options%out,1010) w%iter, ' ', w%Delta, inform%obj, &
+            inform%norm_g, inform%scaled_g
        
     end if
 
@@ -2711,8 +2713,8 @@ contains
        allocate(tparams%f(m))
        tparams%f(1:m) = f(1:m)
        ! save the Jacobian to params
-       allocate(tparams%J(n*n))
-       tparams%J(1:n*n) = J(1:n*n)
+       allocate(tparams%J(n*m))
+       tparams%J(1:n*m) = J(1:n*m)
        ! now, let's get all the Hi's...
        allocate(tparams%Hi(n,n,m))
 
