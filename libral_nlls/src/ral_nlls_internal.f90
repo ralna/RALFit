@@ -768,8 +768,10 @@ contains
           goto 4040 ! unsupported model -- return to user
        end select
        
-       write(options%out,1010) w%iter, ' ', w%Delta, inform%obj, &
+       if (options%print_level > 0 ) then 
+          write(options%out,1010) w%iter, ' ', w%Delta, inform%obj, &
             inform%norm_g, inform%scaled_g
+       end if
        
     end if
 
