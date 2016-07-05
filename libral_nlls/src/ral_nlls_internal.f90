@@ -2709,31 +2709,20 @@ contains
        ! First, we need to set up the eval_r/J/Hf functions needed here.
        
        ! save the residual to params
-!       select type(params)
        allocate(tparams%f(m))
        tparams%f(1:m) = f(1:m)
+
        ! save the Jacobian to params
        allocate(tparams%J(n*m))
        tparams%J(1:n*m) = J(1:n*m)
+
        ! now, let's get all the Hi's...
        allocate(tparams%Hi(n,n,m))
-
-!!$       select type(params)
-!!$       type is(params_type)
-!!$          write(*,*) 'here!'
-!!$       end select
-       
        do i = 1,m
           call get_Hi(n, m, X, params, i, tparams%Hi(:,:,i), eval_HF, inform)
        end do
 
-       ! get evaltensor_f
-       
-       ! get evaltensor_J
-
-       ! get evaltensor_Hf
-
-       ! send to ral_nlls
+       ! send to ral_nlls to solve the subproblem recursively
 
        call nlls_solve(n,m,d, & 
                       evaltensor_f, evaltensor_J, evaltensor_HF, &
@@ -2767,7 +2756,7 @@ contains
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
        select type(params)
        type is(tensor_params_type)
-          f(1:n) = zero
+          f(1:m) = zero
           do ii = 1,m
              t_ik = params%f(ii)
              t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
@@ -2780,7 +2769,7 @@ contains
              t_ik = t_ik + dot_product(s(1:n),Hs(1:n))
              f(ii) = f(ii) + t_ik ** 2 
           end do
-          f(1:n) = 0.5 * f(1:n)
+          f(1:m) = 0.5 * f(1:m)
        end select
 
      end subroutine evaltensor_f
