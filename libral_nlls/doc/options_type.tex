@@ -173,9 +173,9 @@ The default value is {\tt more\_sorensen\_tol = 1e-3}.
 that, if \(\|{\iter{\vJ}}^T \vW \vr(\vx_k) \|_2 < \mathtt{hybrid\_tol} * 0.5 \|\vr(\vx_k)\|_\vW^2\), switches to a \newline(quasi-)Newton method.
 The default value is {\tt hybrid\_tol = 2.0}.
 
-\scalarreal{hybrid\_switch\_its}
+\scalarinteger{hybrid\_switch\_its}
 that sets how many iterates in a row must the condition in the definition of {\tt hybrid\_tol} hold before a switch.
-The default value is {\tt hybrid\_switch\_its = false}.
+The default value is {\tt hybrid\_switch\_its = 1}.
 
 \fortranonly{
 \scalarlogical{output\_progress\_vectors}
