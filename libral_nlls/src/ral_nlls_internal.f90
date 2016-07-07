@@ -2798,10 +2798,11 @@ contains
           do ii = 1,m
              t_ik = params%f(ii)
              t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
+             Hs(1:m) = zero
              do jj = 1, n
-                Hs(jj) = zero
+                ! get Hs = H_i * s
                 do kk = 1,n
-                   Hs(jj) = params%Hi(jj,kk,ii) * s(kk)
+                   Hs(jj) = Hs(jj) +  params%Hi(jj,kk,ii) * s(kk)
                 end do
              end do
              t_ik = t_ik + dot_product(s(1:n),Hs(1:n))
