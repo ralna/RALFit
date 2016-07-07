@@ -2752,11 +2752,14 @@ contains
 
        ! send to ral_nlls to solve the subproblem recursively
 
+       if (options%print_level > 0) write(options%out,"(80('*'))")
        call nlls_solve(n,m,d, & 
                       evaltensor_f, evaltensor_J, evaltensor_HF, &
                       tparams, & 
                       tensor_options, tensor_inform )
        if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
+       if (options%print_level > 0) write(options%out,"(80('*'))")
+       
 
      end subroutine solve_newton_tensor
 
