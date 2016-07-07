@@ -116,7 +116,6 @@ program nlls_example
 
    ! Print result
    print *, "Found a local optimum at x = ", x
-   print *, "Residuals = ", inform%resvec(:)
    print *, "Took ", inform%iter, " iterations"
    print *, "     ", inform%f_eval, " function evaluations"
    print *, "     ", inform%g_eval, " gradient evaluations"
