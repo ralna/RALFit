@@ -2708,6 +2708,7 @@ contains
        type( nlls_options ) :: tensor_options
        !class( tensor_params_type ), pointer :: tparams
        type( tensor_params_type ), target :: tparams
+       type( nlls_inform ) :: tensor_inform
        integer :: i     
     
        ! copy options onto tensor_options
@@ -2748,7 +2749,8 @@ contains
        call nlls_solve(n,m,d, & 
                       evaltensor_f, evaltensor_J, evaltensor_HF, &
                       tparams, & 
-                      tensor_options, inform )
+                      tensor_options, tensor_inform )
+       if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
 
      end subroutine solve_newton_tensor
 
