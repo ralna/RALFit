@@ -2868,7 +2868,7 @@ contains
        select type(params)
        type is (tensor_params_type)
           do ii = 1,m
-             do jj = 1,n*n
+             do jj = 1,n
                 do kk = 1,n
                    HF( (jj - 1)*n + kk ) = HF( (jj -1)*n + kk) + & 
                         f(ii)*params%Hi(jj,kk,ii)
