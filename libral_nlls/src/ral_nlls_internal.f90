@@ -2719,6 +2719,8 @@ contains
        tensor_options%type_of_method = 2
        ! make sure that we use galahad's subproblem solver (for now...)
        tensor_options%nlls_method = 4
+       tensor_options%maxit = 100
+       tensor_options%reg_order = 3.0_wp
 
        ! We need to solve the problem 
        !   min 1/2 \sum_{i=1}^m t_{ik}^2(s) + 1/p \sigma_k ||s||^p_p
@@ -2740,9 +2742,13 @@ contains
 
        ! now, let's get all the Hi's...
        allocate(tparams%Hi(n,n,m))
+       
+       
        do i = 1,m
           call get_Hi(n, m, X, params, i, tparams%Hi(:,:,i), eval_HF, inform)
        end do
+
+       d(1:n) = zero
 
        ! send to ral_nlls to solve the subproblem recursively
 
