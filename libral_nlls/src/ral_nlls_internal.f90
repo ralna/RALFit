@@ -2781,21 +2781,25 @@ contains
        real(wp) :: t_ik
        integer :: ii, jj, kk
        
-       real(wp), allocatable :: Hs(:)
+       real(wp), allocatable :: Hs(:), Js(:)
        real(wp), allocatable :: temp(:)
 
        allocate(temp(n*m))
        temp = (/ ((ii), ii = 1, n*m) /)
        
-       allocate(Hs(n))
+       allocate(Hs(n), Js(m))
        
 
        ! The function we need to minimize is 
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
        select type(params)
        type is(tensor_params_type)
-          f(1:m) = zero
+          f(1:m) = params%f(1:m)  ! f_tensor = r_nlls originally
+          call mult_J(params%J,n,m,s,Js)
+          f(1:m) = f(1:m) + Js(1:m) ! f_tensor = r + J s
+          
           do ii = 1,m
+
              t_ik = params%f(ii)
              t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
              Hs(1:n) = zero
@@ -2805,10 +2809,10 @@ contains
                    Hs(jj) = Hs(jj) +  params%Hi(jj,kk,ii) * s(kk)
                 end do
              end do
-             t_ik = t_ik + dot_product(s(1:n),Hs(1:n))
-             f(ii) = f(ii) + t_ik ** 2 
+             ! f_tensor_i = r_i + J_is + 0.5 * s'H_is
+             f(ii) = f(ii) + 0.5 * dot_product(s(1:n),Hs(1:n))
           end do
-          f(1:m) = 0.5 * f(1:m)
+
        end select
 
      end subroutine evaltensor_f
