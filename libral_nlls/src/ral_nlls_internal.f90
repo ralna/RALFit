@@ -457,6 +457,7 @@ module ral_nlls_internal
        type( dogleg_work ) :: dogleg_ws
        type( more_sorensen_work ) :: more_sorensen_ws
        type( solve_galahad_work ) :: solve_galahad_ws
+       type( evaluate_model_work) :: evaluate_model_ws
     end type calculate_step_work
 
     type, private :: get_svd_J_work ! workspace for subroutine get_svd_J
@@ -485,7 +486,6 @@ module ral_nlls_internal
        real(wp), allocatable :: resvec(:), gradvec(:)
        real(wp), allocatable :: largest_sv(:), smallest_sv(:)
        type ( calculate_step_work ) :: calculate_step_ws
-       type ( evaluate_model_work ) :: evaluate_model_ws
        type ( get_svd_J_work ) :: get_svd_J_ws
        real(wp) :: tr_nu = 2.0
        integer :: tr_p = 3
@@ -817,7 +817,9 @@ contains
        !+++++++++++++++++++++++++++++++++++++++++++!
        w%calculate_step_ws%solve_galahad_ws%reg_order = w%reg_order 
        ! todo: fix this...don't copy over...
-       call calculate_step(w%J,w%f,w%hf,w%g,X,n,m,w%Delta,eval_HF, params, & 
+       call calculate_step(w%J,w%f,w%hf,w%g,& 
+            X,md,md_gn,& 
+            n,m,w%Delta,eval_HF, params, & 
             w%d,w%normd,options,inform,& 
             w%calculate_step_ws)
        if (inform%status .ne. 0) goto 4000
@@ -835,15 +837,6 @@ contains
        end if       
        normFnew = norm2(w%fnew)
        
-       !++++++++++++++++++++++++++++!
-       ! Get the value of the model !
-       !      md :=   m_k(d)        !
-       ! evaluated at the new step  !
-       ! and the value of the       !
-       ! Gauss-Newton model too     ! 
-       !     md := m_k^gn(d)        !
-       !++++++++++++++++++++++++++++!
-       call evaluate_model(w%f,w%J,w%hf,w%d,md,md_gn,m,n,options,w%evaluate_model_ws)
        
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
@@ -1128,9 +1121,9 @@ contains
     type( nlls_options ) :: options
     
     w%first_call = 1
-
-    call remove_workspaces(w,options)   
     
+    call remove_workspaces(w,options)   
+
   end subroutine nlls_finalize
 
   subroutine nlls_strerror(inform)!,error_string)
@@ -1186,7 +1179,7 @@ contains
 
 ! below are the truly internal subroutines...
 
-  RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,n,m,Delta,eval_HF,params, &
+  RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,Delta,eval_HF,params, &
                             d,normd,options,inform,w)
 
 ! -------------------------------------------------------
@@ -1199,16 +1192,20 @@ contains
     class( params_base_type ) :: params  
     integer, intent(in)  :: n, m
     real(wp), intent(out) :: d(:)
+    real(wp), intent(out) :: md, md_gn
     real(wp), intent(out) :: normd
     TYPE( nlls_options ), INTENT( IN ) :: options
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( calculate_step_work ) :: w
         
+    real(wp) :: md_bad
+
      if ( options%model == 4 ) then
         ! tensor model -- call ral_nlls again
 
-        call solve_newton_tensor(n, m, f, J, X, d, eval_HF, params, options, inform)      
-
+        call solve_newton_tensor(n, m, f, J, X, d, md, eval_HF, params, options, inform)      
+        call evaluate_model(f,J,hf,d,md_bad,md_gn,m,n,options,w%evaluate_model_ws)
+        write(*,*) 'md = ', md, ', md_gn = ', md_gn
      else 
         ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
@@ -1233,7 +1230,19 @@ contains
            inform%status = ERROR%UNSUPPORTED_METHOD
         end select
 
+        !++++++++++++++++++++++++++++!
+        ! Get the value of the model !
+        !      md :=   m_k(d)        !
+        ! evaluated at the new step  !
+        ! and the value of the       !
+        ! Gauss-Newton model too     ! 
+        !     md := m_k^gn(d)        !
+        !++++++++++++++++++++++++++++!
+        call evaluate_model(f,J,hf,d,md,md_gn,m,n,options,w%evaluate_model_ws)
+
      end if
+
+
 
      if (options%print_level >= 2) write(options%out,3010)
      
@@ -1343,7 +1352,8 @@ contains
      
      if (options%print_level .ge. 3) write(options%out,3120) 
      w%use_second_derivatives = .false.
-     if (options%type_of_method == 2) then 
+     if ((options%type_of_method == 2) .and. (options%reg_order==zero)) then 
+        ! switch to optimal regularization
         w%reg_order = two
      end if
      ! save hf as hf_temp
@@ -1359,7 +1369,8 @@ contains
      
      if (options%print_level .ge. 3) write(options%out,3130) 
      w%use_second_derivatives = .true.
-     if (options%type_of_method == 3) then
+     if ((options%type_of_method == 3).and.(options%reg_order==zero)) then
+        ! switch to optimal regularization
         w%reg_order = three
      end if
      w%hybrid_count = 0
@@ -2690,12 +2701,13 @@ contains
 
      ! routines needed for the Newton tensor model
      
-     subroutine solve_newton_tensor(n, m, f, J, X, d, eval_HF, params, options, inform)
+     subroutine solve_newton_tensor(n, m, f, J, X, d, md, eval_HF, params, options, inform)
        
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
        real(wp) , intent(in) :: X(:)
        real(wp), intent(out) :: d(:)
+       real(wp), intent(out) :: md
        procedure( eval_hf_type ) :: eval_HF
        class( params_base_type ) :: params              
        type( nlls_options ), intent(in) :: options
@@ -2994,6 +3006,9 @@ contains
           if (inform%alloc_status > 0) goto 1000
        end if
 
+       call setup_workspace_evaluate_model(n,m,& 
+            workspace%calculate_step_ws%evaluate_model_ws,options,inform)
+       if (inform%alloc_status > 0) goto 1010
 
        select case (options%nlls_method)
 
@@ -3017,10 +3032,6 @@ contains
                workspace%calculate_step_ws%solve_galahad_ws, options, inform)
           if (inform%alloc_status > 0) goto 1010
        end select
-
-       ! evaluate model in the main routine...       
-       call setup_workspace_evaluate_model(n,m,workspace%evaluate_model_ws,options,inform)
-       if (inform%alloc_status > 0) goto 1010
 
        return
 
@@ -3072,6 +3083,9 @@ contains
        if(allocated(workspace%g)) deallocate(workspace%g ) 
        if(allocated(workspace%Xnew)) deallocate(workspace%Xnew ) 
 
+       call remove_workspace_evaluate_model(workspace%calculate_step_ws%evaluate_model_ws,&
+            options)
+
        select case (options%nlls_method)
 
        case (1) ! use the dogleg method
@@ -3092,8 +3106,8 @@ contains
 
        end select
 
-       ! evaluate model in the main routine...       
-       call remove_workspace_evaluate_model(workspace%evaluate_model_ws,options)
+!       ! evaluate model in the main routine...       
+!       call remove_workspace_evaluate_model(workspace%evaluate_model_ws,options)
 
        return
 
