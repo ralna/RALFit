@@ -2710,6 +2710,7 @@ contains
        type( tensor_params_type ), target :: tparams
        type( nlls_inform ) :: tensor_inform
        integer :: i     
+       real(wp), allocatable :: model_tensor(:)
     
        ! copy options onto tensor_options
        tensor_options = options
@@ -2759,6 +2760,11 @@ contains
                       tensor_options, tensor_inform )
        if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
        if (options%print_level > 0) write(options%out,"(80('*'))")
+       
+       ! now we need to evaluate the model at the new point
+       allocate(model_tensor(m))
+       call evaltensor_f(inform%external_return, n, m, d, model_tensor, tparams)
+       md = 0.5 * norm2( model_tensor )**2
        
 
      end subroutine solve_newton_tensor
