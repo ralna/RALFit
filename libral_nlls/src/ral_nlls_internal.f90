@@ -2840,9 +2840,10 @@ contains
              do jj = 1,n
                 Hs(jj) = zero
                 do kk = 1,n
-                   Hs(jj) = params%Hi(jj,kk,ii)*s(kk)
+                   Hs(jj) = Hs(jj) + params%Hi(jj,kk,ii)*s(kk)
                 end do
              end do
+             
              do jj = 1,n
                 J( (jj-1)*n + ii) = J( (jj-1)*n + ii) + Hs(jj)
              end do
