@@ -2798,7 +2798,7 @@ contains
           do ii = 1,m
              t_ik = params%f(ii)
              t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
-             Hs(1:m) = zero
+             Hs(1:n) = zero
              do jj = 1, n
                 ! get Hs = H_i * s
                 do kk = 1,n
