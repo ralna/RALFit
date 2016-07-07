@@ -2076,15 +2076,7 @@ contains
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd)
        
-       if (options%model == 4) then
-          ! tensor model...
-          
-          md = 0.5 * norm2( f + w%Jd + w%dHd )**2
-       else 
-          ! First, get the base 
-          ! 0.5 (f^T f + f^T J d + d^T' J ^T J d )
-          md_gn = 0.5 * norm2(f + w%Jd)**2
-       end if
+       md_gn = 0.5 * norm2(f + w%Jd)**2
        
        select case (options%model)
        case (1) ! first-order (no Hessian)
