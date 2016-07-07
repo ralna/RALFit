@@ -221,6 +221,13 @@ module ral_nlls_internal
 ! how many successive iterations does the above condition need to hold before we switch?
     integer  :: hybrid_switch_its = 1!3
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! T E N S O R   M O D E L   C O N T R O L S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! what regularization should we use?
+    real(wp) :: reg_order = zero
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! O U T P U T   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -722,12 +729,16 @@ contains
           w%gradvec(1) = inform%norm_g
        end if
        
+       ! set the reg_order to that in the options
+       w%reg_order = options%reg_order
+
        !! Select the order of the model to be used..
        select case (options%model)
        case (1) ! first-order
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
-          if ( options%type_of_method == 2) then ! regularization method
+          if ( ( options%type_of_method == 2) .and. (options%reg_order == zero)) then 
+             ! regularization method, use optimal reg
              w%reg_order = two
           end if
        case (2) ! second order
@@ -744,7 +755,8 @@ contains
              w%hf(1:n**2) = zero
           end if
           w%use_second_derivatives = .true.
-          if ( options%type_of_method == 2) then ! regularization method
+          if ( ( options%type_of_method == 2) .and. (options%reg_order == zero)) then 
+             ! regularization method, use optimal reg
              w%reg_order = three
           end if
        case (3) ! hybrid (MNT)
@@ -753,7 +765,8 @@ contains
           ! use first-order method initially
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
-          if ( options%type_of_method == 2) then ! regularization method
+          if ( (options%type_of_method == 2) .and. (options%reg_order == zero)) then 
+             ! regularization method, use optimal reg
              w%reg_order = two
           end if
           if (.not. options%exact_second_derivatives) then 
