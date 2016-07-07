@@ -799,6 +799,17 @@ contains
        no_reductions = no_reductions + 1
        if (no_reductions > max_tr_decrease+1) goto 4050
 
+       if (options%print_level >=1) then
+          if (.not. w%use_second_derivatives) then 
+             second = 'N';
+          elseif (options%exact_second_derivatives) then 
+             second = 'Y';
+          else
+             second = 'A';
+          end if
+       end if
+
+
        !+++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the step                        !
        !    d                                      !   
@@ -982,13 +993,6 @@ contains
     end if
     
     if (options%print_level >=1) then
-       if (.not. w%use_second_derivatives) then 
-          second = 'N';
-       elseif (options%exact_second_derivatives) then 
-          second = 'Y';
-       else
-          second = 'A';
-       end if
        write(options%out,1010) w%iter, second, w%Delta, inform%obj, &
             inform%norm_g, inform%scaled_g
     end if
