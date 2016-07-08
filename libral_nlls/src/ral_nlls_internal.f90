@@ -776,7 +776,19 @@ contains
           
        case (4) ! tensor model....
           ! do nothing for the time being....
-
+          w%use_second_derivatives = .true.
+          if ( options%exact_second_derivatives ) then
+             if ( present(weights) ) then
+                call eval_HF(inform%external_return, n, m, X, weights(1:m)*w%f, w%hf, params)
+             else
+                call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
+             end if
+             inform%h_eval = inform%h_eval + 1
+             if (inform%external_return > 0) goto 4030
+          else
+             write(*,*) 'Error:: exact second derivatives needed for tensor model'
+             ! todo :: make into a real error
+          end if
        case default
           goto 4040 ! unsupported model -- return to user
        end select
@@ -800,7 +812,9 @@ contains
        if (no_reductions > max_tr_decrease+1) goto 4050
 
        if (options%print_level >=1) then
-          if (.not. w%use_second_derivatives) then 
+          if (options%model == 4) then
+             second = 'T';
+          elseif (.not. w%use_second_derivatives) then 
              second = 'N';
           elseif (options%exact_second_derivatives) then 
              second = 'Y';
@@ -858,6 +872,7 @@ contains
              call calculate_rho(w%normF,normFnew,md_gn,rho_gn,options)
              if (rho_gn > options%eta_successful) then
                 ! don't trust this model -- switch to GN
+                ! (See Dennis, Gay and Walsh (1981), Section 5)
                 call switch_to_gauss_newton(w,n,options)
                 w%hf_temp(:) = zero
                 cycle
@@ -874,14 +889,6 @@ contains
        if (.not. success) then
           ! finally, check d makes progress
           if ( options%print_level >= 1 ) then
-             if (.not. w%use_second_derivatives) then 
-                second = 'N';
-             elseif (options%exact_second_derivatives) then 
-                second = 'Y';
-             else
-                second = 'A';
-             end if
-             
              write(options%out,1020) w%iter, second, w%Delta, rho
           end if
           if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
