@@ -1212,7 +1212,7 @@ contains
 
         call solve_newton_tensor(n, m, f, J, X, d, md, eval_HF, params, options, inform)      
         call evaluate_model(f,J,hf,d,md_bad,md_gn,m,n,options,w%evaluate_model_ws)
-        write(*,*) 'md = ', md, ', md_gn = ', md_gn
+
      else 
         ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
@@ -2802,11 +2802,10 @@ contains
        select type(params)
        type is(tensor_params_type)
           f(1:m) = params%f(1:m)  ! f_tensor = r_nlls originally
-          call mult_J(params%J,n,m,s,Js)
-          f(1:m) = f(1:m) + Js(1:m) ! f_tensor = r + J s
           
+          call mult_J(params%J(1:n*m),n,m,s,Js)
+          f(1:m) = f(1:m) + Js(1:m) ! f_tensor = r + J s
           do ii = 1,m
-
              t_ik = params%f(ii)
              t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
              Hs(1:n) = zero
@@ -2857,7 +2856,7 @@ contains
              end do
              
              do jj = 1,n
-                J( (jj-1)*n + ii) = J( (jj-1)*n + ii) + Hs(jj)
+                J( (jj-1)*m + ii) = J( (jj-1)*m + ii) + Hs(jj)
              end do
              ! This should work, but can be streamlined...
           end do
