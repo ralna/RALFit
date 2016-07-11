@@ -145,6 +145,14 @@ module ral_nlls_internal
      
      REAL ( KIND = wp ) :: initial_radius = hundred
      
+!   for the newton tensor model, allow a base tr raidius to allow an inherent
+!   regularization in the problem that can't be changed
+!   ( so we minimize 0.5 * (\sum (f_i)^2 + sigma_k ||s||^2) ), using another reg parameter
+!   on top of this
+!   (undocumented control variable)
+     
+     REAL ( KIND = wp ) :: base_regularization = zero
+
 !   maximum permitted trust-region radius
 
      REAL ( KIND = wp ) :: maximum_radius = ten ** 8
@@ -339,6 +347,7 @@ module ral_nlls_internal
      real(wp), dimension(:), allocatable :: f
      real(wp), dimension(:), allocatable :: J
      real(wp), dimension(:,:,:), allocatable :: Hi
+     real(wp) :: Delta
   end type tensor_params_type
   
   abstract interface
@@ -837,19 +846,20 @@ contains
             w%d,w%normd,options,inform,& 
             w%calculate_step_ws)
        if (inform%status .ne. 0) goto 4000
-       
+
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
        w%Xnew = X + w%d
        call eval_F(inform%external_return, n, m, w%Xnew, w%fnew, params)
        inform%f_eval = inform%f_eval + 1
+
        if (inform%external_return .ne. 0) goto 4020
        if ( present(weights) ) then
           ! set f -> Wf
           w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
        end if       
-       normFnew = norm2(w%fnew)
+       normFnew = norm2(w%fnew(1:m))
        
        
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
@@ -993,7 +1003,7 @@ contains
     end if
     
     if (options%print_level >=1) then
-       write(options%out,1010) w%iter, second, w%Delta, inform%obj, &
+       write(options%out,1010) w%iter, second, w%Delta, rho, inform%obj, &
             inform%norm_g, inform%scaled_g
     end if
 
@@ -1210,9 +1220,10 @@ contains
      if ( options%model == 4 ) then
         ! tensor model -- call ral_nlls again
 
-        call solve_newton_tensor(n, m, f, J, X, d, md, eval_HF, params, options, inform)      
+        call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
+                                 d, md, params, options, inform)
         call evaluate_model(f,J,hf,d,md_bad,md_gn,m,n,options,w%evaluate_model_ws)
-
+        
      else 
         ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
@@ -1860,6 +1871,7 @@ contains
 !     real(wp), allocatable :: diag(:)
      integer :: ii
      logical :: proceed
+     real(wp) :: reg_param
 
      ! The code finds 
      !  d = arg min_p   w^T p + 0.5 * p^T D p
@@ -1937,8 +1949,9 @@ contains
         
         proceed = .false.
         do while (.not. proceed)          
+           reg_param = options%base_regularization + 1.0_wp/Delta
            call drqs_solve & 
-                (n,w%reg_order,1.0_wp/Delta, zero, w%v_trans, w%ew, w%d_trans, & 
+                (n,w%reg_order, reg_param, zero, w%v_trans, w%ew, w%d_trans, & 
                 drqs_options, drqs_inform)
            if ( drqs_inform%status == -7 ) then
               ! drqs_solve has failed because the matrix
@@ -2121,10 +2134,10 @@ contains
        TYPE( nlls_options ), INTENT( IN ) :: options
 
        real(wp) :: actual_reduction, predicted_reduction
-       
-       actual_reduction = ( 0.5 * normf**2 ) - ( 0.5 * normfnew**2 )
-       predicted_reduction = ( ( 0.5 * normf**2 ) - md )
-       
+
+       actual_reduction = ( 0.5 * (normf**2) ) - ( 0.5 * (normfnew**2) )
+       predicted_reduction = ( ( 0.5 * (normf**2) ) - md )
+
        if ( abs(actual_reduction) < 10*epsmch ) then 
           rho = one
        else if (abs( predicted_reduction ) < 10 * epsmch ) then 
@@ -2700,11 +2713,12 @@ contains
 
      ! routines needed for the Newton tensor model
      
-     subroutine solve_newton_tensor(n, m, f, J, X, d, md, eval_HF, params, options, inform)
+     subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
+                                    d, md, params, options, inform)
        
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
-       real(wp) , intent(in) :: X(:)
+       real(wp) , intent(in) :: X(:), Delta
        real(wp), intent(out) :: d(:)
        real(wp), intent(out) :: md
        procedure( eval_hf_type ) :: eval_HF
@@ -2728,8 +2742,10 @@ contains
        ! make sure that we use galahad's subproblem solver (for now...)
        tensor_options%nlls_method = 4
        tensor_options%maxit = 100
-       tensor_options%reg_order = 3.0_wp
-
+       tensor_options%reg_order = 2.0_wp
+       tensor_options%base_regularization = 1.0_wp/Delta
+!       tensor_options%hybrid_tol = 2e0
+       tensor_options%hybrid_switch_its = 3
        ! We need to solve the problem 
        !   min 1/2 \sum_{i=1}^m t_{ik}^2(s) + 1/p \sigma_k ||s||^p_p
        ! where 
@@ -2743,6 +2759,8 @@ contains
        ! save the residual to params
        allocate(tparams%f(m))
        tparams%f(1:m) = f(1:m)
+
+       tparams%Delta = Delta
 
        ! save the Jacobian to params
        allocate(tparams%J(n*m))
@@ -2888,8 +2906,7 @@ contains
              end do
           end do
        end select
-
-
+       
      end subroutine evaltensor_HF
        
 
