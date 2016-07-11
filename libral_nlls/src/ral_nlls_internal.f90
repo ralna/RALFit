@@ -2865,18 +2865,13 @@ contains
           J(1:n*m) = zero
           ! first, copy in the original J...
           J(1:n*m) = params%J(1:n*m)
-          do ii = 1,m
-             do jj = 1,n
-                Hs(jj) = zero
+          do jj = 1,n ! columns
+             do ii = 1,m ! rows 
                 do kk = 1,n
-                   Hs(jj) = Hs(jj) + params%Hi(jj,kk,ii)*s(kk)
+                   J( (jj-1)*m + ii) = J( (jj-1)*m + ii) + params%Hi(jj,kk,ii)*s(kk)
                 end do
              end do
              
-             do jj = 1,n
-                J( (jj-1)*m + ii) = J( (jj-1)*m + ii) + Hs(jj)
-             end do
-             ! This should work, but can be streamlined...
           end do
        end select
 
