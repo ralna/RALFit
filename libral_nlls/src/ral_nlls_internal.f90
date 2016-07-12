@@ -158,7 +158,7 @@ module ral_nlls_internal
      REAL ( KIND = wp ) :: maximum_radius = ten ** 8
 
 !   a potential iterate will only be accepted if the actual decrease
-!    f - f(x_new) is larger than %eta_successful times that predicted
+!    f - f(x_new) is larger than %eta_successful times that predited
 !    by a quadratic model of the decrease. The trust-region radius will be
 !    increased if this relative decrease is greater than %eta_very_successful
 !    but smaller than %eta_too_successful
@@ -235,6 +235,11 @@ module ral_nlls_internal
 
 ! what regularization should we use?
     real(wp) :: reg_order = zero
+
+! which method shall we use to solve the inner problem?
+! 1 - add in a base regularization parameter
+! 2 - minimize a modified cost functional
+    integer :: inner_method = 1
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! O U T P U T   C O N T R O L S !!!
@@ -2730,20 +2735,15 @@ contains
        !class( tensor_params_type ), pointer :: tparams
        type( tensor_params_type ), target :: tparams
        type( nlls_inform ) :: tensor_inform
-       integer :: i     
+       integer :: i, m_in     
        real(wp), allocatable :: model_tensor(:)
     
        ! copy options onto tensor_options
        tensor_options = options
 
        tensor_options%model = 3 ! use a hybrid method for the inner loop...
-       ! make sure we use regularization:
-       tensor_options%type_of_method = 2
-       ! make sure that we use galahad's subproblem solver (for now...)
-       tensor_options%nlls_method = 4
        tensor_options%maxit = 100
        tensor_options%reg_order = 2.0_wp
-       tensor_options%base_regularization = 1.0_wp/Delta
 !       tensor_options%hybrid_tol = 2e0
        tensor_options%hybrid_switch_its = 3
        ! We need to solve the problem 
@@ -2779,20 +2779,65 @@ contains
        ! send to ral_nlls to solve the subproblem recursively
 
        if (options%print_level > 0) write(options%out,"(80('*'))")
-       call nlls_solve(n,m,d, & 
-                      evaltensor_f, evaltensor_J, evaltensor_HF, &
-                      tparams, & 
-                      tensor_options, tensor_inform )
+       select case (options%inner_method)
+       case (1) ! send in a base regularization parameter
+          tensor_options%base_regularization = 1.0_wp/Delta
+          tensor_options%type_of_method = 2
+          tensor_options%nlls_method = 4
+          m_in = m
+          call nlls_solve(n,m_in,d, & 
+               evaltensor_f, evaltensor_J, evaltensor_HF, &
+               tparams, & 
+               tensor_options, tensor_inform )
+       case (2)
+          m_in = m + n
+          tensor_options%type_of_method = 1
+          tensor_options%nlls_method = 4
+!          tensor_options%radius_increase = 2.0
+!          tensor_options%radius_reduce = 0.5
+          call nlls_solve(n,m_in,d, & 
+               evaltensor2_f, evaltensor2_J, evaltensor2_HF, &
+               tparams, & 
+               tensor_options, tensor_inform )
+       end select
        if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
        if (options%print_level > 0) write(options%out,"(80('*'))")
        
        ! now we need to evaluate the model at the new point
        allocate(model_tensor(m))
        call evaltensor_f(inform%external_return, n, m, d, model_tensor, tparams)
-       md = 0.5 * norm2( model_tensor )**2
-       
+       md = 0.5 * norm2( model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
      end subroutine solve_newton_tensor
+
+     subroutine evaltensor2_f(status,n,m,s,f,params)
+
+       integer, intent(out) :: status
+       integer, intent(in)  :: n
+       integer, intent(in)  :: m
+       real(wp), dimension(*), intent(in)    :: s
+       real(wp), dimension(*), intent(out)   :: f
+       class( params_base_type ), intent(in) :: params
+
+       integer :: m1
+       integer :: ii 
+       
+       ! The function we need to minimize is 
+       !  0.5(\sum_{i=1}^m t_ik(s)^2  + \sum_{i=1}^m (sqrt(sigma_i)s_i)^2)
+       !  = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
+       !    + 1/2 \sum_{i=1}^m (sqrt(sigma_i)s_i)^2
+
+       m1 = m - n ! this is the 'm' from the original problem
+
+       call evaltensor_f(status,n,m1,s,f(1:m1),params)
+       select type(params)
+       type is(tensor_params_type)
+          do ii = 1, n
+             f(m1 + ii) = sqrt(1.0/params%Delta) * s(ii)
+          end do
+       end select
+       
+     end subroutine evaltensor2_f
 
      subroutine evaltensor_f(status, n, m, s, f, params)
        
@@ -2809,12 +2854,8 @@ contains
        real(wp), allocatable :: Hs(:), Js(:)
        real(wp), allocatable :: temp(:)
 
-       allocate(temp(n*m))
-       temp = (/ ((ii), ii = 1, n*m) /)
-       
        allocate(Hs(n), Js(m))
        
-
        ! The function we need to minimize is 
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
        select type(params)
@@ -2841,6 +2882,52 @@ contains
 
      end subroutine evaltensor_f
 
+     subroutine evaltensor2_J(status, n, m, s, J, params)
+       integer, intent(out) :: status
+       integer, intent(in)  :: n
+       integer, intent(in)  :: m
+       real(wp), dimension(*), intent(in)    :: s
+       real(wp), dimension(*), intent(out)   :: J
+       class( params_base_type ), intent(in) :: params
+
+       real(wp), allocatable :: J_local(:)
+       integer :: m1
+       integer :: ii 
+       
+       m1 = m - n;
+       
+       ! We need to return a (m+n) x n matrix (by cols), where
+       !   g_i + H_i s 
+       ! for i = 1, m, and 
+       !   s_i e_i
+       ! where e_i = (0....1...0)
+       !                   ^ith entry
+       ! for i = m+1, m+n
+
+       allocate(J_local(n*m1))
+       
+       ! it would be more efficient to copy-paste code here, but this 
+       ! is prefrerable from maintainability...check performance
+       call evaltensor_J(status, n, m1, s, J_local, params)
+       
+       J(1:n*m) = zero
+       select type(params)
+       type is(tensor_params_type)
+          do ii = 1,n ! loop over the columns...
+             J(m*(ii-1) + 1: m*(ii-1) + m1) = J_local(m1*(ii-1) + 1: m1*(ii-1) + m1)
+             J(m*(ii-1) + m1 + ii) = sqrt(1.0/params%Delta)
+          end do
+       end select
+       
+       deallocate(J_local)
+
+       
+!!$       write(*,*) 'J= '
+!!$       do ii = 1,m
+!!$          write(*,*) J(ii:n*m:m)
+!!$       end do
+
+     end subroutine evaltensor2_J
 
      subroutine evaltensor_J(status, n, m, s, J, params)
        integer, intent(out) :: status
@@ -2877,6 +2964,24 @@ contains
 
      end subroutine evaltensor_J
 
+     
+     subroutine evaltensor2_HF(status, n, m, s, f, HF, params)
+       integer, intent(out) :: status
+       integer, intent(in)  :: n
+       integer, intent(in)  :: m
+       real(wp), dimension(*), intent(in)    :: s
+       real(wp), dimension(*), intent(in)   :: f
+       real(wp), dimension(*), intent(out) :: HF
+       class( params_base_type ), intent(in) :: params
+
+       integer :: ii 
+       integer :: m1 
+       
+       m1 = m - n
+       
+       call evaltensor_HF(status, n, m1, s, f(1:m1), HF, params)
+
+     end subroutine evaltensor2_HF
 
      subroutine evaltensor_HF(status, n, m, s, f, HF, params)
        integer, intent(out) :: status
