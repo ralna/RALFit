@@ -112,6 +112,9 @@ program nlls_example2
    options%type_of_method = 2
    options%nlls_method = 4
    options%exact_second_derivatives = .true. 
+   options%maxit = 50
+   
+   options%inner_method = 1
 
    options%print_level = 1
 
