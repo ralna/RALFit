@@ -57,11 +57,18 @@ RESULT=$?
 [ $RESULT -ne 0 ] && exit 6
 echo "passed"
 
+echo "Second Fortran example..."
+$NLLS_EXAMPLE/Fortran/nlls_example2 | \
+    diff $NLLS_TEST_SRC/nlls_fortran_example2.output -
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 7
+echo "passed"
+
 # python!
 echo "Python example..."
 $NLLS_BASE/example/Python/solve.py | diff $NLLS_TEST_SRC/solve_python.output -
 RESULT=$?
-[ $RESULT -ne 0 ] && exit 7
+[ $RESULT -ne 0 ] && exit 8
 echo "passed"
 
 #[ $RESULT -ne 0 ] && exit 1
