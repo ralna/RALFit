@@ -30,7 +30,7 @@ sifdecoder -A pc64.lnx.gfo -st   RAT43.SIF
 iter    2nd order?  Delta         rho           0.5||f||^2    ||J'f||       ||J'f||/||f||
 s1 =   3.5678E+02    sn =   3.2936E+00
 k(J) =   1.0832E+02
-   0                1.0000E+02    0.0000E+00    1.5332E+06    5.9100E+05    3.3751E+02
+   0                1.0000E+02   -1.0000E+00    1.5332E+06    5.9100E+05    3.3751E+02
 *** Solving the trust region subproblem using DTRS ***
  ||c|| = 1.2536E+00, ||H|| = 1.0000E+00, lambda_min = -1.6184E-01
     ---------------------------- phase two ----------------------------
@@ -404,7 +404,7 @@ status = 0       iter = 18
  # Jacobian evaluations  =  19
  # Hessian evaluations   =  19
  Set up time             =  .00 seconds
- Solve time              =  .02 seconds
+ Solve time              =  .01 seconds
 
 ******************************************************************
 

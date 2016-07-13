@@ -821,7 +821,7 @@ contains
     w%iter = w%iter + 1
     inform%iter = w%iter
     
-    rho  = -one ! intialize rho as a negative value
+
     success = .false.
     no_reductions = 0
 
