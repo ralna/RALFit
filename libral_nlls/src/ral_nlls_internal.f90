@@ -49,6 +49,8 @@ module ral_nlls_internal
      INTEGER :: MS_TOO_MANY_SHIFTS = -302
      INTEGER :: MS_NO_PROGRESS = -303
      ! DTRS errors
+     ! Tensor model errors
+     INTEGER :: NO_SECOND_DERIVATIVES = -401
 
   END TYPE NLLS_ERROR
 
@@ -801,13 +803,14 @@ contains
              inform%h_eval = inform%h_eval + 1
              if (inform%external_return > 0) goto 4030
           else
-             write(*,*) 'Error:: exact second derivatives needed for tensor model'
-             ! todo :: make into a real error
+             goto 4090 ! return an error
           end if
        case default
           goto 4040 ! unsupported model -- return to user
        end select
        
+       rho  = -one ! intialize rho as a negative value
+
        if (options%print_level > 0 ) then 
           write(options%out,1010) w%iter, ' ', w%Delta, rho, inform%obj, &
             inform%norm_g, inform%scaled_g
@@ -1113,6 +1116,11 @@ contains
     inform%bad_alloc = 'nlls_iterate'
     goto 4000
 
+4090 continue
+    ! no second derivatives in tensor model
+    inform%status = ERROR%NO_SECOND_DERIVATIVES
+    goto 4000
+
 ! convergence 
 5000 continue
     ! convegence test satisfied
@@ -1193,6 +1201,8 @@ contains
        inform%error_message = 'Too many shifts taken in more_sorensen (nlls_method=3)'
     elseif ( inform%status == ERROR%MS_NO_PROGRESS ) then
        inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
+    elseif ( inform%status == ERROR%NO_SECOND_DERIVATIVES ) then
+       inform%error_message = 'Exact second derivatives needed for tensor model'
     else 
        inform%error_message = 'Unknown error number'           
     end if
