@@ -2754,9 +2754,7 @@ contains
 
        tensor_options%model = 3 ! use a hybrid method for the inner loop...
        tensor_options%maxit = 100
-       tensor_options%reg_order = 2.0_wp
-!       tensor_options%hybrid_tol = 2e0
-       tensor_options%hybrid_switch_its = 3
+!       tensor_options%hybrid_switch_its = 3
        ! We need to solve the problem 
        !   min 1/2 \sum_{i=1}^m t_{ik}^2(s) + 1/p \sigma_k ||s||^p_p
        ! where 
