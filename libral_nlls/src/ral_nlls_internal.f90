@@ -438,6 +438,8 @@ module ral_nlls_internal
 
     type, private :: solve_newton_tensor_work ! a workspace for solve_newton_tensor
        real(wp), allocatable :: model_tensor(:)
+       type( tensor_params_type ) :: tparams
+       type( nlls_options ) :: tensor_options
     end type solve_newton_tensor_work
         
     type, private :: solve_galahad_work ! workspace for subroutine dtrs_work
@@ -2750,18 +2752,9 @@ contains
        type( nlls_inform ), intent(inout) :: inform
        type( solve_newton_tensor_work ) :: w
        
-       type( nlls_options ) :: tensor_options
-       !class( tensor_params_type ), pointer :: tparams
-       type( tensor_params_type ), target :: tparams
        type( nlls_inform ) :: tensor_inform
        integer :: i, m_in     
     
-       ! copy options onto tensor_options
-       tensor_options = options
-
-       tensor_options%model = 3 ! use a hybrid method for the inner loop...
-       tensor_options%maxit = 100
-!       tensor_options%hybrid_switch_its = 3
        ! We need to solve the problem 
        !   min 1/2 \sum_{i=1}^m t_{ik}^2(s) + 1/p \sigma_k ||s||^p_p
        ! where 
@@ -2773,56 +2766,44 @@ contains
        ! First, we need to set up the eval_r/J/Hf functions needed here.
        
        ! save the residual to params
-       allocate(tparams%f(m))
-       tparams%f(1:m) = f(1:m)
+       w%tparams%f(1:m) = f(1:m)
 
-       tparams%Delta = Delta
+       w%tparams%Delta = Delta
 
        ! save the Jacobian to params
-       allocate(tparams%J(n*m))
-       tparams%J(1:n*m) = J(1:n*m)
+       w%tparams%J(1:n*m) = J(1:n*m)
 
        ! now, let's get all the Hi's...
-       allocate(tparams%Hi(n,n,m))
-       
-       
        do i = 1,m
-          call get_Hi(n, m, X, params, i, tparams%Hi(:,:,i), eval_HF, inform)
+          call get_Hi(n, m, X, params, i, w%tparams%Hi(:,:,i), eval_HF, inform)
        end do
 
        d(1:n) = zero
 
        ! send to ral_nlls to solve the subproblem recursively
-
        if (options%print_level > 0) write(options%out,"(80('*'))")
        select case (options%inner_method)
        case (1) ! send in a base regularization parameter
-          tensor_options%base_regularization = 1.0_wp/Delta
-          tensor_options%type_of_method = 2
-          tensor_options%nlls_method = 4
+          w%tensor_options%base_regularization = 1.0_wp/Delta
           m_in = m
           call nlls_solve(n,m_in,d, & 
                evaltensor_f, evaltensor_J, evaltensor_HF, &
-               tparams, & 
-               tensor_options, tensor_inform )
+               w%tparams, & 
+               w%tensor_options, tensor_inform )
        case (2)
           m_in = m + n
-          tensor_options%type_of_method = 1
-          tensor_options%nlls_method = 4
-!          tensor_options%radius_increase = 2.0
-!          tensor_options%radius_reduce = 0.5
-          tparams%m1 = m
+          w%tparams%m1 = m
           call nlls_solve(n,m_in,d, & 
                evaltensor2_f, evaltensor2_J, evaltensor2_HF, &
-               tparams, & 
-               tensor_options, tensor_inform )
+               w%tparams, & 
+               w%tensor_options, tensor_inform )
        end select
        if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
        if (options%print_level > 0) write(options%out,"(80('*'))")
        
        ! now we need to evaluate the model at the new point
 
-       call evaltensor_f(inform%external_return, n, m, d, w%model_tensor, tparams)
+       call evaltensor_f(inform%external_return, n, m, d, w%model_tensor, w%tparams)
        md = 0.5 * norm2( w%model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
      end subroutine solve_newton_tensor
@@ -3334,6 +3315,30 @@ contains
        allocate(w%model_tensor(m), stat=inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
        
+       allocate(w%tparams%f(m), stat=inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
+
+       allocate(w%tparams%J(n*m), stat=inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
+       
+       allocate(w%tparams%Hi(n,n,m), stat=inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
+       
+       ! copy options from those input
+       w%tensor_options = options
+       ! use a hybrid method for the inner loop
+       w%tensor_options%model = 3
+       w%tensor_options%maxit = 100
+
+       select case (options%inner_method)
+       case (1)
+          w%tensor_options%type_of_method = 2
+          w%tensor_options%nlls_method = 4
+       case (2)
+          w%tensor_options%type_of_method = 1 ! make this changable by the user
+          w%tensor_options%nlls_method = 4 
+       end select
+       
        return
 
        ! Error statements
@@ -3349,7 +3354,10 @@ contains
        type( nlls_options ), intent(in) :: options
 
        if(allocated(w%model_tensor)) deallocate(w%model_tensor)
-       
+       if(allocated(w%tparams%f)) deallocate(w%tparams%f)
+       if(allocated(w%tparams%J)) deallocate(w%tparams%J)
+       if(allocated(w%tparams%Hi)) deallocate(w%tparams%Hi)
+      
        return
        
      end subroutine remove_workspace_solve_newton_tensor
