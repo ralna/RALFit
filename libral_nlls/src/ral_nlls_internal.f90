@@ -353,6 +353,7 @@ module ral_nlls_internal
      real(wp), dimension(:), allocatable :: J
      real(wp), dimension(:,:,:), allocatable :: Hi
      real(wp) :: Delta
+     integer :: m1 = 0
   end type tensor_params_type
   
   abstract interface
@@ -789,7 +790,7 @@ contains
           end if
           
        case (4) ! tensor model....
-          ! do nothing for the time being....
+          ! get the intitial second derivatives
           w%use_second_derivatives = .true.
           if ( options%exact_second_derivatives ) then
              if ( present(weights) ) then
@@ -2795,6 +2796,7 @@ contains
           tensor_options%nlls_method = 4
 !          tensor_options%radius_increase = 2.0
 !          tensor_options%radius_reduce = 0.5
+          tparams%m1 = m
           call nlls_solve(n,m_in,d, & 
                evaltensor2_f, evaltensor2_J, evaltensor2_HF, &
                tparams, & 
@@ -2890,7 +2892,6 @@ contains
        real(wp), dimension(*), intent(out)   :: J
        class( params_base_type ), intent(in) :: params
 
-       real(wp), allocatable :: J_local(:)
        integer :: m1
        integer :: ii 
        
@@ -2904,29 +2905,18 @@ contains
        !                   ^ith entry
        ! for i = m+1, m+n
 
-       allocate(J_local(n*m1))
-       
-       ! it would be more efficient to copy-paste code here, but this 
-       ! is prefrerable from maintainability...check performance
-       call evaltensor_J(status, n, m1, s, J_local, params)
-       
-       J(1:n*m) = zero
+       ! fill in the top 'm' rows
+       ! note that params%m1 has been set to m1 by the calling subroutine
+       call evaltensor_J(status, n, m, s, J, params)
+
+       ! now fill in a diagonal matrix in the remaining n x n box
        select type(params)
        type is(tensor_params_type)
           do ii = 1,n ! loop over the columns...
-             J(m*(ii-1) + 1: m*(ii-1) + m1) = J_local(m1*(ii-1) + 1: m1*(ii-1) + m1)
              J(m*(ii-1) + m1 + ii) = sqrt(1.0/params%Delta)
           end do
        end select
        
-       deallocate(J_local)
-
-       
-!!$       write(*,*) 'J= '
-!!$       do ii = 1,m
-!!$          write(*,*) J(ii:n*m:m)
-!!$       end do
-
      end subroutine evaltensor2_J
 
      subroutine evaltensor_J(status, n, m, s, J, params)
@@ -2938,27 +2928,29 @@ contains
        class( params_base_type ), intent(in) :: params
 
        integer :: ii, jj, kk
+       integer :: m1
 
        ! The function we need to return is 
        !  g_i + H_i s 
        ! where h_i and H_i are the gradient and hessians of the original problem
 
-       real(wp), allocatable :: Hs(:)
-       
-       allocate(Hs(n))
-       
        select type(params)
        type is(tensor_params_type)
+          if (params%m1 == 0) then 
+             m1 = m
+          else
+             m1 = params%m1
+          end if
           J(1:n*m) = zero
           ! first, copy in the original J...
-          J(1:n*m) = params%J(1:n*m)
+!          J(1:n*m) = params%J(1:n*m)
           do jj = 1,n ! columns
-             do ii = 1,m ! rows 
+             J( (jj-1)*m + 1 : (jj-1)*m + m1) = params%J((jj-1)*m1 + 1 : jj*m1)
+             do ii = 1,m1 ! rows 
                 do kk = 1,n
                    J( (jj-1)*m + ii) = J( (jj-1)*m + ii) + params%Hi(jj,kk,ii)*s(kk)
                 end do
              end do
-             
           end do
        end select
 
