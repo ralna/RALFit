@@ -435,6 +435,10 @@ module ral_nlls_internal
        real(wp), allocatable :: tempvec(:)
        type( all_eig_symm_work ) :: all_eig_symm_ws
     end type apply_scaling_work
+
+    type, private :: solve_newton_tensor_work ! a workspace for solve_newton_tensor
+       real(wp), allocatable :: model_tensor(:)
+    end type solve_newton_tensor_work
         
     type, private :: solve_galahad_work ! workspace for subroutine dtrs_work
        real(wp), allocatable :: A(:,:), ev(:,:), ew(:), v(:), v_trans(:), d_trans(:)
@@ -472,6 +476,7 @@ module ral_nlls_internal
     type, private :: calculate_step_work ! workspace for subroutine calculate_step
        type( AINT_tr_work ) :: AINT_tr_ws
        type( dogleg_work ) :: dogleg_ws
+       type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
        type( more_sorensen_work ) :: more_sorensen_ws
        type( solve_galahad_work ) :: solve_galahad_ws
        type( evaluate_model_work) :: evaluate_model_ws
@@ -1237,7 +1242,8 @@ contains
         ! tensor model -- call ral_nlls again
 
         call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
-                                 d, md, params, options, inform)
+                                 d, md, params, options, inform, & 
+                                 w%solve_newton_tensor_ws)
         call evaluate_model(f,J,hf,d,md_bad,md_gn,m,n,options,w%evaluate_model_ws)
         
      else 
@@ -2730,7 +2736,8 @@ contains
      ! routines needed for the Newton tensor model
      
      subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
-                                    d, md, params, options, inform)
+                                    d, md, params, options, inform, & 
+                                    w)
        
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
@@ -2741,13 +2748,13 @@ contains
        class( params_base_type ) :: params              
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-
+       type( solve_newton_tensor_work ) :: w
+       
        type( nlls_options ) :: tensor_options
        !class( tensor_params_type ), pointer :: tparams
        type( tensor_params_type ), target :: tparams
        type( nlls_inform ) :: tensor_inform
        integer :: i, m_in     
-       real(wp), allocatable :: model_tensor(:)
     
        ! copy options onto tensor_options
        tensor_options = options
@@ -2814,9 +2821,9 @@ contains
        if (options%print_level > 0) write(options%out,"(80('*'))")
        
        ! now we need to evaluate the model at the new point
-       allocate(model_tensor(m))
-       call evaltensor_f(inform%external_return, n, m, d, model_tensor, tparams)
-       md = 0.5 * norm2( model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
+
+       call evaltensor_f(inform%external_return, n, m, d, w%model_tensor, tparams)
+       md = 0.5 * norm2( w%model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
      end subroutine solve_newton_tensor
 
@@ -3148,29 +3155,37 @@ contains
             workspace%calculate_step_ws%evaluate_model_ws,options,inform)
        if (inform%alloc_status > 0) goto 1010
 
-       select case (options%nlls_method)
-
-       case (1) ! use the dogleg method
-          call setup_workspace_dogleg(n,m,workspace%calculate_step_ws%dogleg_ws, & 
+       if ( options%model == 4 ) then
+          
+          call setup_workspace_solve_newton_tensor(n,m,&
+               workspace%calculate_step_ws%solve_newton_tensor_ws,&
                options, inform)
-          if (inform%alloc_status > 0) goto 1010
+          
+       else
 
-       case(2) ! use the AINT method
-          call setup_workspace_AINT_tr(n,m,workspace%calculate_step_ws%AINT_tr_ws, & 
-               options, inform)
-          if (inform%alloc_status > 0) goto 1010
+          select case (options%nlls_method)
 
-       case(3) ! More-Sorensen 
-          call setup_workspace_more_sorensen(n,m,&
-               workspace%calculate_step_ws%more_sorensen_ws,options,inform)
-          if (inform%alloc_status > 0) goto 1010
-
-       case (4) ! dtrs (Galahad)
-          call setup_workspace_solve_galahad(n,m, & 
-               workspace%calculate_step_ws%solve_galahad_ws, options, inform)
-          if (inform%alloc_status > 0) goto 1010
-       end select
-
+          case (1) ! use the dogleg method
+             call setup_workspace_dogleg(n,m,workspace%calculate_step_ws%dogleg_ws, & 
+                  options, inform)
+             if (inform%alloc_status > 0) goto 1010
+             
+          case(2) ! use the AINT method
+             call setup_workspace_AINT_tr(n,m,workspace%calculate_step_ws%AINT_tr_ws, & 
+                  options, inform)
+             if (inform%alloc_status > 0) goto 1010
+             
+          case(3) ! More-Sorensen 
+             call setup_workspace_more_sorensen(n,m,&
+                  workspace%calculate_step_ws%more_sorensen_ws,options,inform)
+             if (inform%alloc_status > 0) goto 1010
+             
+          case (4) ! dtrs (Galahad)
+             call setup_workspace_solve_galahad(n,m, & 
+                  workspace%calculate_step_ws%solve_galahad_ws, options, inform)
+             if (inform%alloc_status > 0) goto 1010
+          end select
+       end if
        return
 
        ! Error statements
@@ -3224,25 +3239,34 @@ contains
        call remove_workspace_evaluate_model(workspace%calculate_step_ws%evaluate_model_ws,&
             options)
 
-       select case (options%nlls_method)
-
-       case (1) ! use the dogleg method
-          call remove_workspace_dogleg(workspace%calculate_step_ws%dogleg_ws, & 
+       if (options%model == 4) then 
+          
+          call remove_workspace_solve_newton_tensor(& 
+               workspace%calculate_step_ws%solve_newton_tensor_ws, &
                options)
+       else
 
-       case(2) ! use the AINT method
-          call remove_workspace_AINT_tr(workspace%calculate_step_ws%AINT_tr_ws, & 
-               options)
+          select case (options%nlls_method)
 
-       case(3) ! More-Sorensen 
-          call remove_workspace_more_sorensen(&
-               workspace%calculate_step_ws%more_sorensen_ws,options)
+          case (1) ! use the dogleg method
+             call remove_workspace_dogleg(workspace%calculate_step_ws%dogleg_ws, & 
+                  options)
+             
+          case(2) ! use the AINT method
+             call remove_workspace_AINT_tr(workspace%calculate_step_ws%AINT_tr_ws, & 
+                  options)
+             
+          case(3) ! More-Sorensen 
+             call remove_workspace_more_sorensen(&
+                  workspace%calculate_step_ws%more_sorensen_ws,options)
+             
+          case (4) ! dtrs (Galahad)
+             call remove_workspace_solve_galahad(& 
+                  workspace%calculate_step_ws%solve_galahad_ws, options)
+             
+          end select
 
-       case (4) ! dtrs (Galahad)
-          call remove_workspace_solve_galahad(& 
-               workspace%calculate_step_ws%solve_galahad_ws, options)
-
-       end select
+       end if
 
 !       ! evaluate model in the main routine...       
 !       call remove_workspace_evaluate_model(workspace%evaluate_model_ws,options)
@@ -3300,6 +3324,35 @@ contains
        return
 
      end subroutine remove_workspace_get_svd_J
+
+     subroutine setup_workspace_solve_newton_tensor(n,m,w,options,inform)
+       integer, intent(in) :: n, m 
+       type( solve_newton_tensor_work ), intent(out) :: w
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(out) :: inform
+       
+       allocate(w%model_tensor(m), stat=inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
+       
+       return
+
+       ! Error statements
+9000   continue  ! bad allocations in this subroutine
+       inform%bad_alloc = 'setup_workspace_dogleg'
+       inform%status = ERROR%ALLOCATION
+       return
+
+     end subroutine setup_workspace_solve_newton_tensor
+
+     subroutine remove_workspace_solve_newton_tensor(w,options)
+       type( solve_newton_tensor_work ), intent(out) :: w
+       type( nlls_options ), intent(in) :: options
+
+       if(allocated(w%model_tensor)) deallocate(w%model_tensor)
+       
+       return
+       
+     end subroutine remove_workspace_solve_newton_tensor
 
      subroutine setup_workspace_dogleg(n,m,w,options,inform)
        integer, intent(in) :: n, m 
