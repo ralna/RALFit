@@ -2798,7 +2798,6 @@ contains
                w%tensor_options, tensor_inform )
        case (2)
           m_in = m + n
-          w%tparams%m1 = m
           call nlls_solve(n,m_in,d, & 
                evaltensor2_f, evaltensor2_J, evaltensor2_HF, &
                w%tparams, & 
@@ -3344,6 +3343,7 @@ contains
        case (2)
           w%tensor_options%type_of_method = 1 ! make this changable by the user
           w%tensor_options%nlls_method = 4 
+          w%tparams%m1 = m
        end select
        
        return
