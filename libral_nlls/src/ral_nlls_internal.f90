@@ -355,6 +355,7 @@ module ral_nlls_internal
      real(wp), dimension(:), allocatable :: J
      real(wp), dimension(:,:,:), allocatable :: Hi
      real(wp) :: Delta
+     integer :: m
      integer :: m1 = 0
   end type tensor_params_type
   
@@ -2792,17 +2793,13 @@ contains
        case (1) ! send in a base regularization parameter
           w%tensor_options%base_regularization = 1.0_wp/Delta
           m_in = m
-          call nlls_solve(n,m_in,d, & 
-               evaltensor_f, evaltensor_J, evaltensor_HF, &
-               w%tparams, & 
-               w%tensor_options, tensor_inform )
        case (2)
           m_in = m + n
-          call nlls_solve(n,m_in,d, & 
-               evaltensor2_f, evaltensor2_J, evaltensor2_HF, &
-               w%tparams, & 
-               w%tensor_options, tensor_inform )
        end select
+       call nlls_solve(n,m_in,d, & 
+            evaltensor_f, evaltensor_J, evaltensor_HF, &
+            w%tparams, & 
+            w%tensor_options, tensor_inform )
        if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
        if (options%print_level > 0) write(options%out,"(80('*'))")
        
@@ -2812,35 +2809,6 @@ contains
        md = 0.5 * norm2( w%model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
      end subroutine solve_newton_tensor
-
-     subroutine evaltensor2_f(status,n,m,s,f,params)
-
-       integer, intent(out) :: status
-       integer, intent(in)  :: n
-       integer, intent(in)  :: m
-       real(wp), dimension(*), intent(in)    :: s
-       real(wp), dimension(*), intent(out)   :: f
-       class( params_base_type ), intent(in) :: params
-
-       integer :: m1
-       integer :: ii 
-       
-       ! The function we need to minimize is 
-       !  0.5(\sum_{i=1}^m t_ik(s)^2  + \sum_{i=1}^m (sqrt(sigma_i)s_i)^2)
-       !  = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
-       !    + 1/2 \sum_{i=1}^m (sqrt(sigma_i)s_i)^2
-
-       m1 = m - n ! this is the 'm' from the original problem
-
-       call evaltensor_f(status,n,m1,s,f(1:m1),params)
-       select type(params)
-       type is(tensor_params_type)
-          do ii = 1, n
-             f(m1 + ii) = sqrt(1.0/params%Delta) * s(ii)
-          end do
-       end select
-       
-     end subroutine evaltensor2_f
 
      subroutine evaltensor_f(status, n, m, s, f, params)
        
@@ -2859,13 +2827,17 @@ contains
 
        ! The function we need to minimize is 
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
+
        select type(params)
        type is(tensor_params_type)
-          f(1:m) = params%f(1:m)  ! f_tensor = r_nlls originally
+          ! note: params%m contains 'm' from the original problem
+          ! if we're passing in the reg. factor via the function/Jacobian, then 
+          ! 'm' here is m+n from the original problem
+          f(1:params%m) = params%f(1:params%m)  ! f_tensor = r_nlls originally
           
-          call mult_J(params%J(1:n*m),n,m,s,tenJ%Js)
-          f(1:m) = f(1:m) + tenJ%Js(1:m) ! f_tensor = r + J s
-          do ii = 1,m
+          call mult_J(params%J(1:n*params%m),n,params%m,s,tenJ%Js)
+          f(1:params%m) = f(1:params%m) + tenJ%Js(1:params%m) ! f_tensor = r + J s
+          do ii = 1,params%m
              t_ik = params%f(ii)
              t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
              tenJ%Hs(1:n) = zero
@@ -2878,45 +2850,16 @@ contains
              ! f_tensor_i = r_i + J_is + 0.5 * s'H_is
              f(ii) = f(ii) + 0.5 * dot_product(s(1:n),tenJ%Hs(1:n))
           end do
+          if (params%m < m) then ! we're passing in the regularization via the function/Jacobian
+             ! do nothing for now...                               
+             do ii = 1, n
+                f(params%m + ii) = sqrt(1.0/params%Delta) * s(ii)
+             end do
+          end if
 
        end select
 
      end subroutine evaltensor_f
-
-     subroutine evaltensor2_J(status, n, m, s, J, params)
-       integer, intent(out) :: status
-       integer, intent(in)  :: n
-       integer, intent(in)  :: m
-       real(wp), dimension(*), intent(in)    :: s
-       real(wp), dimension(*), intent(out)   :: J
-       class( params_base_type ), intent(in) :: params
-
-       integer :: m1
-       integer :: ii 
-       
-       m1 = m - n;
-       
-       ! We need to return a (m+n) x n matrix (by cols), where
-       !   g_i + H_i s 
-       ! for i = 1, m, and 
-       !   s_i e_i
-       ! where e_i = (0....1...0)
-       !                   ^ith entry
-       ! for i = m+1, m+n
-
-       ! fill in the top 'm' rows
-       ! note that params%m1 has been set to m1 by the calling subroutine
-       call evaltensor_J(status, n, m, s, J, params)
-
-       ! now fill in a diagonal matrix in the remaining n x n box
-       select type(params)
-       type is(tensor_params_type)
-          do ii = 1,n ! loop over the columns...
-             J(m*(ii-1) + m1 + ii) = sqrt(1.0/params%Delta)
-          end do
-       end select
-       
-     end subroutine evaltensor2_J
 
      subroutine evaltensor_J(status, n, m, s, J, params)
        integer, intent(out) :: status
@@ -2935,44 +2878,30 @@ contains
 
        select type(params)
        type is(tensor_params_type)
-          if (params%m1 == 0) then 
-             m1 = m
-          else
-             m1 = params%m1
-          end if
+          ! note: params%m contains 'm' from the original problem
+          ! if we're passing in the reg. factor via the function/Jacobian, then 
+          ! 'm' here is m+n from the original problem
           J(1:n*m) = zero
           ! first, copy in the original J...
 !          J(1:n*m) = params%J(1:n*m)
           do jj = 1,n ! columns
-             J( (jj-1)*m + 1 : (jj-1)*m + m1) = params%J((jj-1)*m1 + 1 : jj*m1)
-             do ii = 1,m1 ! rows 
+             J( (jj-1)*m + 1 : (jj-1)*m + params%m) &
+                  = params%J((jj-1)*params%m + 1 : jj*params%m)
+             do ii = 1,params%m ! rows 
                 do kk = 1,n
                    J( (jj-1)*m + ii) = J( (jj-1)*m + ii) + params%Hi(jj,kk,ii)*s(kk)
                 end do
              end do
           end do
+          if (params%m < m) then ! we're passing in the regularization via the function/Jacobian
+             ! do nothing for now...                               
+             do ii = 1,n ! loop over the columns...
+                J(m*(ii-1) + params%m + ii) = sqrt(1.0/params%Delta)
+             end do
+          end if
        end select
 
      end subroutine evaltensor_J
-
-     
-     subroutine evaltensor2_HF(status, n, m, s, f, HF, params)
-       integer, intent(out) :: status
-       integer, intent(in)  :: n
-       integer, intent(in)  :: m
-       real(wp), dimension(*), intent(in)    :: s
-       real(wp), dimension(*), intent(in)   :: f
-       real(wp), dimension(*), intent(out) :: HF
-       class( params_base_type ), intent(in) :: params
-
-       integer :: ii 
-       integer :: m1 
-       
-       m1 = m - n
-       
-       call evaltensor_HF(status, n, m1, s, f(1:m1), HF, params)
-
-     end subroutine evaltensor2_HF
 
      subroutine evaltensor_HF(status, n, m, s, f, HF, params)
        integer, intent(out) :: status
@@ -2988,7 +2917,7 @@ contains
        HF(1:n*n) = zero
        select type(params)
        type is (tensor_params_type)
-          do ii = 1,m
+          do ii = 1,params%m
              do jj = 1,n
                 do kk = 1,n
                    HF( (jj - 1)*n + kk ) = HF( (jj -1)*n + kk) + & 
@@ -3326,6 +3255,8 @@ contains
        
        allocate(w%tparams%Hi(n,n,m), stat=inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
+       
+       w%tparams%m = m
        
        ! copy options from those input
        w%tensor_options = options
