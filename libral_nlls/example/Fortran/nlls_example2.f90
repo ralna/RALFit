@@ -131,4 +131,22 @@ program nlls_example2
    print *, "     ", inform%f_eval, " function evaluations"
    print *, "     ", inform%g_eval, " gradient evaluations"
    print *, "     ", inform%h_eval, " hessian evaluations"
+   
+   options%inner_method = 2
+
+   
+   x = (/ 2.5, 0.25 /) ! Initial guess
+   call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform)
+   if(inform%status.ne.0) then
+      print *, "ral_nlls() returned with error flag ", inform%status
+      stop
+   endif
+
+   ! Print result
+   print *, "Found a local optimum at x = ", x
+   print *, "Took ", inform%iter, " iterations"
+   print *, "     ", inform%f_eval, " function evaluations"
+   print *, "     ", inform%g_eval, " gradient evaluations"
+   print *, "     ", inform%h_eval, " hessian evaluations"
+   
 end program nlls_example2
