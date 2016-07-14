@@ -212,6 +212,9 @@ module ral_nlls_internal
 
      logical :: calculate_svd_J = .true.
 
+     logical :: setup_workspaces = .true.
+     logical :: remove_workspaces = .true.
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
@@ -441,6 +444,7 @@ module ral_nlls_internal
        real(wp), allocatable :: model_tensor(:)
        type( tensor_params_type ) :: tparams
        type( nlls_options ) :: tensor_options
+       integer :: m_in
     end type solve_newton_tensor_work
         
     type, private :: solve_galahad_work ! workspace for subroutine dtrs_work
@@ -520,7 +524,7 @@ module ral_nlls_internal
        real(wp), private, allocatable :: Hs(:), Js(:) ! work arrays for evaltensor_f
     end type tenJ_type
     type( tenJ_type ) :: tenJ
-
+    type( nlls_workspace ), private :: inner_workspace ! to be used to solve recursively    
 
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: setup_workspaces, solve_galahad, findbeta, mult_j
@@ -673,13 +677,13 @@ contains
     integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, rho_gn, normFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue
-    logical :: success
+    logical :: success 
+    logical :: bad_allocate = .false.
     character :: second
     
     ! todo: make max_tr_decrease a control variable
 
     ! Perform a single iteration of the RAL_NLLS loop
-    
     if (w%first_call == 1) then
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
        !! This is the first call...allocate arrays, and get initial !!
@@ -689,11 +693,17 @@ contains
        if ( options%print_level >= 1 ) write( options%out, 1000 )
        ! first, check if n < m
        if (n > m) goto 4070
-       
+       ! set scalars...
+       w%first_call = 0
+       w%tr_nu = options%radius_increase
+       w%tr_p = 7
        ! allocate space for vectors that will be used throughout the algorithm
-       call setup_workspaces(w,n,m,options,inform)
-       if ( inform%alloc_status > 0) goto 4000
-
+       
+       if (options%setup_workspaces) then 
+          call setup_workspaces(w,n,m,options,inform)
+          if ( inform%alloc_status > 0) goto 4000
+       end if
+       
        ! evaluate the residual
        call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
@@ -1066,24 +1076,28 @@ contains
     if (allocated(w%resvec)) then
        if( allocated(inform%resvec)) deallocate(inform%resvec)
        allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 4080
+       if (inform%alloc_status > 0) bad_allocate = .true.
        inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
     end if
     if (allocated(w%gradvec)) then
        if (allocated(inform%gradvec)) deallocate(inform%gradvec)
        allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 4080
+       if (inform%alloc_status > 0) bad_allocate = .true.
        inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
     end if
     if (options%calculate_svd_J) then
        if (allocated(inform%smallest_sv) ) deallocate(inform%smallest_sv)
        allocate(inform%smallest_sv(w%iter + 1))
-       if (inform%alloc_status > 0) goto 4080
+       if (inform%alloc_status > 0) bad_allocate = .true.
        if (allocated(inform%largest_sv) ) deallocate(inform%largest_sv)
        allocate(inform%largest_sv(w%iter + 1))
-       if (inform%alloc_status > 0) goto 4080
+       if (inform%alloc_status > 0) bad_allocate = .true.
     end if
 
+    if (bad_allocate) then 
+       inform%status = ERROR%ALLOCATION
+       inform%bad_alloc = 'nlls_iterate'
+    end if
 
     return
 
@@ -1165,9 +1179,17 @@ contains
     type( nlls_workspace ) :: w
     type( nlls_options ) :: options
     
+    ! reset all the scalars
     w%first_call = 1
+    w%iter = 0
+    w%reg_order = 2.0
+    w%use_second_derivatives = .false.
+    w%hybrid_count = 0 
+    w%hybrid_tol = 1.0
+    w%tr_nu = 2.0
+    w%tr_p = 3
     
-    call remove_workspaces(w,options)   
+    if (options%remove_workspaces) call remove_workspaces(w,options)   
 
   end subroutine nlls_finalize
 
@@ -2758,7 +2780,7 @@ contains
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        type( solve_newton_tensor_work ) :: w
-       
+              
        type( nlls_inform ) :: tensor_inform
        integer :: i, m_in     
     
@@ -2792,14 +2814,27 @@ contains
        select case (options%inner_method)
        case (1) ! send in a base regularization parameter
           w%tensor_options%base_regularization = 1.0_wp/Delta
-          m_in = m
        case (2)
-          m_in = m + n
+          ! do nothing!
        end select
-       call nlls_solve(n,m_in,d, & 
-            evaltensor_f, evaltensor_J, evaltensor_HF, &
-            w%tparams, & 
-            w%tensor_options, tensor_inform )
+       
+      
+       do i = 1, w%tensor_options%maxit
+          call nlls_iterate(n,w%m_in,d, & 
+               inner_workspace, & 
+               evaltensor_f, evaltensor_J, evaltensor_HF, &
+               w%tparams, & 
+               tensor_inform, w%tensor_options )
+          if (tensor_inform%status < 0) then
+             ! there's an error : exit
+             exit
+          elseif ( (tensor_inform%convergence_normf == 1) & 
+               .or.(tensor_inform%convergence_normg == 1)) then
+             ! we've converged!
+             exit
+          end if
+       end do
+       call nlls_finalize(inner_workspace,w%tensor_options)
        if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
        if (options%print_level > 0) write(options%out,"(80('*'))")
        
@@ -2961,15 +2996,10 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      subroutine setup_workspaces(workspace,n,m,options,inform)
 
-       type( NLLS_workspace ), intent(out) :: workspace
+       type( NLLS_workspace ), intent(inout) :: workspace
        type( nlls_options ), intent(in) :: options
        integer, intent(in) :: n,m
        type( NLLS_inform ), intent(out) :: inform
-
-       workspace%first_call = 0
-
-       workspace%tr_nu = options%radius_increase
-       workspace%tr_p = 7
 
        if (.not. allocated(workspace%y)) then
           allocate(workspace%y(n), stat = inform%alloc_status)
@@ -3116,8 +3146,6 @@ contains
 
        type( NLLS_workspace ), intent(out) :: workspace
        type( nlls_options ), intent(in) :: options
-
-       workspace%first_call = 0
 
        if(allocated(workspace%y)) deallocate(workspace%y)
        if(allocated(workspace%y_sharp)) deallocate(workspace%y_sharp)
@@ -3271,12 +3299,20 @@ contains
        case (1)
           w%tensor_options%type_of_method = 2
           w%tensor_options%nlls_method = 4
+          w%m_in = m
        case (2)
           w%tensor_options%type_of_method = 1 ! make this changable by the user
           w%tensor_options%nlls_method = 4 
           w%tparams%m1 = m
+          w%m_in = m + n
        end select
        
+       ! setup/remove workspaces manually....
+       w%tensor_options%remove_workspaces = .false.
+       w%tensor_options%setup_workspaces = .false.
+       call setup_workspaces(inner_workspace, n, w%m_in, w%tensor_options, inform)
+       if (inform%alloc_status > 0) goto 9000       
+
        return
 
        ! Error statements
@@ -3298,6 +3334,8 @@ contains
        if(allocated(tenJ%Hs)) deallocate(tenJ%Hs)
        if(allocated(tenJ%Js)) deallocate(tenJ%Js)
       
+       call remove_workspaces(inner_workspace, w%tensor_options)
+       
        return
        
      end subroutine remove_workspace_solve_newton_tensor
