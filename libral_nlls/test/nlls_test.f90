@@ -997,8 +997,15 @@ program nlls_test
 !!!!!!
      ! Setup workspace for n = 2
      ! use this for max_eig, solve_spd
+     ! first, remove previous workspace
+     call remove_workspaces(work,options)
      options%nlls_method = 2
      call setup_workspaces(work,2,2,options,status) 
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: info = ', status%status, ' when setting up workspace'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
 !!!!!!
 
      !-------------!
@@ -1010,7 +1017,6 @@ program nlls_test
      A = reshape((/ 4.0, 1.0, 1.0, 2.0 /),shape(A))
      z = (/ 1.0, 1.0 /)
      y = (/ 5.0, 3.0 /)
-
      call solve_spd(A,y,B,x,n,status)
      if (status%status .ne. 0) then
         write(*,*) 'Error: info = ', status%status, ' returned from solve_spd'
@@ -1030,8 +1036,14 @@ program nlls_test
      m =2
      options%nlls_method = 2
      options%model = 2
-
+     ! first, remove previous workspace
+     call remove_workspaces(work,options)
      call setup_workspaces(work,2,2,options,status) 
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: info = ', status%status, ' when setting up workspace'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+
      allocate(A(n,n),x(2),y(2),z(2))
 
      A = reshape((/ 4.0, 1.0, 2.0, 2.0 /),shape(A))
@@ -1166,7 +1178,14 @@ program nlls_test
         case (2)
            options%subproblem_eig_fact = .FALSE.
         end select
+
+        ! first, remove previous workspace
+        call remove_workspaces(work,options)
         call setup_workspaces(work,n,m,options,status) 
+        if (status%status .ne. 0) then
+           write(*,*) 'Error: info = ', status%status, ' when setting up workspace'
+           no_errors_helpers = no_errors_helpers + 1
+        end if
                 
         A = reshape( (/-5.0,  1.0, 0.0, 0.0, &
           1.0, -5.0, 0.0, 0.0, &
@@ -1219,8 +1238,16 @@ program nlls_test
      ! make sure max_eig gets called
 
      allocate(x(2*n),A(2*n,2*n), B(2*n,2*n))
-     call setup_workspaces(work,n,m,options,status) 
      
+     ! first, remove previous workspace
+     call remove_workspaces(work,options)
+     call setup_workspaces(work,n,m,options,status) 
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: info = ', status%status, ' when setting up workspace'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+
+
      A = reshape( (/1.0, 2.0, 3.0, 4.0, &
           2.0, 4.0, 6.0, 8.0, &
           3.0, 6.0, 9.0, 12.0, & 
@@ -1250,7 +1277,15 @@ program nlls_test
      n = 2
      m = 2
      allocate(x(2*n),A(2*n,2*n), B(2*n,2*n))
+     
+     ! first, remove previous workspace
+     call remove_workspaces(work,options)
      call setup_workspaces(work,n,m,options,status) 
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: info = ', status%status, ' when setting up workspace'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+
 
      A = 0.0_wp  
      A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
