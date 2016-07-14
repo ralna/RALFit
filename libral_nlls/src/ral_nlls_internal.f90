@@ -515,6 +515,12 @@ module ral_nlls_internal
        integer :: tr_p = 3
     end type NLLS_workspace
 
+    type, private :: tenJ_type ! workspace for evaltensor_J
+       real(wp), private, allocatable :: Hs(:), Js(:) ! work arrays for evaltensor_f
+    end type tenJ_type
+    type( tenJ_type ) :: tenJ
+
+
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: setup_workspaces, solve_galahad, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
@@ -2849,31 +2855,29 @@ contains
        real(wp) :: t_ik
        integer :: ii, jj, kk
        
-       real(wp), allocatable :: Hs(:), Js(:)
-       real(wp), allocatable :: temp(:)
+       ! note:: tenJ is a global (but private to this module) derived type 
+       !        with components Hs and Js, which are real arrays 
 
-       allocate(Hs(n), Js(m))
-       
        ! The function we need to minimize is 
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
        select type(params)
        type is(tensor_params_type)
           f(1:m) = params%f(1:m)  ! f_tensor = r_nlls originally
           
-          call mult_J(params%J(1:n*m),n,m,s,Js)
-          f(1:m) = f(1:m) + Js(1:m) ! f_tensor = r + J s
+          call mult_J(params%J(1:n*m),n,m,s,tenJ%Js)
+          f(1:m) = f(1:m) + tenJ%Js(1:m) ! f_tensor = r + J s
           do ii = 1,m
              t_ik = params%f(ii)
              t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
-             Hs(1:n) = zero
+             tenJ%Hs(1:n) = zero
              do jj = 1, n
                 ! get Hs = H_i * s
                 do kk = 1,n
-                   Hs(jj) = Hs(jj) +  params%Hi(jj,kk,ii) * s(kk)
+                   tenJ%Hs(jj) = tenJ%Hs(jj) +  params%Hi(jj,kk,ii) * s(kk)
                 end do
              end do
              ! f_tensor_i = r_i + J_is + 0.5 * s'H_is
-             f(ii) = f(ii) + 0.5 * dot_product(s(1:n),Hs(1:n))
+             f(ii) = f(ii) + 0.5 * dot_product(s(1:n),tenJ%Hs(1:n))
           end do
 
        end select
@@ -3329,6 +3333,9 @@ contains
        ! use a hybrid method for the inner loop
        w%tensor_options%model = 3
        w%tensor_options%maxit = 100
+       
+       allocate(tenJ%Hs(n), tenJ%Js(m), stat=inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
 
        select case (options%inner_method)
        case (1)
@@ -3357,6 +3364,8 @@ contains
        if(allocated(w%tparams%f)) deallocate(w%tparams%f)
        if(allocated(w%tparams%J)) deallocate(w%tparams%J)
        if(allocated(w%tparams%Hi)) deallocate(w%tparams%Hi)
+       if(allocated(tenJ%Hs)) deallocate(tenJ%Hs)
+       if(allocated(tenJ%Js)) deallocate(tenJ%Js)
       
        return
        
