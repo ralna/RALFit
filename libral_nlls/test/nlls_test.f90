@@ -18,7 +18,7 @@ program nlls_test
   real(wp), allocatable :: results(:)
   real(wp) :: alpha, beta, gamma, delta
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
-  integer :: nlls_method, model, tr_update
+  integer :: nlls_method, model, tr_update, inner_method
   logical :: test_all, test_subs
   character (len = 80) :: expected_string
 
@@ -61,14 +61,14 @@ program nlls_test
      
      call generate_data_example(params%x_values,params%y_values,m)
      
-     
+
      do tr_update = 1,2
         do nlls_method = 1,4
            do model = 1,number_of_models
-     
+              
               X(1) = 1.0 
               X(2) = 2.0
-
+              
               options%print_level = 3
               options%nlls_method = nlls_method
               options%tr_update_strategy = tr_update
@@ -99,11 +99,70 @@ program nlls_test
                  write(*,*) 'info%status = ', status%status
                  no_errors_main = no_errors_main + 1
               end if
-
+              
            end do
         end do
      end do
      
+     ! now, let's test the regularization method
+     X(1) = 1.0 
+     X(2) = 2.0
+              
+     options%type_of_method = 2 ! regularization
+     options%nlls_method = 4 ! use a method from galahad
+     options%model = 3 ! hybrid model
+     options%inner_method = 2 
+     options%tr_update_strategy = 1 ! default tr update
+     options%print_level = 1
+     options%exact_second_derivatives = .true.
+
+     call nlls_solve(n, m, X,                         &
+          eval_F, eval_J, eval_H, params,  &
+          options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge: regularization'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+
+     ! now, let's do the tensor model...
+     options%type_of_method = 2 ! regularization
+     options%nlls_method = 4 ! use a method from galahad
+     options%model = 4 ! hybrid model
+     options%tr_update_strategy = 1 ! default tr update
+     options%print_level = 1
+     options%exact_second_derivatives = .true.
+
+     do inner_method = 1,2
+        X(1) = 1.0 
+        X(2) = 2.0
+        options%inner_method = inner_method
+        call nlls_solve(n, m, X,                         &
+             eval_F, eval_J, eval_H, params,  &
+             options, status )
+        if ( status%status .ne. 0 ) then
+           write(*,*) 'nlls_solve failed to converge: tensor model'
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'info%status = ', status%status
+           no_errors_main = no_errors_main + 1
+        end if
+     end do
+
+     ! now, let's get an error return...
+     options%exact_second_derivatives = .false.
+     call nlls_solve(n, m, X,                         &
+             eval_F, eval_J, eval_H, params,  &
+             options, status )
+     if ( status%status .ne. ERROR%NO_SECOND_DERIVATIVES ) then
+        write(*,*) 'expected error return', ERROR%NO_SECOND_DERIVATIVES,' but'
+        write(*,*) 'got ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+
+
      ! Let's get to maxits
      options%maxit = 5
      options%model = 1
@@ -170,6 +229,22 @@ program nlls_test
         write(*,*) 'status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
+     ! and the same with exact second derivatives (model = 2..4 )
+     options%exact_second_derivatives = .true.
+     do model = 2,4
+        
+        options%model = model
+        call nlls_solve(n, m, X,                         &
+             eval_F, eval_J, eval_H, params,  &
+             options, status, w )
+        if ( status%status .ne. 0 ) then
+           write(*,*) 'nlls_solve failed to converge (weighted):'
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'status = ', status%status
+           no_errors_main = no_errors_main + 1
+        end if
+     end do
      deallocate(w)
 
      ! Let's do one run with non-exact second derivatives 
@@ -1385,6 +1460,13 @@ program nlls_test
      
      !! get_svd_J 
      ! Todo
+
+     !! hit the corners of switch_to_quasi_newton
+     options%type_of_method = 3
+     options%reg_order = 0.0_wp
+     call setup_workspaces(work,n,m,options,status)
+     call switch_to_quasi_newton(work,n,options)
+     call remove_workspaces(work,options)
 
      !! let's make sure output_progress_vectors gets hit
      options%output_progress_vectors = .true.
