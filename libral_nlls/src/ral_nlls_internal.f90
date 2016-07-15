@@ -535,6 +535,7 @@ module ral_nlls_internal
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, apply_scaling
+    public :: switch_to_quasi_newton
     public :: ERROR
     
 contains
@@ -2874,7 +2875,7 @@ contains
           f(1:params%m) = f(1:params%m) + tenJ%Js(1:params%m) ! f_tensor = r + J s
           do ii = 1,params%m
              t_ik = params%f(ii)
-             t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*m : m))
+             t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*params%m : params%m))
              tenJ%Hs(1:n) = zero
              do jj = 1, n
                 ! get Hs = H_i * s
@@ -2905,7 +2906,6 @@ contains
        class( params_base_type ), intent(in) :: params
 
        integer :: ii, jj, kk
-       integer :: m1
 
        ! The function we need to return is 
        !  g_i + H_i s 
@@ -2994,7 +2994,7 @@ contains
      !! W O R K S P A C E   S E T U P   S U B R O U T I N E S !!
      !!                                                       !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     subroutine setup_workspaces(workspace,n,m,options,inform)
+     recursive subroutine setup_workspaces(workspace,n,m,options,inform)
 
        type( NLLS_workspace ), intent(inout) :: workspace
        type( nlls_options ), intent(in) :: options
@@ -3142,7 +3142,7 @@ contains
 
      end subroutine setup_workspaces
 
-     subroutine remove_workspaces(workspace,options)
+     recursive subroutine remove_workspaces(workspace,options)
 
        type( NLLS_workspace ), intent(out) :: workspace
        type( nlls_options ), intent(in) :: options
