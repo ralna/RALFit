@@ -210,7 +210,7 @@ module ral_nlls_internal
      LOGICAL :: scale_trim_max = .TRUE.
      LOGICAL :: scale_require_increase = .FALSE.
 
-     logical :: calculate_svd_J = .true.
+     logical :: calculate_svd_J = .false.
 
      logical :: setup_workspaces = .true.
      logical :: remove_workspaces = .true.
@@ -244,7 +244,7 @@ module ral_nlls_internal
 ! which method shall we use to solve the inner problem?
 ! 1 - add in a base regularization parameter
 ! 2 - minimize a modified cost functional
-    integer :: inner_method = 1
+    integer :: inner_method = 2
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! O U T P U T   C O N T R O L S !!!
