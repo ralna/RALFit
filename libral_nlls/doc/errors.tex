@@ -17,7 +17,8 @@ Possible values are:
 \item{} {\tt -101} Unsupported model in dogleg (\texttt{nlls\_method = 1}).
 \item{} {\tt -201}  All eigenvalues are imaginary (\texttt{nlls\_method=2}).
 \item{} {\tt -202} Matrix with odd number of columns sent to \texttt{max\_eig} subroutine (\texttt{nlls\_method=2}).
-\item{} {\tt -301} {\tt nlls\_options\%more\_sorensen\_max\_its} is exceeded in \texttt{more\_sorensen} subroutine (\texttt{nlls\_method=3}).
+\item{} {\tt -301} {\tt nlls\_options\ct more\_sorensen\_max\_its} is exceeded in \texttt{more\_sorensen} subroutine (\texttt{nlls\_method=3}).
 \item{} {\tt -302} Too many shifts taken in \texttt{more\_sorensen} subroutine (\texttt{nlls\_method=3}).
 \item{} {\tt -303} No progress being made in \texttt{more\_sorensen} subroutine (\texttt{nlls\_method=3}).
+\item{} {\tt -401} {\tt nlls\_options\ct model = 4} selected, but {\tt nlls\_options\ct exact\_second\_derivatives} is set to {\tt false}.
 \end{description}

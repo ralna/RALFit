@@ -45,11 +45,20 @@ of iterations the algorithm is allowed to take before being stopped.  The defaul
 that specifies the model, $m_k(\cdot)$, used.  Possible values are
 \begin{description}
   \item{\tt 1} Gauss-Newton (no Hessian).
-  \item{\tt 2} Newton (exact Hessian).
+  \item{\tt 2} (Quasi-)Newton (uses exact Hessian if {\tt exact\_second\_derivatives} is true, otherwise builds an approximation to the Hessian).
 %  \item{\tt 3} Barely second-order (Hessian matrix approximated by the identity).
   \item{\tt 3} Hybrid method (mixture of Gauss-Newton/(Quasi-)Newton, as determined by the package).
+  \item{\tt 4} Tensor-Newton method.
 \end{description}
-The default is {\tt model = 1}.
+The default is {\tt model = 3}.
+
+\scalarinteger{type\_of\_method}
+that specifies the type of globalization method used.  Possible values are
+\begin{description}
+  \item{\tt 1} Trust-region method.
+  \item{\tt 2} Regularization.
+\end{description}
+The default is {\tt type\_of\_method = 1}.
 
 \scalarinteger{nlls\_method}
 that specifies the method used to solve (or approximate the solution to) the trust-region sub problem.  Possible values are
@@ -57,9 +66,10 @@ that specifies the method used to solve (or approximate the solution to) the tru
   \item{\tt 1} Powell's dogleg method (approximates the solution).
   \item{\tt 2} The Adachi-Iwata-Nakatsukasa-Takeda (AINT) method.
   \item{\tt 3} The More-Sorensen method.
-  \item{\tt 4} {\sc Galahad}'s {\sc DTRS} method
+  \item{\tt 4} {\sc Galahad}'s {\sc DTRS} method if {\tt type\_of\_method=1}, or {\sc Galahad}'s {\sc DRQS} method if {\tt type\_of\_method=2}.
 \end{description}
-The default is {\tt nlls\_method = 1}.
+If {\tt type\_of\_method = 4}, then only {\tt nlls\_method = 4} is permitted.
+The default is {\tt nlls\_method = 4}.
 
 \scalarreal{stop\_g\_absolute}
 that specifies the absolute tolerance for convergence.
@@ -107,6 +117,15 @@ The default value is {\tt radius\_increase = 2.0}.
 that specifies the factor to decrease the trust-region radius by.
 The default value is {\tt radius\_reduce = 0.5}.
 
+\scalarinteger{tr\_update\_strategy}
+that specifies the strategy used to update $\Delta_k$.  Possible values are:
+\begin{description}
+\item {\tt 1} use the usual step function.
+\item {\tt 2} use a the continuous method.
+\end{description}
+See Section~\ref{sec:step_accept} for more details.
+The default value is {\tt 1}.
+
 \scalarreal{hybrid\_switch}
 that specifies the value, if {\tt model = 3}, at which second derivatives are used
 The default value is {\tt hybrid\_switch = 0.1}.
@@ -149,9 +168,12 @@ The default value is {\tt false}.
 \scalarlogical{calculate\_svd\_J}
 that specifies whether or not to calculate the singular value decomposition of ${\tt J}$
 at each iteration.  
-The default value is {\tt true}.
+The default value is {\tt false}.
 
-% missing the scale and calculate svd controls
+% \scalarlogical{setup\_workspaces}
+% that specifies whether or not to setup the workspaces.  If {\tt setup\_workspaces = false}, then the user must pass a pre-assigned scalar of type {\tt NLLS\_workspace} (generated with the appropriate options) to {\tt nlls\_iterate}, which must come either from a previous call to {\tt nlls\_iterate}.
+
+% \scalarlogical{remove\_workspaces}
 
 \scalarinteger{more\_sorensen\_maxits}
 that, if {\tt nlls\_method = 3}, specifies the maximum number of iterations allowed in the More-Sorensen method.
@@ -176,6 +198,20 @@ The default value is {\tt hybrid\_tol = 2.0}.
 \scalarreal{hybrid\_switch\_its}
 that sets how many iterates in a row must the condition in the definition of {\tt hybrid\_tol} hold before a switch.
 The default value is {\tt hybrid\_switch\_its = false}.
+
+\scalarreal{reg\_order}
+that, if {\tt nlls\_method = 2}, the order of the regularization used ($p$ in (\ref{eq:reg_subproblem})).  If {\tt reg\_order = 0.0}, then the algorithm
+chooses an appropriate value of $p$. The default is {\tt reg\_order = 0.0}.
+
+\scalarinteger{inner\_method} 
+that, if {\tt nlls\_method = 4}, specifies the method used to pass in 
+the regularization parameter to the inner non-linear least squares solver.  
+Possible values are:
+\begin{description}
+  \item {\tt 1} The current regularization parameter is passed in as a base regularization parameter.
+  \item {\tt 2} The regularization term is added to the sum of squares to be solved in the inner problem.
+\end{description}
+The default is {\tt inner\_method = 2}.
 
 \fortranonly{
 \scalarlogical{output\_progress\_vectors}

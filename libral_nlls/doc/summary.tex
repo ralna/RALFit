@@ -16,31 +16,27 @@ we refer to the function $\vr$ as the \emph{residual} function.
 % \textcolor{blue}{Some confusion: the $y_i$ don't appear again.}
 
 The algorithm is iterative.
-At each point, $\iter{\vx}$, a quadratic model of the function
-\[
-F(\iter{\vx}) \approx \iter{m}(\vx) := {\iter{\vg}}^T\vx + \frac{1}{2} {\vx}^T \iter{\vH} \vx.
-\]
-is built.
-The `ideal' values in this model are $\iter{\vg} = {\iter{\vJ}}^T\vW\vr(\iter{\vx})$ and
-$\iter{\vH} = {\iter{\vJ}}^T\vW\iter{\vJ} + \sum_{i = 1}^m \comp{r}(\iter{\vx}) \vW\nabla^2 \comp{r}(\iter{\vx})$,
-where $\iter{\vJ}$ denotes the $m \times n$ Jacobian of $\vr(\vx)$ at the point $\iter{\vx}$
-and $\iter{\vH}$ is the Hessian of $F(\vx)$ at $\iter{\vx}$.
+At each point, $\iter{\vx}$, the algorithm builds a model of the function at the next step, $F({\iter{\vx}+\iter{\vs}})$, which we refer to as $m_k(\cdot)$.  We allow either a Gauss-Newton model, a (quasi-)Newton model, or a Newton-tensor model; see Section \ref{sec:model_description} for more details about these models.  
 
-Once the model has been formed, a trust-region sub-problem of the form
+Once the model has been formed we find a candidate for the next step by either solving a trust-region sub-problem of the form
 \begin{equation}
-\vd = \arg \min_{\vx} \ \iter{m} (\vx) \quad \mathrm{s.t.} \quad  \|\vx\|_B \leq \Delta,\label{eq:tr_subproblem}
+\iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs) \quad \mathrm{s.t.} \quad  \|\vs\|_B \leq \Delta_k,\label{eq:tr_subproblem}
 \end{equation}
-is solved,
-where $\Delta$ is the trust region radius and $B$ is a symmetric positive definite weighting matrix that is calculated by the algorithm.
+or by solving the regularized problem 
+\begin{equation}
+\iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{p} \|\vs\|_B^p,\label{eq:reg_subproblem}
+\end{equation}
+where $\Delta_k$ is a parameter of the algorithm (the trust region radius or the inverse of the regularization parameter respectively), $p$ is a given integer, and $B$ is a symmetric positive definite weighting matrix that is calculated by the algorithm.
 The quantity
-\[\rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \vd)}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \vd)}\]
+\[\rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \iter{\vs})}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \iter{\vs})}\]
 is then calculated.
-If this is sufficiently large we accept the step, and $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \vd$; if not, the trust-region radius, $\Delta$,
+If this is sufficiently large we accept the step, and $\iter[k+1]{\vx}$ is set to $\iter{\vx} + \iter{\vs}$; if not, the parameter $\Delta_k$
 is reduced and  the resulting new trust-region sub-problem is solved.  If the step is very successful -- in that $\rho$ is close to one --
-the trust-region radius is increased.
+$\Delta_k$ is increased.
 
 This process continues until either the residual, $\|\vr(\iter{\vx})\|_\vW$, or a measure of the gradient,
 $\|{\iter{\vJ}}^T\vW\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_\vW$, is sufficiently small.
+
 
 %%% Local Variables: 
 %%% mode: latex
