@@ -3441,6 +3441,9 @@ contains
        case (1)
           w%tensor_options%type_of_method = 2
           w%tensor_options%nlls_method = 4
+          ! we seem to get better performance using 
+          ! straight Newton here (Why?)
+          w%tensor_options%model = 2
           w%m_in = m
        case (2)
           w%tensor_options%type_of_method = 1 ! make this changable by the user

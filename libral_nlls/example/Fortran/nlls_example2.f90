@@ -109,7 +109,7 @@ program nlls_example2
    allocate(x(n))
    
    options%model = 4
-   options%type_of_method = 2
+   options%type_of_method = 3
    options%nlls_method = 4
    options%exact_second_derivatives = .true. 
    options%maxit = 50
