@@ -39,6 +39,7 @@ module ral_nlls_internal
      INTEGER :: BAD_TR_STRATEGY = -10 
      INTEGER :: FIND_BETA = -11 
      INTEGER :: BAD_SCALING = -12 
+     INTEGER :: WORKSPACE_ERROR = -13
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -101
      ! AINT errors
@@ -403,6 +404,7 @@ module ral_nlls_internal
   ! define types for workspace arrays.
     
     type, private :: max_eig_work ! workspace for subroutine max_eig
+       logical :: allocated = .false.
        real(wp), allocatable :: alphaR(:), alphaI(:), beta(:), vr(:,:)
        real(wp), allocatable :: work(:), ew_array(:)
        integer, allocatable :: nullindex(:)
@@ -412,28 +414,34 @@ module ral_nlls_internal
     end type max_eig_work
 
     type, private :: solve_general_work ! workspace for subroutine solve_general
+       logical :: allocated = .false.
        real(wp), allocatable :: A(:,:)
        integer, allocatable :: ipiv(:)
     end type solve_general_work
 
     type, private :: evaluate_model_work ! workspace for subroutine evaluate_model
+       logical :: allocated = .false.
        real(wp), allocatable :: Jd(:), dH(:), Hd(:), dHd(:)
     end type evaluate_model_work
 
     type, private :: solve_LLS_work ! workspace for subroutine solve_LLS
+       logical :: allocated = .false.
        real(wp), allocatable :: temp(:), work(:), Jlls(:)
     end type solve_LLS_work
     
     type, private :: min_eig_symm_work ! workspace for subroutine min_eig_work
+       logical :: allocated = .false.
        real(wp), allocatable :: A(:,:), work(:), ew(:)
        integer, allocatable :: iwork(:), ifail(:)
     end type min_eig_symm_work
     
     type, private :: all_eig_symm_work ! workspace for subroutine all_eig_symm
+       logical :: allocated = .false.
        real(wp), allocatable :: work(:)
     end type all_eig_symm_work
 
     type, private :: apply_scaling_work ! workspace for subrouine apply_scaling
+       logical :: allocated = .false.
        real(wp), allocatable :: diag(:)
        real(wp), allocatable :: ev(:,:)
        real(wp), allocatable :: tempvec(:)
@@ -441,6 +449,7 @@ module ral_nlls_internal
     end type apply_scaling_work
 
     type, private :: solve_newton_tensor_work ! a workspace for solve_newton_tensor
+       logical :: allocated = .false.
        real(wp), allocatable :: model_tensor(:)
        type( tensor_params_type ) :: tparams
        type( nlls_options ) :: tensor_options
@@ -448,6 +457,7 @@ module ral_nlls_internal
     end type solve_newton_tensor_work
         
     type, private :: solve_galahad_work ! workspace for subroutine dtrs_work
+       logical :: allocated = .false.
        real(wp), allocatable :: A(:,:), ev(:,:), ew(:), v(:), v_trans(:), d_trans(:)
        real(wp) :: reg_order
        type( all_eig_symm_work ) :: all_eig_symm_ws
@@ -455,6 +465,7 @@ module ral_nlls_internal
     end type solve_galahad_work
         
     type, private :: more_sorensen_work ! workspace for subroutine more_sorensen
+       logical :: allocated = .false.
  !      type( solve_spd_work ) :: solve_spd_ws
        real(wp), allocatable :: A(:,:), LtL(:,:), AplusSigma(:,:)
        real(wp), allocatable :: v(:), q(:), y1(:)
@@ -464,6 +475,7 @@ module ral_nlls_internal
     end type more_sorensen_work
 
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
+       logical :: allocated = .false.
        type( max_eig_work ) :: max_eig_ws
        type( evaluate_model_work ) :: evaluate_model_ws
        type( solve_general_work ) :: solve_general_ws
@@ -475,6 +487,7 @@ module ral_nlls_internal
     end type AINT_tr_work
 
     type, private :: dogleg_work ! workspace for subroutine dogleg
+       logical :: allocated = .false.
        type( solve_LLS_work ) :: solve_LLS_ws
        type( evaluate_model_work ) :: evaluate_model_ws
        real(wp), allocatable :: d_sd(:), d_gn(:), ghat(:), Jg(:)
@@ -490,11 +503,12 @@ module ral_nlls_internal
     end type calculate_step_work
 
     type, private :: get_svd_J_work ! workspace for subroutine get_svd_J
+       logical :: allocated = .false.
        real(wp), allocatable :: Jcopy(:), S(:), work(:)
-
     end type get_svd_J_work
 
     type, public :: NLLS_workspace ! all workspaces called from the top level
+       logical :: allocated = .false.
        integer :: first_call = 1
        integer :: iter = 0 
        real(wp) :: normF0, normJF0, normF, normJF
@@ -521,6 +535,7 @@ module ral_nlls_internal
     end type NLLS_workspace
 
     type, private :: tenJ_type ! workspace for evaltensor_J
+       logical :: allocated = .false.
        real(wp), private, allocatable :: Hs(:), Js(:) ! work arrays for evaltensor_f
     end type tenJ_type
     type( tenJ_type ) :: tenJ
@@ -529,12 +544,12 @@ module ral_nlls_internal
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: setup_workspaces, solve_galahad, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
-    public :: matmult_outer, outer_product, min_eig_symm, max_eig
+    public :: matmult_outer, outer_product, min_eig_symm, max_eig, all_eig_symm
     public :: remove_workspaces, get_svd_j, calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info, rank_one_update
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix
-    public :: dogleg, more_sorensen, apply_scaling
+    public :: dogleg, more_sorensen, apply_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton
     public :: ERROR
     
@@ -703,6 +718,8 @@ contains
        if (options%setup_workspaces) then 
           call setup_workspaces(w,n,m,options,inform)
           if ( inform%alloc_status > 0) goto 4000
+       elseif (.not. w%allocated) then 
+          goto 4100
        end if
        
        ! evaluate the residual
@@ -742,7 +759,7 @@ contains
           ! calculate the svd of J (if needed)
           call get_svd_J(n,m,w%J,&
                w%smallest_sv(1), w%largest_sv(1), &
-               options,svdstatus,w%get_svd_J_ws)
+               options,inform,svdstatus,w%get_svd_J_ws)
           if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
              write(options%out,'(a,i0)') 'warning! svdstatus = ', svdstatus
              write( options%out, 3140 ) svdstatus
@@ -967,7 +984,7 @@ contains
     if ( options%calculate_svd_J ) then
        call get_svd_J(n,m,w%J,&
             w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
-            options,svdstatus,w%get_svd_J_ws)
+            options,inform,svdstatus,w%get_svd_J_ws)
        if ((svdstatus .ne. 0).and.(options%print_level >= 3)) then 
           write( options%out, 3140 ) svdstatus
        end if
@@ -1150,6 +1167,11 @@ contains
     inform%status = ERROR%NO_SECOND_DERIVATIVES
     goto 4000
 
+4100 continue 
+    ! workspace error
+    inform%status = ERROR%WORKSPACE_ERROR
+    goto 4000
+
 ! convergence 
 5000 continue
     ! convegence test satisfied
@@ -1226,6 +1248,8 @@ contains
        inform%error_message = 'Unable to find suitable scalar in findbeta subroutine'
     elseif ( inform%status == ERROR%BAD_SCALING ) then
        inform%error_message = 'Unsupported value of scale passed in options'
+    elseif ( inform%status == ERROR%WORKSPACE_ERROR ) then
+       inform%error_message = 'Error accessing pre-allocated workspace'
     elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
        inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
     elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
@@ -1270,13 +1294,15 @@ contains
         
     real(wp) :: md_bad
 
+    ! no test for allocated here, as there's nothing to allocate (except lower down)
+
      if ( options%model == 4 ) then
         ! tensor model -- call ral_nlls again
 
         call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
                                  d, md, params, options, inform, & 
                                  w%solve_newton_tensor_ws)
-        call evaluate_model(f,J,hf,d,md_bad,md_gn,m,n,options,w%evaluate_model_ws)
+        call evaluate_model(f,J,hf,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
         
      else 
         ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
@@ -1310,7 +1336,7 @@ contains
         ! Gauss-Newton model too     ! 
         !     md := m_k^gn(d)        !
         !++++++++++++++++++++++++++++!
-        call evaluate_model(f,J,hf,d,md,md_gn,m,n,options,w%evaluate_model_ws)
+        call evaluate_model(f,J,hf,d,md,md_gn,m,n,options,inform,w%evaluate_model_ws)
 
      end if
 
@@ -1346,6 +1372,7 @@ contains
      integer :: ii, jj
      real(wp) :: Jij, temp
 
+     if (.not. w%allocated) goto 1010
 
      select case (options%scale)
      case (1,2)
@@ -1415,6 +1442,10 @@ contains
      ! error in external package
      return
 
+1010 continue
+     inform%status = ERROR%WORKSPACE_ERROR
+     return
+     
    end subroutine apply_scaling
 
    subroutine switch_to_gauss_newton(w, n, options)
@@ -1468,6 +1499,8 @@ contains
      
      real(wp) :: alpha, beta
 
+     if (.not. w%allocated ) goto 1010
+
      !     Jg = J * g
      call mult_J(J,n,m,g,w%Jg)
 
@@ -1509,6 +1542,10 @@ contains
      ! bad error return from solve_LLS
      return
 
+1010 continue
+     inform%status = ERROR%WORKSPACE_ERROR
+     return
+
 ! Printing commands
 2000 FORMAT('Gauss Newton step taken')
 2010 FORMAT('Steepest descent step taken')
@@ -1534,6 +1571,8 @@ contains
      integer :: keep_p0, i, size_hard(2)
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
+
+     if ( .not. w%allocated ) goto 1010
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
@@ -1575,7 +1614,8 @@ contains
         keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
         if (options%print_level >=3) write(options%out,2000) 'p0'     
-        call evaluate_model(f,J,hf,w%p0,obj_p0,obj_p0_gn,m,n,options,w%evaluate_model_ws)
+        call evaluate_model(f,J,hf,w%p0,obj_p0,obj_p0_gn,m,n, & 
+             options, inform, w%evaluate_model_ws)
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -1636,7 +1676,8 @@ contains
      
      ! get obj_p1 : the value of the model at p1
      if (options%print_level >=3) write(options%out,2000) 'p1'     
-     call evaluate_model(f,J,hf,w%p1,obj_p1,obj_p1_gn,m,n,options,w%evaluate_model_ws)
+     call evaluate_model(f,J,hf,w%p1,obj_p1,obj_p1_gn,m,n, & 
+          options,inform,w%evaluate_model_ws)
 
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
@@ -1654,6 +1695,10 @@ contains
 1000 continue 
      ! bad error return from external package
      return
+
+1010 continue
+     inform%status = ERROR%WORKSPACE_ERROR
+     return    
 
 ! print statements   
 2000 FORMAT('Evaluating the model at ',A2,':')
@@ -1693,6 +1738,8 @@ contains
      !       s.t. ||p|| \leq Delta
      !
      ! set A and v for the model being considered here...
+
+     if (.not. w%allocated) goto 1010
      
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
@@ -1799,6 +1846,10 @@ contains
      ! bad error return from external package
      goto 4000
      
+1010 continue
+     inform%status = ERROR%WORKSPACE_ERROR
+     goto 4000
+
 1020 continue
      ! inital point was successful
      if (options%print_level==2) write(options%out,5040)
@@ -1938,6 +1989,9 @@ contains
      ! d = arg min_p   v^T p + 0.5 * p^T H p
      !       s.t. ||p|| \leq Delta
      !
+
+     if (.not. w%allocated ) goto 1010
+     
      ! first, find the matrix H and vector v
      ! Set A = J^T J
      call matmult_inner(J,n,m,w%A)
@@ -2042,6 +2096,10 @@ contains
 1000 continue 
      ! bad error return from external package
      return
+
+1010 continue 
+     inform%status = ERROR%WORKSPACE_ERROR
+     return
      
 2000 FORMAT('Regularization order used = ',ES12.4)
 
@@ -2064,6 +2122,7 @@ contains
        integer :: nrhs = 1, lwork, lda, ldb
        type( solve_LLS_work ) :: w
        
+       if (.not. w%allocated) goto 1000
        
        lda = m
        ldb = max(m,n)
@@ -2081,6 +2140,12 @@ contains
        end if
 
        d_gn = -w%temp(1:n)
+
+       return
+       
+1000   continue
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
               
      END SUBROUTINE solve_LLS
      
@@ -2123,7 +2188,7 @@ contains
 
      END SUBROUTINE findbeta
      
-     subroutine evaluate_model(f,J,hf,d,md,md_gn,m,n,options,w)
+     subroutine evaluate_model(f,J,hf,d,md,md_gn,m,n,options,inform,w)
 ! --------------------------------------------------
 ! Input:
 ! f = f(x_k), J = J(x_k), 
@@ -2145,8 +2210,11 @@ contains
        real(wp), intent(out) :: md  ! m_k(d)
        real(wp), intent(out) :: md_gn
        TYPE( nlls_options ), INTENT( IN ) :: options
+       TYPE( nlls_inform ), INTENT( INOUT ) :: inform
        type( evaluate_model_work ) :: w
        
+       if (.not. w%allocated ) goto 2000
+
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd)
        
@@ -2167,7 +2235,13 @@ contains
        end select
        if (options%print_level >= 3) write(options%out,1000) md
 
+       return
+
 1000   FORMAT('Model evauated successfully.  m_k(d) = ',ES12.4)
+2000   continue 
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
+
 
      end subroutine evaluate_model
      
@@ -2459,6 +2533,9 @@ contains
 
        ! A wrapper for the lapack subroutine dposv.f
        ! NOTE: A would be destroyed
+       
+       if (.not. w%allocated) goto 1000
+       
        w%A(1:n,1:n) = A(1:n,1:n)
        x(1:n) = b(1:n)
        call dgesv( n, 1, w%A, n, w%ipiv, x, n, inform%external_return)
@@ -2467,6 +2544,13 @@ contains
           inform%external_name = 'lapack_dgesv'
           return
        end if
+
+       return
+
+       1000   continue ! workspace error
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
+
 
      end subroutine solve_general
 
@@ -2540,6 +2624,8 @@ contains
 
        integer :: lwork
 
+       if (.not. w%allocated) goto 1000
+
        ! copy the matrix A into the eigenvector array
        ev(1:n,1:n) = A(1:n,1:n)
 
@@ -2557,6 +2643,12 @@ contains
           return
        end if
 
+       return
+
+1000   continue
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
+       
      end subroutine all_eig_symm
 
      subroutine min_eig_symm(A,n,ew,ev,options,inform,w)
@@ -2571,6 +2663,8 @@ contains
 
        real(wp) :: tol, dlamch
        integer :: lwork, eigsout, minindex(1)
+
+       if ( .not. w%allocated ) goto 1000
 
        tol = 2*dlamch('S')!1e-15
 
@@ -2617,6 +2711,10 @@ contains
 
        return
 
+1000   continue
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
+
      end subroutine min_eig_symm
 
      subroutine max_eig(A,B,n,ew,ev,nullevs,options,inform,w)
@@ -2632,6 +2730,8 @@ contains
        integer :: lwork, maxindex(1), no_null, halfn
        real(wp):: tau
        integer :: i 
+
+       if (.not. w%allocated) goto 2010
 
        ! Find the max eigenvalue/vector of the generalized eigenproblem
        !     A * y = lam * B * y
@@ -2705,6 +2805,10 @@ contains
        inform%bad_alloc = "max_eig"
        return
 
+2010   continue
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
+
      end subroutine max_eig
 
      subroutine shift_matrix(A,sigma,AplusSigma,n)
@@ -2723,11 +2827,12 @@ contains
 
      end subroutine shift_matrix
 
-     subroutine get_svd_J(n,m,J,s1,sn,options,status,w)
+     subroutine get_svd_J(n,m,J,s1,sn,options,inform,status,w)
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(:)
        real(wp), intent(out) :: s1, sn
        type( nlls_options ) :: options
+       type( nlls_inform ), intent(inout) :: inform
        integer, intent(out) :: status
        type( get_svd_J_work ) :: w
 
@@ -2737,6 +2842,8 @@ contains
 
        character :: jobu(1), jobvt(1)
        integer :: lwork
+
+       if (.not. w%allocated) goto 1000
 
        w%Jcopy(:) = J(:)
 
@@ -2761,6 +2868,12 @@ contains
              write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
           end if
        end if
+
+       return
+       
+1000   continue
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
 
      end subroutine get_svd_J
 
@@ -2795,6 +2908,8 @@ contains
 
        ! First, we need to set up the eval_r/J/Hf functions needed here.
        
+       if (.not. w%allocated) goto 1000
+
        ! save the residual to params
        w%tparams%f(1:m) = f(1:m)
 
@@ -2844,6 +2959,12 @@ contains
        call evaltensor_f(inform%external_return, n, m, d, w%model_tensor, w%tparams)
        md = 0.5 * norm2( w%model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
+       return
+       
+1000   continue
+       inform%status = ERROR%WORKSPACE_ERROR
+       return
+       
      end subroutine solve_newton_tensor
 
      subroutine evaltensor_f(status, n, m, s, f, params)
@@ -3129,6 +3250,9 @@ contains
              if (inform%alloc_status > 0) goto 1010
           end select
        end if
+       
+       workspace%allocated = .true.
+       
        return
 
        ! Error statements
@@ -3211,6 +3335,8 @@ contains
 
 !       ! evaluate model in the main routine...       
 !       call remove_workspace_evaluate_model(workspace%evaluate_model_ws,options)
+       
+       workspace%allocated = .false.
 
        return
 
@@ -3244,6 +3370,8 @@ contains
        deallocate(w%work)
        allocate(w%work(lwork))     
 
+       w%allocated = .true.
+
        return
 
        ! Error statements
@@ -3262,6 +3390,8 @@ contains
        if( allocated(w%S) ) deallocate( w%S )
        if( allocated(w%work) ) deallocate( w%work )
 
+       w%allocated = .false.
+       
        return
 
      end subroutine remove_workspace_get_svd_J
@@ -3313,6 +3443,8 @@ contains
        call setup_workspaces(inner_workspace, n, w%m_in, w%tensor_options, inform)
        if (inform%alloc_status > 0) goto 9000       
 
+       w%allocated = .true.
+
        return
 
        ! Error statements
@@ -3335,6 +3467,8 @@ contains
        if(allocated(tenJ%Js)) deallocate(tenJ%Js)
       
        call remove_workspaces(inner_workspace, w%tensor_options)
+       
+       w%allocated = .false.
        
        return
        
@@ -3362,6 +3496,8 @@ contains
        !   evaluate_model
        call setup_workspace_evaluate_model(n,m,w%evaluate_model_ws,options,inform)
        if (inform%status > 0 ) goto 9010
+
+       w%allocated = .true.
 
        return
 
@@ -3393,6 +3529,8 @@ contains
        !   evaluate_model
        call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
 
+       w%allocated = .false.
+
        return
 
      end subroutine remove_workspace_dogleg
@@ -3412,6 +3550,8 @@ contains
        allocate( w%Jlls(n*m), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
 
+       w%allocated = .true.
+       
        return
 
 9000   continue  ! local allocation error
@@ -3429,6 +3569,8 @@ contains
        if(allocated( w%work )) deallocate( w%work ) 
        if(allocated( w%Jlls )) deallocate( w%Jlls ) 
 
+       w%allocated = .false.
+       
        return
 
      end subroutine remove_workspace_solve_LLS
@@ -3448,6 +3590,8 @@ contains
        allocate( w%Hd(n), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
 
+       w%allocated = .true.
+
        return
 
 9000   continue
@@ -3463,6 +3607,8 @@ contains
        if(allocated( w%Jd )) deallocate( w%Jd ) 
        if(allocated( w%dHd )) deallocate( w%dHd ) 
        if(allocated( w%Hd )) deallocate( w%Hd ) 
+
+       w%allocated = .false.
 
        return
 
@@ -3513,6 +3659,8 @@ contains
           if (inform%status > 0 ) goto 9010
        end if
 
+       w%allocated = .true.
+       
        return
 
 9000   continue ! local allocation error
@@ -3551,6 +3699,8 @@ contains
        if (options%model .ne. 1) then
           call remove_workspace_solve_general(w%solve_general_ws,options)
        end if
+       
+       w%allocated = .false.
 
        return
 
@@ -3608,6 +3758,8 @@ contains
        allocate( w%work(lwork), stat = inform%alloc_status )
        if (inform%alloc_status > 0) goto 9000
 
+       w%allocated = .true.
+
        return
 
 9000   continue      
@@ -3640,6 +3792,8 @@ contains
        end if
        if(allocated( w%work )) deallocate( w%work ) 
 
+       w%allocated = .false.
+       
        return
 
      end subroutine remove_workspace_min_eig_symm
@@ -3686,6 +3840,8 @@ contains
        allocate( w%vecisreal(2*n), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
 
+       w%allocated = .true.
+
        return
 
 9000   continue
@@ -3713,6 +3869,8 @@ contains
        if(allocated( w%nullindex )) deallocate( w%nullindex ) 
        if(allocated( w%vecisreal )) deallocate( w%vecisreal )
 
+       w%allocated = .false.
+
        return
 
      end subroutine remove_workspace_max_eig
@@ -3728,8 +3886,10 @@ contains
        allocate( w%ipiv(n), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
 
-       return
+       w%allocated = .true.
 
+       return
+       
 9000   continue ! allocation error
        inform%status = ERROR%ALLOCATION
        inform%bad_alloc = "solve_general"
@@ -3743,6 +3903,9 @@ contains
 
        if(allocated( w%A )) deallocate( w%A ) 
        if(allocated( w%ipiv )) deallocate( w%ipiv ) 
+
+       w%allocated = .false.
+
        return
 
      end subroutine remove_workspace_solve_general
@@ -3774,6 +3937,8 @@ contains
           if (inform%status > 0) goto 9010
        end if
 
+       w%allocated = .true.
+
        return
 
 9000   continue ! allocation error here
@@ -3801,6 +3966,8 @@ contains
        if (options%scale > 0) then
           call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
        end if
+
+       w%allocated = .false.
 
        return
 
@@ -3833,6 +4000,8 @@ contains
        allocate( w%work(lwork), stat = inform%alloc_status )
        if (inform%alloc_status > 0) goto 8000
 
+       w%allocated = .true.
+
        return
 
 8000   continue  ! allocation error
@@ -3852,6 +4021,8 @@ contains
        type( nlls_options ), intent(in) :: options
 
        if(allocated( w%work )) deallocate( w%work ) 
+
+       w%allocated = .false.
 
      end subroutine remove_workspace_all_eig_symm
 
@@ -3882,6 +4053,8 @@ contains
           if (inform%status > 0) goto 9010
        end if
 
+       w%allocated = .true.
+
        return
 
 9000   continue ! allocation error here
@@ -3910,6 +4083,8 @@ contains
           call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
        end if
 
+       w%allocated = .false.
+
        return
 
      end subroutine remove_workspace_more_sorensen
@@ -3934,6 +4109,8 @@ contains
           if (inform%status .ne. 0) goto 1010
        end if
 
+       w%allocated = .true.
+
        return
 
 1000   continue ! allocation error here
@@ -3952,6 +4129,8 @@ contains
 
        if(allocated( w%diag )) deallocate( w%diag )
        if(allocated( w%ev )) deallocate( w%ev ) 
+
+       w%allocated = .false.
 
        return 
 

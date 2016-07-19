@@ -450,8 +450,15 @@ program nlls_test
         status%status = 0
      end if
      
-     deallocate(x,y,z,v,w)
      call nlls_finalize(work,options)
+     
+     call dogleg(w,y,x,z,n,m,alpha,v,beta,options,status,work%calculate_step_ws%dogleg_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     deallocate(x,y,z,v,w)
      
      options%scale = 4
      options%nlls_method = 3
@@ -571,11 +578,27 @@ program nlls_test
      options%scale_trim_max = .true.
 
      
-     deallocate(w,A,y)
      call nlls_finalize(work,options)
+     call apply_scaling(w,n,m,A,y,& 
+          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          options,status)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+      
+
+     deallocate(w,A,y)
      options%scale = 0 
 
      !! aint_tr
+     caLL aint_tr(w,y,x,n,m,alpha,z,beta,options,status,& 
+          work%calculate_step_ws%aint_tr_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+
      ! ** TODO ** 
 
      !! more_sorensen
@@ -689,9 +712,24 @@ program nlls_test
      status%status = 0
      options%more_sorensen_maxits = 10
      
-     deallocate(x,y,z,w)
      call nlls_finalize(work,options)
 
+     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+          work%calculate_step_ws%more_sorensen_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     deallocate(x,y,z,w)
+
+     ! let's use this data for an evaluate_model test
+     call evaluate_model(w,y,x,z,alpha,beta,m,n,options,status,& 
+          work%calculate_step_ws%evaluate_model_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     
      !! solve_galahad
      do i = 1,2
         options%type_of_method = i
@@ -763,10 +801,40 @@ program nlls_test
         end if
         status%status = 0
 
-     
-        deallocate(x,y,z,w)
         call nlls_finalize(work,options)
+
+        ! test workspace
+        call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
+             options,status,& 
+             work%calculate_step_ws%solve_galahad_ws)
+        if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+           write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+           no_errors_helpers = no_errors_helpers + 1
+        end if
+
+        ! solve_newton_tensor
+        call solve_newton_tensor(x,y,eval_H,z,n,m,alpha, & 
+             w,beta,params, options,status,& 
+             work%calculate_step_ws%solve_newton_tensor_ws)
+        if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+           write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+           no_errors_helpers = no_errors_helpers + 1
+        end if
+
+        ! let's do an all_eig_symm test
+        call all_eig_symm(A,n,y,B, & 
+             work%calculate_step_ws%solve_galahad_ws%all_eig_symm_ws, status)
+        if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+           write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+           no_errors_helpers = no_errors_helpers + 1
+        end if
+        
+        deallocate(x,y,z,w)
+
      end do
+     
+
+
      !! solve_LLS 
      options%nlls_method = 1 ! dogleg
      call setup_workspaces(work,n,m,options,status) 
@@ -802,6 +870,13 @@ program nlls_test
      ! finally, let's flag an error....
      deallocate(w,x,y,z)
      call nlls_finalize(work, options)
+
+     call solve_LLS(x,z,n,m,y,status, & 
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
      
      n = 100 
      m = 20
@@ -1147,9 +1222,17 @@ program nlls_test
         no_errors_helpers = no_errors_helpers + 1
      end if
      status%status = 0
+
+     call nlls_finalize(work,options)
+          
+     call solve_general(A,y,x,n,status,& 
+          work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
      
      deallocate(A,x,y,z)
-     call nlls_finalize(work,options)
      
      !---------------!
      !! matrix_norm !!
@@ -1230,8 +1313,9 @@ program nlls_test
      deallocate(x,A,B,results)
 
      !! All_eig_symm
-     ! todo
      
+     
+          
      !----------------!
      !! min_eig_symm !!
      !----------------!
@@ -1279,6 +1363,14 @@ program nlls_test
         end if
 
         call nlls_finalize(work,options)
+
+        call min_eig_symm(A,n,alpha,x,options,status, & 
+             work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
+        if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+           write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+           no_errors_helpers = no_errors_helpers + 1
+        end if
+        
         options%nlls_method = 2 ! revert...
 
      end do
@@ -1439,8 +1531,20 @@ program nlls_test
      end if
      status%status = 0
 
-     deallocate(A,B,x)
      call nlls_finalize(work,options)
+
+     ! now let's check for workspace error
+     call max_eig(A,B,n+1,alpha,x,C, options,status, &
+                  work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+     status%status = 0
+     
+
+     deallocate(A,B,x)
+
 
      !! shift_matrix 
      n = 2
@@ -1459,6 +1563,11 @@ program nlls_test
      deallocate(A,B)
      
      !! get_svd_J 
+     call get_svd_J(n,m,x,alpha,beta,options,status,n,work% get_svd_J_ws)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
      ! Todo
 
      !! hit the corners of switch_to_quasi_newton
@@ -1475,6 +1584,18 @@ program nlls_test
      m = 3
      call setup_workspaces(work,n,m,options,status)    
      call nlls_finalize(work,options)
+
+     ! let's check the workspace errors 
+     ! first, let's do the main workspace...
+     options%setup_workspaces = .false.
+     call nlls_solve(n, m, X,                   &
+                    eval_F, eval_J, eval_H, params, &
+                    options, status)
+     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        no_errors_helpers = no_errors_helpers + 1
+     end if
+
      
      ! nlls_strerror
      status%status = ERROR%MAXITS
@@ -1519,166 +1640,6 @@ program nlls_test
          no_errors_helpers = no_errors_helpers + 1
      end if
 
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
-     status%status = ERROR%MAXITS
-     call nlls_strerror(status)
-     expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         no_errors_helpers = no_errors_helpers + 1
-     end if
      status%status = ERROR%MAXITS
      call nlls_strerror(status)
      expected_string = 'Maximum number of iterations reached'
@@ -1777,6 +1738,15 @@ program nlls_test
      end if
 
 
+     status%status = ERROR%WORKSPACE_ERROR
+     call nlls_strerror(status)
+     expected_string =  'Error accessing pre-allocated workspace'
+     if (status%error_message .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
      status%status = ERROR%DOGLEG_MODEL
      call nlls_strerror(status)
      expected_string = 'Model not supported in dogleg (nlls_method=1)'
@@ -1830,6 +1800,15 @@ program nlls_test
      status%status = ERROR%MS_NO_PROGRESS
      call nlls_strerror(status)
      expected_string = 'No progress being made in more_sorensen (nlls_method=3)'
+     if (status%error_message .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+
+     status%status = ERROR%NO_SECOND_DERIVATIVES
+     call nlls_strerror(status)
+     expected_string = 'Exact second derivatives needed for tensor model'
      if (status%error_message .ne. expected_string) then 
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status

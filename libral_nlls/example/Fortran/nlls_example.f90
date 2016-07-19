@@ -103,7 +103,7 @@ program nlls_example
    allocate(params%t(m), params%y(m))
    params%t(:) = (/ 1.0, 2.0, 4.0,  5.0,  8.0 /)
    params%y(:) = (/ 3.0, 4.0, 6.0, 11.0, 20.0 /)
-
+   
    ! Call fitting routine
    n = 2
    allocate(x(n))
