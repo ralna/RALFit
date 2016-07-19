@@ -52,6 +52,7 @@ module ral_nlls_internal
      ! DTRS errors
      ! Tensor model errors
      INTEGER :: NO_SECOND_DERIVATIVES = -401
+     INTEGER :: NT_BAD_SUBPROBLEM = -402
 
   END TYPE NLLS_ERROR
 
@@ -709,6 +710,10 @@ contains
        if ( options%print_level >= 1 ) write( options%out, 1000 )
        ! first, check if n < m
        if (n > m) goto 4070
+       if (options%type_of_method == 2) then
+          ! now check that if type_of_method = 2, we have an appropriate subproblem solverx
+          if (options%nlls_method .ne. 4) goto 4110
+       end if
        ! set scalars...
        w%first_call = 0
        w%tr_nu = options%radius_increase
@@ -1171,6 +1176,11 @@ contains
     ! workspace error
     inform%status = ERROR%WORKSPACE_ERROR
     goto 4000
+    
+4110 continue
+    ! bad subproblem solver
+    inform%status = ERROR%NT_BAD_SUBPROBLEM
+    goto 4000
 
 ! convergence 
 5000 continue
@@ -1264,6 +1274,8 @@ contains
        inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
     elseif ( inform%status == ERROR%NO_SECOND_DERIVATIVES ) then
        inform%error_message = 'Exact second derivatives needed for tensor model'
+    elseif ( inform%status == ERROR%NT_BAD_SUBPROBLEM ) then
+       inform%error_message = 'nlls_method = 4 needed if type_of_method=2'
     else 
        inform%error_message = 'Unknown error number'           
     end if

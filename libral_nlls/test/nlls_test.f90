@@ -163,7 +163,20 @@ program nlls_test
      end if
 
 
+     ! Let's get a subproblem solver error
+     options%nlls_method = 1
+      X(1) = 1.0 
+      X(2) = 2.0
+     call nlls_solve(n, m, X,                         &
+                   eval_F, eval_J, eval_H, params,  &
+                   options, status )
+     if ( status%status .ne. ERROR%NT_BAD_SUBPROBLEM) then
+        write(*,*) 'Error: incorrect error return when wrong subproblem solver selected'
+        no_errors_main = no_errors_main + 1
+     end if
+
      ! Let's get to maxits
+     options%type_of_method = 1
      options%maxit = 5
      options%model = 1
      options%nlls_method = 1
@@ -1814,6 +1827,16 @@ program nlls_test
               status%status
          no_errors_helpers = no_errors_helpers + 1
      end if
+     
+     status%status = ERROR%NT_BAD_SUBPROBLEM
+     call nlls_strerror(status)
+     expected_string = 'nlls_method = 4 needed if type_of_method=2'
+     if (status%error_message .ne. expected_string) then 
+         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+              status%status
+         no_errors_helpers = no_errors_helpers + 1
+     end if
+     
 
 
      status%status = -2355
