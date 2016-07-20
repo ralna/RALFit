@@ -247,7 +247,7 @@ module ral_nlls_internal
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! what regularization should we use?
-    real(wp) :: reg_order = zero
+    real(wp) :: reg_order = -one
 
 ! which method shall we use to solve the inner problem?
 ! 1 - add in a base regularization parameter
@@ -811,7 +811,8 @@ contains
        case (1) ! first-order
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
-          if ( ( options%type_of_method == 2) .and. (options%reg_order == zero)) then 
+          if ( ( options%type_of_method == 2) .and. &
+               (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
              w%reg_order = two
           end if
@@ -829,7 +830,8 @@ contains
              w%hf(1:n**2) = zero
           end if
           w%use_second_derivatives = .true.
-          if ( ( options%type_of_method == 2) .and. (options%reg_order == zero)) then 
+          if ( ( options%type_of_method == 2) .and. & 
+               (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
              w%reg_order = three
           end if
@@ -839,7 +841,8 @@ contains
           ! use first-order method initially
           w%hf(1:n**2) = zero
           w%use_second_derivatives = .false.
-          if ( (options%type_of_method == 2) .and. (options%reg_order == zero)) then 
+          if ( (options%type_of_method == 2) .and. & 
+               (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
              w%reg_order = two
           end if
@@ -1225,7 +1228,7 @@ contains
     ! reset all the scalars
     w%first_call = 1
     w%iter = 0
-    w%reg_order = 2.0
+    w%reg_order = 0.0
     w%use_second_derivatives = .false.
     w%hybrid_count = 0 
     w%hybrid_tol = 1.0
@@ -1477,7 +1480,8 @@ contains
      
      if (options%print_level .ge. 3) write(options%out,3120) 
      w%use_second_derivatives = .false.
-     if ((options%type_of_method == 2) .and. (options%reg_order==zero)) then 
+     if ((options%type_of_method == 2) .and. & 
+          (options%reg_order .le. zero)) then 
         ! switch to optimal regularization
         w%reg_order = two
      end if
@@ -1494,7 +1498,8 @@ contains
      
      if (options%print_level .ge. 3) write(options%out,3130) 
      w%use_second_derivatives = .true.
-     if ((options%type_of_method == 3).and.(options%reg_order==zero)) then
+     if ((options%type_of_method == 2).and. & 
+        (options%reg_order .le. zero)) then
         ! switch to optimal regularization
         w%reg_order = three
      end if
@@ -3447,6 +3452,7 @@ contains
        ! use a hybrid method for the inner loop
        w%tensor_options%model = 3
        w%tensor_options%maxit = 100
+       w%tensor_options%reg_order = -one
        
        allocate(tenJ%Hs(n), tenJ%Js(m), stat=inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3455,9 +3461,12 @@ contains
        case (1)
           w%tensor_options%type_of_method = 2
           w%tensor_options%nlls_method = 4
+          w%tensor_options%radius_increase = 2.0_wp
+          w%tensor_options%radius_reduce = 0.5_wp
           ! we seem to get better performance using 
           ! straight Newton here (Why?)
-          w%tensor_options%model = 2
+          w%tensor_options%model = 3
+          
           w%m_in = m
        case (2)
           w%tensor_options%type_of_method = 1 ! make this changable by the user
