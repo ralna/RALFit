@@ -127,12 +127,18 @@ module ral_nlls_internal
      INTEGER :: lls_solver = 1
         
 !   overall convergence tolerances. The iteration will terminate when the
-!     norm of the gradient of the objective function is smaller than 
-!       MAX( %stop_g_absolute, %stop_g_relative * norm of the initial gradient
+!   norm of the gradient of the objective function is smaller than 
+!      MAX( %stop_g_absolute, %stop_g_relative * norm of the initial gradient)
+!   or if the norm of objective function is smaller than 
+!      MAX( %stop%f_absolute, %stop_f_relative * initial norm of the function)
 !     or if the step is less than %stop_s
 
      REAL ( KIND = wp ) :: stop_g_absolute = tenm5
      REAL ( KIND = wp ) :: stop_g_relative = tenm8
+     REAL ( KIND = wp ) :: stop_f_absolute = tenm8
+     REAL ( KIND = wp ) :: stop_f_relative = tenm8
+     REAL ( KIND = wp ) :: stop_s = epsmch
+
      
 !   should we scale the initial trust region radius?
      
@@ -309,6 +315,10 @@ module ral_nlls_internal
 !  test on the size of the gradient satisfied?
      
      integer :: convergence_normg = 0
+
+!  test on the size of the step satisfied?
+     
+     integer :: convergence_norms = 0
      
 !  vector of residuals 
      
@@ -1066,7 +1076,7 @@ contains
     !++++++++++++++++++!
     ! Test convergence !
     !++++++++++++++++++!
-    call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,options,inform)
+    call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,w%normd,options,inform)
     if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
     if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
 
@@ -2450,14 +2460,14 @@ contains
 
      end subroutine update_trust_region_radius
 
-     subroutine test_convergence(normF,normJF,normF0,normJF0,options,inform)
+     subroutine test_convergence(normF,normJF,normF0,normJF0,normd,options,inform)
 
-       real(wp), intent(in) :: normF, normJf, normF0, normJF0
+       real(wp), intent(in) :: normF, normJf, normF0, normJF0, normd
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
 
-       if ( normF <= max(options%stop_g_absolute, &
-            options%stop_g_relative * normF0) ) then
+       if ( normF <= max(options%stop_f_absolute, &
+            options%stop_f_relative * normF0) ) then
           inform%convergence_normf = 1
           return
        end if
@@ -2465,6 +2475,10 @@ contains
        if ( (normJF/normF) <= max(options%stop_g_absolute, &
             options%stop_g_relative * (normJF0/normF0)) ) then
           inform%convergence_normg = 1
+       end if
+
+       if ( normd < options%stop_s ) then
+          inform%convergence_norms = 1
        end if
 
        return

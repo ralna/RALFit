@@ -72,12 +72,24 @@ If {\tt type\_of\_method = 4}, then only {\tt nlls\_method = 4} is permitted.
 The default is {\tt nlls\_method = 4}.
 
 \scalarreal{stop\_g\_absolute}
-that specifies the absolute tolerance for convergence.
+that specifies the absolute tolerance used in the convergence test on \(\|{\iter{\vJ}}^T\vr(\iter{\vx}))\|/\|\vr(\iter{\vx})\|\).
 The default value is {\tt stop\_g\_absolute = 1e{-5}}.
 
 \scalarreal{stop\_g\_relative}
-that specifies the relative tolerance for convergence.
+that specifies the relative tolerance used in the convergence test on \(\|{\iter{\vJ}}^T\vr(\iter{\vx})\|/\|\vr(\iter{\vx})\|\).
 The default value is {\tt stop\_g\_relative = 1e{-8}}.
+
+\scalarreal{stop\_f\_absolute}
+that specifies the absolute tolerance used in the convergence test on \(\|\vr(\iter{\vx})\|\).
+The default value is {\tt stop\_f\_absolute = 1e{-8}}.
+
+\scalarreal{stop\_f\_relative}
+that specifies the relative tolerance used in the convergence test on \(\|\vr(\iter{\vx})\|\).
+The default value is {\tt stop\_f\_relative = 1e{-8}}.
+
+\scalarreal{stop\_s}
+that specifies the tolerance used in the convergence test on \(\|\iter{\vs}\|\).
+The default value is {\tt stop\_s = eps}.
 
 \scalarinteger{relative\_tr\_radius}
 that specifies whether the initial trust region radius should be scaled.

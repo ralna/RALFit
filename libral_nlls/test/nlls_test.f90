@@ -1112,7 +1112,7 @@ program nlls_test
      !! test_convergence
      
      ! hit the case where f = 0 
-     call test_convergence(0.0_wp,1.0_wp, 1.0_wp, 1.0_wp, options, status)
+     call test_convergence(0.0_wp,1.0_wp, 1.0_wp, 1.0_wp, 0.0_wp, options, status)
      if ( status%convergence_normf .ne. 1) then
         write(*,*) 'Error in test_convergence test :: expected status%convergence_normf = 1'
         write(*,*) 'got status%convergence_normf = ', status%convergence_normf
