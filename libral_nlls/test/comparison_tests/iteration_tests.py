@@ -151,12 +151,15 @@ def main(argv):
     func_boundaries = np.array([2, 5, 10, 30])
     additive = 0
     print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
-                  mins_boundaries, 'normalized_mins', control_files, failure, additive)
+                  mins_boundaries, 'normalized_mins', control_files, failure, additive,
+                  short_hash)
     additive = 1
-    print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates, 
-                  iter_boundaries, 'normalized_iters', control_files, failure, additive)
+    print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates,
+                  iter_boundaries, 'normalized_iters', control_files, failure, additive,
+                  short_hash)
     print_to_html(no_probs, no_tests, problems, normalized_func, smallest_func, 
-                  func_boundaries, 'normalized_func', control_files, failure, additive)
+                  func_boundaries, 'normalized_func', control_files, failure, additive,
+                  short_hash)
     
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
@@ -193,7 +196,7 @@ def main(argv):
     plot_prof(control_files,no_tests,prob_list)
 
 def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries, 
-                  filename, control_files, failure, additive):
+                  filename, control_files, failure, additive, short_hash):
 
     # first, let's set the background colours...
     good = '#00ff00'
@@ -273,7 +276,8 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
             output.write('    <td bgcolor='+colour+'>'+str(format(data[i][j]))+label+'</td>')
         output.write('\n')
         output.write('  </tr>\n')
-    output.write('</table>\n\n')
+    output.write('</table>\n')
+    output.write('Computed using git commit <b>#'+short_hash+'</b>\n\n')
     output.write('</body>\n')
     output.write('</html>\n')
     output.close()
