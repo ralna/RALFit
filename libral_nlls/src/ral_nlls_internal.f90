@@ -291,6 +291,10 @@ module ral_nlls_internal
 !  the total number of iterations performed
      
      INTEGER :: iter
+
+!  the number of inner iterations performed
+     
+     INTEGER :: inner_iter = 0
        
 !  the total number of CG iterations performed
 
@@ -2190,7 +2194,7 @@ contains
      real(wp), dimension(:), intent(in) :: a, b 
      real(wp), intent(in) ::  Delta
      real(wp), intent(out) :: beta
-     type( nlls_inform ), intent(out) :: inform
+     type( nlls_inform ), intent(inout) :: inform
      
      real(wp) :: c, normb2, norma2, discrim, denom
      
@@ -2965,7 +2969,6 @@ contains
           ! do nothing!
        end select
        
-      
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, & 
                inner_workspace, & 
@@ -2982,9 +2985,15 @@ contains
           end if
        end do
        call nlls_finalize(inner_workspace,w%tensor_options)
-       if (tensor_inform%status .ne. 0) write(*,*) '**** EEEK ****'
-       if (options%print_level > 0) write(options%out,"(80('*'))")
-       
+       if (tensor_inform%status .ne. 0) then
+          write(options%out,'(A)') '**** inner iteration d not converge ****'
+       end if
+       inform%inner_iter = inform%inner_iter + tensor_inform%iter
+       if (options%print_level > 0) then
+          write(options%out,'(a,i0)') 'Total inner iterations = ', inform%inner_iter
+          write(options%out,"(80('*'))")
+       end if
+              
        ! now we need to evaluate the model at the new point
 
        call evaltensor_f(inform%external_return, n, m, d, w%model_tensor, w%tparams)
@@ -3151,7 +3160,7 @@ contains
        type( NLLS_workspace ), intent(inout) :: workspace
        type( nlls_options ), intent(in) :: options
        integer, intent(in) :: n,m
-       type( NLLS_inform ), intent(out) :: inform
+       type( NLLS_inform ), intent(inout) :: inform
 
        if (.not. allocated(workspace%y)) then
           allocate(workspace%y(n), stat = inform%alloc_status)
@@ -3377,7 +3386,7 @@ contains
        integer, intent(in) :: n, m 
        type( get_svd_J_work ), intent(out) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        integer :: lwork
        character :: jobu(1), jobvt(1)
@@ -3431,7 +3440,7 @@ contains
        integer, intent(in) :: n, m 
        type( solve_newton_tensor_work ), intent(out) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
        
        allocate(w%model_tensor(m), stat=inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3450,7 +3459,7 @@ contains
        ! copy options from those input
        w%tensor_options = options
        ! use a hybrid method for the inner loop
-       w%tensor_options%model = 3
+       w%tensor_options%model = 2
        w%tensor_options%maxit = 100
        w%tensor_options%reg_order = -one
        
@@ -3465,7 +3474,7 @@ contains
           w%tensor_options%radius_reduce = 0.5_wp
           ! we seem to get better performance using 
           ! straight Newton here (Why?)
-          w%tensor_options%model = 3
+          w%tensor_options%model = 2
           
           w%m_in = m
        case (2)
@@ -3516,7 +3525,7 @@ contains
        integer, intent(in) :: n, m 
        type( dogleg_work ), intent(out) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        allocate(w%d_sd(n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3577,7 +3586,7 @@ contains
        integer, intent(in) :: n, m 
        type( solve_LLS_work ) :: w 
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
        integer :: lwork
 
        allocate( w%temp(max(m,n)), stat = inform%alloc_status)
@@ -3617,7 +3626,7 @@ contains
        integer, intent(in) :: n, m        
        type( evaluate_model_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        allocate( w%Jd(m), stat = inform%alloc_status )
        if (inform%alloc_status > 0) goto 9000
@@ -3656,7 +3665,7 @@ contains
        integer, intent(in) :: n, m 
        type( AINT_tr_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        allocate(w%A(n,n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3748,7 +3757,7 @@ contains
        integer, intent(in) :: n, m 
        type( min_eig_symm_work) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        real(wp), allocatable :: workquery(:)
        integer :: lwork, eigsout
@@ -3840,7 +3849,7 @@ contains
        integer, intent(in) :: n, m 
        type( max_eig_work) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform), intent(out) :: inform
+       type( nlls_inform), intent(inout) :: inform
        real(wp), allocatable :: workquery(:)
        integer :: lwork
 
@@ -3917,7 +3926,7 @@ contains
        integer, intent(in) :: n, m 
        type( solve_general_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform), intent(out) :: inform
+       type( nlls_inform), intent(inout) :: inform
 
        allocate( w%A(n,n), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3952,7 +3961,7 @@ contains
        integer, intent(in) :: n,m
        type( solve_galahad_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        allocate(w%A(n,n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -4015,7 +4024,7 @@ contains
        integer, intent(in) :: n,m
        type( all_eig_symm_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        real(wp), allocatable :: workquery(:)
        real(wp) :: A,ew
@@ -4068,7 +4077,7 @@ contains
        integer, intent(in) :: n,m
        type( more_sorensen_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        allocate(w%A(n,n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -4133,7 +4142,7 @@ contains
        integer, intent(in) :: n,m
        type( apply_scaling_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(out) :: inform
+       type( nlls_inform ), intent(inout) :: inform
 
        allocate(w%diag(n), stat = inform%alloc_status )
        if (inform%alloc_status .ne. 0) goto 1000
