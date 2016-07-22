@@ -3,7 +3,6 @@ cmake_minimum_required (VERSION 2.6)
 enable_language (C Fortran)
 
 project (libral_nlls)
-
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
@@ -28,10 +27,11 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC")
 if(TestCoverage)
+   set( CMAKE_VERBOSE_MAKEFILE on )
    INCLUDE(CodeCoverage)
-   set(CMAKE_C_FLAGS_DEBUG "-pg -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage")
-   set(CMAKE_Fortran_FLAGS_DEBUG "-pg -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage")
-   set(CMAKE_LDFLAGS_DEBUG "-fprofile-arcs -ftest-coverage")
+   set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage")
+   set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage")
+   set(CMAKE_LDFLAGS_DEBUG "-g -fprofile-arcs -ftest-coverage")
    SETUP_TARGET_FOR_COVERAGE(test_coverage test/test coverage)
 endif(TestCoverage)
 
