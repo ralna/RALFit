@@ -1624,7 +1624,7 @@ return
 
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,A,f,v,hfn,m,Delta,d,normd,options,inform,w)
+   SUBROUTINE AINT_tr(J,A,f,v,hf,n,m,Delta,d,normd,options,inform,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
