@@ -97,6 +97,7 @@ program nlls_test
                  write(*,*) 'MODEL = ', options%model
                  write(*,*) 'TR_UPDATE = ', tr_update
                  write(*,*) 'info%status = ', status%status
+                 write(*,*) 'scale? ', options%scale
                  no_errors_main = no_errors_main + 1
               end if
               
@@ -388,7 +389,9 @@ program nlls_test
   deallocate(model_to_test)
 
   no_errors_helpers = 0
-  
+ 
+
+
   if ( test_subs ) then 
 
      !###############################!
@@ -491,7 +494,7 @@ program nlls_test
      !** scale = 1 **
      options%scale= 1     
      call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error in apply_scaling when scale = 1'
@@ -500,22 +503,10 @@ program nlls_test
         status%status = 0 
      end if
 
-!!$     !** scale = 2 **
-!!$     options%scale = 2
-!!$     call apply_scaling(w,n,m,A,y,& 
-!!$          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
-!!$          options,status)
-!!$     if (status%status .ne. 0 ) then
-!!$        write(*,*) 'Error: unexpected error in apply_scaling when scale = 2'
-!!$        write(*,*) 'status = ', status%status,' returned.'
-!!$        no_errors_helpers = no_errors_helpers + 1
-!!$        status%status = 0 
-!!$     end if
-
      !** scale = 2 **
      options%scale = 2
      call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error in apply_scaling when scale = 2'
@@ -524,22 +515,11 @@ program nlls_test
         status%status = 0 
      end if
 
-!!$     !** scale = 3 **
-!!$     options%scale = 3
-!!$     call apply_scaling(w,n,m,A,y,& 
-!!$          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
-!!$          options,status)
-!!$     if (status%status .ne. 0 ) then
-!!$        write(*,*) 'Error: unexpected error in apply_scaling when scale = 3'
-!!$        write(*,*) 'status = ', status%status,' returned.'
-!!$        no_errors_helpers = no_errors_helpers + 1
-!!$        status%status = 0 
-!!$     end if
 
      !** scale undefined
      options%scale = 786
      call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. ERROR%BAD_SCALING ) then
         write(*,*) 'Error: expected error in apply_scaling when passing undefined scaling'
@@ -554,7 +534,7 @@ program nlls_test
      options%scale = 1
      options%scale_require_increase = .true.
      call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error when scale_require_increase = T'
@@ -567,7 +547,7 @@ program nlls_test
      ! first, set scale_trim_min to T
      options%scale_trim_min = .true.
      call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error when scale_require_increase = T'
@@ -580,7 +560,7 @@ program nlls_test
      ! first, set scale_trim_max to T
      options%scale_trim_max = .false.
      call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error when scale_require_increase = T'
@@ -593,7 +573,7 @@ program nlls_test
      
      call nlls_finalize(work,options)
      call apply_scaling(w,n,m,A,y,& 
-          work%calculate_step_ws%more_sorensen_ws%apply_scaling_ws, &
+          work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
@@ -605,7 +585,7 @@ program nlls_test
      options%scale = 0 
 
      !! aint_tr
-     caLL aint_tr(w,y,x,n,m,alpha,z,beta,options,status,& 
+     caLL aint_tr(w,A,y,x,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%aint_tr_ws)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
@@ -618,7 +598,7 @@ program nlls_test
      options%nlls_method = 3
      n = 2
      m = 3
-     allocate(w(m*n), x(n*n), y(m), z(n))
+     allocate(w(m*n), x(n*n), y(m), z(n), A(n,n))
      call setup_workspaces(work,n,m,options,status) 
      ! w <-- J
      ! x <-- hf
@@ -628,11 +608,15 @@ program nlls_test
      
      ! regular case...
      w = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
+     A(1,1) = 0.2_wp
+     A(2,1) = 0.3_wp
+     A(1,2) = A(2,1)
+     A(2,2) = 0.4_wp
      x = 0.0_wp
      y = 1.0_wp
      z = 1.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+     call more_sorensen(A,y,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen'
@@ -647,7 +631,7 @@ program nlls_test
      y = 1.0_wp
      z = 1.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+     call more_sorensen(A,y,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. ERROR%MS_TOO_MANY_SHIFTS) then
         write(*,*) 'Error: MS too many shifts test passed, when fail expected'
@@ -663,7 +647,7 @@ program nlls_test
      z = 1.0_wp
      alpha =  10.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+     call more_sorensen(A,y,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
@@ -681,7 +665,7 @@ program nlls_test
      options%more_sorensen_tiny = 0.01_wp
      alpha =  0.2055_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+     call more_sorensen(A,y,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
@@ -699,7 +683,7 @@ program nlls_test
      z = 1.0_wp
      alpha = 3.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+     call more_sorensen(A,y,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with nd > Delta'
@@ -716,7 +700,7 @@ program nlls_test
      z = 1.0_wp
      alpha = 3.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+     call more_sorensen(A,y,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. ERROR%MS_MAXITS) then
         write(*,*) 'Error: Expected maximum iterations error in more_sorensen'
@@ -727,7 +711,7 @@ program nlls_test
      
      call nlls_finalize(work,options)
 
-     call more_sorensen(w,y,x,n,m,alpha,z,beta,options,status,& 
+     call more_sorensen(A,y,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
@@ -753,17 +737,18 @@ program nlls_test
 
         allocate(w(n))
         allocate(x(m*n))
-        allocate(y(m))
+        allocate(y(n))
         allocate(z(n*n))
-        ! x -> J, y-> f, x -> hf, w-> d
+        ! x -> J, y-> J^Tf, x -> hf, w-> d
         x = (/ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp /)
-        y = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
+!        f = (/ 1.2_wp, 3.1_wp, 0.0_wp, 0.0_wp, 0.0_wp /)
+        y = (/-7.4, -28.9 /) ! JtF
         z = 1.0_wp
 
         alpha = 0.02_wp
         
         work%calculate_step_ws%solve_galahad_ws%reg_order = 2.0_wp
-        call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
+        call solve_galahad(A,y,n,m,alpha,w,beta,& 
              options,status, &
              work%calculate_step_ws%solve_galahad_ws )
         
@@ -798,7 +783,7 @@ program nlls_test
 
         alpha = -100.0_wp
         
-        call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
+        call solve_galahad(A,y,n,m,alpha,w,beta,& 
              options,status,& 
              work%calculate_step_ws%solve_galahad_ws)
 
@@ -817,7 +802,7 @@ program nlls_test
         call nlls_finalize(work,options)
 
         ! test workspace
-        call solve_galahad(x,y,z,n,m,alpha,w,beta,& 
+        call solve_galahad(A,y,n,m,alpha,w,beta,& 
              options,status,& 
              work%calculate_step_ws%solve_galahad_ws)
         if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
@@ -1176,7 +1161,7 @@ program nlls_test
      !-------------!
 
      n = 2
-     allocate(A(n,n),x(2),y(2),z(2),B(n,n))
+     allocate(x(n),y(n),z(n),B(n,n))
      A = reshape((/ 4.0, 1.0, 1.0, 2.0 /),shape(A))
      z = (/ 1.0, 1.0 /)
      y = (/ 5.0, 3.0 /)
@@ -1390,24 +1375,6 @@ program nlls_test
 
      deallocate(A,x)
      
-!!$     n = 3
-!!$     m = 3
-!!$     allocate(x(n),A(n,n))
-!!$     call setup_workspaces(work,n,m,options,info) 
-!!$     options%subproblem_eig_fact = .TRUE.
-!!$     
-!!$     A = reshape( (/ 1674.456299, -874.579834,  -799.876465,
-!!$                     -874.579834,  1799.875854, -925.296021,
-!!$                     -799.876465,  -925.296021, 1725.172485/), 
-!!$                     shape(A))
-!!$
-!!$     options%nlls_method = 3
-!!$
-!!$     call min_eig_symm(A,n,alpha,x,options,status, & 
-!!$             work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
-!!$     
-!!$     call nlls_finalize(work,options)
-!!$     deallocate(A,x)    
 
 
      !-----------!
@@ -1576,7 +1543,7 @@ program nlls_test
      deallocate(A,B)
      
      !! get_svd_J 
-     call get_svd_J(n,m,x,alpha,beta,options,status,n,work% get_svd_J_ws)
+     call get_svd_J(n,m,x,alpha,beta,options,status,info,work% get_svd_J_ws)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         no_errors_helpers = no_errors_helpers + 1
@@ -1598,8 +1565,11 @@ program nlls_test
      call setup_workspaces(work,n,m,options,status)    
      call nlls_finalize(work,options)
 
+     
+     
      ! let's check the workspace errors 
      ! first, let's do the main workspace...
+     allocate(X(n))
      options%setup_workspaces = .false.
      call nlls_solve(n, m, X,                   &
                     eval_F, eval_J, eval_H, params, &
@@ -1855,7 +1825,7 @@ program nlls_test
      else
         write(*,*) 'There were ', no_errors_helpers,' errors'
      end if
-
+     
   end if
 
   

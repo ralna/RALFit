@@ -473,20 +473,16 @@ module ral_nlls_internal
         
     type, private :: solve_galahad_work ! workspace for subroutine dtrs_work
        logical :: allocated = .false.
-       real(wp), allocatable :: A(:,:), ev(:,:), ew(:), v(:), v_trans(:), d_trans(:)
+       real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:)
        real(wp) :: reg_order
        type( all_eig_symm_work ) :: all_eig_symm_ws
-       type( apply_scaling_work ) :: apply_scaling_ws
     end type solve_galahad_work
         
     type, private :: more_sorensen_work ! workspace for subroutine more_sorensen
        logical :: allocated = .false.
- !      type( solve_spd_work ) :: solve_spd_ws
-       real(wp), allocatable :: A(:,:), LtL(:,:), AplusSigma(:,:)
-       real(wp), allocatable :: v(:), q(:), y1(:)
-!       type( solve_general_work ) :: solve_general_ws
+       real(wp), allocatable :: LtL(:,:), AplusSigma(:,:)
+       real(wp), allocatable :: q(:), y1(:)
        type( min_eig_symm_work ) :: min_eig_symm_ws
-       type( apply_scaling_work ) :: apply_scaling_ws
     end type more_sorensen_work
 
     type, private :: AINT_tr_work ! workspace for subroutine AINT_tr
@@ -495,7 +491,7 @@ module ral_nlls_internal
        type( evaluate_model_work ) :: evaluate_model_ws
        type( solve_general_work ) :: solve_general_ws
 !       type( solve_spd_work ) :: solve_spd_ws
-       REAL(wp), allocatable :: A(:,:), LtL(:,:), v(:), B(:,:), p0(:), p1(:)
+       REAL(wp), allocatable :: LtL(:,:), B(:,:), p0(:), p1(:)
        REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
        REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
        REAL(wp), allocatable :: y_hardcase(:,:)
@@ -509,12 +505,16 @@ module ral_nlls_internal
     end type dogleg_work
 
     type, private :: calculate_step_work ! workspace for subroutine calculate_step
+       logical :: allocated = .false.
+       real(wp), allocatable :: A(:,:)
+       real(wp), allocatable :: v(:)
        type( AINT_tr_work ) :: AINT_tr_ws
        type( dogleg_work ) :: dogleg_ws
        type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
        type( more_sorensen_work ) :: more_sorensen_ws
        type( solve_galahad_work ) :: solve_galahad_ws
        type( evaluate_model_work) :: evaluate_model_ws
+       type( apply_scaling_work ) :: apply_scaling_ws
     end type calculate_step_work
 
     type, private :: get_svd_J_work ! workspace for subroutine get_svd_J
@@ -1309,7 +1309,8 @@ contains
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-    REAL(wp), intent(in) :: J(:), f(:), hf(:), g(:), X(:) 
+    REAL(wp), intent(in) :: J(:), f(:), hf(:), X(:) 
+    REAL(wp), intent(inout) :: g(:)
     REAL(wp), intent(inout) :: Delta
     procedure( eval_hf_type ) :: eval_HF       
     class( params_base_type ) :: params  
@@ -1322,10 +1323,35 @@ contains
     TYPE( calculate_step_work ) :: w
         
     real(wp) :: md_bad
+    integer :: i
+    logical :: scaling_used = .false.
 
-    ! no test for allocated here, as there's nothing to allocate (except lower down)
+    if (.not. w%allocated) goto 1010
+    
+    ! compute the hessian used in the model 
+       
+    ! Set A = J^T J
+    call matmult_inner(J,n,m,w%A)
+    ! add any second order information...
+    ! so A = J^T J + HF
+    w%A = w%A + reshape(hf,(/n,n/))
+    
+    ! and let's copy over g to a temp vector v
+    ! (it's copied so that we can scale v without losing g)
+    
+    w%v(1:n) = -g(1:n)
 
-     if ( options%model == 4 ) then
+    ! if scaling needed, do it
+    
+    if ( (options%nlls_method == 3) .or. (options%nlls_method == 4) ) then 
+       if ( (options%scale .ne. 0) ) then
+          call apply_scaling(J,n,m,w%A,w%v,w%apply_scaling_ws,options,inform)
+          scaling_used = .true.
+       end if
+    end if
+
+        
+    if ( options%model == 4 ) then
         ! tensor model -- call ral_nlls again
 
         call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
@@ -1342,20 +1368,28 @@ contains
            call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
         case (2) ! The AINT method
            if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
-           call AINT_TR(J,f,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+           call AINT_TR(J,w%A,f,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
         case (3) ! More-Sorensen
            if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
-           call more_sorensen(J,f,hf,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
+           call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
         case (4) ! Galahad
            if (options%type_of_method == 1) then
               if (options%print_level >= 2) write(options%out,3000) 'DTRS'
            elseif (options%type_of_method == 2) then 
               if (options%print_level >= 2) write(options%out,3020) 'DRQS'
            end if           
-           call solve_galahad(J,f,hf,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
+           call solve_galahad(w%A,w%v,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
         case default
            inform%status = ERROR%UNSUPPORTED_METHOD
         end select
+
+        ! reverse the scaling on the step
+ !       if ( (3 .le. options%model) .and. ( options%model .le. 4) ) then 
+        if ( (scaling_used) ) then 
+           do i = 1, n
+              d(i) = d(i) / w%apply_scaling_ws%diag(i)
+           end do
+        end if
 
         !++++++++++++++++++++++++++++!
         ! Get the value of the model !
@@ -1372,7 +1406,13 @@ contains
 
 
      if (options%print_level >= 2) write(options%out,3010)
+
+return
      
+1010 continue 
+     inform%status = ERROR%WORKSPACE_ERROR
+     return
+
 3000 FORMAT('*** Solving the trust region subproblem using ',A,' ***')
 3010 FORMAT('*** Subproblem solution found ***')
 3020 FORMAT('*** Solving the regularized subproblem using ',A,' ***')
@@ -1584,14 +1624,14 @@ contains
 
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,f,hf,n,m,Delta,d,normd,options,inform,w)
+   SUBROUTINE AINT_tr(J,A,f,v,hfn,m,Delta,d,normd,options,inform,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
+     REAL(wp), intent(in) :: J(:), A(:,:), hf(:), f(:), v(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D
@@ -1618,11 +1658,6 @@ contains
      !
      ! set A and v for the model being considered here...
 
-     call matmult_inner(J,n,m,w%A)
-     ! add any second order information...
-     w%A = w%A + reshape(hf,(/n,n/))
-     call mult_Jt(J,n,m,f,w%v)
-        
      ! Set B to I by hand  
      ! todo: make this an option
      w%B = 0
@@ -1632,10 +1667,10 @@ contains
      
      select case (options%model)
      case (1)
-        call solve_spd(w%A,-w%v,w%LtL,w%p0,n,inform)
+        call solve_spd(A,-v,w%LtL,w%p0,n,inform)
         if (inform%status .ne. 0) goto 1000
      case default
-        call solve_general(w%A,-w%v,w%p0,n,inform,w%solve_general_ws)
+        call solve_general(A,-v,w%p0,n,inform,w%solve_general_ws)
         if (inform%status .ne. 0) goto 1000
      end select
           
@@ -1650,9 +1685,9 @@ contains
      end if
 
      w%M0(1:n,1:n) = -w%B
-     w%M0(n+1:2*n,1:n) = w%A
-     w%M0(1:n,n+1:2*n) = w%A
-     call outer_product(w%v,n,w%gtg) ! gtg = Jtg * Jtg^T
+     w%M0(n+1:2*n,1:n) = A
+     w%M0(1:n,n+1:2*n) = A
+     call outer_product(v,n,w%gtg) ! gtg = Jtg * Jtg^T
      w%M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * w%gtg
 
      w%M1 = 0.0
@@ -1668,14 +1703,14 @@ contains
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(w%y_hardcase)
         call matmult_outer( matmul(w%B,w%y_hardcase), size_hard(2), n, w%M1_small)
-        w%M0_small = w%A(:,:) + lam*w%B(:,:) + w%M1_small
+        w%M0_small = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model) 
         case (1)
-           call solve_spd(w%M0_small,-w%v,w%LtL,w%q,n,inform)
+           call solve_spd(w%M0_small,-v,w%LtL,w%q,n,inform)
            if (inform%status .ne. 0) goto 1000
         case default
-          call solve_general(w%M0_small,-w%v,w%q,n,inform,w%solve_general_ws)
+          call solve_general(w%M0_small,-v,w%q,n,inform,w%solve_general_ws)
           if (inform%status .ne. 0) goto 1000
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
@@ -1695,10 +1730,10 @@ contains
      else 
         select case (options%model)
         case (1)
-           call solve_spd(w%A + lam*w%B,-w%v,w%LtL,w%p1,n,inform)
+           call solve_spd(A + lam*w%B,-v,w%LtL,w%p1,n,inform)
            if (inform%status .ne. 0) goto 1000
         case default
-           call solve_general(w%A + lam*w%B,-w%v,w%p1,n,inform,w%solve_general_ws)
+           call solve_general(A + lam*w%B,-v,w%p1,n,inform,w%solve_general_ws)
            if (inform%status .ne. 0) goto 1000
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
@@ -1739,7 +1774,7 @@ contains
 
    END SUBROUTINE AINT_tr
 
-   subroutine more_sorensen(J,f,hf,n,m,Delta,d,nd,options,inform,w)
+   subroutine more_sorensen(A,v,n,m,Delta,d,nd,options,inform,w)
      ! -----------------------------------------
      ! more_sorensen
      ! Solve the trust-region subproblem using 
@@ -1751,7 +1786,7 @@ contains
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), hf(:), Delta
+     REAL(wp), intent(in) :: A(:,:), v(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: nd ! ||d||_D
@@ -1771,24 +1806,11 @@ contains
      ! set A and v for the model being considered here...
 
      if (.not. w%allocated) goto 1010
-     
-     ! Set A = J^T J
-     call matmult_inner(J,n,m,w%A)
-     ! add any second order information...
-     ! so A = J^T J + HF
-     w%A = w%A + reshape(hf,(/n,n/))
-     ! now form v = J^T f 
-     call mult_Jt(J,n,m,f,w%v)
-
-     ! if scaling needed, do it
-     if ( options%scale .ne. 0) then
-        call apply_scaling(J,n,m,w%A,w%v,w%apply_scaling_ws,options,inform)
-     end if
-     
+         
      local_ms_shift = options%more_sorensen_shift
 
      ! d = -A\v
-     call solve_spd(w%A,-w%v,w%LtL,d,n,inform)
+     call solve_spd(A,-v,w%LtL,d,n,inform)
      if (inform%status .eq. 0) then
         ! A is symmetric positive definite....
         sigma = zero
@@ -1798,12 +1820,12 @@ contains
         inform%status = 0
         inform%external_return = 0
         inform%external_name = REPEAT( ' ', 80 )
-        call min_eig_symm(w%A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws) 
+        call min_eig_symm(A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws) 
         if (inform%status .ne. 0) goto 1000
         sigma = -(sigma - local_ms_shift)
         if (options%print_level >= 3) write(options%out,6010) sigma
         ! find a shift that makes (A + sigma I) positive definite
-        call get_pd_shift(n,sigma,d,options,inform,w)
+        call get_pd_shift(n,A,v,sigma,d,options,inform,w)
         if (inform%status .ne. 0) goto 4000
         if (options%print_level >=3) write(options%out,6020)
      end if
@@ -1850,7 +1872,7 @@ contains
         if (abs(sigma_shift) < options%more_sorensen_tiny * abs(sigma) ) then
            if (no_restarts < 1) then 
               ! find a shift that makes (A + sigma I) positive definite
-              call get_pd_shift(n,sigma,d,options,inform,w)
+              call get_pd_shift(n,A,v,sigma,d,options,inform,w)
               if (inform%status .ne. 0) goto 4000
               no_restarts = no_restarts + 1
            else
@@ -1862,8 +1884,8 @@ contains
            sigma = sigma + sigma_shift
         end if
 
-        call shift_matrix(w%A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
+        call shift_matrix(A,sigma,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
         if (inform%status .ne. 0) goto 1000
         
         nd = norm2(d)
@@ -1899,11 +1921,6 @@ contains
      
 4000 continue
      ! exit the routine
-     if (options%scale .ne. 0 ) then 
-        do i = 1, n
-           d(i) = d(i) / w%apply_scaling_ws%diag(i)
-        end do
-     end if
      return 
 
 ! Printing statements
@@ -1927,16 +1944,17 @@ contains
 
    end subroutine more_sorensen
 
-   subroutine get_pd_shift(n,sigma,d,options,inform,w)
+   subroutine get_pd_shift(n,A,v,sigma,d,options,inform,w)
 
      !--------------------------------------------------
      ! get_pd_shift
      !
-     ! Given an indefinite matrix w%A, find a shift sigma
+     ! Given an indefinite matrix A, find a shift sigma
      ! such that (A + sigma I) is positive definite
      !--------------------------------------------------
      
      integer, intent(in) :: n 
+     real(wp), intent(in) :: A(:,:), v(:)
      real(wp), intent(inout) :: sigma
      real(wp), intent(inout) :: d(:)
      TYPE( nlls_options ), INTENT( IN ) :: options
@@ -1949,8 +1967,8 @@ contains
      no_shifts = 0
      successful_shift = .false.
      do while( .not. successful_shift )
-        call shift_matrix(w%A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-w%v,w%LtL,d,n,inform)
+        call shift_matrix(A,sigma,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
         if ( inform%status .ne. 0 ) then
            ! reset the error calls -- handled in the code....
            inform%status = 0
@@ -1977,7 +1995,7 @@ contains
 
    end subroutine get_pd_shift
    
-   subroutine solve_galahad(J,f,hf,n,m,Delta,d,normd,options,inform,w)
+   subroutine solve_galahad(A,v,n,m,Delta,d,normd,options,inform,w)
 
      !---------------------------------------------
      ! solve_galahad
@@ -1990,7 +2008,7 @@ contains
      ! main output :: d, the soln to the TR subproblem
      !--------------------------------------------
 
-     REAL(wp), intent(in) :: J(:), f(:), hf(:) 
+     REAL(wp), intent(in) :: A(:,:), v(:)
      REAL(wp), intent(inout) :: Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
@@ -2023,25 +2041,10 @@ contains
 
      if (.not. w%allocated ) goto 1010
      
-     ! first, find the matrix H and vector v
-     ! Set A = J^T J
-     call matmult_inner(J,n,m,w%A)
-     ! add any second order information...
-     ! so A = J^T J + HF
-     w%A = w%A + reshape(hf,(/n,n/))
-
-     ! now form v = J^T f 
-     call mult_Jt(J,n,m,f,w%v)
-
-     ! if scaling needed, do it
-     if ( options%scale .ne. 0) then
-        call apply_scaling(J,n,m,w%A,w%v,w%apply_scaling_ws,options,inform)
-     end if
-
-     ! Now that we have the unprocessed matrices, we need to get an 
+     ! We have the unprocessed matrices, we need to get an 
      ! eigendecomposition to make A diagonal
      !
-     call all_eig_symm(w%A,n,w%ew,w%ev,w%all_eig_symm_ws,inform)
+     call all_eig_symm(A,n,w%ew,w%ev,w%all_eig_symm_ws,inform)
      if (inform%status .ne. 0) goto 1000
 
      ! We can now change variables, setting y = Vp, getting
@@ -2053,7 +2056,7 @@ contains
      ! <=>
 
      ! we need to get the transformed vector v
-     call mult_Jt(w%ev,n,n,w%v,w%v_trans)
+     call mult_Jt(w%ev,n,n,v,w%v_trans)
 
      ! we've now got the vectors we need, pass to dtrs_solve
       
@@ -2116,12 +2119,6 @@ contains
 
      normd = norm2(d) ! ||d||_D
      
-     if (options%scale .ne. 0 ) then 
-        do ii = 1, n
-           d(ii) = d(ii) / w%apply_scaling_ws%diag(ii)
-        end do
-     end if
-
      return
 
 1000 continue 
@@ -2275,7 +2272,7 @@ contains
 
 
      end subroutine evaluate_model
-     
+
      subroutine calculate_rho(normf,normfnew,md,rho,options)
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
@@ -3160,7 +3157,7 @@ contains
        type( NLLS_workspace ), intent(inout) :: workspace
        type( nlls_options ), intent(in) :: options
        integer, intent(in) :: n,m
-       type( NLLS_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
        if (.not. allocated(workspace%y)) then
           allocate(workspace%y(n), stat = inform%alloc_status)
@@ -3255,42 +3252,10 @@ contains
           if (inform%alloc_status > 0) goto 1000
        end if
 
-       call setup_workspace_evaluate_model(n,m,& 
-            workspace%calculate_step_ws%evaluate_model_ws,options,inform)
+       call setup_workspace_calculate_step(n,m,workspace%calculate_step_ws, & 
+            options, inform)
        if (inform%alloc_status > 0) goto 1010
 
-       if ( options%model == 4 ) then
-          
-          call setup_workspace_solve_newton_tensor(n,m,&
-               workspace%calculate_step_ws%solve_newton_tensor_ws,&
-               options, inform)
-          
-       else
-
-          select case (options%nlls_method)
-
-          case (1) ! use the dogleg method
-             call setup_workspace_dogleg(n,m,workspace%calculate_step_ws%dogleg_ws, & 
-                  options, inform)
-             if (inform%alloc_status > 0) goto 1010
-             
-          case(2) ! use the AINT method
-             call setup_workspace_AINT_tr(n,m,workspace%calculate_step_ws%AINT_tr_ws, & 
-                  options, inform)
-             if (inform%alloc_status > 0) goto 1010
-             
-          case(3) ! More-Sorensen 
-             call setup_workspace_more_sorensen(n,m,&
-                  workspace%calculate_step_ws%more_sorensen_ws,options,inform)
-             if (inform%alloc_status > 0) goto 1010
-             
-          case (4) ! dtrs (Galahad)
-             call setup_workspace_solve_galahad(n,m, & 
-                  workspace%calculate_step_ws%solve_galahad_ws, options, inform)
-             if (inform%alloc_status > 0) goto 1010
-          end select
-       end if
-       
        workspace%allocated = .true.
        
        return
@@ -3341,37 +3306,8 @@ contains
        if(allocated(workspace%g)) deallocate(workspace%g ) 
        if(allocated(workspace%Xnew)) deallocate(workspace%Xnew ) 
 
-       call remove_workspace_evaluate_model(workspace%calculate_step_ws%evaluate_model_ws,&
+       call remove_workspace_calculate_step(workspace%calculate_step_ws,&
             options)
-
-       if (options%model == 4) then 
-          
-          call remove_workspace_solve_newton_tensor(& 
-               workspace%calculate_step_ws%solve_newton_tensor_ws, &
-               options)
-       else
-
-          select case (options%nlls_method)
-
-          case (1) ! use the dogleg method
-             call remove_workspace_dogleg(workspace%calculate_step_ws%dogleg_ws, & 
-                  options)
-             
-          case(2) ! use the AINT method
-             call remove_workspace_AINT_tr(workspace%calculate_step_ws%AINT_tr_ws, & 
-                  options)
-             
-          case(3) ! More-Sorensen 
-             call remove_workspace_more_sorensen(&
-                  workspace%calculate_step_ws%more_sorensen_ws,options)
-             
-          case (4) ! dtrs (Galahad)
-             call remove_workspace_solve_galahad(& 
-                  workspace%calculate_step_ws%solve_galahad_ws, options)
-             
-          end select
-
-       end if
 
 !       ! evaluate model in the main routine...       
 !       call remove_workspace_evaluate_model(workspace%evaluate_model_ws,options)
@@ -3386,7 +3322,7 @@ contains
        integer, intent(in) :: n, m 
        type( get_svd_J_work ), intent(out) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
        integer :: lwork
        character :: jobu(1), jobvt(1)
@@ -3440,7 +3376,7 @@ contains
        integer, intent(in) :: n, m 
        type( solve_newton_tensor_work ), intent(out) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
        
        allocate(w%model_tensor(m), stat=inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3521,11 +3457,128 @@ contains
        
      end subroutine remove_workspace_solve_newton_tensor
 
+     recursive subroutine setup_workspace_calculate_step(n,m,w,options,inform)
+       integer, intent(in) :: n, m 
+       type( calculate_step_work ), intent(out) :: w
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(out) :: inform
+
+       allocate(w%A(n,n), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
+
+       allocate(w%v(n), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000
+       
+       call setup_workspace_evaluate_model(n,m,& 
+            w%evaluate_model_ws,options,inform)
+       if (inform%alloc_status > 0) goto 9010
+
+       if ( options%model == 4 ) then
+          
+          call setup_workspace_solve_newton_tensor(n,m,&
+               w%solve_newton_tensor_ws,&
+               options, inform)
+          
+       else
+
+          select case (options%nlls_method)
+
+          case (1) ! use the dogleg method
+             call setup_workspace_dogleg(n,m,w%dogleg_ws, & 
+                  options, inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case(2) ! use the AINT method
+             call setup_workspace_AINT_tr(n,m,w%AINT_tr_ws, & 
+                  options, inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case(3) ! More-Sorensen 
+             call setup_workspace_more_sorensen(n,m,&
+                  w%more_sorensen_ws,options,inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case (4) ! dtrs (Galahad)
+             call setup_workspace_solve_galahad(n,m, & 
+                  w%solve_galahad_ws, options, inform)
+             if (inform%alloc_status > 0) goto 9010
+          end select
+       end if
+
+       if (options%scale > 0) then
+          call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,inform)
+          if (inform%status > 0) goto 9010
+       end if
+
+
+
+       w%allocated = .true.
+       
+       return
+
+        ! Error statements
+9000   continue  ! bad allocations in this subroutine
+       inform%bad_alloc = 'setup_workspace_calculate_step'
+       inform%status = ERROR%ALLOCATION
+       return
+
+9010   continue  ! bad allocations from dependent subroutine
+       return
+     end subroutine setup_workspace_calculate_step
+
+     recursive subroutine remove_workspace_calculate_step(w,options)
+       type( calculate_step_work ), intent(out) :: w
+       type( nlls_options ), intent(in) :: options
+
+       if (allocated(w%A)) deallocate(w%A)
+       if (allocated(w%v)) deallocate(w%v)
+       
+       call remove_workspace_evaluate_model(w%evaluate_model_ws,&
+            options)
+
+       if (options%model == 4) then 
+          
+          call remove_workspace_solve_newton_tensor(& 
+               w%solve_newton_tensor_ws, &
+               options)
+       else
+
+          select case (options%nlls_method)
+
+          case (1) ! use the dogleg method
+             call remove_workspace_dogleg(w%dogleg_ws, & 
+                  options)
+             
+          case(2) ! use the AINT method
+             call remove_workspace_AINT_tr(w%AINT_tr_ws, & 
+                  options)
+             
+          case(3) ! More-Sorensen 
+             call remove_workspace_more_sorensen(&
+                  w%more_sorensen_ws,options)
+             
+          case (4) ! dtrs (Galahad)
+             call remove_workspace_solve_galahad(& 
+                  w%solve_galahad_ws, options)
+             
+          end select
+
+       end if
+       
+       if (options%scale > 0) then
+          call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
+       end if
+
+       w%allocated = .false.
+
+
+     end subroutine remove_workspace_calculate_step
+
      subroutine setup_workspace_dogleg(n,m,w,options,inform)
        integer, intent(in) :: n, m 
        type( dogleg_work ), intent(out) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
        allocate(w%d_sd(n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3586,7 +3639,7 @@ contains
        integer, intent(in) :: n, m 
        type( solve_LLS_work ) :: w 
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
        integer :: lwork
 
        allocate( w%temp(max(m,n)), stat = inform%alloc_status)
@@ -3626,7 +3679,7 @@ contains
        integer, intent(in) :: n, m        
        type( evaluate_model_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
        allocate( w%Jd(m), stat = inform%alloc_status )
        if (inform%alloc_status > 0) goto 9000
@@ -3665,12 +3718,8 @@ contains
        integer, intent(in) :: n, m 
        type( AINT_tr_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
-       allocate(w%A(n,n),stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 9000
-       allocate(w%v(n),stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 9000
        allocate(w%B(n,n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
        allocate(w%p0(n),stat = inform%alloc_status)
@@ -3725,8 +3774,6 @@ contains
        type( AINT_tr_work ) :: w
        type( nlls_options ), intent(in) :: options
 
-       if(allocated( w%A )) deallocate(w%A)
-       if(allocated( w%v )) deallocate(w%v)
        if(allocated( w%B )) deallocate(w%B)
        if(allocated( w%p0 )) deallocate(w%p0)
        if(allocated( w%p1 )) deallocate(w%p1)
@@ -3757,7 +3804,7 @@ contains
        integer, intent(in) :: n, m 
        type( min_eig_symm_work) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
        real(wp), allocatable :: workquery(:)
        integer :: lwork, eigsout
@@ -3849,7 +3896,7 @@ contains
        integer, intent(in) :: n, m 
        type( max_eig_work) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform), intent(inout) :: inform
+       type( nlls_inform), intent(out) :: inform
        real(wp), allocatable :: workquery(:)
        integer :: lwork
 
@@ -3926,7 +3973,7 @@ contains
        integer, intent(in) :: n, m 
        type( solve_general_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform), intent(inout) :: inform
+       type( nlls_inform), intent(out) :: inform
 
        allocate( w%A(n,n), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3961,13 +4008,9 @@ contains
        integer, intent(in) :: n,m
        type( solve_galahad_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
-       allocate(w%A(n,n),stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 9000
        allocate(w%ev(n,n),stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 9000
-       allocate(w%v(n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
        allocate(w%v_trans(n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -3978,11 +4021,6 @@ contains
 
        call setup_workspace_all_eig_symm(n,m,w%all_eig_symm_ws,options,inform)
        if (inform%status > 0) goto 9010
-
-       if (options%scale > 0) then
-          call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,inform)
-          if (inform%status > 0) goto 9010
-       end if
 
        w%allocated = .true.
 
@@ -4002,17 +4040,12 @@ contains
        type( solve_galahad_work ) :: w
        type( nlls_options ), intent(in) :: options
 
-       if(allocated( w%A )) deallocate(w%A)
        if(allocated( w%ev )) deallocate(w%ev)
-       if(allocated( w%v )) deallocate(w%v)
        if(allocated( w%v_trans )) deallocate(w%v_trans)
        if(allocated( w%ew )) deallocate(w%ew)
        if(allocated( w%d_trans )) deallocate(w%d_trans)
 
        call remove_workspace_all_eig_symm(w%all_eig_symm_ws,options)
-       if (options%scale > 0) then
-          call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
-       end if
 
        w%allocated = .false.
 
@@ -4024,7 +4057,7 @@ contains
        integer, intent(in) :: n,m
        type( all_eig_symm_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
        real(wp), allocatable :: workquery(:)
        real(wp) :: A,ew
@@ -4077,13 +4110,9 @@ contains
        integer, intent(in) :: n,m
        type( more_sorensen_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
-       allocate(w%A(n,n),stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 9000
        allocate(w%LtL(n,n),stat = inform%alloc_status)
-       if (inform%alloc_status > 0) goto 9000
-       allocate(w%v(n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
        allocate(w%q(n),stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
@@ -4094,11 +4123,6 @@ contains
 
        call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,inform)
        if (inform%status > 0) goto 9010
-
-       if (options%scale > 0) then
-          call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,inform)
-          if (inform%status > 0) goto 9010
-       end if
 
        w%allocated = .true.
 
@@ -4118,17 +4142,12 @@ contains
        type( more_sorensen_work ) :: w
        type( nlls_options ), intent(in) :: options
 
-       if(allocated( w%A )) deallocate(w%A)
        if(allocated( w%LtL )) deallocate(w%LtL)
-       if(allocated( w%v )) deallocate(w%v)
        if(allocated( w%q )) deallocate(w%q)
        if(allocated( w%y1 )) deallocate(w%y1)
        if(allocated( w%AplusSigma )) deallocate(w%AplusSigma)
 
        call remove_workspace_min_eig_symm(w%min_eig_symm_ws,options)
-       if (options%scale > 0) then
-          call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
-       end if
 
        w%allocated = .false.
 
@@ -4142,7 +4161,7 @@ contains
        integer, intent(in) :: n,m
        type( apply_scaling_work ) :: w
        type( nlls_options ), intent(in) :: options
-       type( nlls_inform ), intent(inout) :: inform
+       type( nlls_inform ), intent(out) :: inform
 
        allocate(w%diag(n), stat = inform%alloc_status )
        if (inform%alloc_status .ne. 0) goto 1000
