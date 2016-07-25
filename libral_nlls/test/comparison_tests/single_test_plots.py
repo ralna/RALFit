@@ -13,18 +13,13 @@ def main():
     parser.add_argument('control_files', nargs='*', help="the names of lists of optional arguments to be passed to nlls_solve, in the format required by CUTEST, which are found in files in the directory ./control_files/")
     parser.add_argument("-p","--problem", help="which problem should be use?")
     parser.add_argument("-n","--no_plot", help="if present, we do not draw the plots", action="store_true")
+    parser.add_argument("-s","--starting_point", help="which starting point to use? (default=1)",default=1)
     args = parser.parse_args()
     control_files = args.control_files
     no_tests = len(control_files) #!len(sys.argv)-1
     problem = args.problem
 
-    print "Solving problem " + problem
-
-    print control_files
-
-#    control_files = [None for i in range(no_tests)]
-#    for i in range(no_tests):
-#        control_files[i] = sys.argv[i+2]
+    print "Solving problem " + problem + " (starting point "+str(args.starting_point)+")"
 
     # read the cutest directory from the environment variables
     try:
@@ -44,8 +39,6 @@ def main():
     # and an empyt
     all_min  = np.zeros(no_tests)
 
-    starting_point = 1
-
     # now, let's run the tests!
     for i in range(no_tests):
         if control_files[i] == "gsl":
@@ -64,7 +57,7 @@ def main():
         subprocess.call(["cp","/dev/null",control_files[i]+"_iter.out"])
         if i == 0:
             # very first call, so create blank file...
-            subprocess.call(["runcutest","-p",package,"--decode",problem,"-st",str(starting_point)])
+            subprocess.call(["runcutest","-p",package,"--decode",problem,"-st",str(args.starting_point)])
         else: # no need to decode again....
             subprocess.call(["runcutest","-p",package])
         subprocess.call(["mv", control_files[i]+"_iter.out", \

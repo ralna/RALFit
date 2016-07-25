@@ -12,18 +12,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('control_files', nargs='*', help="the names of lists of optional arguments to be passed to nlls_solve, in the format required by CUTEST, which are found in files in the directory ./control_files/")
     parser.add_argument("-r","--reuse_data", help="if present, we regenerate tables of iterations from previously computed data", action="store_true")
-    parser.add_argument("-p","--problem_list", help="which list of problems to use? (default=names_nist_first)")
+    parser.add_argument("-p","--problem_list", help="which list of problems to use? (default=names_nist_first)",default="names_nist_first")
+    parser.add_argument("-s","--starting_point", help="which starting point to use? (default=1)", default=1)
     args = parser.parse_args()
     no_tests = len(args.control_files)
-    if args.reuse_data:
-        compute_results = False
-    else:
-        compute_results = True
+    compute_results = not args.reuse_data
     
-    if args.problem_list:
-        prob_list = args.problem_list
-    else:
-        prob_list = "names_nist_first"
+    prob_list = args.problem_list
     problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
     no_probs = len(problems)
         
@@ -39,7 +34,7 @@ def main():
         if compute_results:
             # let's run the tests!
             print "**** "+ problems[i] +" ****"
-            compute(no_tests,args.control_files,problems,i)
+            compute(no_tests,args.control_files,problems,i,args.starting_point)
     
     if compute_results:
         for j in range(no_tests):
@@ -288,15 +283,13 @@ def format(number):
 
 
 
-def compute(no_tests,control_files,problems,i):
+def compute(no_tests,control_files,problems,i,starting_point):
     # read the cutest directory from the environment variables
     try:
         cutestdir = os.environ.get("CUTEST")
     except:
         raise Error("the CUTEST environment variable doesn't appear to be set")
     
-    starting_point = 1
-
     for j in range(no_tests):
         if control_files[j] == "gsl":
             package = "gsl"
