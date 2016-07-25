@@ -5,35 +5,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
 import os
+import argparse
 
-def main(argv):
+def main():
     # Let's get the files containing the problem and control parameters from the calling command..
-    no_tests = len(argv)
-    if argv[-1] == 'no':
-        no_tests = no_tests - 1
+    parser = argparse.ArgumentParser()
+    parser.add_argument('control_files', nargs='*', help="the names of lists of optional arguments to be passed to nlls_solve, in the format required by CUTEST, which are found in files in the directory ./control_files/")
+    parser.add_argument("-r","--reuse_data", help="if present, we regenerate tables of iterations from previously computed data", action="store_true")
+    parser.add_argument("-p","--problem_list", help="which list of problems to use? (default=names_nist_first)")
+    args = parser.parse_args()
+    no_tests = len(args.control_files)
+    if args.reuse_data:
         compute_results = False
     else:
         compute_results = True
-
+    
+    if args.problem_list:
+        prob_list = args.problem_list
+    else:
+        prob_list = "names_nist_first"
+    problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
+    no_probs = len(problems)
+        
     print "*************************************"
     print "**                                 **"
     print "**        R A L _ N L L S          **"
     print "**                                 **"
     print "*************************************"
-
-    # put the names of the control files to be run into an array
-    control_files = [None for i in range(no_tests)]
-    for i in range(no_tests):
-        control_files[i] = argv[i]
-
-    # get the list of problems...
-#    prob_list = "nist"
-#    prob_list = "nist_average"
-    prob_list = "names_nist_first"
-    #prob_list = "names_minus_boxbod"
-    problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
-
-    no_probs = len(problems)
 
     print "Testing ",no_probs," problems with ",no_tests," minimizers"
 
@@ -41,20 +39,20 @@ def main(argv):
         if compute_results:
             # let's run the tests!
             print "**** "+ problems[i] +" ****"
-            compute(no_tests,control_files,problems,i)
+            compute(no_tests,args.control_files,problems,i)
     
     if compute_results:
         for j in range(no_tests):
-            subprocess.call(["mv", "cutest/sif/"+control_files[j]+".out", \
-                             "data/"+control_files[j]+".out"])
-            if control_files[j] == "gsl":
+            subprocess.call(["mv", "cutest/sif/"+args.control_files[j]+".out", \
+                             "data/"+args.control_files[j]+".out"])
+            if args.control_files[j] == "gsl":
                 # add a newline
                 gslresults = open("data/gsl.out","a")
                 gslresults.write("\n")
                 gslresults.close()
             # get the hash of the git version
             short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
-            f = open('data/'+control_files[j]+".hash",'w')
+            f = open('data/'+args.control_files[j]+".hash",'w')
             f.write(short_hash+"\t"+str(no_probs))
             f.close()
 
@@ -81,9 +79,9 @@ def main(argv):
     no_failures = np.zeros(no_tests, dtype = np.int)
 
     for j in range(no_tests):
-        data[j] = np.loadtxt("data/"+control_files[j]+".out", dtype = info)
-        metadata[j] = np.loadtxt("data/"+control_files[j]+".hash", dtype = hashinfo)
-        if control_files[j] == "gsl":
+        data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+        metadata[j] = np.loadtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
+        if args.control_files[j] == "gsl":
             too_many_its[j] = -2
         else:
             too_many_its[j] = -1
@@ -151,21 +149,21 @@ def main(argv):
     func_boundaries = np.array([2, 5, 10, 30])
     additive = 0
     print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
-                  mins_boundaries, 'normalized_mins', control_files, failure, additive,
+                  mins_boundaries, 'normalized_mins', args.control_files, failure, additive,
                   short_hash)
     additive = 1
     print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates,
-                  iter_boundaries, 'normalized_iters', control_files, failure, additive,
+                  iter_boundaries, 'normalized_iters', args.control_files, failure, additive,
                   short_hash)
     print_to_html(no_probs, no_tests, problems, normalized_func, smallest_func, 
-                  func_boundaries, 'normalized_func', control_files, failure, additive,
+                  func_boundaries, 'normalized_func', args.control_files, failure, additive,
                   short_hash)
     
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
     for j in range(0,no_tests):
         print " ", 
-        print "%16s" % control_files[j],
+        print "%16s" % args.control_files[j],
     print " "
 
     for i in range(0,no_probs):
@@ -177,11 +175,11 @@ def main(argv):
 
     print "\n\n"
     for j in range (0, no_tests):
-        print control_files[j]+" is best ",best[j],\
+        print args.control_files[j]+" is best ",best[j],\
             " times (and clear best ",clear_best[j]," times)"
 
     for j in range (0, no_tests):
-        print control_files[j]+" took ",average_iterates[j],\
+        print args.control_files[j]+" took ",average_iterates[j],\
             " iterations and ", average_funeval[j], \
             " func. evals on average, and failed ", no_failures[j]," times)"
 
@@ -193,7 +191,7 @@ def main(argv):
         print "************************************************"
         print "\n"
 
-    plot_prof(control_files,no_tests,prob_list)
+    plot_prof(args.control_files,no_tests,prob_list)
 
 def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries, 
                   filename, control_files, failure, additive, short_hash):
@@ -359,4 +357,5 @@ def plot_prof(control_files,no_tests,prob_list):
     os.chdir("..")
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
+#    main(sys.argv[1:])
