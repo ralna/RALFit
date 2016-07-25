@@ -163,6 +163,11 @@ module ral_nlls_internal
      
      REAL ( KIND = wp ) :: base_regularization = zero
 
+     ! allow inherently the solution of a problem of the form
+     !  min_x 1/2 ||r(x)||^2 + regularization_weight * 1/2 * ||x||^2
+     
+     REAL ( KIND = wp ) :: regularization_weight = zero
+
 !   maximum permitted trust-region radius
 
      REAL ( KIND = wp ) :: maximum_radius = ten ** 8
@@ -786,11 +791,17 @@ contains
        end if
 
        w%normF = norm2(w%f)
+       if ( options%regularization_weight > zero ) then
+          w%normF = sqrt(w%normF**2 + options%regularization_weight * (norm2(X)**2) )
+       end if
        w%normF0 = w%normF
 
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
+       if (options%regularization_weight > zero )  then 
+          w%g = w%g - options%regularization_weight * X
+       end if
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
        w%normJFold = w%normJF
@@ -1335,7 +1346,12 @@ contains
     ! add any second order information...
     ! so A = J^T J + HF
     w%A = w%A + reshape(hf,(/n,n/))
-    
+    ! and, now, let's add on a reg parameter, if needed
+    if (options%regularization_weight > zero) then 
+       do i = 1, n
+          w%A(i,i) = w%A(i,i) + options%regularization_weight
+       end do
+    end if
     ! and let's copy over g to a temp vector v
     ! (it's copied so that we can scale v without losing g)
     
@@ -2964,6 +2980,8 @@ return
           w%tensor_options%base_regularization = 1.0_wp/Delta
        case (2)
           ! do nothing!
+       case (3)
+          w%tensor_options%regularization_weight = 1.0_wp / Delta
        end select
        
        do i = 1, w%tensor_options%maxit
@@ -3418,6 +3436,11 @@ return
           w%tensor_options%nlls_method = 4 
           w%tparams%m1 = m
           w%m_in = m + n
+       case (3)
+          w%tensor_options%type_of_method =1 
+          w%tensor_options%nlls_method = 4
+          w%tparams%m1 = m
+          w%m_in = m 
        end select
        
        ! setup/remove workspaces manually....
