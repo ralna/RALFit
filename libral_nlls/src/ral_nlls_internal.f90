@@ -164,9 +164,10 @@ module ral_nlls_internal
      REAL ( KIND = wp ) :: base_regularization = zero
 
      ! allow inherently the solution of a problem of the form
-     !  min_x 1/2 ||r(x)||^2 + regularization_weight * 1/2 * ||x||^2
+     !  min_x 1/2 ||r(x)||^2 + regularization_weight * 1/ regularization_power * ||x||^regularization_weight
      
      REAL ( KIND = wp ) :: regularization_weight = zero
+     REAL ( KIND = wp ) :: regularization_power = zero
 
 !   maximum permitted trust-region radius
 
@@ -716,6 +717,7 @@ contains
     logical :: success 
     logical :: bad_allocate = .false.
     character :: second
+    real(wp) :: sum_reg
     
     ! todo: make max_tr_decrease a control variable
 
@@ -792,7 +794,13 @@ contains
 
        w%normF = norm2(w%f)
        if ( options%regularization_weight > zero ) then
-          w%normF = sqrt(w%normF**2 + options%regularization_weight * (norm2(X)**2) )
+          sum_reg = zero
+          do i = 1,n
+             sum_reg = sum_reg + X(i)**options%regularization_power
+          end do
+          w%normF = sqrt(w%normF**2 + & 
+               (2 * options%regularization_weight / options%regularization_power) *  & 
+               sum_reg)
        end if
        w%normF0 = w%normF
 
@@ -800,7 +808,10 @@ contains
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
        if (options%regularization_weight > zero )  then 
-          w%g = w%g - options%regularization_weight * X
+          do i = 1, n
+             w%g(i) = w%g(i) - ( options%regularization_weight * & 
+                  X(i)**(options%regularization_power - 1) )
+          end do
        end if
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
@@ -926,8 +937,9 @@ contains
        ! todo: fix this...don't copy over...
        call calculate_step(w%J,w%f,w%hf,w%g,& 
             X,md,md_gn,& 
-            n,m,w%Delta,eval_HF, params, & 
-            w%d,w%normd,options,inform,& 
+            n,m,w%use_second_derivatives,w%Delta,eval_HF, params, & 
+            w%d,w%normd, & 
+            options,inform,& 
             w%calculate_step_ws)
        if (inform%status .ne. 0) goto 4000
 
@@ -1313,8 +1325,8 @@ contains
 
 ! below are the truly internal subroutines...
 
-  RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,Delta,eval_HF,params, &
-                            d,normd,options,inform,w)
+  RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, & 
+                            Delta,eval_HF,params,d,normd,options,inform,w)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -1326,6 +1338,7 @@ contains
     procedure( eval_hf_type ) :: eval_HF       
     class( params_base_type ) :: params  
     integer, intent(in)  :: n, m
+    logical, intent(in) :: use_second_derivatives
     real(wp), intent(out) :: d(:)
     real(wp), intent(out) :: md, md_gn
     real(wp), intent(out) :: normd
@@ -1336,6 +1349,8 @@ contains
     real(wp) :: md_bad
     integer :: i
     logical :: scaling_used = .false.
+    real(wp) :: coeff ! coefficient in front of diag(s) if reg. problem being solved
+    real(wp) :: sum_reg
 
     if (.not. w%allocated) goto 1010
     
@@ -1348,8 +1363,13 @@ contains
     w%A = w%A + reshape(hf,(/n,n/))
     ! and, now, let's add on a reg parameter, if needed
     if (options%regularization_weight > zero) then 
-       do i = 1, n
-          w%A(i,i) = w%A(i,i) + options%regularization_weight
+       if (use_second_derivatives) then ! use J^TJ + Hf
+          coeff = options%regularization_weight * (  options%regularization_power - 1)
+       else ! use just the J^TJ term
+          coeff = options%regularization_power * options%regularization_weight / 2
+       end if
+       do i = 1, n             
+           w%A(i,i) = w%A(i,i) + coeff * ( X(i)**(options%regularization_power-2) )
        end do
     end if
     ! and let's copy over g to a temp vector v
@@ -2982,6 +3002,7 @@ return
           ! do nothing!
        case (3)
           w%tensor_options%regularization_weight = 1.0_wp / Delta
+          w%tensor_options%regularization_power = 2.0_wp
        end select
        
        do i = 1, w%tensor_options%maxit

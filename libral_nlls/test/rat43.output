@@ -404,7 +404,7 @@ status = 0       iter = 18
  # Jacobian evaluations  =  19
  # Hessian evaluations   =  19
  Set up time             =  .00 seconds
- Solve time              =  .01 seconds
+ Solve time              =  .02 seconds
 
 ******************************************************************
 
