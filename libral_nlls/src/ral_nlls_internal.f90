@@ -1360,7 +1360,7 @@ contains
     call matmult_inner(J,n,m,w%A)
     ! add any second order information...
     ! so A = J^T J + HF
-    w%A = w%A + reshape(hf,(/n,n/))
+    w%A = w%A + reshape(hf,[n,n])
     ! and, now, let's add on a reg parameter, if needed
     if (options%regularization_weight > zero) then 
        if (use_second_derivatives) then ! use J^TJ + Hf
