@@ -1145,9 +1145,9 @@
 !-----------------------------------------------
 
       INTEGER :: i, it, out, nroots, print_level
-      INTEGER :: max_order, n_lambda, i_hard
+      INTEGER :: max_order, n_lambda, i_hard, n_sing
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda
-      REAL ( KIND = wp ) :: alpha, utx, distx
+      REAL ( KIND = wp ) :: alpha, utx, distx, x_big
       REAL ( KIND = wp ) :: c_norm, c_norm_over_radius, v_norm2, w_norm2
       REAL ( KIND = wp ) :: beta, z_norm2, root1, root2, root3
       REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, c2
@@ -1245,7 +1245,7 @@
           lambda = zero
         END IF
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,             &
+          WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,             &
           0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
           WRITE( out, "( A,                                                    &
        &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1348,7 +1348,7 @@
 !  compute the Newton correction
 
             lambda =                                                           &
-              lambda + ( inform%x_norm ** 2 - radius ** 2 ) / x_norm2( 1 )
+              lambda - ( inform%x_norm ** 2 - radius ** 2 ) / x_norm2( 1 )
             lambda_l = MAX( lambda_l, lambda )
           END IF
 
@@ -1374,9 +1374,22 @@
 
 !  if H(lambda) is positive definite, solve  H(lambda) x = - c
 
-        DO i = 1, n
-          X( i )  = - C( i ) / ( H( i ) + lambda )
-        END DO
+        n_sing = COUNT( H( : n ) + lambda <= zero )
+        IF ( n_sing == 0 ) THEN
+          DO i = 1, n
+            X( i )  = - C( i ) / ( H( i ) + lambda )
+          END DO
+        ELSE
+          x_big = radius / SQRT( REAL( n_sing, wp ) )
+          DO i = 1, n
+            IF ( H( i ) + lambda > zero ) THEN
+              X( i )  = - C( i ) / ( H( i ) + lambda )
+            ELSE
+              X( i )  = SIGN( x_big, - C( i ) )
+            END IF
+          END DO
+        END IF
+!write(6,"( A2, 5ES13.4E3 )" ) 'X', X
 
 !  compute the two-norm of x
 
@@ -1390,7 +1403,7 @@
           inform%status = RAL_NLLS_ok
           region = 'L'
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 2ES22.13 )" ) prefix,                    &
+            WRITE( out, "( A, A2, I4, 2ES22.15 )" ) prefix,                    &
               region, it, inform%x_norm - radius, lambda
             WRITE( out, "( A, ' Interior stopping criteria satisfied')" ) prefix
           END IF
@@ -1410,7 +1423,7 @@
           END IF
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,           &
+            WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,           &
             it, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
             WRITE( out, "( A,                                                  &
          &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1429,7 +1442,7 @@
           WRITE( out, "( A, 3ES20.12 )") prefix, lambda, inform%x_norm, radius
         ELSE IF ( printi ) THEN
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
-          WRITE( out, "( A, A2, I4, 3ES22.13 )" ) prefix, region, it,          &
+          WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region, it,          &
             ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
         END IF
 
@@ -1744,6 +1757,7 @@
 !-*-*-*-*-*-  End of R A L _ N L L S _ D T R S  double  M O D U L E  *-*-*-*-*-
 
    END MODULE RAL_NLLS_DTRS_double
+
 
 
 ! THIS VERSION: RAL_NLLS 1.1 - 04/03/2016 AT 14:00 GMT.
