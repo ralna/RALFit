@@ -794,13 +794,9 @@ contains
 
        w%normF = norm2(w%f)
        if ( options%regularization_weight > zero ) then
-          sum_reg = zero
-          do i = 1,n
-             sum_reg = sum_reg + X(i)**options%regularization_power
-          end do
           w%normF = sqrt(w%normF**2 + & 
-               (2 * options%regularization_weight / options%regularization_power) *  & 
-               sum_reg)
+               options%regularization_weight *  & 
+               norm2(X)**2 )
        end if
        w%normF0 = w%normF
 
@@ -808,10 +804,7 @@ contains
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
        if (options%regularization_weight > zero )  then 
-          do i = 1, n
-             w%g(i) = w%g(i) - ( options%regularization_weight * & 
-                  X(i)**(options%regularization_power - 1) )
-          end do
+          w%g = w%g - options%regularization_weight * X
        end if
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
@@ -1363,13 +1356,8 @@ contains
     w%A = w%A + reshape(hf,[n,n])
     ! and, now, let's add on a reg parameter, if needed
     if (options%regularization_weight > zero) then 
-       if (use_second_derivatives) then ! use J^TJ + Hf
-          coeff = options%regularization_weight * (  options%regularization_power - 1)
-       else ! use just the J^TJ term
-          coeff = options%regularization_power * options%regularization_weight / 2
-       end if
        do i = 1, n             
-           w%A(i,i) = w%A(i,i) + coeff * ( X(i)**(options%regularization_power-2) )
+           w%A(i,i) = w%A(i,i) + options%regularization_weight
        end do
     end if
     ! and let's copy over g to a temp vector v
@@ -3002,7 +2990,6 @@ return
           ! do nothing!
        case (3)
           w%tensor_options%regularization_weight = 1.0_wp / Delta
-          w%tensor_options%regularization_power = 2.0_wp
        end select
        
        do i = 1, w%tensor_options%maxit
