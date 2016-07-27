@@ -120,17 +120,17 @@ available, controlled by the parameter {\tt  nlls\_method\ct model}.
 
 \begin{description}
   \item {\tt options\ct model = 1}: this implements the {\bf Gauss-Newton} model.  Here we replace $\vr(\iter[k]{\vx} + \vs)$ by its first-order Taylor approximation, $\vr(\iter{\vx}) + \iter{\vJ}\vs$. The model is therefore given by    \begin{equation}
-m_k^{GN}(\vs) = \|\vr(\iter{\vx}) + \iter{\vJ}\vs\|_\vW^2.
+m_k^{GN}(\vs) = \frac{1}{2} \|\vr(\iter{\vx}) + \iter{\vJ}\vs\|_\vW^2.
 \label{eq:gauss-newton-model}
 \end{equation}
 \item {\tt options\ct model = 2}: this implements the {\bf Newton} model.  
 Here, instead of approximating the residual, $\vr(\cdot)$, we take as our model the second-order Taylor approximation of the function, $F(\iter[k+1]{\vx}).$  Namely, we use 
 \begin{equation}
   \label{eq:newton-model}
-  m_k^{N}(\vs) = F(\iter{\vx}) + {\iter{\vg}}^T\vs + \vs^T\left( {\iter{\vJ}}^T \vW \iter{\vJ} + \iter{\vH}\right) \vs,
+  m_k^{N}(\vs) = F(\iter{\vx}) + {\iter{\vg}}^T\vs + \frac{1}{2}\vs^T\left( {\iter{\vJ}}^T \vW \iter{\vJ} + \iter{\vH}\right) \vs,
 \end{equation}
 where $\iter{\vg} = {\iter{\vJ}}^T\vW \vr(\iter{\vx})$ and $\iter{\vH} = \sum_{i=1}^m\iter[i]{r}(\iter{\vx}) \vW \nabla^2 \iter[i]{r}(\iter{\vx}).$
-Note that $m_k^{N}(\vs) = m_k^{GN}(\vs) + \vs^T\iter{\vH} \vs$.  
+Note that $m_k^{N}(\vs) = m_k^{GN}(\vs) + \frac{1}{2}\vs^T\iter{\vH} \vs$.  
 
 If the second derivatives of $\vr(\cdot)$ are not available 
 (i.e., {\tt options\ct exact\_second\_derivatives = false}), 
