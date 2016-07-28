@@ -3037,9 +3037,10 @@ return
        case (2)
           ! do nothing!
        case (3)
-          d(1:n) = 1e-12
           w%tensor_options%regularization_weight = 1.0_wp / Delta
-          w%tensor_options%regularization_power = 3.0_wp
+       case (4)
+          d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'
+          w%tensor_options%regularization_weight = 1.0_wp / Delta
        end select
        
        do i = 1, w%tensor_options%maxit
@@ -3494,7 +3495,7 @@ return
           w%tensor_options%nlls_method = 4 
           w%tparams%m1 = m
           w%m_in = m + n
-       case (3)
+       case (3,4)
           w%tensor_options%model = 3
           w%tensor_options%type_of_method = 1
           w%tensor_options%nlls_method = 4
@@ -3502,6 +3503,12 @@ return
           w%tensor_options%radius_reduce = 0.5_wp
           w%tparams%m1 = m
           w%m_in = m 
+          if (options%inner_method == 3) then 
+             w%tensor_options%regularization_power = 2.0_wp
+          else
+             w%tensor_options%regularization_power = 3.0_wp
+          end if
+             
        end select
        
        ! setup/remove workspaces manually....
