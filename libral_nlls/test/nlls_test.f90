@@ -480,7 +480,7 @@ program nlls_test
      options%nlls_method = 3
      n = 2
      m = 3 
-     allocate(w(m*n),A(n,n),y(n))
+     allocate(w(m*n),A(n,n),y(n),z(n))
      call setup_workspaces(work,n,m,options,status)
      
      w = 0.0_wp
@@ -491,9 +491,11 @@ program nlls_test
      A(1,2) = 0.0_wp
      A(2,2) = 1.0_wp
 
+     z = 0.0_wp 
+
      !** scale = 1 **
      options%scale= 1     
-     call apply_scaling(w,n,m,A,y,& 
+     call apply_scaling(w,n,m,z,A,y,& 
           work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
@@ -505,7 +507,7 @@ program nlls_test
 
      !** scale = 2 **
      options%scale = 2
-     call apply_scaling(w,n,m,A,y,& 
+     call apply_scaling(w,n,m,z,A,y,& 
           work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
@@ -518,7 +520,7 @@ program nlls_test
 
      !** scale undefined
      options%scale = 786
-     call apply_scaling(w,n,m,A,y,& 
+     call apply_scaling(w,n,m,z,A,y,& 
           work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. ERROR%BAD_SCALING ) then
@@ -533,7 +535,7 @@ program nlls_test
      ! first, set scale_require_increase to T
      options%scale = 1
      options%scale_require_increase = .true.
-     call apply_scaling(w,n,m,A,y,& 
+     call apply_scaling(w,n,m,z,A,y,& 
           work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
@@ -546,7 +548,7 @@ program nlls_test
 
      ! first, set scale_trim_min to T
      options%scale_trim_min = .true.
-     call apply_scaling(w,n,m,A,y,& 
+     call apply_scaling(w,n,m,z,A,y,& 
           work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
@@ -559,7 +561,7 @@ program nlls_test
 
      ! first, set scale_trim_max to T
      options%scale_trim_max = .false.
-     call apply_scaling(w,n,m,A,y,& 
+     call apply_scaling(w,n,m,z,A,y,& 
           work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. 0 ) then
@@ -572,7 +574,7 @@ program nlls_test
 
      
      call nlls_finalize(work,options)
-     call apply_scaling(w,n,m,A,y,& 
+     call apply_scaling(w,n,m,z,A,y,& 
           work%calculate_step_ws%apply_scaling_ws, &
           options,status)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
@@ -581,7 +583,7 @@ program nlls_test
      end if
       
 
-     deallocate(w,A,y)
+     deallocate(w,A,y,z)
      options%scale = 0 
 
      !! aint_tr

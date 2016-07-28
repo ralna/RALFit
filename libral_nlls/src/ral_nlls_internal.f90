@@ -794,9 +794,15 @@ contains
 
        w%normF = norm2(w%f)
        if ( options%regularization_weight > zero ) then
-          w%normF = sqrt(w%normF**2 + & 
-               options%regularization_weight *  & 
-               norm2(X)**2 )
+          if (options%regularization_power == two ) then 
+             w%normF = sqrt(w%normF**2 + & 
+                  options%regularization_weight *  & 
+                  norm2(X)**2 )
+          else 
+             w%normF = sqrt(w%normF**2 + & 
+                  ( 2 * options%regularization_weight / options%regularization_power )  *  & 
+                  norm2(X)**options%regularization_power )
+          end if
        end if
        w%normF0 = w%normF
 
@@ -804,7 +810,12 @@ contains
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
        if (options%regularization_weight > zero )  then 
-          w%g = w%g - options%regularization_weight * X
+          if (options%regularization_power == two ) then
+             w%g = w%g - options%regularization_weight * X
+          else
+             w%g = w%g - options%regularization_weight *  & 
+                  norm2(X)**(options%regularization_power - 2) * X
+          end if
        end if
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
@@ -1344,11 +1355,17 @@ contains
     logical :: scaling_used = .false.
     real(wp) :: coeff ! coefficient in front of diag(s) if reg. problem being solved
     real(wp) :: sum_reg
+    real(wp), allocatable :: xtx(:,:)
+    real(wp), allocatable :: extra_scale(:)
+    real(wp) :: normx
 
     if (.not. w%allocated) goto 1010
     
     ! compute the hessian used in the model 
        
+    allocate(extra_scale(n))
+    extra_scale = zero
+
     ! Set A = J^T J
     call matmult_inner(J,n,m,w%A)
     ! add any second order information...
@@ -1356,9 +1373,37 @@ contains
     w%A = w%A + reshape(hf,[n,n])
     ! and, now, let's add on a reg parameter, if needed
     if (options%regularization_weight > zero) then 
-       do i = 1, n             
-           w%A(i,i) = w%A(i,i) + options%regularization_weight
-       end do
+       if (options%regularization_power == two ) then 
+          do i = 1, n             
+             w%A(i,i) = w%A(i,i) + options%regularization_weight
+          end do
+       else 
+          allocate(xtx(n,n))
+          call outer_product(X,n,xtx)
+          normx = norm2(X)
+          if (normx > epsmch) then
+             ! add term from J^TJ
+             w%A(1:n,1:n) = w%A(1:n,1:n) + &
+                  ( options%regularization_weight * options%regularization_power / 2 ) * & 
+                  normx**(options%regularization_power - 4) * xtx
+             ! since there's extra terms in the 'real' J, add these to the scaling
+             do i = 1, n
+                ! add the square of the entries of last row of the 'real' Jacobian
+                extra_scale(i) = & 
+                     (options%regularization_weight * options%regularization_power / 2 ) * &
+                     (normx**(options%regularization_power-4)) * X(1)**2
+             end do
+             if (use_second_derivatives) then 
+                w%A(1:n,1:n) = w%A(1:n,1:n) + &
+                     options%regularization_weight * & 
+                     normx**(options%regularization_power - 4) * xtx
+                do i = 1,n
+                   w%A(i,i) = w%A(i,i) + options%regularization_weight * & 
+                        normx**(options%regularization_power - 2)
+                end do
+             end if
+          end if
+       end if
     end if
     ! and let's copy over g to a temp vector v
     ! (it's copied so that we can scale v without losing g)
@@ -1369,7 +1414,7 @@ contains
     
     if ( (options%nlls_method == 3) .or. (options%nlls_method == 4) ) then 
        if ( (options%scale .ne. 0) ) then
-          call apply_scaling(J,n,m,w%A,w%v,w%apply_scaling_ws,options,inform)
+          call apply_scaling(J,n,m,extra_scale,w%A,w%v,w%apply_scaling_ws,options,inform)
           scaling_used = .true.
        end if
     end if
@@ -1408,7 +1453,6 @@ contains
         end select
 
         ! reverse the scaling on the step
- !       if ( (3 .le. options%model) .and. ( options%model .le. 4) ) then 
         if ( (scaling_used) ) then 
            do i = 1, n
               d(i) = d(i) / w%apply_scaling_ws%diag(i)
@@ -1444,7 +1488,7 @@ return
 
    END SUBROUTINE calculate_step
    
-   subroutine apply_scaling(J,n,m,A,v,w,options,inform)
+   subroutine apply_scaling(J,n,m,J_extra,A,v,w,options,inform)
      !-------------------------------
      ! apply_scaling
      ! input :: Jacobian matrix, J
@@ -1457,6 +1501,7 @@ return
      real(wp), intent(in) :: J(*) 
      integer, intent(in) :: n,m
      real(wp), intent(inout) :: A(:,:)
+     real(wp), intent(in) :: J_extra(:)
      real(wp), intent(inout) :: v(:)
      type( apply_scaling_work ), intent(inout) :: w
      type( nlls_options ), intent(in) :: options
@@ -1470,7 +1515,7 @@ return
      select case (options%scale)
      case (1,2)
         do ii = 1,n
-           temp = zero
+           temp = J_extra(ii)
            what_scale: if (options%scale == 1) then
               ! use the scaling present in gsl:
               ! scale by W, W_ii = ||J(i,:)||_2^2
@@ -2314,13 +2359,16 @@ return
        TYPE( nlls_options ), INTENT( IN ) :: options
 
        real(wp) :: actual_reduction, predicted_reduction
-
+       real(wp) :: tol
+       
        actual_reduction = ( 0.5 * (normf**2) ) - ( 0.5 * (normfnew**2) )
        predicted_reduction = ( ( 0.5 * (normf**2) ) - md )
 
-       if ( abs(actual_reduction) < 10*epsmch ) then 
+       tol = 10 * epsmch
+       
+       if ( abs(actual_reduction) < tol ) then 
           rho = one
-       else if (abs( predicted_reduction ) < 10 * epsmch ) then 
+       else if (abs( predicted_reduction ) < tol ) then 
           rho = one
        else
           rho = actual_reduction / predicted_reduction
@@ -2438,7 +2486,7 @@ return
                      options%radius_increase * w%Delta )
                 ! increase based on Delta to ensure the 
                 ! regularized case works too
-          end select
+             end select
              if (options%print_level > 2) write(options%out,3030) w%Delta
           else if (rho >= options%eta_too_successful) then
              ! too successful....accept step, but don't change w%Delta
@@ -2989,7 +3037,9 @@ return
        case (2)
           ! do nothing!
        case (3)
+          d(1:n) = 1e-12
           w%tensor_options%regularization_weight = 1.0_wp / Delta
+          w%tensor_options%regularization_power = 3.0_wp
        end select
        
        do i = 1, w%tensor_options%maxit
@@ -3445,8 +3495,11 @@ return
           w%tparams%m1 = m
           w%m_in = m + n
        case (3)
-          w%tensor_options%type_of_method =1 
+          w%tensor_options%model = 3
+          w%tensor_options%type_of_method = 1
           w%tensor_options%nlls_method = 4
+          w%tensor_options%radius_increase = 2.0_wp
+          w%tensor_options%radius_reduce = 0.5_wp
           w%tparams%m1 = m
           w%m_in = m 
        end select
