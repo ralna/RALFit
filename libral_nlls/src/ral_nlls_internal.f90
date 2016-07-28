@@ -512,8 +512,8 @@ module ral_nlls_internal
 
     type, private :: calculate_step_work ! workspace for subroutine calculate_step
        logical :: allocated = .false.
-       real(wp), allocatable :: A(:,:)
-       real(wp), allocatable :: v(:)
+       real(wp), allocatable :: A(:,:), xxt(:,:)
+       real(wp), allocatable :: v(:), extra_scale(:)
        type( AINT_tr_work ) :: AINT_tr_ws
        type( dogleg_work ) :: dogleg_ws
        type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
@@ -1355,16 +1355,13 @@ contains
     logical :: scaling_used = .false.
     real(wp) :: coeff ! coefficient in front of diag(s) if reg. problem being solved
     real(wp) :: sum_reg
-    real(wp), allocatable :: xtx(:,:)
-    real(wp), allocatable :: extra_scale(:)
     real(wp) :: normx
 
     if (.not. w%allocated) goto 1010
     
     ! compute the hessian used in the model 
        
-    allocate(extra_scale(n))
-    extra_scale = zero
+    w%extra_scale = zero
 
     ! Set A = J^T J
     call matmult_inner(J,n,m,w%A)
@@ -1378,25 +1375,25 @@ contains
              w%A(i,i) = w%A(i,i) + options%regularization_weight
           end do
        else 
-          allocate(xtx(n,n))
-          call outer_product(X,n,xtx)
+          if ( .not. allocated(w%xxt) ) allocate (w%xxt(n,n))
+          call outer_product(X,n,w%xxt)
           normx = norm2(X)
           if (normx > epsmch) then
              ! add term from J^TJ
              w%A(1:n,1:n) = w%A(1:n,1:n) + &
                   ( options%regularization_weight * options%regularization_power / 2 ) * & 
-                  normx**(options%regularization_power - 4) * xtx
+                  normx**(options%regularization_power - 4) * w%xxt
              ! since there's extra terms in the 'real' J, add these to the scaling
              do i = 1, n
                 ! add the square of the entries of last row of the 'real' Jacobian
-                extra_scale(i) = & 
+                w%extra_scale(i) = & 
                      (options%regularization_weight * options%regularization_power / 2 ) * &
                      (normx**(options%regularization_power-4)) * X(1)**2
              end do
              if (use_second_derivatives) then 
                 w%A(1:n,1:n) = w%A(1:n,1:n) + &
                      options%regularization_weight * & 
-                     normx**(options%regularization_power - 4) * xtx
+                     normx**(options%regularization_power - 4) * w%xxt
                 do i = 1,n
                    w%A(i,i) = w%A(i,i) + options%regularization_weight * & 
                         normx**(options%regularization_power - 2)
@@ -1414,7 +1411,7 @@ contains
     
     if ( (options%nlls_method == 3) .or. (options%nlls_method == 4) ) then 
        if ( (options%scale .ne. 0) ) then
-          call apply_scaling(J,n,m,extra_scale,w%A,w%v,w%apply_scaling_ws,options,inform)
+          call apply_scaling(J,n,m,w%extra_scale,w%A,w%v,w%apply_scaling_ws,options,inform)
           scaling_used = .true.
        end if
     end if
@@ -3559,6 +3556,10 @@ return
 
        allocate(w%v(n), stat = inform%alloc_status)
        if (inform%alloc_status > 0) goto 9000
+
+       allocate(w%extra_scale(n), stat = inform%alloc_status)
+       if (inform%alloc_status > 0) goto 9000      
+       
        
        call setup_workspace_evaluate_model(n,m,& 
             w%evaluate_model_ws,options,inform)
@@ -3623,7 +3624,9 @@ return
 
        if (allocated(w%A)) deallocate(w%A)
        if (allocated(w%v)) deallocate(w%v)
-       
+       if (allocated(w%xxt)) deallocate(w%xxt)
+       if (allocated(w%extra_scale)) deallocate(w%extra_scale)
+
        call remove_workspace_evaluate_model(w%evaluate_model_ws,&
             options)
 
