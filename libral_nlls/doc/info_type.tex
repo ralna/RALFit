@@ -18,6 +18,7 @@ that gives the exit status of the subroutine.  See Section~\ref{hslerrors} for d
 \scalarinteger{h\_eval} that gives the total number of evaluations of the Hessian of the objective function.
 \scalarinteger{convergence\_normf} that tells us if the test on the size of \(\vr\) is satisfied.
 \scalarinteger{convergence\_normg} that tells us if the test on the size of the gradient is satisfied.
+\scalarinteger{convergence\_norms} that tells us if the test on the step length is satisfied.
 \ronearrayreal{resvec}{iter+1} that, if {\tt nlls\_options\ct output\_progress\_vectors=true}, holds the vector of residuals.
 \ronearrayreal{gradvec}{iter+1} that, if {\tt nlls\_options\ct output\_progress\_vectors=true}, holds the vector of gradients.
 \scalarreal{obj} that holds the value of the objective function at the best estimate of the solution determined by the algorithm.

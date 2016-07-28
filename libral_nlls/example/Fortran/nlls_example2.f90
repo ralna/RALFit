@@ -1,4 +1,4 @@
-! examples/Fortran/nlls_example.f90
+! examples/Fortran/nlls_example2.f90
 ! 
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 ! For parameters x_1 and x_2, and input data (t_i, y_i)
@@ -86,7 +86,7 @@ contains
    end subroutine eval_HF
 end module fndef_example
 
-program nlls_example
+program nlls_example2
    use ral_nlls_double
    use fndef_example
    implicit none
@@ -97,27 +97,44 @@ program nlls_example
    integer :: m,n
    real(wp), allocatable :: x(:)
    type(params_type) :: params
+   integer :: inner_method
 
    ! Data to be fitted
    m = 5
    allocate(params%t(m), params%y(m))
    params%t(:) = (/ 1.0, 2.0, 4.0,  5.0,  8.0 /)
    params%y(:) = (/ 3.0, 4.0, 6.0, 11.0, 20.0 /)
-   
+
    ! Call fitting routine
    n = 2
    allocate(x(n))
-   x = (/ 2.5, 0.25 /) ! Initial guess
-   call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform)
-   if(inform%status.ne.0) then
-      print *, "ral_nlls() returned with error flag ", inform%status
-      stop
-   endif
+   
+   options%model = 4
+   options%type_of_method = 3
+   options%nlls_method = 4
+   options%exact_second_derivatives = .true. 
+   options%maxit = 50
 
-   ! Print result
-   print *, "Found a local optimum at x = ", x
-   print *, "Took ", inform%iter, " iterations"
-   print *, "     ", inform%f_eval, " function evaluations"
-   print *, "     ", inform%g_eval, " gradient evaluations"
-   print *, "     ", inform%h_eval, " hessian evaluations"
-end program nlls_example
+   options%print_level = 1
+
+   do inner_method = 1,3
+      
+      options%inner_method = inner_method
+
+      x = (/ 2.5, 0.25 /) ! Initial guess
+      call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform)
+      if(inform%status.ne.0) then
+         print *, "ral_nlls() returned with error flag ", inform%status
+         stop
+      endif
+
+      ! Print result
+      print *, "Found a local optimum at x = ", x
+      print *, "Took ", inform%iter, " iterations"
+      print *, "     ", inform%f_eval, " function evaluations"
+      print *, "     ", inform%g_eval, " gradient evaluations"
+      print *, "     ", inform%h_eval, " hessian evaluations"
+
+   end do
+   
+end program nlls_example2
