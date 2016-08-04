@@ -38,10 +38,11 @@ def main():
     
     if compute_results:
         for j in range(no_tests):
+            # copy the data file locally
             subprocess.call(["mv", "cutest/sif/"+args.control_files[j]+".out", \
                              "data/"+args.control_files[j]+".out"])
             if args.control_files[j] == "gsl":
-                # add a newline
+                # c doesn't end with a newline, so add one
                 gslresults = open("data/gsl.out","a")
                 gslresults.write("\n")
                 gslresults.close()
@@ -55,10 +56,10 @@ def main():
      
     # setup the datatype that we'll store the results in
     info = np.dtype({'names' :   ['pname','n','m','status','iter',
-                                  'func','jac','hess',
+                                  'func','jac','hess','inner',
                                   'res','grad','ratio'],
                      'formats' : ['S10' ,int ,int,int,int,
-                                  int, int, int,
+                                  int, int, int, int,
                                   float,float,float]})
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
                          'formats' : ['S7',int]})
@@ -69,8 +70,10 @@ def main():
     best = np.zeros(no_tests,dtype = np.int)
     too_many_its = np.zeros(no_tests, dtype = np.int)
     local_iterates = np.zeros(no_tests, dtype = np.int)
+    local_inner_it = np.zeros(no_tests,dtype = np.int)
     average_iterates = np.zeros(no_tests, dtype = np.int)
     average_funeval = np.zeros(no_tests, dtype = np.int)
+    average_inner = np.zeros(no_tests,dtype = np.int)
     no_failures = np.zeros(no_tests, dtype = np.int)
 
     for j in range(no_tests):
@@ -84,11 +87,13 @@ def main():
     all_iterates = [data[j]['iter'] for j in range(no_tests)]
     all_func = [data[j]['func'] for j in range(no_tests)]
     all_status = [data[j]['status'] for j in range(no_tests)]
+    all_inner = [data[j]['inner'] for j in range(no_tests)]
     
     normalized_mins = [data[j]['res'] for j in range(no_tests)]
     tiny = 1e-8
     normalized_iterates = np.copy(all_iterates)#[data[j]['iter'] for j in range(no_tests)]
     normalized_func = np.copy(all_func)
+    normalized_inner = np.copy(all_inner)
     failure = np.zeros((no_probs, no_tests))
 
     # finally, run through the data....
@@ -106,6 +111,7 @@ def main():
                 failure[i][j] = 1 
                 normalized_iterates[j][i] = 9999
                 normalized_func[j][i] = 9999
+                normalized_inner[j][i] = 9999
             local_iterates[j] = all_iterates[j][i]
             if (all_iterates[j][i] < 0):
                 no_failures[j] += 1
@@ -113,14 +119,14 @@ def main():
                     failure[i][j] = 2
                     normalized_iterates[j][i] = -normalized_iterates[j][i]
                     normalized_func[j][i] = -normalized_func[j][i]
+                    normalized_inner[j][i] = -normalized_inner[j][i]
             else:
                 average_iterates[j] += all_iterates[j][i]
                 average_funeval[j] += all_func[j][i]
+                average_inner[j] += all_inner[j][i]
             if normalized_mins[j][i] < tiny:
                 # truncate anything smaller than tiny
                 normalized_mins[j][i] = tiny 
-#            normalized_mins[j][i] = normalized_mins[j][i]/smallest_resid[i]
-#            normalized_iterates[j][i] = normalized_iterates[j][i]  + 1 - smallest_iterates[i]
         minvalue = np.absolute(local_iterates).min()
         if (minvalue == 9999) or (minvalue == 1000): continue
         minima = np.where( local_iterates == minvalue )
@@ -132,16 +138,20 @@ def main():
     for j in range(0,no_tests):
         average_funeval[j] = average_funeval[j] / (no_probs - no_failures[j])
         average_iterates[j] = average_iterates[j] / (no_probs - no_failures[j])
+        average_inner[j] = average_inner[j] / (no_probs - no_failures[j])
 
     smallest_resid = np.amin(normalized_mins, axis = 0)
-    smallest_iterates = np.amin(np.absolute(normalized_iterates), axis = 0)        
-    smallest_func = np.amin(np.absolute(normalized_func), axis = 0)        
+    smallest_iterates = np.amin(np.absolute(normalized_iterates), axis = 0)
+    smallest_func = np.amin(np.absolute(normalized_func), axis = 0)
+    smallest_inner = np.amin(np.absolute(normalized_inner), axis = 0)
     normalized_mins = np.transpose(normalized_mins)
     normalized_iterates = np.transpose(normalized_iterates)
     normalized_func = np.transpose(normalized_func)
+    normalized_inner = np.transpose(normalized_inner)
     mins_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
     iter_boundaries = np.array([2, 5, 10, 30])
     func_boundaries = np.array([2, 5, 10, 30])
+    inner_boundaries = np.array([2, 5, 10, 30])
     additive = 0
     print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
                   mins_boundaries, 'normalized_mins', args.control_files, failure, additive,
@@ -153,6 +163,9 @@ def main():
     print_to_html(no_probs, no_tests, problems, normalized_func, smallest_func, 
                   func_boundaries, 'normalized_func', args.control_files, failure, additive,
                   short_hash)
+    print_to_html(no_probs, no_tests, problems, normalized_inner, smallest_inner, 
+                  inner_boundaries, 'normalized_inner', args.control_files, 
+                  failure, additive, short_hash)
     
     print "Iteration numbers, git commit "+short_hash
     print "%10s" % "problem",
@@ -177,6 +190,10 @@ def main():
         print args.control_files[j]+" took ",average_iterates[j],\
             " iterations and ", average_funeval[j], \
             " func. evals on average, and failed ", no_failures[j]," times)"
+        if average_inner[j] > average_iterates[j]:
+            print args.control_files[j]+" took ", average_inner[j],\
+                " inner iterations on average"
+    
 
     if hash_error == True:
         print "\n\n"
