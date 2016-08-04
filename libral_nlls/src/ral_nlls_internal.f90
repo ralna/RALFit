@@ -165,9 +165,40 @@ module ral_nlls_internal
 
      ! allow inherently the solution of a problem of the form
      !  min_x 1/2 ||r(x)||^2 + regularization_weight * 1/ regularization_power * ||x||^regularization_weight
+     !
+     ! this is done in two ways:
+     !
+     ! ** p = 2 **
+     ! in this case, we solve a problem of the form
+     !          min 0.5 || f(x) ||**2, where 
+     ! f:R^(n) -> R^(n+m)
+     ! f_i(x) = r_i(x), i = 1,m
+     ! f_i(x) = sqrt( regularization_weight ) x_j, i = m + j, where j = 1,n
+     ! This is implemented implicitly by updating 
+     !  ||f||**2 = ||r||**2 + regularization_weight * ||x||**2
+     !  J_f^Tf = J^Tr + regularization_weight * x
+     !  J_f^T J_f = J^T J + regularization_weight * I
+     !  md_f = md + 0.5 * regularization_weight * ||x + d||**2
+     !
+     ! ** p .ne. 2 ** 
+     ! here we solve a problem of the form
+     !         min 0.5 || g(x) ||**2, where
+     ! g:R^n -> R^(n+1)
+     ! g_i(x) = r_i(x), i = 1,m
+     ! g_i(x) = [(2*weight/power)**0.5 ] * ||x||**(power/2), i = m+1
+     ! This is implemented implicitly by updating
+     !  ||g||**2 = ||r||**2 + (2*weight/power) * ||x||**power
+     !  J_g^T g = J^T r + weight ||x||**(power-2) x 
+     !  J_g^T J_g = J^T J + (weight * power / 2) * ||x||**(power-4) x x^T
+     !  md_g = md + 0.5 * ||x||**(power-4) * weight * 
+     !             ( (2/power)**0.5 x^Tx + (power/2)**0.5 x^Td )**2 
+     !  and, if the full hessian was used
+     !  md_g = md_g + weight * ||x||**(power-4)( x^Tx d^td + (d^tx)**2)
+     logical :: regularized = .false.
+     REAL ( KIND = wp ) :: regularization_weight = 1e-2_wp
+     REAL ( KIND = wp ) :: regularization_power = 2.0_wp
+
      
-     REAL ( KIND = wp ) :: regularization_weight = zero
-     REAL ( KIND = wp ) :: regularization_power = zero
 
 !   maximum permitted trust-region radius
 
