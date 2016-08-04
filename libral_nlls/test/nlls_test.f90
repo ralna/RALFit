@@ -587,7 +587,7 @@ program nlls_test
      options%scale = 0 
 
      !! aint_tr
-     caLL aint_tr(w,A,y,x,x,n,m,alpha,z,beta,options,status,& 
+     caLL aint_tr(w,A,y,x,x,x,n,m,alpha,z,beta,options,status,& 
           work%calculate_step_ws%aint_tr_ws)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
@@ -722,7 +722,7 @@ program nlls_test
      deallocate(x,y,z,w)
 
      ! let's use this data for an evaluate_model test
-     call evaluate_model(w,y,x,z,alpha,beta,m,n,options,status,& 
+     call evaluate_model(w,y,x,x,x,z,alpha,beta,m,n,options,status,& 
           work%calculate_step_ws%evaluate_model_ws)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'

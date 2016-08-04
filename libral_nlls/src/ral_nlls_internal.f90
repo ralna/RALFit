@@ -164,7 +164,7 @@ module ral_nlls_internal
      REAL ( KIND = wp ) :: base_regularization = zero
 
      ! allow inherently the solution of a problem of the form
-     !  min_x 1/2 ||r(x)||^2 + regularization_weight * 1/ regularization_power * ||x||^regularization_weight
+     !  min_x 1/2 ||r(x)||^2 + regularization_term * 1/ regularization_power * ||x||^regularization_term
      !
      ! this is done in two ways:
      !
@@ -173,12 +173,12 @@ module ral_nlls_internal
      !          min 0.5 || f(x) ||**2, where 
      ! f:R^(n) -> R^(n+m)
      ! f_i(x) = r_i(x), i = 1,m
-     ! f_i(x) = sqrt( regularization_weight ) x_j, i = m + j, where j = 1,n
+     ! f_i(x) = sqrt( regularization_term ) x_j, i = m + j, where j = 1,n
      ! This is implemented implicitly by updating 
-     !  ||f||**2 = ||r||**2 + regularization_weight * ||x||**2
-     !  J_f^Tf = J^Tr + regularization_weight * x
-     !  J_f^T J_f = J^T J + regularization_weight * I
-     !  md_f = md + 0.5 * regularization_weight * ||x + d||**2
+     !  ||f||**2 = ||r||**2 + regularization_term * ||x||**2
+     !  J_f^Tf = J^Tr + regularization_term * x
+     !  J_f^T J_f = J^T J + regularization_term * I
+     !  md_f = md + 0.5 * regularization_term * ||x + d||**2
      !
      ! ** p .ne. 2 ** 
      ! here we solve a problem of the form
@@ -194,9 +194,10 @@ module ral_nlls_internal
      !             ( (2/power)**0.5 x^Tx + (power/2)**0.5 x^Td )**2 
      !  and, if the full hessian was used
      !  md_g = md_g + weight * ||x||**(power-4)( x^Tx d^td + (d^tx)**2)
-     logical :: regularized = .false.
-     REAL ( KIND = wp ) :: regularization_weight = 1e-2_wp
+     integer :: regularization = 0
+     REAL ( KIND = wp ) :: regularization_term = 1e-2_wp
      REAL ( KIND = wp ) :: regularization_power = 2.0_wp
+     REAL ( KIND = wp ) :: regularization_weight = 1.0_wp
 
      
 
@@ -298,7 +299,7 @@ module ral_nlls_internal
 ! Shall we output progess vectors at termination of the routine?
      logical :: output_progress_vectors = .false.
 
-     
+     logical :: update_lower_order = .true.
 
   END TYPE nlls_options
 
@@ -411,8 +412,10 @@ module ral_nlls_internal
      real(wp), dimension(:), allocatable :: J
      real(wp), dimension(:,:,:), allocatable :: Hi
      real(wp) :: Delta
+     real(wp) :: p
      integer :: m
      integer :: m1 = 0
+     integer :: extra = 0
   end type tensor_params_type
   
   abstract interface
@@ -744,7 +747,7 @@ contains
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, rho_gn, normFnew, md, md_gn, Jmax, JtJdiag
-    real(wp) :: FunctionValue
+    real(wp) :: FunctionValue, normX, normXnew
     logical :: success 
     logical :: bad_allocate = .false.
     character :: second
@@ -823,30 +826,41 @@ contains
           end if
        end if
 
-       w%normF = norm2(w%f)
-       if ( options%regularization_weight > zero ) then
-          if (options%regularization_power == two ) then 
+       w%normF = norm2(w%f(1:m))
+       if (options%update_lower_order .and. options%regularization > 0) then 
+          normX = norm2(X(1:n))
+          select case(options%regularization)
+          case (1)
+             ! first, check that power = 2
+             if ( options%regularization_power .ne. 2.0_wp) then 
+                write(*,*) 'Warning :: will be run with power = 2.0'
+             end if
              w%normF = sqrt(w%normF**2 + & 
-                  options%regularization_weight *  & 
-                  norm2(X)**2 )
-          else 
+                  options%regularization_term *  & 
+                  normX**2 )
+          case (2)
              w%normF = sqrt(w%normF**2 + & 
-                  ( 2 * options%regularization_weight / options%regularization_power )  *  & 
-                  norm2(X)**options%regularization_power )
-          end if
+                  ( 2 * options%regularization_term / options%regularization_power )  *  & 
+                  normX**options%regularization_power * & 
+                  options%regularization_weight )
+          case default
+             write(*,*) 'oops....'
+          end select
        end if
        w%normF0 = w%normF
 
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
-       if (options%regularization_weight > zero )  then 
-          if (options%regularization_power == two ) then
-             w%g = w%g - options%regularization_weight * X
-          else
-             w%g = w%g - options%regularization_weight *  & 
-                  norm2(X)**(options%regularization_power - 2) * X
-          end if
+       if (options%update_lower_order) then 
+          select case(options%regularization)
+          case (1)
+             w%g = w%g - options%regularization_term * X
+          case (2)
+             w%g = w%g - options%regularization_term *  & 
+                  (normX**(options%regularization_power - 2.0)) * X * &
+                  options%regularization_weight
+          end select
        end if
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
@@ -886,6 +900,10 @@ contains
              end if
              inform%h_eval = inform%h_eval + 1
              if (inform%external_return > 0) goto 4030
+             
+             if (options%regularization > 0) then 
+                call update_regularized_hessian(w%hf,X,n,options)
+             end if
           else
              ! S_0 = 0 (see Dennis, Gay and Welsch)
              w%hf(1:n**2) = zero
@@ -973,7 +991,7 @@ contains
        call calculate_step(w%J,w%f,w%hf,w%g,& 
             X,md,md_gn,& 
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, & 
-            w%d,w%normd, & 
+            w%Xnew,w%d,w%normd, & 
             options,inform,& 
             w%calculate_step_ws)
        if (inform%status .ne. 0) goto 4000
@@ -981,10 +999,10 @@ contains
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
-       w%Xnew = X + w%d
        call eval_F(inform%external_return, n, m, w%Xnew, w%fnew, params)
        inform%f_eval = inform%f_eval + 1
 
+       
        if (inform%external_return .ne. 0) goto 4020
        if ( present(weights) ) then
           ! set f -> Wf
@@ -992,6 +1010,20 @@ contains
        end if       
        normFnew = norm2(w%fnew(1:m))
        
+       if ( options%update_lower_order) then
+          select case (options%regularization)
+          case (1)
+             normFnew = sqrt(normFnew**2 + & 
+                  options%regularization_term *  & 
+                  norm2(w%Xnew)**2 )
+          case (2)
+             normFnew = sqrt(normFnew**2 + & 
+                  ( 2 * options%regularization_term / options%regularization_power )  *  & 
+                  norm2(w%Xnew)**options%regularization_power ) * & 
+                  options%regularization_weight
+          end select
+       end if
+
        
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
@@ -1073,6 +1105,16 @@ contains
     ! g = -J^Tf
     call mult_Jt(w%J,n,m,w%f,w%g)
     w%g = -w%g
+    if ( options%update_lower_order ) then 
+       select case (options%regularization)
+       case (1)
+          w%g = w%g - options%regularization_term * X
+       case (2)
+          w%g = w%g - options%regularization_term *  & 
+               (norm2(X)**(options%regularization_power - 2.0)) * X * & 
+               options%regularization_weight
+       end select
+    end if
     
     w%normJFold = w%normJF
     w%normF = normFnew
@@ -1361,20 +1403,21 @@ contains
 ! below are the truly internal subroutines...
 
   RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, & 
-                            Delta,eval_HF,params,d,normd,options,inform,w)
+                            Delta,eval_HF,params,Xnew,d,normd,options,inform,w)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-    REAL(wp), intent(in) :: J(:), f(:), hf(:), X(:) 
+    REAL(wp), intent(in) :: J(:), f(:), hf(:)
     REAL(wp), intent(inout) :: g(:)
     REAL(wp), intent(inout) :: Delta
+    REAL(wp), intent(out) :: X(:)
     procedure( eval_hf_type ) :: eval_HF       
     class( params_base_type ) :: params  
     integer, intent(in)  :: n, m
     logical, intent(in) :: use_second_derivatives
-    real(wp), intent(out) :: d(:)
+    real(wp), intent(out) :: d(:), Xnew(:)
     real(wp), intent(out) :: md, md_gn
     real(wp), intent(out) :: normd
     TYPE( nlls_options ), INTENT( IN ) :: options
@@ -1398,41 +1441,35 @@ contains
     call matmult_inner(J,n,m,w%A)
     ! add any second order information...
     ! so A = J^T J + HF
-    w%A = w%A + reshape(hf,[n,n])
+    w%A = w%A + reshape(hf(1:n**2),[n,n])
+    
     ! and, now, let's add on a reg parameter, if needed
-    if (options%regularization_weight > zero) then 
-       if (options%regularization_power == two ) then 
-          do i = 1, n             
-             w%A(i,i) = w%A(i,i) + options%regularization_weight
-          end do
-       else 
-          if ( .not. allocated(w%xxt) ) allocate (w%xxt(n,n))
-          call outer_product(X,n,w%xxt)
-          normx = norm2(X)
-          if (normx > epsmch) then
-             ! add term from J^TJ
-             w%A(1:n,1:n) = w%A(1:n,1:n) + &
-                  ( options%regularization_weight * options%regularization_power / 2 ) * & 
-                  normx**(options%regularization_power - 4) * w%xxt
-             ! since there's extra terms in the 'real' J, add these to the scaling
-             do i = 1, n
-                ! add the square of the entries of last row of the 'real' Jacobian
-                w%extra_scale(i) = & 
-                     (options%regularization_weight * options%regularization_power / 2 ) * &
-                     (normx**(options%regularization_power-4)) * X(1)**2
-             end do
-             if (use_second_derivatives) then 
-                w%A(1:n,1:n) = w%A(1:n,1:n) + &
-                     options%regularization_weight * & 
-                     normx**(options%regularization_power - 4) * w%xxt
-                do i = 1,n
-                   w%A(i,i) = w%A(i,i) + options%regularization_weight * & 
-                        normx**(options%regularization_power - 2)
-                end do
-             end if
-          end if
-       end if
-    end if
+    select case (options%regularization) 
+    case (1)
+       do i = 1, n             
+          w%A(i,i) = w%A(i,i) + options%regularization_term
+       end do
+       w%extra_scale = options%regularization_term
+    case (2)
+       if ( .not. allocated(w%xxt) ) allocate (w%xxt(n,n))
+       call outer_product(X,n,w%xxt)
+       normx = norm2(X(1:n))
+!          if (normx > epsmch) then
+       ! add term from J^TJ
+       w%A(1:n,1:n) = w%A(1:n,1:n) + &
+            ( options%regularization_term * options%regularization_power / 2.0 ) * & 
+            normx**(options%regularization_power - 4.0) * w%xxt * & 
+            options%regularization_weight
+       ! since there's extra terms in the 'real' J, add these to the scaling
+       do i = 1, n
+          ! add the square of the entries of last row of the 'real' Jacobian
+          w%extra_scale(i) = & 
+               (options%regularization_term * options%regularization_power / 2.0 ) * &
+               (normx**(options%regularization_power-4)) * X(i)**2.0 * & 
+               options%regularization_weight
+       end do
+    end select
+    
     ! and let's copy over g to a temp vector v
     ! (it's copied so that we can scale v without losing g)
     
@@ -1454,8 +1491,8 @@ contains
         call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
                                  d, md, params, options, inform, & 
                                  w%solve_newton_tensor_ws)
-        call evaluate_model(f,J,hf,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
-        
+        Xnew = X + d
+        call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
      else 
         ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
@@ -1465,7 +1502,7 @@ contains
            call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
         case (2) ! The AINT method
            if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
-           call AINT_TR(J,w%A,f,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+           call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
         case (3) ! More-Sorensen
            if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
            call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
@@ -1494,8 +1531,9 @@ contains
         ! and the value of the       !
         ! Gauss-Newton model too     ! 
         !     md := m_k^gn(d)        !
-        !++++++++++++++++++++++++++++!
-        call evaluate_model(f,J,hf,d,md,md_gn,m,n,options,inform,w%evaluate_model_ws)
+        !++++++++++++++++++++++++++++!        
+        Xnew = X + d
+        call evaluate_model(f,J,hf,X,Xnew,d,md,md_gn,m,n,options,inform,w%evaluate_model_ws)
 
      end if
 
@@ -1721,14 +1759,14 @@ return
 
    END SUBROUTINE dogleg
      
-   SUBROUTINE AINT_tr(J,A,f,v,hf,n,m,Delta,d,normd,options,inform,w)
+   SUBROUTINE AINT_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,w)
      ! -----------------------------------------
      ! AINT_tr
      ! Solve the trust-region subproblem using 
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
 
-     REAL(wp), intent(in) :: J(:), A(:,:), hf(:), f(:), v(:), Delta
+     REAL(wp), intent(in) :: J(:), A(:,:), hf(:), f(:), v(:), X(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D
@@ -1777,7 +1815,7 @@ return
         keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
         if (options%print_level >=3) write(options%out,2000) 'p0'     
-        call evaluate_model(f,J,hf,w%p0,obj_p0,obj_p0_gn,m,n, & 
+        call evaluate_model(f,J,hf,X,X,w%p0,obj_p0,obj_p0_gn,m,n, & 
              options, inform, w%evaluate_model_ws)
      end if
 
@@ -1839,7 +1877,7 @@ return
      
      ! get obj_p1 : the value of the model at p1
      if (options%print_level >=3) write(options%out,2000) 'p1'     
-     call evaluate_model(f,J,hf,w%p1,obj_p1,obj_p1_gn,m,n, & 
+     call evaluate_model(f,J,hf,X,X,w%p1,obj_p1,obj_p1_gn,m,n, & 
           options,inform,w%evaluate_model_ws)
 
      ! what gives the smallest objective: p0 or p1?
@@ -2313,7 +2351,7 @@ return
 
      END SUBROUTINE findbeta
      
-     subroutine evaluate_model(f,J,hf,d,md,md_gn,m,n,options,inform,w)
+     subroutine evaluate_model(f,J,hf,X,Xnew,d,md,md_gn,m,n,options,inform,w)
 ! --------------------------------------------------
 ! Input:
 ! f = f(x_k), J = J(x_k), 
@@ -2331,19 +2369,41 @@ return
        real(wp), intent(in) :: d(:) ! direction in which we move
        real(wp), intent(in) :: J(:) ! J(x_k) (by columns)
        real(wp), intent(in) :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
+       real(wp), intent(in) :: X(:) ! original step
+       real(wp), intent(in) :: Xnew(:) ! updated step
        integer, intent(in) :: m,n
        real(wp), intent(out) :: md  ! m_k(d)
        real(wp), intent(out) :: md_gn
        TYPE( nlls_options ), INTENT( IN ) :: options
        TYPE( nlls_inform ), INTENT( INOUT ) :: inform
        type( evaluate_model_work ) :: w
+
+       real(wp) :: xtx, xtd, dtd, normx, p, sigma
        
        if (.not. w%allocated ) goto 2000
 
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd)
-       
-       md_gn = 0.5 * norm2(f + w%Jd)**2
+
+       md_gn = 0.5 * norm2(f(1:m) + w%Jd(1:m))**2
+       if (options%update_lower_order) then 
+          p = options%regularization_power
+          sigma = options%regularization_term
+          select case (options%regularization) 
+          case (1)
+             md_gn = md_gn + & 
+                  0.5 * sigma * norm2(Xnew(1:n))**2
+          case (2)
+             normx = norm2(X(1:n))
+             xtx = normx**2
+             xtd = dot_product(X(1:n),d(1:n))
+             md_gn = md_gn + & 
+                   sigma * ( one/p * (normx**p) + & 
+                   (normx**(p-2)) * xtd + & 
+                   (p/4.0_wp) * (normx**(p-4)) * (xtd**2) ) * &
+                   options%regularization_weight
+          end select
+       end if
        
        select case (options%model)
        case (1) ! first-order (no Hessian)
@@ -2356,7 +2416,8 @@ return
           ! these have a dynamic H -- recalculate
           ! H = J^T J + HF, HF is (an approx?) to the Hessian
           call mult_J(hf,n,n,d,w%Hd)
-          md = md_gn + 0.5 * dot_product(d,w%Hd)
+          md = md_gn + 0.5 * dot_product(d(1:n),w%Hd(1:n))
+          ! regularized newton terms taken care of already in apply_second_order_info
        end select
        if (options%print_level >= 3) write(options%out,1000) md
 
@@ -2418,9 +2479,7 @@ return
           !          d, y, y_sharp, & 
           params,options,inform,weights)
        integer, intent(in)  :: n, m 
-       real(wp), intent(in) :: X(:)!, f(:)
-!       real(wp), intent(inout) :: hf(:)
-!       real(wp), intent(in) :: d(:), y(:), y_sharp(:)
+       real(wp), intent(in) :: X(:)
        type( NLLS_workspace ), intent(inout) :: w
        procedure( eval_hf_type ) :: eval_Hf
        class( params_base_type ) :: params
@@ -2439,8 +2498,40 @@ return
           ! use the rank-one approximation...
           call rank_one_update(w%hf,w,n)                      
        end if
-
+       
+       ! update the hessian here if we're solving a regularized problem
+       if (options%regularization > 0) then
+          call update_regularized_hessian(w%hf,X,n,options)
+       end if
+       
      end subroutine apply_second_order_info
+
+     subroutine update_regularized_hessian(hf,X,n,options)
+       real(wp), intent(inout) :: hf(:)
+       real(wp), intent(in) :: X(:)
+       integer, intent(in) :: n
+       type( nlls_options), intent(in) :: options
+
+       integer :: ii, jj        
+       real(wp) :: hf_local, p, sigma, normx
+
+       ! given a Hessian, hf, update as required if solving a regularized problem
+       if (options%regularization == 3 ) then 
+          p = options%regularization_power
+          sigma = options%regularization_term
+          normx = norm2(X(1:n))
+          do ii = 1,n
+             do jj = 1,n
+                hf_local = x(ii)*x(jj)
+                if (ii == jj) hf_local = hf_local + normx**2
+                hf_local = sigma * normx**(p - 4.0) * hf_local                
+                hf( (ii-1)*n + jj) = hf( (ii-1)*n + jj) + & 
+                     hf_local*options%regularization_weight
+             end do
+          end do
+       end if
+      
+     end subroutine update_regularized_hessian
 
      subroutine rank_one_update(hf,w,n)
 
@@ -3064,13 +3155,22 @@ return
           w%tensor_options%base_regularization = 1.0_wp/Delta
        case (2)
           ! do nothing!
-       case (3)
-          w%tensor_options%regularization_weight = 1.0_wp / Delta
-       case (4)
+          w%tparams%p = 3
+          w%tparams%extra = 2
+          w%m_in = m + 1
+          d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'          
+       case (3,5)
+          w%tensor_options%regularization_term = 1.0_wp / Delta
+       case (4,6)
           d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'
-          w%tensor_options%regularization_weight = 1.0_wp / Delta
+          w%tensor_options%regularization_term = 1.0_wp / Delta
+       case (7) 
+          d(1:n) = 1e-12
+          w%tensor_options%regularization_term = 1.0_wp / Delta
+          w%tensor_options%regularization_weight = 1.0
+               !1.0_wp/(norm2(d(1:n))**options%regularization_power * & 
+               !( 2 * options%regularization_term / options%regularization_power ))
        end select
-       
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, & 
                inner_workspace, & 
@@ -3088,7 +3188,7 @@ return
        end do
        call nlls_finalize(inner_workspace,w%tensor_options)
        if (tensor_inform%status .ne. 0) then
-          write(options%out,'(A)') '**** inner iteration d not converge ****'
+          write(options%out,'(A)') '**** inner iteration did not converge ****'
        end if
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
        if (options%print_level > 0) then
@@ -3097,7 +3197,7 @@ return
        end if
               
        ! now we need to evaluate the model at the new point
-
+       w%tparams%extra = 0
        call evaltensor_f(inform%external_return, n, m, d, w%model_tensor, w%tparams)
        md = 0.5 * norm2( w%model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
@@ -3149,11 +3249,14 @@ return
              ! f_tensor_i = r_i + J_is + 0.5 * s'H_is
              f(ii) = f(ii) + 0.5 * dot_product(s(1:n),tenJ%Hs(1:n))
           end do
-          if (params%m < m) then ! we're passing in the regularization via the function/Jacobian
-             ! do nothing for now...                               
+          if (params%extra == 1) then 
+             ! we're passing in the regularization via the function/Jacobian
              do ii = 1, n
                 f(params%m + ii) = sqrt(1.0/params%Delta) * s(ii)
              end do
+          elseif (params%extra == 2) then 
+             f(params%m + 1) = sqrt(2.0/(params%Delta * params%p)) * & 
+                               (norm2(s(1:n))**(params%p/2.0))
           end if
 
        end select
@@ -3191,13 +3294,20 @@ return
                 end do
              end do
           end do
-          if (params%m < m) then ! we're passing in the regularization via the function/Jacobian
-             ! do nothing for now...                               
+          if (params%extra == 1) then 
+             ! we're passing in the regularization via the function/Jacobian
              do ii = 1,n ! loop over the columns...
                 J(m*(ii-1) + params%m + ii) = sqrt(1.0/params%Delta)
              end do
+          elseif (params%extra == 2) then 
+             do ii = 1, n
+                J(m*ii) = sqrt( (params%p)/(2.0 * params%Delta) ) * & 
+                                      (norm2(s(1:n))**( (params%p/2.0) - 2.0)) * & 
+                                      s(ii)
+             end do
           end if
        end select
+
 
      end subroutine evaltensor_J
 
@@ -3211,7 +3321,8 @@ return
        class( params_base_type ), intent(in) :: params
 
        integer :: ii, jj, kk
-
+       real :: normx, hf_local
+       
        HF(1:n*n) = zero
        select type(params)
        type is (tensor_params_type)
@@ -3223,7 +3334,23 @@ return
                 end do
              end do
           end do
+          if (params%extra == 2) then 
+             normx = norm2(s(1:n))
+ !            write(*,*) 'f(m) = ', f(m)
+             do jj = 1,n
+                do kk = 1,n
+                   hf_local = s(jj)*s(kk)
+                   if (jj == kk) hf_local = hf_local + normx**2
+                   hf_local = sqrt(params%p / (2.0_wp * params%Delta)) * hf_local
+                   hf_local = normx**((params%p/2.0_wp) - 4.0_wp) * hf_local
+!                   write(*,*) 'hf_local = ',hf_local
+                   HF( (jj-1)*n + kk ) = HF( (jj -1)*n + kk) + & 
+                        f(m) * hf_local
+                end do
+             end do
+          end if
        end select
+
        
      end subroutine evaltensor_HF
        
@@ -3511,31 +3638,44 @@ return
        case (1)
           w%tensor_options%type_of_method = 2
           w%tensor_options%nlls_method = 4
-          w%tensor_options%radius_increase = 2.0_wp
-          w%tensor_options%radius_reduce = 0.5_wp
+!         w%tensor_options%radius_increase = 2.0_wp
+!         w%tensor_options%radius_reduce = 0.5_wp
           ! we seem to get better performance using 
           ! straight Newton here (Why?)
           w%tensor_options%model = 2
           
           w%m_in = m
        case (2)
+          w%tensor_options%model = 2
           w%tensor_options%type_of_method = 1 ! make this changable by the user
           w%tensor_options%nlls_method = 4 
+ !         w%tensor_options%radius_increase = 2.0_wp
+ !         w%tensor_options%radius_reduce = 0.5_wp
+!          w%tensor_options%stop_g_absolute = 1e-14
+!          w%tensor_options%stop_g_relative = 1e-14
           w%tparams%m1 = m
           w%m_in = m + n
-       case (3,4)
-          w%tensor_options%model = 3
+       case (3,4,5,6,7)
+          w%tensor_options%model = 2
           w%tensor_options%type_of_method = 1
           w%tensor_options%nlls_method = 4
-          w%tensor_options%radius_increase = 2.0_wp
-          w%tensor_options%radius_reduce = 0.5_wp
+ !         w%tensor_options%stop_g_absolute = 1e-14
+ !         w%tensor_options%stop_g_relative = 1e-14
+!          w%tensor_options%radius_increase = 2.0_wp
+!          w%tensor_options%radius_reduce = 0.5_wp
           w%tparams%m1 = m
           w%m_in = m 
-          if (options%inner_method == 3) then 
+          if (options%inner_method == 3 .or. options%inner_method == 5) then 
+             w%tensor_options%regularization = 1
              w%tensor_options%regularization_power = 2.0_wp
           else
+             w%tensor_options%regularization = 2
              w%tensor_options%regularization_power = 3.0_wp
           end if
+          if (options%inner_method == 5 .or. options%inner_method == 6) then 
+             w%tensor_options%update_lower_order = .false.
+          end if
+          
              
        end select
        
