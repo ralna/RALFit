@@ -12,10 +12,12 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
     \If {${\tt W}$ not present}
     \State ${\tt W=I}$
     \EndIf
+    \State $\sigma = ${\tt options\ct regularization\_weight}, $p = ${\tt options\ct regularization\_power}
     \State $\iter[0]{\tr} =  {\tt W * }${\tt eval\_r}$(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt W *}$ {\tt eval\_J}$(\iter[0]{\tx})$    
     \Comment Evaluate residual and Jacobian at initial guess
     \State $\Delta = ${\tt options\ct initial\_radius}
-    \State $ \iter[0]{\tg} = - {\iter[0]{\tJ}}^T\iter[0]{\tr}$
+    \State $ \iter[0]{\tg} = - {\iter[0]{\tJ}}^T\iter[0]{\tr} - \sigma \|\iter[0]{\tx}\|^{p-2}\iter[0]{\tx}$
+    \State $\tt normF_0 = 0.5\|\iter[0]{\tr}\|^2 + \frac{\sigma}{p} \|\iter[0]{\tx}\|^p$
     \If {{\tt options\ct model == 1}}
     \Comment Gauss-Newton model 
     \State $\iter[0]{\thess} = {\tt 0}$
@@ -26,7 +28,8 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
     \State {\tt use\_second\_derivatives = true}
     \ElsIf {{\tt options\ct model == 3}}
     \Comment Hybrid algorithm
-    \State {\tt hybrid\_tol = options\ct hybrid\_tol * }${\tt (\| \iter[0]{\tg} \| / (0.5 * \|\iter[0]{\tr}\|^2) )}$
+    \State {\tt hybrid\_tol = options\ct hybrid\_tol * }
+    ${\tt (\| \iter[0]{\tg} \| / normF_0 )}$
     \State $\iter[0]{\thess} = {\tt 0}$
     \Comment Use first-order information only initially
     \State {\tt use\_second\_derivatives = false}
@@ -35,6 +38,10 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
     \ElsIf{{\tt options\ct model == 4}}
     \Comment Use the Newton-Tensor model
     \State $\iter[0]{\thess} = ${\tt eval\_HF}${\tt (\iter[0]{\tx},W * \iter[0]{\tr})}$
+    \If{$p \ne 0$ and $p \ne 2$}
+    \State $\iter[0]{\thess}  = \iter[0]{\thess}  + \sigma \|\iter[0]{\tx}\|^{p-2}
+    \left(I + \frac{{\iter[0]{\tx}}{\iter[0]{\tx}}^T}{\|\iter[0]{\tx}\|^2}\right)$
+    \EndIf
     \State {\tt use\_second\_derivatives = true}
     \EndIf
     \For { $k = {\tt 0}, \dots, \text{\tt options\ct maxit}$}
@@ -44,8 +51,9 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
         \Comment Calculate a potential step $\td$
         \State $\iter[k+1]{\tx} = \iter[k]{\tx} + \td$
         \State $\iter[k+1]{\tr} = {\tt W * \text{\tt eval\_r}}(\iter[k]{\tx})$
+        \State ${\tt normF_{k+1}}  = 0.5\|\iter[k+1]{\tr}\|^2 + \frac{\sigma}{p} \|\iter[k+1]{\tx}\|^p$
         \Comment Evaluate the residual at the new point
-        \State $\rho = \tt 0.5 (\| \iter[k+1]{\tr} \|^2 - \| \iter[k]{\tr}\|^2)/(m_k(0) - m_k(\td)) $ 
+        \State $\rho = \tt (normF_{k+1} - normF_k)/(m_k(0) - m_k(\td)) $ 
         \Comment If model is good, $\rho$ should be close to one
           \If{ ${\tt \rho } >$ {\tt control\ct eta\_successful}}
           \State ${\tt success} = 1$
@@ -54,7 +62,7 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
       \EndWhile
       \State $\iter[k+1]{\tJ} = {\tt W * \text{\tt eval\_J}}(\iter[k+1]{\tx})$
       \Comment Evaluate the Jacobian at the new point
-      \State $\iter[k+1]{\tg} = -{\iter[k+1]{\tJ}}^T\iter[k+1]{\tr}$
+      \State $\iter[k+1]{\tg} = -{\iter[k+1]{\tJ}}^T\iter[k+1]{\tr}- \sigma \|\iter[k+1]{\tx}\|^{p-2}\iter[k+1]{\tx}$
       \If {{\tt \text{\tt options\ct model} == 3}}
         \If {{\tt use\_second\_derivatives}}
           \If { $\|\iter[k+1]{\tg}\| > \|\iter[k]{\tg} \| $}
@@ -74,7 +82,7 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
   \begin{algorithmic}
     \algrestore{myalg}
     
-          \If { $\|\iter[k+1]{\tg}\| / (0.5 * \|\iter[k+1]{\tr}\|^2 < \text{\tt hybrid\_tol})$}
+          \If { $ \tt \|\iter[k+1]{\tg}\| / normF_{k+1} < \text{\tt hybrid\_tol}$}
           \State {\tt hybrid\_count = hybrid\_count + 1}
           \Comment Update the number of steps in a row this has failed
           \If {{\tt hybrid\_count == options\ct hybrid\_count\_switch\_its}}
@@ -97,6 +105,11 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
         \State ${\iter[k+1]{\thess}} = \Call{{\tt rank\_one\_update}}{\td ,\iter[k]{\tg},\iter[k+1]{\tg}, \iter[k+1]{\tr},\iter[k]{\tJ},\iter[k]{\thess}}$
       \EndIf
     \EndIf
+    \If{$p \ne 0$ and $p \ne 2$}
+    \State $\iter[k+1]{\thess}  = \iter[k+1]{\thess}  + \sigma \|\iter[k+1]{\tx}\|^{p-2}
+    \left(I + \frac{{\iter[k+1]{\tx}}{\iter[k+1]{\tx}}^T}{\|\iter[k+1]{\tx}\|^2}\right)$
+    \EndIf
+
     \If {$ \tt\|\iter[k+1]{\tr}\| < max(${\tt options\ct stop\_g\_absolute}, {\tt options\ct stop\_g\_relative}$* \|\iter[k]{\tr}\|)$}
     \State {\tt return}
     \Comment converged due to residual being small
@@ -111,6 +124,30 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
 The subroutine \texttt{nlls\_iterate} performs one iteration of the algorithm
 \texttt{nlls\_solve}, allowing the user greater control over stopping and/or monitoring the progress of the algorithm.
 
+\subsection{Incorporating the regularization term}
+\label{sec:reg_problem}
+
+If a non-zero regularization term is required in (\ref{eq:nlls_problem}), then this is handled by transforming the problem internally into a least squares problem.  The 
+formulation used will depend on the value of $p$.
+
+{\bf If $\bf p = 2$}, we solve a least squares problem with $n$ additional degrees of freedom.
+The new function, $\widehat{\vr} : \mathbb{R}^{n}\rightarrow\mathbb{R}^{m+n}$, takes $\widehat{\vr}_i(\vx) = \vr_i(\vx)$, for $i = 1,\dots, m$, and $\widehat{\vr}_{m+j}(\vx) =
+\sqrt{\sigma}[\vx]_j$ for $j = 1,\dots, n$, where $[\vx]_j$ denotes the $j$th component of $\vx$.  We therefore have that $\nabla \widehat{\vr}_{m+j}(\vx) = \sqrt{\sigma}\ve^j$ (where $[\ve^j]_i = \delta_{ij}$), and the second derivatives vanish.
+
+{\bf If $\bf p \ne 2$}, then we solve a least squares problem
+ with one additional degree of freedom.  In this case the new function, $\widehat{\vr} : \mathbb{R}^{n}\rightarrow\mathbb{R}^{m+1}$, again takes $\widehat{\vr}_i(\vx) = \vr_i(\vx)$, for $i = 1,\dots, m$, but now $\widehat{\vr}_{m+1}(\vx) = \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p}{2}}.$  We therefore have that 
+$\nabla \widehat{\vr}_{m+1}(\vx) = \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p-4}{2}}\vx^T$.  
+The second derivative is given by %on the value of $p$:
+\(
+\nabla^2\widehat{\vr}_{m+1} =
+%\begin{cases}
+%   \hspace{1.5cm}\sigma^{\frac{1}{2}} I & \text{if } p = 2 \\ 
+   \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p-4}{2}}\left(I + \frac{\vx\vx^T}{\|\vx\|^2}\right).% & \text{otherwise}
+%\end{cases}.
+\)
+
+
+Either problem can be solved implictly from the un-regularized problem by updating the relevant quantities in the algorithm, as shown in Algorithm~\ref{alg:nlls_solve}.
 
 \subsection{The models}
 \label{sec:model_description}
@@ -190,6 +227,17 @@ the methods available to solve the subproblem are described in
 Sections \ref{sec:trust-region} and \ref{sec:regularization}.  
 If the Newton-Tensor model is selected ({\tt options\ct model = 4}), then this 
 model is not quadratic, and the methods available are described in Section~\ref{sec:newton_tensor_subproblem}.
+
+Note that, when calculating the step, if the initial regularization parameter $\sigma$ in (\ref{eq:nlls_problem}) is 
+non-zero, then we must modify ${\iter[k]{\tJ}}^T\iter[k]{\tJ}$  to take into 
+account the Jacobian of the modified least squares problem being solved.  Practically, this amounts to making the change
+\[
+{\iter[k]{\tJ}}^T\iter[k]{\tJ} = {\iter[k]{\tJ}}^T\iter[k]{\tJ} + 
+ \begin{cases}
+   \sigma I & \text{if }p = 2\\
+   \frac{\sigma p}{2} \|\iter[k]{\vx}\|^{p-4}\iter[k]{\vx}{\iter[k]{\vx}}^T & \text{otherwise}
+ \end{cases}.
+\]
 
 \subsubsection{The trust region method ({\tt options\ct type\_of\_method = 1})}
 \label{sec:trust-region}
@@ -288,8 +336,6 @@ We support two options:
     This subproblem can then be solved using any of the methods described in 
     Sections~\ref{sec:trust-region} or \ref{sec:regularization}.
 \end{description}
-
-
 
 
 \subsection{Accepting the step and updating the parameter}

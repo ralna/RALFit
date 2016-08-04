@@ -103,6 +103,15 @@ The default value is {\tt initial\_radius\_scale = 1.0}.
 that specifies the initial trust-region radius, $\Delta$.
 The default value is {\tt initial\_radius = 100.0}.
 
+\scalarreal{regularization\_weight}
+that specifies the regularization weight, $\sigma$, used in the least-squares problem (\ref{eq:nlls_problem}).  
+The default value is {\tt regularization\_weight = 0.0}.
+
+\scalarreal{regularization\_power}
+that specifies the regularization weight, $p$, used in the least-squares problem (\ref{eq:nlls_problem}).  
+The default value is {\tt regularization\_power = 0.0}.
+
+
 \scalarreal{maximum\_radius}
 that specifies the maximum size permitted for the trust-region radius.
 The default value is {\tt maximum\_radius = 1e8}.
