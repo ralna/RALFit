@@ -304,16 +304,7 @@ contains
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g)
        w%g = -w%g
-       if (options%update_lower_order) then 
-          select case(options%regularization)
-          case (1)
-             w%g = w%g - options%regularization_term * X
-          case (2)
-             w%g = w%g - options%regularization_term *  & 
-                  (normX**(options%regularization_power - 2.0)) * X * &
-                  options%regularization_weight
-          end select
-       end if
+       if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = norm2(w%g)
        w%normJF0 = w%normJF
        w%normJFold = w%normJF
@@ -547,16 +538,7 @@ contains
     ! g = -J^Tf
     call mult_Jt(w%J,n,m,w%f,w%g)
     w%g = -w%g
-    if ( options%update_lower_order ) then 
-       select case (options%regularization)
-       case (1)
-          w%g = w%g - options%regularization_term * X
-       case (2)
-          w%g = w%g - options%regularization_term *  & 
-               (norm2(X)**(options%regularization_power - 2.0)) * X * & 
-               options%regularization_weight
-       end select
-    end if
+    if ( options%regularization > 0 ) call update_regularized_gradient(w%g,X,normX,options)
     
     w%normJFold = w%normJF
     w%normF = normFnew
@@ -1968,6 +1950,25 @@ return
        end if      
        
      end subroutine update_regularized_normF
+
+     subroutine update_regularized_gradient(g,X,normX,options)
+       real(wp), intent(inout) :: g(:)
+       real(wp), intent(in) :: X(:), normX
+       type( nlls_options ), intent(in) :: options
+             
+       if (options%update_lower_order) then 
+          select case(options%regularization)
+          case (1)
+             g = g - options%regularization_term * X
+          case (2)
+             g = g - options%regularization_term *  & 
+                  (normX**(options%regularization_power - 2.0_wp)) * X * &
+                  options%regularization_weight
+          end select
+       end if
+
+     end subroutine update_regularized_gradient
+
      subroutine update_regularized_hessian(hf,X,n,options)
        real(wp), intent(inout) :: hf(:)
        real(wp), intent(in) :: X(:)
