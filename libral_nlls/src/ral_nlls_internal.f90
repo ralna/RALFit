@@ -115,7 +115,6 @@ contains
     type ( NLLS_workspace ) :: w
     
 !!$    write(*,*) 'Controls in:'
-!!$    write(*,*) control
 !!$    write(*,*) 'error = ',options%error
 !!$    write(*,*) 'out = ', options%out
 !!$    write(*,*) 'print_level = ', options%print_level
