@@ -295,25 +295,9 @@ contains
        end if
 
        w%normF = norm2(w%f(1:m))
-       if (options%update_lower_order .and. options%regularization > 0) then 
+       if (options%regularization > 0 ) then 
           normX = norm2(X(1:n))
-          select case(options%regularization)
-          case (1)
-             ! first, check that power = 2
-             if ( options%regularization_power .ne. 2.0_wp) then 
-                write(*,*) 'Warning :: will be run with power = 2.0'
-             end if
-             w%normF = sqrt(w%normF**2 + & 
-                  options%regularization_term *  & 
-                  normX**2 )
-          case (2)
-             w%normF = sqrt(w%normF**2 + & 
-                  ( 2 * options%regularization_term / options%regularization_power )  *  & 
-                  normX**options%regularization_power * & 
-                  options%regularization_weight )
-          case default
-             write(*,*) 'oops....'
-          end select
+          call update_regularized_normF(w%normF,normX,options)
        end if
        w%normF0 = w%normF
 
@@ -478,20 +462,10 @@ contains
        end if       
        normFnew = norm2(w%fnew(1:m))
        
-       if ( options%update_lower_order) then
-          select case (options%regularization)
-          case (1)
-             normFnew = sqrt(normFnew**2 + & 
-                  options%regularization_term *  & 
-                  norm2(w%Xnew)**2 )
-          case (2)
-             normFnew = sqrt(normFnew**2 + & 
-                  ( 2 * options%regularization_term / options%regularization_power )  *  & 
-                  norm2(w%Xnew)**options%regularization_power ) * & 
-                  options%regularization_weight
-          end select
-       end if
-
+       if (options%regularization > 0) then 
+          normX = norm2(w%Xnew)
+          call update_regularized_normF(normFnew,normX,options)
+       end if     
        
        !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the quantity                                   ! 
@@ -1974,6 +1948,26 @@ return
        
      end subroutine apply_second_order_info
 
+     subroutine update_regularized_normF(normF,normX,options)
+       real(wp), intent(inout) :: normF
+       real(wp), intent(in) :: normX
+       type( nlls_options ), intent(in) :: options
+       
+       if (options%update_lower_order) then 
+          select case(options%regularization)
+          case (1)
+             normF = sqrt(normF**2 + & 
+                  options%regularization_term *  & 
+                  normX**2 )
+          case (2)
+             normF = sqrt(normF**2 + & 
+                  ( 2 * options%regularization_term / options%regularization_power )  *  & 
+                  normX**options%regularization_power * & 
+                  options%regularization_weight )
+          end select
+       end if      
+       
+     end subroutine update_regularized_normF
      subroutine update_regularized_hessian(hf,X,n,options)
        real(wp), intent(inout) :: hf(:)
        real(wp), intent(in) :: X(:)
