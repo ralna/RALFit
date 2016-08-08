@@ -859,6 +859,7 @@ contains
     ! compute the hessian used in the model 
        
     w%extra_scale = zero
+       normd = norm2(d(1:n)) ! ||d||_D
 
     ! Set A = J^T J
     call matmult_inner(J,n,m,w%A)
