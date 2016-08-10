@@ -88,6 +88,7 @@ program nlls_test
                  end if
               else if ( status%status .ne. 0 ) then
                  write(*,*) 'nlls_solve failed to converge:'
+                 write(*,*) status%error_message
                  write(*,*) 'NLLS_METHOD = ', nlls_method
                  write(*,*) 'MODEL = ', options%model
                  write(*,*) 'TR_UPDATE = ', tr_update
@@ -166,6 +167,7 @@ program nlls_test
      call solve_basic(X,params,options,status)
      if ( status%status .ne. ERROR%MAXITS) then
         write(*,*) 'Error: incorrect error return when maxits expected to be reached'
+        write(*,*) 'status%status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
@@ -179,6 +181,7 @@ program nlls_test
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0) then
         write(*,*) 'Error: did not converge when output_progress_vectors = true'
+        write(*,*) 'status = ', status%status
         no_errors_main = no_errors_main + 1
         status%status = 0
      end if
