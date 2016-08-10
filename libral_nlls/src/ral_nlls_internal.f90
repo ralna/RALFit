@@ -862,7 +862,7 @@ contains
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
        
-       call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,& 
+       call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, &!num_successful_steps,& 
             d, md, params, options, inform, & 
             w%solve_newton_tensor_ws)
        normd = norm2(d(1:n)) ! ||d||_D
@@ -872,7 +872,7 @@ contains
     else 
        ! compute the hessian used in the model 
 
-       w%scale = zero
+!       w%scale = zero
        w%extra_scale = zero
 
        ! Set A = J^T J
@@ -917,19 +917,21 @@ contains
        ! if scaling needed, do it
        if ( (options%nlls_method == 3) .or. (options%nlls_method == 4) ) then 
           if ( (options%scale .ne. 0) ) then
-             call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
-                  w%generate_scaling_ws,options,inform)
+             call apply_scaling(J,n,m,w%extra_scale,w%A,w%v, & 
+                  w%apply_scaling_ws,options,inform)
+!             call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
+!                  w%generate_scaling_ws,options,inform)
              scaling_used = .true.
           end if
        end if
 
-       IF (scaling_used) then
-          do i = 1,n
-             w%v(i) = w%v(i) / w%scale(i)
-             w%A(i,:) = w%A(i,:) / w%scale(i)
-             w%A(:,i) = w%A(:,i) / w%scale(i)
-          end do
-       end IF
+!!$       IF (scaling_used) then
+!!$          do i = 1,n
+!!$             w%v(i) = w%v(i) / w%scale(i)
+!!$             w%A(i,:) = w%A(i,:) / w%scale(i)
+!!$             w%A(:,i) = w%A(:,i) / w%scale(i)
+!!$          end do
+!!$       end IF
    
 
        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
