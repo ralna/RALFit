@@ -219,6 +219,7 @@ contains
     logical :: bad_allocate = .false.
     character :: second
     real(wp) :: sum_reg
+    integer :: num_successful_steps = 0
     
     ! todo: make max_tr_decrease a control variable
 
@@ -435,6 +436,7 @@ contains
        call calculate_step(w%J,w%f,w%hf,w%g,& 
             X,md,md_gn,& 
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, & 
+            num_successful_steps, &
             w%Xnew,w%d,w%normd, & 
             options,inform,& 
             w%calculate_step_ws)
@@ -469,8 +471,10 @@ contains
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
        call calculate_rho(w%normF,normFnew,md,rho,options)
        if (rho > options%eta_successful) then
+          num_successful_steps = num_successful_steps + 1
           success = .true.
        else
+          num_successful_steps = 0
           if ( (w%use_second_derivatives) .and.  &
                (options%model == 3) .and. & 
                (no_reductions==1) ) then
@@ -828,7 +832,8 @@ contains
 ! below are the truly internal subroutines...
 
   RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, & 
-                            Delta,eval_HF,params,Xnew,d,normd,options,inform,w)
+                            Delta,eval_HF,params,num_successful_steps,& 
+                            Xnew,d,normd,options,inform,w)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -840,6 +845,7 @@ contains
     REAL(wp), intent(out) :: X(:)
     procedure( eval_hf_type ) :: eval_HF       
     class( params_base_type ) :: params  
+    integer, intent(in) :: num_successful_steps
     integer, intent(in)  :: n, m
     logical, intent(in) :: use_second_derivatives
     real(wp), intent(out) :: d(:), Xnew(:)
@@ -864,7 +870,7 @@ contains
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
        
-       call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, &!num_successful_steps,& 
+       call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,& 
             d, md, params, options, inform, & 
             w%solve_newton_tensor_ws)
        normd = norm2(d(1:n)) ! ||d||_D
@@ -954,7 +960,8 @@ contains
            elseif (options%type_of_method == 2) then 
               if (options%print_level >= 2) write(options%out,3020) 'DRQS'
            end if           
-           call solve_galahad(w%A,w%v,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
+           call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
+                d,normd,options,inform,w%solve_galahad_ws)
         case default
            inform%status = ERROR%UNSUPPORTED_METHOD
            goto 1000
@@ -1565,7 +1572,7 @@ return
 
    end subroutine get_pd_shift
    
-   subroutine solve_galahad(A,v,n,m,Delta,d,normd,options,inform,w)
+   subroutine solve_galahad(A,v,n,m,Delta,num_successful_steps,d,normd,options,inform,w)
 
      !---------------------------------------------
      ! solve_galahad
@@ -1581,6 +1588,7 @@ return
      REAL(wp), intent(in) :: A(:,:), v(:)
      REAL(wp), intent(inout) :: Delta
      integer, intent(in)  :: n, m
+     integer, intent(in) :: num_successful_steps
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
      type( solve_galahad_work ) :: w
@@ -2580,12 +2588,14 @@ return
      ! routines needed for the Newton tensor model
      
      subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
+                                    num_successful_steps, & 
                                     d, md, params, options, inform, & 
                                     w)
        
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
        real(wp) , intent(in) :: X(:), Delta
+       integer, intent(in) :: num_successful_steps
        real(wp), intent(out) :: d(:)
        real(wp), intent(out) :: md
        procedure( eval_hf_type ) :: eval_HF
