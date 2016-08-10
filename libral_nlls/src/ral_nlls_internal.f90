@@ -858,70 +858,81 @@ contains
 
     if (.not. w%allocated) goto 1010
     
-    ! compute the hessian used in the model 
-    d = zero   
-    w%extra_scale = zero
-    
-    ! Set A = J^T J
-    call matmult_inner(J,n,m,w%A)
-    ! add any second order information...
-    ! so A = J^T J + HF
-    w%A = w%A + reshape(hf(1:n**2),[n,n])
-    
-    ! and, now, let's add on a reg parameter, if needed
-    select case (options%regularization) 
-    case (1)
-       do i = 1, n             
-          w%A(i,i) = w%A(i,i) + options%regularization_term
-       end do
-       w%extra_scale = options%regularization_term
-    case (2)
-       if ( .not. allocated(w%xxt) ) allocate (w%xxt(n,n))
-       call outer_product(X,n,w%xxt)
-       normx = norm2(X(1:n))
-!          if (normx > epsmch) then
-       ! add term from J^TJ
-       w%A(1:n,1:n) = w%A(1:n,1:n) + &
-            ( options%regularization_term * options%regularization_power / 2.0 ) * & 
-            normx**(options%regularization_power - 4.0) * w%xxt * & 
-            options%regularization_weight
-       ! since there's extra terms in the 'real' J, add these to the scaling
-       do i = 1, n
-          ! add the square of the entries of last row of the 'real' Jacobian
-          w%extra_scale(i) = & 
-               (options%regularization_term * options%regularization_power / 2.0 ) * &
-               (normx**(options%regularization_power-4)) * X(i)**2.0 * & 
-               options%regularization_weight
-       end do
-    end select
-    
-    ! and let's copy over g to a temp vector v
-    ! (it's copied so that we can scale v without losing g)
-    
-    w%v(1:n) = -g(1:n)
-
-    ! if scaling needed, do it
-    
-    if ( (options%nlls_method == 3) .or. (options%nlls_method == 4) ) then 
-       if ( (options%scale .ne. 0) ) then
-          call apply_scaling(J,n,m,w%extra_scale,w%A,w%v,w%apply_scaling_ws,options,inform)
-          scaling_used = .true.
-       end if
-    end if
-
-        
+           
     if ( options%model == 4 ) then
-        ! tensor model -- call ral_nlls again
+       ! tensor model -- call ral_nlls again
+       
+       call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,& 
+            d, md, params, options, inform, & 
+            w%solve_newton_tensor_ws)
+       normd = norm2(d(1:n)) ! ||d||_D
 
-        call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
-                                 d, md, params, options, inform, & 
-                                 w%solve_newton_tensor_ws)
-    
-        Xnew = X + d
-        normd = norm2(d(1:n)) ! ||d||_D
-        call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
-     else 
-        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
+       Xnew = X + d
+       call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
+    else 
+       ! compute the hessian used in the model 
+
+       w%scale = zero
+       w%extra_scale = zero
+
+       ! Set A = J^T J
+       call matmult_inner(J,n,m,w%A)
+       ! add any second order information...
+       ! so A = J^T J + HF
+       w%A = w%A + reshape(hf(1:n**2),[n,n])
+
+       ! and, now, let's add on a reg parameter, if needed
+       select case (options%regularization) 
+       case (1)
+          do i = 1, n             
+             w%A(i,i) = w%A(i,i) + options%regularization_term
+          end do
+          w%extra_scale = options%regularization_term
+       case (2)
+          if ( .not. allocated(w%xxt) ) allocate (w%xxt(n,n))
+          call outer_product(X,n,w%xxt)
+          normx = norm2(X(1:n))
+          if (normx > epsmch) then
+             ! add term from J^TJ
+             w%A(1:n,1:n) = w%A(1:n,1:n) + &
+                  ( options%regularization_term * options%regularization_power / 2.0 ) * & 
+                  normx**(options%regularization_power - 4.0) * w%xxt * & 
+                  options%regularization_weight
+             ! since there's extra terms in the 'real' J, add these to the scaling
+             do i = 1, n
+                ! add the square of the entries of last row of the 'real' Jacobian
+                w%extra_scale(i) = & 
+                     (options%regularization_term * options%regularization_power / 2.0 ) * &
+                     (normx**(options%regularization_power-4)) * X(i)**2.0 * & 
+                     options%regularization_weight
+             end do
+          end if
+       end select
+
+       ! and let's copy over g to a temp vector v
+       ! (it's copied so that we can scale v without losing g)
+
+       w%v(1:n) = -g(1:n)
+
+       ! if scaling needed, do it
+       if ( (options%nlls_method == 3) .or. (options%nlls_method == 4) ) then 
+          if ( (options%scale .ne. 0) ) then
+             call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
+                  w%generate_scaling_ws,options,inform)
+             scaling_used = .true.
+          end if
+       end if
+
+       IF (scaling_used) then
+          do i = 1,n
+             w%v(i) = w%v(i) / w%scale(i)
+             w%A(i,:) = w%A(i,:) / w%scale(i)
+             w%A(:,i) = w%A(:,i) / w%scale(i)
+          end do
+       end IF
+   
+
+       ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
         select case (options%nlls_method)        
         case (1) ! Powell's dogleg
