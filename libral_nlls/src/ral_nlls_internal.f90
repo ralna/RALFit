@@ -240,6 +240,8 @@ contains
        w%first_call = 0
        w%tr_nu = options%radius_increase
        w%tr_p = 7
+       inform%status = 0
+       inform%external_return = 0
        ! allocate space for vectors that will be used throughout the algorithm
        
        if (options%setup_workspaces) then 
@@ -2790,7 +2792,7 @@ return
        class( params_base_type ), intent(in) :: params
 
        integer :: ii, jj, kk
-       real :: normx, hf_local
+       real(wp) :: normx, hf_local
        
        HF(1:n*n) = zero
        select type(params)
