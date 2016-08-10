@@ -488,7 +488,7 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
        type(nlls_options),intent(inout) :: options 
        integer, intent(out) :: fails
 
-       real(wp), allocatable :: J(:), A(:,:), J_extra(:), v(:)
+       real(wp), allocatable :: J(:), A(:,:), scale_extra(:), scale(:)
        integer :: n,m
        type( nlls_workspace) :: w
        type( nlls_inform ) :: inform
@@ -499,7 +499,7 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
        options%nlls_method = 3
        n = 2
        m = 3 
-       allocate(J(m*n),A(n,n),J_extra(n),v(n))
+       allocate(J(m*n),A(n,n),scale_extra(n),scale(n))
        call setup_workspaces(w,n,m,options,inform)
      
        J = 0.0_wp
@@ -510,97 +510,98 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
        A(1,2) = 0.0_wp
        A(2,2) = 1.0_wp
 
-       J_extra = 0.0_wp 
+       scale = 1.0_wp
+       scale_extra = 0.0_wp 
 
-!!$       !** scale = 1 **
-!!$       options%scale= 1     
-!!$       call generate_scaling(J,n,m,J_extra,A,v,& 
-!!$            w%calculate_step_ws%generate_scaling_ws, &
-!!$            options,inform)
-!!$       if (inform%status .ne. 0 ) then
-!!$          write(*,*) 'Error: unexpected error in generate_scaling when scale = 1'
-!!$          write(*,*) 'status = ', inform%status,' returned.'
-!!$          fails = fails + 1
-!!$          inform%status = 0 
-!!$       end if
-!!$
-!!$       !** scale = 2 **
-!!$       options%scale = 2
-!!$       call generate_scaling(J,n,m,J_extra,A,v,& 
-!!$            w%calculate_step_ws%generate_scaling_ws, &
-!!$            options,inform)
-!!$       if (inform%status .ne. 0 ) then
-!!$          write(*,*) 'Error: unexpected error in generate_scaling when scale = 2'
-!!$          write(*,*) 'status = ', inform%status,' returned.'
-!!$          fails = fails + 1
-!!$          inform%status = 0 
-!!$     end if
-!!$
-!!$     !** scale undefined
-!!$     options%scale = 786
-!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
-!!$          w%calculate_step_ws%generate_scaling_ws, &
-!!$          options,inform)
-!!$     if (inform%status .ne. ERROR%BAD_SCALING ) then
-!!$        write(*,*) 'Error: expected error in generate_scaling when passing undefined scaling'
-!!$        write(*,*) 'status = ', inform%status,' returned.'
-!!$        fails = fails + 1
-!!$        inform%status = 0 
-!!$     end if
-!!$     inform%status = 0
-!!$     
-!!$     ! now, let's test the non-default modes
-!!$     ! first, set scale_require_increase to T
-!!$     options%scale = 1
-!!$     options%scale_require_increase = .true.
-!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
-!!$          w%calculate_step_ws%generate_scaling_ws, &
-!!$          options,inform)
-!!$     if (inform%status .ne. 0 ) then
-!!$        write(*,*) 'Error: unexpected error when scale_require_increase = T'
-!!$        write(*,*) 'status = ', inform%status,' returned.'
-!!$        fails = fails + 1
-!!$        inform%status = 0 
-!!$     end if
-!!$     options%scale_require_increase = .false.
-!!$
-!!$     ! first, set scale_trim_min to T
-!!$     options%scale_trim_min = .true.
-!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
-!!$          w%calculate_step_ws%generate_scaling_ws, &
-!!$          options,inform)
-!!$     if (inform%status .ne. 0 ) then
-!!$        write(*,*) 'Error: unexpected error when scale_require_increase = T'
-!!$        write(*,*) 'status = ', inform%status,' returned.'
-!!$        fails = fails + 1
-!!$        inform%status = 0 
-!!$     end if
-!!$     options%scale_trim_min = .false.
-!!$
-!!$     ! first, set scale_trim_max to T
-!!$     options%scale_trim_max = .false.
-!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
-!!$          w%calculate_step_ws%generate_scaling_ws, &
-!!$          options,inform)
-!!$     if (inform%status .ne. 0 ) then
-!!$        write(*,*) 'Error: unexpected error when scale_require_increase = T'
-!!$        write(*,*) 'status = ', inform%status,' returned.'
-!!$        fails = fails + 1
-!!$        inform%status = 0 
-!!$     end if
-!!$     options%scale_trim_max = .true.
-!!$
-!!$
-!!$     call nlls_finalize(w,options)
-!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
-!!$          w%calculate_step_ws%generate_scaling_ws, &
-!!$          options,inform)
-!!$     if (inform%status .ne. ERROR%WORKSPACE_ERROR) then 
-!!$        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
-!!$        write(*,*) '(generate_scaling)'
-!!$        fails = fails + 1
-!!$     end if
-!!$
+       !** scale = 1 **
+       options%scale= 1     
+       call generate_scaling(J,A,n,m,scale,scale_extra,& 
+            w%calculate_step_ws%generate_scaling_ws, &
+            options,inform)
+       if (inform%status .ne. 0 ) then
+          write(*,*) 'Error: unexpected error in generate_scaling when scale = 1'
+          write(*,*) 'status = ', inform%status,' returned.'
+          fails = fails + 1
+          inform%status = 0 
+       end if
+
+       !** scale = 2 **
+       options%scale = 2
+       call generate_scaling(J,A,n,m,scale,scale_extra,& 
+            w%calculate_step_ws%generate_scaling_ws, &
+            options,inform)
+       if (inform%status .ne. 0 ) then
+          write(*,*) 'Error: unexpected error in generate_scaling when scale = 2'
+          write(*,*) 'status = ', inform%status,' returned.'
+          fails = fails + 1
+          inform%status = 0 
+     end if
+
+     !** scale undefined
+     options%scale = 786
+     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+          w%calculate_step_ws%generate_scaling_ws, &
+          options,inform)
+     if (inform%status .ne. ERROR%BAD_SCALING ) then
+        write(*,*) 'Error: expected error in generate_scaling when passing undefined scaling'
+        write(*,*) 'status = ', inform%status,' returned.'
+        fails = fails + 1
+        inform%status = 0 
+     end if
+     inform%status = 0
+     
+     ! now, let's test the non-default modes
+     ! first, set scale_require_increase to T
+     options%scale = 1
+     options%scale_require_increase = .true.
+     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+          w%calculate_step_ws%generate_scaling_ws, &
+          options,inform)
+     if (inform%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+        write(*,*) 'status = ', inform%status,' returned.'
+        fails = fails + 1
+        inform%status = 0 
+     end if
+     options%scale_require_increase = .false.
+
+     ! first, set scale_trim_min to T
+     options%scale_trim_min = .true.
+     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+          w%calculate_step_ws%generate_scaling_ws, &
+          options,inform)
+     if (inform%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+        write(*,*) 'status = ', inform%status,' returned.'
+        fails = fails + 1
+        inform%status = 0 
+     end if
+     options%scale_trim_min = .false.
+
+     ! first, set scale_trim_max to T
+     options%scale_trim_max = .false.
+     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+          w%calculate_step_ws%generate_scaling_ws, &
+          options,inform)
+     if (inform%status .ne. 0 ) then
+        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+        write(*,*) 'status = ', inform%status,' returned.'
+        fails = fails + 1
+        inform%status = 0 
+     end if
+     options%scale_trim_max = .true.
+
+
+     call nlls_finalize(w,options)
+     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+          w%calculate_step_ws%generate_scaling_ws, &
+          options,inform)
+     if (inform%status .ne. ERROR%WORKSPACE_ERROR) then 
+        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+        write(*,*) '(generate_scaling)'
+        fails = fails + 1
+     end if
+
      call reset_default_options(options)
 
    end subroutine generate_scaling_tests
@@ -819,7 +820,7 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
      real(wp) :: Delta, normd
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
-     integer :: n,m, i
+     integer :: n,m, i, num_successful_steps
      character (len=5) :: testname
      
      fails = 0
@@ -828,7 +829,9 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
      
      n = 2
      m = 5
-
+     
+     num_successful_steps = 0 
+     
      allocate(A(n,n), g(n), d(n))
 
      do i = 1,2
@@ -848,7 +851,8 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
         g = [-7.4, -28.9]
         Delta = 0.02_wp
         work%calculate_step_ws%solve_galahad_ws%reg_order = 2.0_wp
-        call solve_galahad(A,g,n,m,Delta,d,normd,options,status,&
+        call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
+             d,normd,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. 0 ) then
            write(*,*) testname,'test failed, status = ', status%status
@@ -866,7 +870,8 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
 
         
         Delta = -100_wp
-        call solve_galahad(A,g,n,m,Delta,d,normd,options,status,&
+        call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
+             d,normd,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
            write(*,*) testname,'test failed, expected status = ', ERROR%FROM_EXTERNAL
@@ -890,7 +895,7 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
      
      real(wp), allocatable :: J(:), f(:), X(:), d(:)
      real(wp) :: Delta, md
-     integer :: n, m
+     integer :: n, m, num_successful_steps
      type( params_base_type ) :: params
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
@@ -906,7 +911,9 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
      f = one
      X = one
 
-     call solve_newton_tensor(J, f, eval_H, X, n, m, Delta, & 
+     num_successful_steps = 0
+     
+     call solve_newton_tensor(J, f, eval_H, X, n, m, Delta, num_successful_steps, & 
                                     d, md, params, options, status, & 
                                     work%calculate_step_ws%solve_newton_tensor_ws)
      if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
