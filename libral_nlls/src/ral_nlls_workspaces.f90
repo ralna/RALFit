@@ -459,17 +459,18 @@ module ral_nlls_workspaces
      real(wp), allocatable :: work(:)
   end type all_eig_symm_work
 
-  type, public :: apply_scaling_work ! workspace for subrouine apply_scaling
+  type, public :: generate_scaling_work ! workspace for subrouine generate_scaling
      logical :: allocated = .false.
      real(wp), allocatable :: diag(:)
      real(wp), allocatable :: ev(:,:)
      real(wp), allocatable :: tempvec(:)
      type( all_eig_symm_work ) :: all_eig_symm_ws
-  end type apply_scaling_work
+  end type generate_scaling_work
 
   type, public :: solve_newton_tensor_work ! a workspace for solve_newton_tensor
      logical :: allocated = .false.
      real(wp), allocatable :: model_tensor(:)
+!     type( generate_scaling_ws ) :: 
      type( tensor_params_type ) :: tparams
      type( nlls_options ) :: tensor_options
      integer :: m_in
@@ -511,14 +512,14 @@ module ral_nlls_workspaces
   type, public :: calculate_step_work ! workspace for subroutine calculate_step
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:), xxt(:,:)
-     real(wp), allocatable :: v(:), extra_scale(:)
+     real(wp), allocatable :: v(:), scale(:), extra_scale(:)
      type( AINT_tr_work ) :: AINT_tr_ws
      type( dogleg_work ) :: dogleg_ws
      type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
      type( more_sorensen_work ) :: more_sorensen_ws
      type( solve_galahad_work ) :: solve_galahad_ws
      type( evaluate_model_work) :: evaluate_model_ws
-     type( apply_scaling_work ) :: apply_scaling_ws
+     type( generate_scaling_work ) :: generate_scaling_ws
   end type calculate_step_work
 
   type, public :: get_svd_J_work ! workspace for subroutine get_svd_J
@@ -920,6 +921,10 @@ contains
     allocate(w%extra_scale(n), stat = inform%alloc_status)
     if (inform%alloc_status > 0) goto 9000      
 
+    allocate(w%scale(n), stat = inform%alloc_status)
+    if (inform%alloc_status > 0) goto 9000      
+    w%scale(n) = zero
+
 
     call setup_workspace_evaluate_model(n,m,& 
          w%evaluate_model_ws,options,inform)
@@ -958,7 +963,7 @@ contains
     end if
 
     if (options%scale > 0) then
-       call setup_workspace_apply_scaling(n,m,w%apply_scaling_ws,options,inform)
+       call setup_workspace_generate_scaling(n,m,w%generate_scaling_ws,options,inform)
        if (inform%status > 0) goto 9010
     end if
 
@@ -986,6 +991,7 @@ contains
     if (allocated(w%v)) deallocate(w%v)
     if (allocated(w%xxt)) deallocate(w%xxt)
     if (allocated(w%extra_scale)) deallocate(w%extra_scale)
+    if (allocated(w%scale)) deallocate(w%scale)
 
     call remove_workspace_evaluate_model(w%evaluate_model_ws,&
          options)
@@ -1020,7 +1026,7 @@ contains
     end if
 
     if (options%scale > 0) then
-       call remove_workspace_apply_scaling(w%apply_scaling_ws,options)
+       call remove_workspace_generate_scaling(w%generate_scaling_ws,options)
     end if
 
     w%allocated = .false.
@@ -1610,10 +1616,10 @@ contains
   end subroutine remove_workspace_more_sorensen
 
 
-  subroutine setup_workspace_apply_scaling(n,m,w,options,inform)
+  subroutine setup_workspace_generate_scaling(n,m,w,options,inform)
 
     integer, intent(in) :: n,m
-    type( apply_scaling_work ) :: w
+    type( generate_scaling_work ) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(out) :: inform
 
@@ -1635,16 +1641,16 @@ contains
 
 1000 continue ! allocation error here
     inform%status = ERROR%ALLOCATION
-    inform%bad_alloc = "apply_scaling"
+    inform%bad_alloc = "generate_scaling"
     return
 
 1010 continue ! error from lower down subroutine
     return
 
-  end subroutine setup_workspace_apply_scaling
+  end subroutine setup_workspace_generate_scaling
 
-  subroutine remove_workspace_apply_scaling(w,options)
-    type( apply_scaling_work ) :: w
+  subroutine remove_workspace_generate_scaling(w,options)
+    type( generate_scaling_work ) :: w
     type( nlls_options ), intent(in) :: options
 
     if(allocated( w%diag )) deallocate( w%diag )
@@ -1654,6 +1660,6 @@ contains
 
     return 
 
-  end subroutine remove_workspace_apply_scaling
+  end subroutine remove_workspace_generate_scaling
 
 end module ral_nlls_workspaces

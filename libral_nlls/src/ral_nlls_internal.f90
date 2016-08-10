@@ -72,7 +72,7 @@ module ral_nlls_internal
     public :: update_trust_region_radius, apply_second_order_info, rank_one_update
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix
-    public :: dogleg, more_sorensen, apply_scaling, solve_newton_tensor, aint_tr
+    public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton
     public :: ERROR
     
@@ -858,7 +858,9 @@ contains
 
     if (.not. w%allocated) goto 1010
     
-           
+    d(1:n) = zero
+    w%scale = one
+    
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
        
@@ -917,29 +919,29 @@ contains
        ! if scaling needed, do it
        if ( (options%nlls_method == 3) .or. (options%nlls_method == 4) ) then 
           if ( (options%scale .ne. 0) ) then
-             call apply_scaling(J,n,m,w%extra_scale,w%A,w%v, & 
-                  w%apply_scaling_ws,options,inform)
-!             call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
-!                  w%generate_scaling_ws,options,inform)
+!             call apply_scaling(J,n,m,w%extra_scale,w%A,w%v, & 
+!                  w%apply_scaling_ws,options,inform)
+             call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
+                  w%generate_scaling_ws,options,inform)
              scaling_used = .true.
           end if
        end if
 
-!!$       IF (scaling_used) then
-!!$          do i = 1,n
-!!$             w%v(i) = w%v(i) / w%scale(i)
-!!$             w%A(i,:) = w%A(i,:) / w%scale(i)
-!!$             w%A(:,i) = w%A(:,i) / w%scale(i)
-!!$          end do
-!!$       end IF
+       IF (scaling_used) then
+          do i = 1,n
+             w%v(i) = w%v(i) / w%scale(i)
+             w%A(i,:) = w%A(i,:) / w%scale(i)
+             w%A(:,i) = w%A(:,i) / w%scale(i)
+          end do
+       end IF
    
 
        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
-        select case (options%nlls_method)        
-        case (1) ! Powell's dogleg
-           if (options%print_level >= 2) write(options%out,3000) 'dogleg'
-           call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
+       select case (options%nlls_method)
+       case (1) ! Powell's dogleg
+          if (options%print_level >= 2) write(options%out,3000) 'dogleg'
+          call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
         case (2) ! The AINT method
            if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
            call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
@@ -961,7 +963,7 @@ contains
         ! reverse the scaling on the step
         if ( (scaling_used) ) then 
            do i = 1, n
-              d(i) = d(i) / w%apply_scaling_ws%diag(i)
+              d(i) = d(i) / w%scale(i)
            end do
         end if
 
@@ -996,10 +998,10 @@ return
      
 
    END SUBROUTINE calculate_step
-   
-   subroutine apply_scaling(J,n,m,J_extra,A,v,w,options,inform)
+
+   subroutine generate_scaling(J,A,n,m,scale,extra_scale,w,options,inform)
      !-------------------------------
-     ! apply_scaling
+     ! generate_scaling
      ! input :: Jacobian matrix, J
      ! ouput :: scaled Hessisan, H, and J^Tf, v.
      !
@@ -1007,12 +1009,10 @@ return
      ! updates v(i) -> (1/W_i) * v(i)
      !         A(i,j) -> (1 / (W_i * W_j)) * A(i,j)
      !-------------------------------
-     real(wp), intent(in) :: J(*) 
+     real(wp), intent(in) :: J(*), A(:,:)
      integer, intent(in) :: n,m
-     real(wp), intent(inout) :: A(:,:)
-     real(wp), intent(in) :: J_extra(:)
-     real(wp), intent(inout) :: v(:)
-     type( apply_scaling_work ), intent(inout) :: w
+     real(wp), intent(inout) :: scale(:), extra_scale(:)
+     type( generate_scaling_work ), intent(inout) :: w
      type( nlls_options ), intent(in) :: options
      type( nlls_inform ), intent(inout) :: inform
 
@@ -1024,7 +1024,7 @@ return
      select case (options%scale)
      case (1,2)
         do ii = 1,n
-           temp = J_extra(ii)
+           temp = extra_scale(ii)
            what_scale: if (options%scale == 1) then
               ! use the scaling present in gsl:
               ! scale by W, W_ii = ||J(i,:)||_2^2
@@ -1053,9 +1053,9 @@ return
            end if trim_scale
            temp = sqrt(temp)
            if (options%scale_require_increase) then
-              w%diag(ii) = max(temp,w%diag(ii))
+              scale(ii) = max(temp,scale(ii))
            else
-              w%diag(ii) = temp
+              scale(ii) = temp
            end if
         end do
 !!$     case (3)
@@ -1075,14 +1075,6 @@ return
         return
      end select
           
-     ! now we have the w%diagonal scaling matrix, actually scale the 
-     ! Hessian approximation and J^Tf
-     do ii = 1,n
-        v(ii) = v(ii) / w%diag(ii)
-        A(ii,:) = A(ii,:) / w%diag(ii)
-        A(:,ii) = A(:,ii) / w%diag(ii)
-     end do
-   
      return
      
 1000 continue
@@ -1093,7 +1085,7 @@ return
      inform%status = ERROR%WORKSPACE_ERROR
      return
      
-   end subroutine apply_scaling
+   end subroutine generate_scaling
 
    subroutine switch_to_gauss_newton(w, n, options)
      type (nlls_workspace), intent(inout) :: w

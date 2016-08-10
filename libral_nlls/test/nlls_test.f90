@@ -364,7 +364,7 @@ program nlls_test
      call dogleg_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
-     call apply_scaling_tests(options,fails)
+     call generate_scaling_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
      
      call aint_tr_tests(options,fails)

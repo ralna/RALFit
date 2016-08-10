@@ -484,7 +484,7 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
        
      end subroutine dogleg_tests
 
-     subroutine apply_scaling_tests(options, fails)
+     subroutine generate_scaling_tests(options, fails)
        type(nlls_options),intent(inout) :: options 
        integer, intent(out) :: fails
 
@@ -512,98 +512,98 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
 
        J_extra = 0.0_wp 
 
-       !** scale = 1 **
-       options%scale= 1     
-       call apply_scaling(J,n,m,J_extra,A,v,& 
-            w%calculate_step_ws%apply_scaling_ws, &
-            options,inform)
-       if (inform%status .ne. 0 ) then
-          write(*,*) 'Error: unexpected error in apply_scaling when scale = 1'
-          write(*,*) 'status = ', inform%status,' returned.'
-          fails = fails + 1
-          inform%status = 0 
-       end if
-
-       !** scale = 2 **
-       options%scale = 2
-       call apply_scaling(J,n,m,J_extra,A,v,& 
-            w%calculate_step_ws%apply_scaling_ws, &
-            options,inform)
-       if (inform%status .ne. 0 ) then
-          write(*,*) 'Error: unexpected error in apply_scaling when scale = 2'
-          write(*,*) 'status = ', inform%status,' returned.'
-          fails = fails + 1
-          inform%status = 0 
-     end if
-
-     !** scale undefined
-     options%scale = 786
-     call apply_scaling(J,n,m,J_extra,A,v,& 
-          w%calculate_step_ws%apply_scaling_ws, &
-          options,inform)
-     if (inform%status .ne. ERROR%BAD_SCALING ) then
-        write(*,*) 'Error: expected error in apply_scaling when passing undefined scaling'
-        write(*,*) 'status = ', inform%status,' returned.'
-        fails = fails + 1
-        inform%status = 0 
-     end if
-     inform%status = 0
-     
-     ! now, let's test the non-default modes
-     ! first, set scale_require_increase to T
-     options%scale = 1
-     options%scale_require_increase = .true.
-     call apply_scaling(J,n,m,J_extra,A,v,& 
-          w%calculate_step_ws%apply_scaling_ws, &
-          options,inform)
-     if (inform%status .ne. 0 ) then
-        write(*,*) 'Error: unexpected error when scale_require_increase = T'
-        write(*,*) 'status = ', inform%status,' returned.'
-        fails = fails + 1
-        inform%status = 0 
-     end if
-     options%scale_require_increase = .false.
-
-     ! first, set scale_trim_min to T
-     options%scale_trim_min = .true.
-     call apply_scaling(J,n,m,J_extra,A,v,& 
-          w%calculate_step_ws%apply_scaling_ws, &
-          options,inform)
-     if (inform%status .ne. 0 ) then
-        write(*,*) 'Error: unexpected error when scale_require_increase = T'
-        write(*,*) 'status = ', inform%status,' returned.'
-        fails = fails + 1
-        inform%status = 0 
-     end if
-     options%scale_trim_min = .false.
-
-     ! first, set scale_trim_max to T
-     options%scale_trim_max = .false.
-     call apply_scaling(J,n,m,J_extra,A,v,& 
-          w%calculate_step_ws%apply_scaling_ws, &
-          options,inform)
-     if (inform%status .ne. 0 ) then
-        write(*,*) 'Error: unexpected error when scale_require_increase = T'
-        write(*,*) 'status = ', inform%status,' returned.'
-        fails = fails + 1
-        inform%status = 0 
-     end if
-     options%scale_trim_max = .true.
-
-
-     call nlls_finalize(w,options)
-     call apply_scaling(J,n,m,J_extra,A,v,& 
-          w%calculate_step_ws%apply_scaling_ws, &
-          options,inform)
-     if (inform%status .ne. ERROR%WORKSPACE_ERROR) then 
-        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
-        write(*,*) '(apply_scaling)'
-        fails = fails + 1
-     end if
-
+!!$       !** scale = 1 **
+!!$       options%scale= 1     
+!!$       call generate_scaling(J,n,m,J_extra,A,v,& 
+!!$            w%calculate_step_ws%generate_scaling_ws, &
+!!$            options,inform)
+!!$       if (inform%status .ne. 0 ) then
+!!$          write(*,*) 'Error: unexpected error in generate_scaling when scale = 1'
+!!$          write(*,*) 'status = ', inform%status,' returned.'
+!!$          fails = fails + 1
+!!$          inform%status = 0 
+!!$       end if
+!!$
+!!$       !** scale = 2 **
+!!$       options%scale = 2
+!!$       call generate_scaling(J,n,m,J_extra,A,v,& 
+!!$            w%calculate_step_ws%generate_scaling_ws, &
+!!$            options,inform)
+!!$       if (inform%status .ne. 0 ) then
+!!$          write(*,*) 'Error: unexpected error in generate_scaling when scale = 2'
+!!$          write(*,*) 'status = ', inform%status,' returned.'
+!!$          fails = fails + 1
+!!$          inform%status = 0 
+!!$     end if
+!!$
+!!$     !** scale undefined
+!!$     options%scale = 786
+!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
+!!$          w%calculate_step_ws%generate_scaling_ws, &
+!!$          options,inform)
+!!$     if (inform%status .ne. ERROR%BAD_SCALING ) then
+!!$        write(*,*) 'Error: expected error in generate_scaling when passing undefined scaling'
+!!$        write(*,*) 'status = ', inform%status,' returned.'
+!!$        fails = fails + 1
+!!$        inform%status = 0 
+!!$     end if
+!!$     inform%status = 0
+!!$     
+!!$     ! now, let's test the non-default modes
+!!$     ! first, set scale_require_increase to T
+!!$     options%scale = 1
+!!$     options%scale_require_increase = .true.
+!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
+!!$          w%calculate_step_ws%generate_scaling_ws, &
+!!$          options,inform)
+!!$     if (inform%status .ne. 0 ) then
+!!$        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+!!$        write(*,*) 'status = ', inform%status,' returned.'
+!!$        fails = fails + 1
+!!$        inform%status = 0 
+!!$     end if
+!!$     options%scale_require_increase = .false.
+!!$
+!!$     ! first, set scale_trim_min to T
+!!$     options%scale_trim_min = .true.
+!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
+!!$          w%calculate_step_ws%generate_scaling_ws, &
+!!$          options,inform)
+!!$     if (inform%status .ne. 0 ) then
+!!$        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+!!$        write(*,*) 'status = ', inform%status,' returned.'
+!!$        fails = fails + 1
+!!$        inform%status = 0 
+!!$     end if
+!!$     options%scale_trim_min = .false.
+!!$
+!!$     ! first, set scale_trim_max to T
+!!$     options%scale_trim_max = .false.
+!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
+!!$          w%calculate_step_ws%generate_scaling_ws, &
+!!$          options,inform)
+!!$     if (inform%status .ne. 0 ) then
+!!$        write(*,*) 'Error: unexpected error when scale_require_increase = T'
+!!$        write(*,*) 'status = ', inform%status,' returned.'
+!!$        fails = fails + 1
+!!$        inform%status = 0 
+!!$     end if
+!!$     options%scale_trim_max = .true.
+!!$
+!!$
+!!$     call nlls_finalize(w,options)
+!!$     call generate_scaling(J,n,m,J_extra,A,v,& 
+!!$          w%calculate_step_ws%generate_scaling_ws, &
+!!$          options,inform)
+!!$     if (inform%status .ne. ERROR%WORKSPACE_ERROR) then 
+!!$        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
+!!$        write(*,*) '(generate_scaling)'
+!!$        fails = fails + 1
+!!$     end if
+!!$
      call reset_default_options(options)
 
-   end subroutine apply_scaling_tests
+   end subroutine generate_scaling_tests
 
    subroutine aint_tr_tests(options,fails)
      
