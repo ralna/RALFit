@@ -2671,11 +2671,14 @@ return
           write(options%out,'(a,i0)') 'Total inner iterations = ', inform%inner_iter
           write(options%out,"(80('*'))")
        end if
-              
-       ! now we need to evaluate the model at the new point
-       w%tparams%extra = 0
-       call evaltensor_f(inform%external_return, n, m, d, w%model_tensor, w%tparams)
-       md = 0.5 * norm2( w%model_tensor(1:m) )**2! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
+        
+        ! now we need to evaluate the model at the new point
+        w%tparams%extra = 0
+        call evaltensor_f(inform%external_return, n, m, d, &
+             w%model_tensor, w%tparams)
+        md = 0.5 * norm2( w%model_tensor(1:m) )**2
+        ! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
+
 
        return
        
