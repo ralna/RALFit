@@ -698,6 +698,8 @@ contains
     if(allocated(workspace%y_sharp)) deallocate(workspace%y_sharp)
     if(allocated(workspace%g_old)) deallocate(workspace%g_old)
     if(allocated(workspace%g_mixed)) deallocate(workspace%g_mixed)
+    if(allocated(workspace%Sks)) deallocate(workspace%Sks)
+    if(allocated(workspace%ysharpSks)) deallocate(workspace%ysharpSks)
 
     if(allocated(workspace%resvec)) deallocate(workspace%resvec)
     if(allocated(workspace%gradvec)) deallocate(workspace%gradvec)

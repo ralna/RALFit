@@ -857,10 +857,9 @@ contains
     if (.not. w%allocated) goto 1010
     
     ! compute the hessian used in the model 
-       
+    d = zero   
     w%extra_scale = zero
-       normd = norm2(d(1:n)) ! ||d||_D
-
+    
     ! Set A = J^T J
     call matmult_inner(J,n,m,w%A)
     ! add any second order information...
@@ -915,7 +914,9 @@ contains
         call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
                                  d, md, params, options, inform, & 
                                  w%solve_newton_tensor_ws)
+    
         Xnew = X + d
+        normd = norm2(d(1:n)) ! ||d||_D
         call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
      else 
         ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
@@ -939,6 +940,7 @@ contains
            call solve_galahad(w%A,w%v,n,m,Delta,d,normd,options,inform,w%solve_galahad_ws)
         case default
            inform%status = ERROR%UNSUPPORTED_METHOD
+           goto 1000
         end select
 
         ! reverse the scaling on the step
@@ -964,7 +966,9 @@ contains
 
 
      if (options%print_level >= 2) write(options%out,3010)
-
+         
+1000 return
+     
 return
      
 1010 continue 
@@ -1805,10 +1809,12 @@ return
        real(wp) :: xtx, xtd, dtd, normx, p, sigma
        
        if (.not. w%allocated ) goto 2000
+       md = zero
+       md_gn = zero
 
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd)
-
+       
        md_gn = 0.5 * norm2(f(1:m) + w%Jd(1:m))**2
        if (options%update_lower_order) then 
           p = options%regularization_power
@@ -2284,18 +2290,18 @@ return
 
      end subroutine matmult_outer
 
-     subroutine outer_product(x,n,xtx)
+     subroutine outer_product(x,n,xxt)
 
        real(wp), intent(in) :: x(:)
        integer, intent(in) :: n
-       real(wp), intent(out) :: xtx(:,:)
+       real(wp), intent(out) :: xxt(:,:)
 
        ! Takes an n vector x and forms the 
        ! n x n matrix xtx given by
-       ! xtx = x * x'
+       ! xxt = x * x'
 
-       xtx(1:n,1:n) = zero
-       call dger(n, n, one, x, 1, x, 1, xtx, n)
+       xxt(1:n,1:n) = zero
+       call dger(n, n, one, x, 1, x, 1, xxt, n)
 
      end subroutine outer_product
 
