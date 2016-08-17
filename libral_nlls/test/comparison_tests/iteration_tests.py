@@ -61,6 +61,12 @@ def main():
                      'formats' : ['S10' ,int ,int,int,int,
                                   int, int, int, int,
                                   float,float,float]})
+    info_noinner = np.dtype({'names' :   ['pname','n','m','status','iter',
+                                          'func','jac','hess',
+                                          'res','grad','ratio'],
+                             'formats' : ['S10' ,int ,int,int,int,
+                                          int, int, int, 
+                                          float,float,float]})
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
                          'formats' : ['S7',int]})
 
@@ -77,7 +83,15 @@ def main():
     no_failures = np.zeros(no_tests, dtype = np.int)
 
     for j in range(no_tests):
-        data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+        InnerResults = 1
+        try:
+            data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+        except ValueError:
+            # these are results that don't include inner iterations
+            # (i.e. from gsl)
+            # only in this case, don't look for inner iterations
+            data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
+            InnerResults = 0
         metadata[j] = np.loadtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
         if args.control_files[j] == "gsl":
             too_many_its[j] = -2
@@ -87,7 +101,13 @@ def main():
     all_iterates = [data[j]['iter'] for j in range(no_tests)]
     all_func = [data[j]['func'] for j in range(no_tests)]
     all_status = [data[j]['status'] for j in range(no_tests)]
-    all_inner = [data[j]['inner'] for j in range(no_tests)]
+    if InnerResults:
+        all_inner = [data[j]['inner'] for j in range(no_tests)]
+    else:
+        # since there's no inner iterations, set the number of inner iterations 
+        # to equal the number inner iterations
+        all_inner = all_iterates
+    
     
     normalized_mins = [data[j]['res'] for j in range(no_tests)]
     tiny = 1e-8
