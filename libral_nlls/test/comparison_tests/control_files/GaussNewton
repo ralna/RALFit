@@ -19,7 +19,6 @@ GaussNewton           control_name
 0                     regularization
 1.0e-2                regularization_term
 2.0                   regularization_power
-1.0                   regularization_weight
 1.0e8                 maximum_radius
 1.0e-8                eta_successful 
 1.0e-8                eta_success_but_reduce 
@@ -49,6 +48,7 @@ T                     remove_workspaces
 1                     hybrid_switch_its
 -1.0                  reg_order
 2                     inner_method
+1                     inner_scaling
 T                     output_progress_vectors
 T                     update_lower_order
 44                    summary_unit

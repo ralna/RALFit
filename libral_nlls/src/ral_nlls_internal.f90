@@ -904,15 +904,13 @@ contains
              ! add term from J^TJ
              w%A(1:n,1:n) = w%A(1:n,1:n) + &
                   ( options%regularization_term * options%regularization_power / 2.0 ) * & 
-                  normx**(options%regularization_power - 4.0) * w%xxt * & 
-                  options%regularization_weight
+                  normx**(options%regularization_power - 4.0) * w%xxt 
              ! since there's extra terms in the 'real' J, add these to the scaling
              do i = 1, n
                 ! add the square of the entries of last row of the 'real' Jacobian
                 w%extra_scale(i) = & 
                      (options%regularization_term * options%regularization_power / 2.0 ) * &
-                     (normx**(options%regularization_power-4)) * X(i)**2.0 * & 
-                     options%regularization_weight
+                     (normx**(options%regularization_power-4)) * X(i)**2.0 
              end do
           end if
        end select
@@ -1831,24 +1829,24 @@ return
        call mult_J(J,n,m,d,w%Jd)
        
        md_gn = 0.5 * norm2(f(1:m) + w%Jd(1:m))**2
-       if (options%update_lower_order) then 
-          p = options%regularization_power
-          sigma = options%regularization_term
-          select case (options%regularization) 
-          case (1)
-             md_gn = md_gn + & 
-                  0.5 * sigma * norm2(Xnew(1:n))**2
-          case (2)
-             normx = norm2(X(1:n))
-             xtx = normx**2
-             xtd = dot_product(X(1:n),d(1:n))
-             md_gn = md_gn + & 
-                   sigma * ( one/p * (normx**p) + & 
-                   (normx**(p-2)) * xtd + & 
-                   (p/4.0_wp) * (normx**(p-4)) * (xtd**2) ) * &
-                   options%regularization_weight
-          end select
-       end if
+       
+       ! if we are solving a regularized problem, update terms
+       p = options%regularization_power
+       sigma = options%regularization_term
+       select case (options%regularization) 
+       case (1)
+          md_gn = md_gn + & 
+               0.5 * sigma * norm2(Xnew(1:n))**2
+       case (2)
+          normx = norm2(X(1:n))
+          xtx = normx**2
+          xtd = dot_product(X(1:n),d(1:n))
+          md_gn = md_gn + & 
+               sigma * ( one/p * (normx**p) + & 
+               (normx**(p-2)) * xtd + & 
+               (p/4.0_wp) * (normx**(p-4)) * (xtd**2) ) 
+       end select
+       
        
        select case (options%model)
        case (1) ! first-order (no Hessian)
@@ -1956,19 +1954,16 @@ return
        real(wp), intent(in) :: normX
        type( nlls_options ), intent(in) :: options
        
-       if (options%update_lower_order) then 
-          select case(options%regularization)
-          case (1)
-             normF = sqrt(normF**2 + & 
-                  options%regularization_term *  & 
-                  normX**2 )
-          case (2)
-             normF = sqrt(normF**2 + & 
-                  ( 2 * options%regularization_term / options%regularization_power )  *  & 
-                  normX**options%regularization_power * & 
-                  options%regularization_weight )
-          end select
-       end if      
+       select case(options%regularization)
+       case (1)
+          normF = sqrt(normF**2 + & 
+               options%regularization_term *  & 
+               normX**2 )
+       case (2)
+          normF = sqrt(normF**2 + & 
+               ( 2 * options%regularization_term / options%regularization_power )  *  & 
+               normX**options%regularization_power )
+       end select
        
      end subroutine update_regularized_normF
 
@@ -1977,16 +1972,13 @@ return
        real(wp), intent(in) :: X(:), normX
        type( nlls_options ), intent(in) :: options
              
-       if (options%update_lower_order) then 
-          select case(options%regularization)
-          case (1)
-             g = g - options%regularization_term * X
-          case (2)
-             g = g - options%regularization_term *  & 
-                  (normX**(options%regularization_power - 2.0_wp)) * X * &
-                  options%regularization_weight
-          end select
-       end if
+       select case(options%regularization)
+       case (1)
+          g = g - options%regularization_term * X
+       case (2)
+          g = g - options%regularization_term *  & 
+               (normX**(options%regularization_power - 2.0_wp)) * X 
+       end select
 
      end subroutine update_regularized_gradient
 
@@ -2010,7 +2002,7 @@ return
                 if (ii == jj) hf_local = hf_local + normx**2
                 hf_local = sigma * normx**(p - 4.0) * hf_local                
                 hf( (ii-1)*n + jj) = hf( (ii-1)*n + jj) + & 
-                     hf_local*options%regularization_weight
+                     hf_local
              end do
           end do
        end if
@@ -2645,17 +2637,11 @@ return
           w%tparams%extra = 2
           w%m_in = m + 1
           d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'          
-       case (3,5)
+       case (3)
           w%tensor_options%regularization_term = 1.0_wp / Delta
-       case (4,6)
+       case (4)
           d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'
           w%tensor_options%regularization_term = 1.0_wp / Delta
-       case (7) 
-          d(1:n) = 1e-12
-          w%tensor_options%regularization_term = 1.0_wp / Delta
-          w%tensor_options%regularization_weight = 1.0
-               !1.0_wp/(norm2(d(1:n))**options%regularization_power * & 
-               !( 2 * options%regularization_term / options%regularization_power ))
        end select
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, & 

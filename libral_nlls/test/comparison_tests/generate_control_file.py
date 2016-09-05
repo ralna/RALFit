@@ -29,7 +29,6 @@ def main():
                      'regularization',
                      'regularization_term',
                      'regularization_power',
-                     'regularization_weight',
                      'maximum_radius',
                      'eta_successful',
                      'eta_success_but_reduce',

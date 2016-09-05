@@ -347,7 +347,6 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
        options%regularization = default_options%regularization
        options%regularization_term = default_options%regularization_term
        options%regularization_power = default_options%regularization_power
-       options%regularization_weight = default_options%regularization_weight
        options%maximum_radius = default_options%maximum_radius
        options%eta_successful = default_options%eta_successful
        options%eta_success_but_reduce = default_options%eta_success_but_reduce

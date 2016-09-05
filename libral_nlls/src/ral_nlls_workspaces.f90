@@ -165,8 +165,6 @@ module ral_nlls_workspaces
      integer :: regularization = 0
      REAL ( KIND = wp ) :: regularization_term = 1e-2_wp
      REAL ( KIND = wp ) :: regularization_power = 2.0_wp
-     REAL ( KIND = wp ) :: regularization_weight = 1.0_wp
-
      
 
 !   maximum permitted trust-region radius
@@ -845,7 +843,7 @@ contains
        w%tensor_options%stop_g_relative = 1e-10
        w%tparams%m1 = m
        w%m_in = m + n
-    case (3,4,5,6,7)
+    case (3,4)
        w%tensor_options%model = 2
        w%tensor_options%type_of_method = 1
        w%tensor_options%nlls_method = 4
@@ -855,17 +853,13 @@ contains
        !          w%tensor_options%radius_reduce = 0.5_wp
        w%tparams%m1 = m
        w%m_in = m 
-       if (options%inner_method == 3 .or. options%inner_method == 5) then 
+       if (options%inner_method == 3) then
           w%tensor_options%regularization = 1
           w%tensor_options%regularization_power = 2.0_wp
        else
           w%tensor_options%regularization = 2
           w%tensor_options%regularization_power = 3.0_wp
        end if
-       if (options%inner_method == 5 .or. options%inner_method == 6) then 
-          w%tensor_options%update_lower_order = .false.
-       end if
-
 
     end select
 
