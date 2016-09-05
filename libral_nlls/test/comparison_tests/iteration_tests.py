@@ -10,10 +10,25 @@ import argparse
 def main():
     # Let's get the files containing the problem and control parameters from the calling command..
     parser = argparse.ArgumentParser()
-    parser.add_argument('control_files', nargs='*', help="the names of lists of optional arguments to be passed to nlls_solve, in the format required by CUTEST, which are found in files in the directory ./control_files/")
-    parser.add_argument("-r","--reuse_data", help="if present, we regenerate tables of iterations from previously computed data", action="store_true")
-    parser.add_argument("-p","--problem_list", help="which list of problems to use? (default=names_nist_first)",default="names_nist_first")
-    parser.add_argument("-s","--starting_point", help="which starting point to use? (default=1)", default=1)
+    parser.add_argument('control_files', 
+                        nargs='*', 
+                        help="the names of lists of optional arguments to be passed to nlls_solve, in the format required by CUTEST, which are found in files in the directory ./control_files/")
+    parser.add_argument("-r",
+                        "--reuse_data", 
+                        help="if present, we regenerate tables of iterations from previously computed data", 
+                        action="store_true")
+    parser.add_argument("-p",
+                        "--problem_list", 
+                        help="which list of problems to use? (default=names_nist_first)",
+                        default="names_nist_first")
+    parser.add_argument("-s",
+                        "--starting_point", 
+                        help="which starting point to use? (default=1)", 
+                        default=1)
+    parser.add_argument("-np",
+                        "-no_performance_profile",
+                        action="store_true",
+                        help="if present, do not display the performance profile")
     args = parser.parse_args()
     no_tests = len(args.control_files)
     compute_results = not args.reuse_data
@@ -223,7 +238,7 @@ def main():
         print "************************************************"
         print "\n"
 
-    plot_prof(args.control_files,no_tests,prob_list)
+    plot_prof(args.control_files,no_tests,prob_list,args.np)
 
 def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries, 
                   filename, control_files, failure, additive, short_hash):
@@ -354,36 +369,35 @@ def compute(no_tests,control_files,problems,i,starting_point):
         
         os.chdir("../../")
 
-def plot_prof(control_files,no_tests,prob_list):
-    # try:
-    #     import pymatlab
-    #     py_prof = True
-    # except:
-    #     print "If matlab is installed, install pymatlab\n"
-    #     print " sudo pip install pymatlab\n"
-    #     print "to allow performance profiles to be plotted natively\n"
-    #     py_prof = False
-    
+def plot_prof(control_files,no_tests,prob_list,np):
     # performance profiles for iterations
+    Strings = ["./pypprof -c 5 -s iterations ",
+               "./pypprof -c 6 -s fevals "]
     data_files = ""
     for j in range(no_tests):
         data_files += control_files[j]+".out"
         if j != no_tests-1:
             data_files += " "
+    Strings[:] = [string + data_files for string in Strings]
+
     if prob_list=="names_nist_first" or prob_list=="sif_names":
-        testset = "(All tests)"
+        testset = "'All tests'"
     elif prob_list=="nist":
-        testset = "NIST tests"
+        testset = "'NIST tests'"
     else:
-        testset = "CUTEst tests"
+        testset = "'CUTEst tests'"
+
+    Strings[:] = [string + " -t " + testset for string in Strings]
+
+    if np:
+        Strings[:] = [string + " -np" for string in Strings]
 
     os.chdir("data")
     try:
-        subprocess.call(["pprof","5","iterations",data_files,testset])
-        subprocess.call(["pprof","6","fevals",data_files,testset])
+        for string in Strings:
+            os.system(string)
     except:
-        print "Performance profiles not available: ensure pprof is in the path"
-
+        print "Performance profiles not available: ensure pprof is in the path"#
     os.chdir("..")
 
 if __name__ == "__main__":
