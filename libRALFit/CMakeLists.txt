@@ -2,7 +2,7 @@
 cmake_minimum_required (VERSION 2.6)
 enable_language (C Fortran)
 
-project (libral_nlls)
+project (RALFit)
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
