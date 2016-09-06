@@ -97,8 +97,9 @@ def main():
     average_inner = np.zeros(no_tests,dtype = np.int)
     no_failures = np.zeros(no_tests, dtype = np.int)
 
+    InnerResults = 1 # if gsl (or another method with no inners) is present, 
+                     # then do not collect inner data (maybe fix)
     for j in range(no_tests):
-        InnerResults = 1
         try:
             data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
         except ValueError:
