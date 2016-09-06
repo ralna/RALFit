@@ -11,7 +11,7 @@ sifdecoder -A pc64.lnx.gfo -st   RAT43.SIF
  
  
  File successfully decoded
-/home/trees/Projects/ral_nlls/libral_nlls/test/comparison_tests/cutest/sif
+/home/trees/Projects/RALFit/libRALFit/test/comparison_tests/cutest/sif
  CUTEST: tools (double precision version) compiled successfully
  Compiling ral_nlls_dummy 		[ OK ]
  Compiling ral_nlls_main  		[ OK ]
