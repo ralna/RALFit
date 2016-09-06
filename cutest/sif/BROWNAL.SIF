@@ -1,0 +1,223 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BROWNAL
+
+*   Problem :
+*   *********
+*   Brown almost linear least squares problem.
+*   This problem is a sum of n least-squares groups, the last one of
+*   which has a nonlinear element.
+*   It Hessian matrix is dense.
+
+*   Source: Problem 27 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#79
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-AN-V-0
+
+*   N is the number of free variables (variable).
+
+*IE N                   10             $-PARAMETER     original value
+*IE N                   100            $-PARAMETER
+ IE N                   200            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+
+*   Define useful parameters
+
+ IE 1                   1
+ IA N-1       N         -1
+ IA N+1       N         1
+ RI RN+1      N+1
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        N-1
+
+ IA I-1       I         -1
+ IA I+1       I         1
+
+ DO J         1                        I-1
+ XN G(I)      X(J)      1.0
+ OD I
+
+ XN G(I)      X(I)      2.0
+
+ DO J         I+1                      N
+ XN G(I)      X(J)      1.0
+ OD J
+
+ ND
+
+ XN G(N)
+
+CONSTANTS
+
+ DO I         1                        N-1
+ Z  BROWNAL   G(I)                     RN+1
+ ND
+
+ X  BROWNAL   G(N)      1.0
+
+BOUNDS
+
+ FR BROWNAL   'DEFAULT'
+
+START POINT
+
+ DO I         1                        N
+ X  BROWNAL   X(I)      0.5
+ ND
+
+ELEMENT TYPE
+
+ EV PROD      V1                       V2
+ EV PROD      V3                       V4
+ EV PROD      V5                       V6
+ EV PROD      V7                       V8
+ EV PROD      V9                       V10
+
+ELEMENT USES
+
+ T  E         PROD
+ V  E         V1                       X1
+ V  E         V2                       X2
+ V  E         V3                       X3
+ V  E         V4                       X4
+ V  E         V5                       X5
+ V  E         V6                       X6
+ V  E         V7                       X7
+ V  E         V8                       X8
+ V  E         V9                       X9
+ V  E         V10                      X10
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ XE G(N)      E
+
+OBJECT BOUND
+
+ LO BROWNAL             0.0
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      BROWNAL
+
+TEMPORARIES
+
+ R  V12
+ R  V34
+ R  V56
+ R  V78
+ R  V910
+
+INDIVIDUALS
+
+*  Product type
+
+ T  PROD
+ A  V12                 V1 * V2
+ A  V34                 V3 * V4
+ A  V56                 V5 * V6
+ A  V78                 V7 * V8
+ A  V910                V9 * V10
+ F                      V12 * V34 * V56 * V78 * V910
+ G  V1                  V2  * V34 * V56 * V78 * V910
+ G  V2                  V1  * V34 * V56 * V78 * V910
+ G  V3                  V12 * V4  * V56 * V78 * V910
+ G  V4                  V12 * V3  * V56 * V78 * V910
+ G  V5                  V12 * V34 * V6  * V78 * V910
+ G  V6                  V12 * V34 * V5  * V78 * V910
+ G  V7                  V12 * V34 * V56 * V8  * V910
+ G  V8                  V12 * V34 * V56 * V7  * V910
+ G  V9                  V12 * V34 * V56 * V78 * V10
+ G  V10                 V12 * V34 * V56 * V78 * V9
+ H  V1        V2              V34 * V56 * V78 * V910
+ H  V1        V3        V2  * V4  * V56 * V78 * V910
+ H  V1        V4        V2  * V3  * V56 * V78 * V910
+ H  V1        V5        V2  * V34 * V6  * V78 * V910
+ H  V1        V6        V2  * V34 * V5  * V78 * V910
+ H  V1        V7        V2  * V34 * V56 * V8  * V910
+ H  V1        V8        V2  * V34 * V56 * V7  * V910
+ H  V1        V9        V2  * V34 * V56 * V78 * V10
+ H  V1        V10       V2  * V34 * V56 * V78 * V9
+ H  V2        V3        V1  * V4  * V56 * V78 * V910
+ H  V2        V4        V1  * V3  * V56 * V78 * V910
+ H  V2        V5        V1  * V34 * V6  * V78 * V910
+ H  V2        V6        V1  * V34 * V5  * V78 * V910
+ H  V2        V7        V1  * V34 * V56 * V8  * V910
+ H  V2        V8        V1  * V34 * V56 * V7  * V910
+ H  V2        V9        V1  * V34 * V56 * V78 * V10
+ H  V2        V10       V1  * V34 * V56 * V78 * V9
+ H  V3        V4        V12 *       V56 * V78 * V910
+ H  V3        V5        V12 * V4  * V6  * V78 * V910
+ H  V3        V6        V12 * V4  * V5  * V78 * V910
+ H  V3        V7        V12 * V4  * V56 * V8  * V910
+ H  V3        V8        V12 * V4  * V56 * V7  * V910
+ H  V3        V9        V12 * V4  * V56 * V78 * V10
+ H  V3        V10       V12 * V4  * V56 * V78 * V9
+ H  V4        V5        V12 * V3  * V6  * V78 * V910
+ H  V4        V6        V12 * V3  * V5  * V78 * V910
+ H  V4        V7        V12 * V3  * V56 * V8  * V910
+ H  V4        V8        V12 * V3  * V56 * V7  * V910
+ H  V4        V9        V12 * V3  * V56 * V78 * V10
+ H  V4        V10       V12 * V3  * V56 * V78 * V9
+ H  V5        V6        V12 * V34 *       V78 * V910
+ H  V5        V7        V12 * V34 * V6  * V8  * V910
+ H  V5        V8        V12 * V34 * V6  * V7  * V910
+ H  V5        V9        V12 * V34 * V6  * V78 * V10
+ H  V5        V10       V12 * V34 * V6  * V78 * V9
+ H  V6        V7        V12 * V34 * V5  * V8  * V910
+ H  V6        V8        V12 * V34 * V5  * V7  * V910
+ H  V6        V9        V12 * V34 * V5  * V78 * V10
+ H  V6        V10       V12 * V34 * V5  * V78 * V9
+ H  V7        V8        V12 * V34 * V56       * V910
+ H  V7        V9        V12 * V34 * V56 * V8  * V10
+ H  V7        V10       V12 * V34 * V56 * V8  * V9
+ H  V8        V9        V12 * V34 * V56 * V7  * V10
+ H  V8        V10       V12 * V34 * V56 * V7  * V9
+ H  V9        V10       V12 * V34 * V56 * V78
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        BROWNAL
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR +  GVAR
+ H                      2.0
+
+ENDATA

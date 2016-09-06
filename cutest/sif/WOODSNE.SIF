@@ -1,0 +1,169 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          WOODSNE
+
+*   Problem :
+*   *********
+
+*   The extended Woods problem. This is a nonlinear equation version
+*   of problem WOODS.
+
+*   This problem is a sum of n/4 sets of 6 terms, each of which is
+*   assigned its own group.  For a given set i, the groups are
+*   A(i), B(i), C(i), D(i), E(i) and F(i). Groups A(i) and C(i) contain 1
+*   nonlinear element each, denoted Y(i) and Z(i).
+
+*   The problem dimension is defined from the number of these sets.
+*   The number of problem variables is then 4 times larger.
+
+*   This version uses a slightly unorthodox expression of Woods
+*   function as a sum of squares (see Buckley)
+
+*   Source:  problem 14 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Toint#27, Buckley#17 (p. 101), Conn, Gould, Toint#7
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification NOR2-AN-V-0
+
+*   NS is the number of sets (= n/4)
+
+ IE NS                  1              $ n= 4      original value
+*IE NS                  25             $ n = 100
+*IE NS                  250            $ n = 1000
+*IE NS                  1000           $ n = 4000
+*IE NS                  2500           $ n = 10000
+
+*   Problem dimension
+
+ IM N         NS        4
+
+*   Define useful parameters
+
+ IE 1                   1
+ IE 2                   2
+
+ RE 1.0                 1.0
+ RE 90.0                90.0
+ R/ 1/90      1.0                      90.0
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+
+GROUPS
+
+ E  CONST
+
+ DO I         1                        NS
+
+ IM J         I         4
+ IA J-1       J         -1
+ IA J-2       J         -2
+ IA J-3       J         -3
+
+ XE A(I)      X(J-2)    1.0
+ XE A(I)      'SCALE'   0.1
+
+ XE B(I)      X(J-3)    -1.0
+
+ XE C(I)      X(J)      1.0
+ ZE C(I)      'SCALE'                  1/90
+
+ XE D(I)      X(J-1)    -1.0
+
+ XE E(I)      X(J-2)    1.0            X(J)      1.0
+ XE E(I)      'SCALE'   0.1
+
+ XE F(I)      X(J-2)    1.0            X(J)      -1.0
+ XE F(I)      'SCALE'   10.0
+
+ ND
+
+CONSTANTS
+
+ X  WOODSNE   CONST     1.0
+ DO I         1                        NS
+ X  WOODSNE   B(I)      -1.0
+ X  WOODSNE   D(I)      -1.0
+ X  WOODSNE   E(I)      2.0
+ ND
+
+BOUNDS
+
+ FR WOODSNE   'DEFAULT'
+
+START POINT
+
+ X  WOODSNE   'DEFAULT' -2.0
+ X  WOODSNE   X1        -3.0
+ X  WOODSNE   X2        -1.0
+ X  WOODSNE   X3        -3.0
+ X  WOODSNE   X4        -1.0
+
+ELEMENT TYPE
+
+ EV MSQ       V
+
+ELEMENT USES
+
+ DO I         1                        NS
+
+ IM J         I         4
+ IA J-1       J         -1
+ IA J-3       J         -3
+
+ XT Y(I)      MSQ
+ ZV Y(I)      V                        X(J-3)
+
+ XT Z(I)      MSQ
+ ZV Z(I)      V                        X(J-1)
+
+ ND
+
+GROUP USES
+
+ DO I         1                        NS
+ XE A(I)      Y(I)
+ XE C(I)      Z(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO WOODSNE             0.0
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      WOODSNE
+
+INDIVIDUALS
+
+*   Minus square elements
+
+ T  MSQ
+ F                      - V * V
+ G  V                   - V - V
+ H  V         V         - 2.0
+
+ENDATA
+

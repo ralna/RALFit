@@ -1,0 +1,132 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          VARDIM
+
+*   Problem :
+*   *********
+
+*   Variable dimension problem
+*   This problem is a sum of n+2 least-squares groups, the first n of
+*   which have only a linear element.
+*   It Hessian matrix is dense.
+
+*   Source:  problem 25 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#72 (p.98).
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification  OUR2-AN-V-0
+
+*   N is the number of free variables
+
+*IE N                   10             $-PARAMETER     original value
+*IE N                   50             $-PARAMETER
+*IE N                   100            $-PARAMETER
+ IE N                   200            $-PARAMETER
+
+*   N+2 is the number of groups
+
+ IA N+2       N         2
+
+*   Define useful parameters
+
+ IE 1                   1
+ IA N+1       N         1
+ RI RN        N
+ RI RN+1      N+1
+ R* T         RN                       RN+1
+ RM SUMJ      T         0.5
+ RD 1OVERN    RN        1.0
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        N
+ XN G(I)      X(I)      1.0
+ ND
+
+ DO I         1                        N
+ RI REALI     I
+ ZN G(N+1)    X(I)                     REALI
+ ZN G(N+2)    X(I)                     REALI
+ ND
+
+CONSTANTS
+
+ DO I         1                        N
+ X  VARDIM    G(I)      1.0
+ ND
+
+ Z  VARDIM    G(N+1)                   SUMJ
+ Z  VARDIM    G(N+2)                   SUMJ
+
+BOUNDS
+
+ FR VARDIM    'DEFAULT'
+
+START POINT
+
+ DO I         1                        N
+ RI REALI     I
+ R* IOVERN    REALI                    1OVERN
+ RM MIOVN     IOVERN    -1.0
+ RA XI        MIOVN     1.0
+ Z  VARDIM    X(I)                     XI
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+ GV L4        GVAR
+
+GROUP USES
+
+ DO I         1                        N+1
+ XT G(I)      L2
+ ND
+
+ XT G(N+2)    L4
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO VARDIM              0.0
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        VARDIM
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR +  GVAR
+ H                      2.0
+
+ T  L4
+ F                      GVAR**4
+ G                      4.0 * GVAR**3
+ H                      12.0 * GVAR**2
+
+ENDATA

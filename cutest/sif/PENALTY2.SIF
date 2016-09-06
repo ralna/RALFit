@@ -1,0 +1,223 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          PENALTY2
+
+*   Problem :
+*   --------
+
+*   The second penalty function
+
+*   This is a nonlinear least-squares problem with M=2*N groups.
+*    Group 1 is linear.
+*    Groups 2 to N use 2 nonlinear elements.
+*    Groups N+1 to M-1 use 1 nonlinear element.
+*    Group M uses N nonlinear elements.
+*   The Hessian matrix is dense.
+
+*   Source:  Problem 24 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#112 (p. 80)
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-AN-V-0
+
+*   Number of variables
+
+*IE N                   4              $-PARAMETER     original value
+*IE N                   10             $-PARAMETER
+*IE N                   50             $-PARAMETER
+*IE N                   100            $-PARAMETER
+ IE N                   200            $-PARAMETER
+*IE N                   500            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+
+*   Problem parameters (see Buckley)
+
+ RE A                   0.00001
+ RE B                   1.0
+
+*   Other parameter definitions
+
+ IE 1                   1
+ IE 2                   2
+ IA N+1       N         1
+ I+ M         N                        N
+ IA M-1       M         -1
+ RF EM1/10    EXP       -0.1
+ RD 1/A       A         1.0
+ RD 1/B       B         1.0
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ XN G(1)      X(1)      1.0
+ ZN G(1)      'SCALE'                  1/B
+
+ DO I         2                        M-1
+ ZN G(I)      'SCALE'                  1/A
+ ND
+
+ ZN G(M)      'SCALE'                  1/B
+
+CONSTANTS
+
+    PENALTY2  G1        0.2
+
+ DO I         2                        N
+ IA I-1       I         -1
+ RI RI        I
+ RI RI-1      I-1
+ RM I/10      RI        0.1
+ RM I-1/10    RI-1      0.1
+ R( EI/10     EXP                      I/10
+ R( EI-1/10   EXP                      I-1/10
+ R+ YI        EI/10                    EI-1/10
+ Z  PENALTY2  G(I)                     YI
+ ND
+
+ DO I         N+1                      M-1
+ Z  PENALTY2  G(I)                     EM1/10
+ ND
+
+ X  PENALTY2  G(M)      1.0
+
+BOUNDS
+
+ FR PENALTY2  'DEFAULT'
+
+START POINT
+
+*   Standard starting point (0.5, ..., 0.5 )
+
+ XV PENALTY2  'DEFAULT' 0.5
+
+ELEMENT TYPE
+
+ EV E10       V
+ EV SQ        V
+
+ELEMENT USES
+
+ DO I         2                        N
+ IA I-1       I         -1
+ XT A(I)      E10
+ ZV A(I)      V                        X(I)
+ XT B(I)      E10
+ ZV B(I)      V                        X(I-1)
+ ND
+
+ DO I         N+1                      M-1
+ IM -N        N         -1
+ I+ I-N       I                        -N
+ IA I-N+1     I-N       1
+ XT C(I)      E10
+ ZV C(I)      V                        X(I-N+1)
+ ND
+
+ DO J         1                        N
+ XT D(J)      SQ
+ ZV D(J)      V                        X(J)
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT G(1)      L2
+
+ DO I         2                        N
+ XT G(I)      L2
+ XE G(I)      A(I)                     B(I)
+ ND
+
+ DO I         N+1                      M-1
+ XT G(I)      L2
+ XE G(I)      C(I)
+ ND
+
+ XT G(M)      L2
+
+ DO J         1                        N
+ IM -J        J         -1
+ I+ N-J       N                        -J
+ IA N-J+1     N-J       1
+ RI WI        N-J+1
+ ZE G(M)      D(J)                     WI
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO PENALTY2            0.0
+
+*   Solution
+
+*LO SOLTN(4)            9.37629D-6
+*LO SOLTN(10)           2.93660D-4
+*LO SOLTN(50)           4.29609813
+*LO SOLTN(100)          97096.0840
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      PENALTY2
+
+TEMPORARIES
+
+ R  EXPA
+ M  EXP
+ R  TWOW
+
+INDIVIDUALS
+
+*   Exponential type
+
+ T  E10
+ A  EXPA                EXP( 0.1 * V )
+ F                      EXPA
+ G  V                   0.1 * EXPA
+ H  V         V         0.01 * EXPA
+
+*   Square type
+
+ T  SQ
+ F                      V * V
+ G  V                   V + V
+ H  V         V         2.0
+
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        PENALTY2
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

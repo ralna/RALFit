@@ -1,0 +1,131 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          POWELLBS
+
+*   Problem :
+*   *********
+
+*   Powell badly scaled problem.
+
+*   This problem is a sum of n-1 sets of 2 groups, both involving
+*   nonlinear elements and being of the least square type.
+*   It Hessian matrix is tridiagonal.
+
+*   Source:  Problem 3 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also  Toint#34, Buckley#22 (p. 82).
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification NOR2-AN-2-2
+
+*   N is the number of free variables
+
+ IE N                   2
+
+*   Define useful parameters
+
+ IE 1                   1
+ IE 2                   2
+ IA N-1       N         -1
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        N-1
+ XE A(I)
+ XE B(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        N-1
+ X  POWELLBS  A(I)      1.0
+ X  POWELLBS  B(I)      1.0001
+ ND
+
+BOUNDS
+
+ FR POWELLBS  'DEFAULT'
+
+START POINT
+
+*   Starting point for the 2 variables problem
+
+ X  POWELLBS  X(1)      0.0
+ X  POWELLBS  X(2)      1.0
+
+ELEMENT TYPE
+
+ EV PROD      V1                       V2
+ EV EXPN      V1
+
+ELEMENT USES
+
+ DO I         1                        N-1
+ IA I+1       I         1
+ XT AE(I)     PROD
+ ZV AE(I)     V1                       X(I)
+ ZV AE(I)     V2                       X(I+1)
+ XT BE1(I)    EXPN
+ ZV BE1(I)    V1                       X(I)
+ XT BE2(I)    EXPN
+ ZV BE2(I)    V1                       X(I+1)
+ ND
+
+GROUP USES
+
+ DO I         1                        N-1
+ XE A(I)      AE(I)
+ XE B(I)      BE1(I)                   BE2(I)
+ ND
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      POWELLBS
+
+TEMPORARIES
+
+ R  BIG
+ R  BIGV1
+ R  EXPMV
+ M  EXP
+
+INDIVIDUALS
+
+*   Product type elements
+
+ T  PROD
+ A  BIG                 10000.0
+ A  BIGV1               BIG * V1
+ F                      BIGV1 * V2
+ G  V1                  BIG * V2
+ G  V2                  BIGV1
+ H  V1        V1        0.0
+ H  V1        V2        BIG
+ H  V2        V2        0.0
+
+*   Negative exponential type elements
+
+ T  EXPN
+ A  EXPMV               EXP( - V1 )
+ F                      EXPMV
+ G  V1                  - EXPMV
+ H  V1        V1        EXPMV
+
+ENDATA

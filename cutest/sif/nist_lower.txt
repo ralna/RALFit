@@ -1,0 +1,8 @@
+MISRA1A    
+CHWIRUT1    
+CHWIRUT2    
+LANCZOS3    
+GAUSS1    
+GAUSS2    
+DANWOOD     
+MISRA1B    

@@ -1,0 +1,270 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          OSBORNEB
+
+*   Problem :
+*   *********
+
+*   Osborne second problem in 11 variables.
+
+*   This function  is a nonlinear least squares with 65 groups.  Each
+*   group has 4 nonlinear elements.
+
+*   Source:  Problem 19 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#32 (p.78).
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-MN-11-0
+
+*   Number of groups
+
+ IE M                   65
+
+*   Number of variables
+
+ IE N                   11
+
+*   Useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XN G(I)
+ ND
+
+CONSTANTS
+
+    OSBORNEB  G1        1.366
+    OSBORNEB  G2        1.191
+    OSBORNEB  G3        1.112
+    OSBORNEB  G4        1.013
+    OSBORNEB  G5        0.991
+    OSBORNEB  G6        0.885
+    OSBORNEB  G7        0.831
+    OSBORNEB  G8        0.847
+    OSBORNEB  G9        0.786
+    OSBORNEB  G10       0.725
+    OSBORNEB  G11       0.746
+    OSBORNEB  G12       0.679
+    OSBORNEB  G13       0.608
+    OSBORNEB  G14       0.655
+    OSBORNEB  G15       0.616
+    OSBORNEB  G16       0.606
+    OSBORNEB  G17       0.602
+    OSBORNEB  G18       0.626
+    OSBORNEB  G19       0.651
+    OSBORNEB  G20       0.724
+    OSBORNEB  G21       0.649
+    OSBORNEB  G22       0.649
+    OSBORNEB  G23       0.694
+    OSBORNEB  G24       0.644
+    OSBORNEB  G25       0.624
+    OSBORNEB  G26       0.661
+    OSBORNEB  G27       0.612
+    OSBORNEB  G28       0.558
+    OSBORNEB  G29       0.533
+    OSBORNEB  G30       0.495
+    OSBORNEB  G31       0.500
+    OSBORNEB  G32       0.423
+    OSBORNEB  G33       0.395
+    OSBORNEB  G34       0.375
+    OSBORNEB  G35       0.372
+    OSBORNEB  G36       0.391
+    OSBORNEB  G37       0.396
+    OSBORNEB  G38       0.405
+    OSBORNEB  G39       0.428
+    OSBORNEB  G40       0.429
+    OSBORNEB  G41       0.523
+    OSBORNEB  G42       0.562
+    OSBORNEB  G43       0.607
+    OSBORNEB  G44       0.653
+    OSBORNEB  G45       0.672
+    OSBORNEB  G46       0.708
+    OSBORNEB  G47       0.633
+    OSBORNEB  G48       0.668
+    OSBORNEB  G49       0.645
+    OSBORNEB  G50       0.632
+    OSBORNEB  G51       0.591
+    OSBORNEB  G52       0.559
+    OSBORNEB  G53       0.597
+    OSBORNEB  G54       0.625
+    OSBORNEB  G55       0.739
+    OSBORNEB  G56       0.710
+    OSBORNEB  G57       0.729
+    OSBORNEB  G58       0.720
+    OSBORNEB  G59       0.636
+    OSBORNEB  G60       0.581
+    OSBORNEB  G61       0.428
+    OSBORNEB  G62       0.292
+    OSBORNEB  G63       0.162
+    OSBORNEB  G64       0.098
+    OSBORNEB  G65       0.054
+
+BOUNDS
+
+ FR OSBORNEB  'DEFAULT'
+
+START POINT
+
+*   Standard starting point
+
+    OSBORNEB  X1        1.3
+    OSBORNEB  X2        0.65
+    OSBORNEB  X3        0.65
+    OSBORNEB  X4        0.7
+    OSBORNEB  X5        0.6
+    OSBORNEB  X6        3.0
+    OSBORNEB  X7        5.0
+    OSBORNEB  X8        7.0
+    OSBORNEB  X9        2.0
+    OSBORNEB  X10       4.5
+    OSBORNEB  X11       5.5
+
+ELEMENT TYPE
+
+ EV PEXP      V1                       V2
+ EP PEXP      T
+
+ EV PEXP3     V1                       V2
+ EV PEXP3     V3
+ EP PEXP3     T3
+
+ELEMENT USES
+
+ DO I         1                        M
+
+ IA I-1       I         1
+ RI RI-1      I-1
+ RM TI        RI-1      0.1
+
+ XT A(I)      PEXP
+ ZV A(I)      V1                       X1
+ ZV A(I)      V2                       X5
+ ZP A(I)      T                        TI
+
+ XT B(I)      PEXP3
+ ZV B(I)      V1                       X2
+ ZV B(I)      V2                       X9
+ ZV B(I)      V3                       X6
+ ZP B(I)      T3                       TI
+
+ XT C(I)      PEXP3
+ ZV C(I)      V1                       X3
+ ZV C(I)      V2                       X10
+ ZV C(I)      V3                       X7
+ ZP C(I)      T3                       TI
+
+ XT D(I)      PEXP3
+ ZV D(I)      V1                       X4
+ ZV D(I)      V2                       X11
+ ZV D(I)      V3                       X8
+ ZP D(I)      T3                       TI
+
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ DO I         1                        M
+ XE G(I)      A(I)                     B(I)
+ XE G(I)      C(I)                     D(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO OSBORNEB            0.0
+
+*   Solution
+
+*LO SOLTN               0.04013774
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      OSBORNEB
+
+TEMPORARIES
+
+ R  EXPA
+ R  FVAL
+ R  TMV2
+ R  TMV2SQ
+ R  A
+ M  EXP
+
+INDIVIDUALS
+
+*   Parametric product with exponential
+
+ T  PEXP
+ A  EXPA                EXP( - T * V2 )
+ A  FVAL                V1 * EXPA
+ F                      FVAL
+ G  V1                  EXPA
+ G  V2                  - T * FVAL
+ H  V1        V2        - T * EXPA
+ H  V2        V2        T * T * FVAL
+
+*   Second type
+
+ T  PEXP3
+ A  TMV2                T3 - V2
+ A  TMV2SQ              TMV2 * TMV2
+ A  EXPA                EXP( - TMV2SQ * V3 )
+ A  FVAL                V1 * EXPA
+ A  A                   2.0 * TMV2 * V3
+ F                      FVAL
+ G  V1                  EXPA
+ G  V2                  A * FVAL
+ G  V3                  -TMV2SQ * FVAL
+ H  V1        V2        A * EXPA
+ H  V1        V3        -TMV2SQ * EXPA
+ H  V2        V2        ( A * A - 2.0 * V3 ) * FVAL
+ H  V2        V3        ( 2.0 * TMV2 - A * TMV2SQ ) * FVAL
+ H  V3        V3        TMV2SQ * TMV2SQ * FVAL
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        OSBORNEB
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

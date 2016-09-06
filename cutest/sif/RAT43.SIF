@@ -1,0 +1,209 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          RAT43
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem RAT43 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = b1 / ((1+exp[b2-b3*x])**(1/b4)) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Ratkowsky, D.A. (1983).  
+*     Nonlinear Regression Modeling.
+*     New York, NY:  Marcel Dekker, pp. 62 and 88.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-4-15
+
+*   Number of data values
+
+ IE M                   15
+
+*   Number of variables
+
+ IE N                   4
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                   1.0
+ RE X2                   2.0
+ RE X3                   3.0
+ RE X4                   4.0
+ RE X5                   5.0
+ RE X6                   6.0
+ RE X7                   7.0
+ RE X8                   8.0
+ RE X9                   9.0
+ RE X10                 10.0
+ RE X11                 11.0
+ RE X12                 12.0
+ RE X13                 13.0
+ RE X14                 14.0
+ RE X15                 15.0
+
+ RE Y1                   16.08
+ RE Y2                   33.83
+ RE Y3                   65.80
+ RE Y4                   97.20
+ RE Y5                  191.55
+ RE Y6                  326.20
+ RE Y7                  386.87
+ RE Y8                  520.53
+ RE Y9                  590.03
+ RE Y10                 651.92
+ RE Y11                 724.93
+ RE Y12                 699.56
+ RE Y13                 689.96
+ RE Y14                 637.56
+ RE Y15                 717.41
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  RAT43     F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR RAT43     'DEFAULT'
+
+START POINT
+
+    START1    B1        100.0
+    START1    B2         10.0
+    START1    B3          1.0
+    START1    B4          1.0
+
+*  Alternative start point
+
+    START2    B1        700.0
+    START2    B2        5.0  
+    START2    B3        0.75 
+    START2    B4        1.3  
+
+ELEMENT TYPE
+
+ EV E         V1
+ EV E         V2
+ EV E         V3
+ EV E         V4
+ EP E         X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZV E(I)      V4                       B4
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO RAT43               0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      RAT43
+
+TEMPORARIES
+
+ R  E
+ R  V2MV3X
+ R  V4INV
+ R  V4INVP
+ R  E
+ R  E2
+ R  EP1
+ R  EP1L
+ R  EP14
+ R  EP14P1
+ R  EP14P2
+ R  VE
+ R  VE2
+ R  V42EPP
+ R  V42EP2
+ R  V42EP3
+ M  EXP
+ M  LOG
+
+INDIVIDUALS
+
+ T  E
+ A  V2MV3X              V2 - V3 * X
+ A  V4INV               1.0 / V4
+ A  V4INVP              V4INV + 1.0
+ A  E                   EXP( V2MV3X )
+ A  E2                  E * E
+ A  EP1                 E + 1.0
+ A  EP1L                LOG( EP1 )
+ A  EP14                EP1 ** V4INV
+ A  EP14P1              EP1 ** V4INVP
+ A  EP14P2              EP1 ** ( V4INV + 2.0 )
+ A  VE                  V4 * EP14P1
+ A  VE2                 V4 * EP14P2
+ A  V42EPP              EP14 * V4 ** 2
+ A  V42EP2              EP14P1 * V4 ** 2
+ A  V42EP3              EP14P1 * V4 ** 3
+ F                      V1 / EP14 
+ G  V1                  1.0 / EP14 
+ G  V2                  - V1 * E / VE
+ G  V3                  V1 * X * E /VE 
+ G  V4                  V1 * EP1L / V42EPP 
+ H  V1        V2        - E /VE 
+ H  V1        V3        X * E / VE 
+ H  V1        V4        EP1L / V42EPP
+ H  V2        V2        V1 * ( E2 * V4INVP / VE2 - E / VE )
+ H  V2        V3        V1 * X * ( E / VE - E2 * V4INVP / VE2 )
+ H  V2        V4        V1 * E * ( 1.0 / V42EP2 - EP1L / V42EP3 )
+ H  V3        V3        V1 * X ** 2
+ H+                      * ( E2 * V4INVP / VE2 - E / VE )
+ H  V3        V4        V1 * X * E 
+ H+                      * ( EP1L / V42EP3 - 1.0 / V42EP2 )
+ H  V4        V4        ( V1 / EP14) * ( EP1L ** 2 / V4 ** 4  
+ H+                        - 2.0 * EP1L / V4 ** 3  )
+
+ENDATA

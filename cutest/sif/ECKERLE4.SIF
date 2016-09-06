@@ -1,0 +1,230 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          ECKERLE4
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem ECKERLE4 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = (b1/b2) * exp[-0.5*((x-b3)/b2)**2] + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Eckerle, K., NIST (197?).  
+*     Circular Interference Transmittance Study.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-3-35
+
+*   Number of data values
+
+ IE M                   35
+
+*   Number of variables
+
+ IE N                   3
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  400.000000
+ RE X2                  405.000000
+ RE X3                  410.000000
+ RE X4                  415.000000
+ RE X5                  420.000000
+ RE X6                  425.000000
+ RE X7                  430.000000
+ RE X8                  435.000000
+ RE X9                  436.500000
+ RE X10                 438.000000
+ RE X11                 439.500000
+ RE X12                 441.000000
+ RE X13                 442.500000
+ RE X14                 444.000000
+ RE X15                 445.500000
+ RE X16                 447.000000
+ RE X17                 448.500000
+ RE X18                 450.000000
+ RE X19                 451.500000
+ RE X20                 453.000000
+ RE X21                 454.500000
+ RE X22                 456.000000
+ RE X23                 457.500000
+ RE X24                 459.000000
+ RE X25                 460.500000
+ RE X26                 462.000000
+ RE X27                 463.500000
+ RE X28                 465.000000
+ RE X29                 470.000000
+ RE X30                 475.000000
+ RE X31                 480.000000
+ RE X32                 485.000000
+ RE X33                 490.000000
+ RE X34                 495.000000
+ RE X35                 500.000000
+          
+ RE Y1                  0.0001575
+ RE Y2                  0.0001699
+ RE Y3                  0.0002350
+ RE Y4                  0.0003102
+ RE Y5                  0.0004917
+ RE Y6                  0.0008710
+ RE Y7                  0.0017418
+ RE Y8                  0.0046400
+ RE Y9                  0.0065895
+ RE Y10                 0.0097302
+ RE Y11                 0.0149002
+ RE Y12                 0.0237310
+ RE Y13                 0.0401683
+ RE Y14                 0.0712559
+ RE Y15                 0.1264458
+ RE Y16                 0.2073413
+ RE Y17                 0.2902366
+ RE Y18                 0.3445623
+ RE Y19                 0.3698049
+ RE Y20                 0.3668534
+ RE Y21                 0.3106727
+ RE Y22                 0.2078154
+ RE Y23                 0.1164354
+ RE Y24                 0.0616764
+ RE Y25                 0.0337200
+ RE Y26                 0.0194023
+ RE Y27                 0.0117831
+ RE Y28                 0.0074357
+ RE Y29                 0.0022732
+ RE Y30                 0.0008800
+ RE Y31                 0.0004579
+ RE Y32                 0.0002345
+ RE Y33                 0.0001586
+ RE Y34                 0.0001143
+ RE Y35                 0.0000710
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  ECKERLE4  F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR ECKERLE4  'DEFAULT'
+
+START POINT
+
+    START1    B1          1.0
+    START1    B2         10.0
+    START1    B3        500.0
+
+*  Alternative start point
+
+    START2    B1          1.5
+    START2    B2          5.0
+    START2    B3        450.0
+
+ELEMENT TYPE
+
+ EV E         V1
+ EV E         V2
+ EV E         V3
+ EP E         X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO ECKERLE4            0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      ECKERLE4
+
+TEMPORARIES
+
+ R  V3MX
+ R  TV3MX
+ R  V3MX2
+ R  V22
+ R  V23
+ R  V24
+ R  V25
+ R  V26
+ R  V27
+ R  E
+ R  V1E
+ R  DIFF
+ M  EXP
+
+INDIVIDUALS
+
+ T  E
+ A  V3MX                V3 - X
+ A  TV3MX               2.0 * V3MX
+ A  V3MX2               V3MX ** 2
+ A  V22                 V2 ** 2
+ A  V23                 V2 * V22
+ A  V24                 V22 * V22
+ A  V25                 V22 * V23
+ A  V26                 V23 * V23
+ A  V27                 V23 * V24
+ A  E                   EXP( - 0.5 * V3MX2 / V22 )
+ A  V1E                 V1 * E        
+ A  DIFF                V3MX2 / V24 - 1.0 / V22
+ F                      V1 * E / V2 
+ G  V1                  E / V2
+ G  V2                  V1E * DIFF
+ G  V3                  - V1E * V3MX / V23
+ H  V1        V2        E * DIFF
+ H  V1        V3        - 0.5 * E * TV3MX / V23
+ H  V2        V2        2.0 * V1E / V23 - 5.0 * V1E * V3MX2 / V25 
+ H+                     + V1E * V3MX ** 4 / V27
+ H  V2        V3        1.5 * V1E * TV3MX / V24 
+ H+                     - 0.5 * V1E * TV3MX * V3MX2 / V26
+ H  V3        V3        0.5 * V1E * V3MX2 / V25 - V1E / V23
+
+ENDATA

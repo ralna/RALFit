@@ -1,0 +1,458 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BENNETT5
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem BENNETT5 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = b1 * (b2+x)**(-1/b3) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference:	Bennett, L., L. Swartzendruber, H. Brown, NIST (1994).
+*     Superconductivity Magnetization Modeling.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-3-154
+
+*   Number of data values
+
+ IE M                   154
+
+*   Number of variables
+
+ IE N                   3
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                   7.447168E0
+ RE X2                   8.102586E0
+ RE X3                   8.452547E0
+ RE X4                   8.711278E0
+ RE X5                   8.916774E0
+ RE X6                   9.087155E0
+ RE X7                   9.232590E0
+ RE X8                   9.359535E0
+ RE X9                   9.472166E0
+ RE X10                  9.573384E0
+ RE X11                  9.665293E0
+ RE X12                  9.749461E0
+ RE X13                  9.827092E0
+ RE X14                  9.899128E0
+ RE X15                  9.966321E0
+ RE X16                 10.029280E0
+ RE X17                 10.088510E0
+ RE X18                 10.144430E0
+ RE X19                 10.197380E0
+ RE X20                 10.247670E0
+ RE X21                 10.295560E0
+ RE X22                 10.341250E0
+ RE X23                 10.384950E0
+ RE X24                 10.426820E0
+ RE X25                 10.467000E0
+ RE X26                 10.505640E0
+ RE X27                 10.542830E0
+ RE X28                 10.578690E0
+ RE X29                 10.613310E0
+ RE X30                 10.646780E0
+ RE X31                 10.679150E0
+ RE X32                 10.710520E0
+ RE X33                 10.740920E0
+ RE X34                 10.770440E0
+ RE X35                 10.799100E0
+ RE X36                 10.826970E0
+ RE X37                 10.854080E0
+ RE X38                 10.880470E0
+ RE X39                 10.906190E0
+ RE X40                 10.931260E0
+ RE X41                 10.955720E0
+ RE X42                 10.979590E0
+ RE X43                 11.002910E0
+ RE X44                 11.025700E0
+ RE X45                 11.047980E0
+ RE X46                 11.069770E0
+ RE X47                 11.091100E0
+ RE X48                 11.111980E0
+ RE X49                 11.132440E0
+ RE X50                 11.152480E0
+ RE X51                 11.172130E0
+ RE X52                 11.191410E0
+ RE X53                 11.210310E0
+ RE X54                 11.228870E0
+ RE X55                 11.247090E0
+ RE X56                 11.264980E0
+ RE X57                 11.282560E0
+ RE X58                 11.299840E0
+ RE X59                 11.316820E0
+ RE X60                 11.333520E0
+ RE X61                 11.349940E0
+ RE X62                 11.366100E0
+ RE X63                 11.382000E0
+ RE X64                 11.397660E0
+ RE X65                 11.413070E0
+ RE X66                 11.428240E0
+ RE X67                 11.443200E0
+ RE X68                 11.457930E0
+ RE X69                 11.472440E0
+ RE X70                 11.486750E0
+ RE X71                 11.500860E0
+ RE X72                 11.514770E0
+ RE X73                 11.528490E0
+ RE X74                 11.542020E0
+ RE X75                 11.555380E0
+ RE X76                 11.568550E0
+ RE X77                 11.581560E0
+ RE X78                 11.594420E0
+ RE X79                 11.607121E0
+ RE X80                 11.619640E0
+ RE X81                 11.632000E0
+ RE X82                 11.644210E0
+ RE X83                 11.656280E0
+ RE X84                 11.668200E0
+ RE X85                 11.679980E0
+ RE X86                 11.691620E0
+ RE X87                 11.703130E0
+ RE X88                 11.714510E0
+ RE X89                 11.725760E0
+ RE X90                 11.736880E0
+ RE X91                 11.747890E0
+ RE X92                 11.758780E0
+ RE X93                 11.769550E0
+ RE X94                 11.780200E0
+ RE X95                 11.790730E0
+ RE X96                 11.801160E0
+ RE X97                 11.811480E0
+ RE X98                 11.821700E0
+ RE X99                 11.831810E0
+ RE X100                11.841820E0
+ RE X101                11.851730E0
+ RE X102                11.861550E0
+ RE X103                11.871270E0
+ RE X104                11.880890E0
+ RE X105                11.890420E0
+ RE X106                11.899870E0
+ RE X107                11.909220E0
+ RE X108                11.918490E0
+ RE X109                11.927680E0
+ RE X110                11.936780E0
+ RE X111                11.945790E0
+ RE X112                11.954730E0
+ RE X113                11.963590E0
+ RE X114                11.972370E0
+ RE X115                11.981070E0
+ RE X116                11.989700E0
+ RE X117                11.998260E0
+ RE X118                12.006740E0
+ RE X119                12.015150E0
+ RE X120                12.023490E0
+ RE X121                12.031760E0
+ RE X122                12.039970E0
+ RE X123                12.048100E0
+ RE X124                12.056170E0
+ RE X125                12.064180E0
+ RE X126                12.072120E0
+ RE X127                12.080010E0
+ RE X128                12.087820E0
+ RE X129                12.095580E0
+ RE X130                12.103280E0
+ RE X131                12.110920E0
+ RE X132                12.118500E0
+ RE X133                12.126030E0
+ RE X134                12.133500E0
+ RE X135                12.140910E0
+ RE X136                12.148270E0
+ RE X137                12.155570E0
+ RE X138                12.162830E0
+ RE X139                12.170030E0
+ RE X140                12.177170E0
+ RE X141                12.184270E0
+ RE X142                12.191320E0
+ RE X143                12.198320E0
+ RE X144                12.205270E0
+ RE X145                12.212170E0
+ RE X146                12.219030E0
+ RE X147                12.225840E0
+ RE X148                12.232600E0
+ RE X149                12.239320E0
+ RE X150                12.245990E0
+ RE X151                12.252620E0
+ RE X152                12.259200E0
+ RE X153                12.265750E0
+ RE X154                12.272240E0
+
+ RE Y1                  -34.834702E0
+ RE Y2                  -34.393200E0
+ RE Y3                  -34.152901E0
+ RE Y4                  -33.979099E0
+ RE Y5                  -33.845901E0
+ RE Y6                  -33.732899E0
+ RE Y7                  -33.640301E0
+ RE Y8                  -33.559200E0
+ RE Y9                  -33.486801E0
+ RE Y10                 -33.423100E0
+ RE Y11                 -33.365101E0
+ RE Y12                 -33.313000E0
+ RE Y13                 -33.260899E0
+ RE Y14                 -33.217400E0
+ RE Y15                 -33.176899E0
+ RE Y16                 -33.139198E0
+ RE Y17                 -33.101601E0
+ RE Y18                 -33.066799E0
+ RE Y19                 -33.035000E0
+ RE Y20                 -33.003101E0
+ RE Y21                 -32.971298E0
+ RE Y22                 -32.942299E0
+ RE Y23                 -32.916302E0
+ RE Y24                 -32.890202E0
+ RE Y25                 -32.864101E0
+ RE Y26                 -32.841000E0
+ RE Y27                 -32.817799E0
+ RE Y28                 -32.797501E0
+ RE Y29                 -32.774300E0
+ RE Y30                 -32.757000E0
+ RE Y31                 -32.733799E0
+ RE Y32                 -32.716400E0
+ RE Y33                 -32.699100E0
+ RE Y34                 -32.678799E0
+ RE Y35                 -32.661400E0
+ RE Y36                 -32.644001E0
+ RE Y37                 -32.626701E0
+ RE Y38                 -32.612202E0
+ RE Y39                 -32.597698E0
+ RE Y40                 -32.583199E0
+ RE Y41                 -32.568699E0
+ RE Y42                 -32.554298E0
+ RE Y43                 -32.539799E0
+ RE Y44                 -32.525299E0
+ RE Y45                 -32.510799E0
+ RE Y46                 -32.499199E0
+ RE Y47                 -32.487598E0
+ RE Y48                 -32.473202E0
+ RE Y49                 -32.461601E0
+ RE Y50                 -32.435501E0
+ RE Y51                 -32.435501E0
+ RE Y52                 -32.426800E0
+ RE Y53                 -32.412300E0
+ RE Y54                 -32.400799E0
+ RE Y55                 -32.392101E0
+ RE Y56                 -32.380501E0
+ RE Y57                 -32.366001E0
+ RE Y58                 -32.357300E0
+ RE Y59                 -32.348598E0
+ RE Y60                 -32.339901E0
+ RE Y61                 -32.328400E0
+ RE Y62                 -32.319698E0
+ RE Y63                 -32.311001E0
+ RE Y64                 -32.299400E0
+ RE Y65                 -32.290699E0
+ RE Y66                 -32.282001E0
+ RE Y67                 -32.273300E0
+ RE Y68                 -32.264599E0
+ RE Y69                 -32.256001E0
+ RE Y70                 -32.247299E0
+ RE Y71                 -32.238602E0
+ RE Y72                 -32.229900E0
+ RE Y73                 -32.224098E0
+ RE Y74                 -32.215401E0
+ RE Y75                 -32.203800E0
+ RE Y76                 -32.198002E0
+ RE Y77                 -32.189400E0
+ RE Y78                 -32.183601E0
+ RE Y79                 -32.174900E0
+ RE Y80                 -32.169102E0
+ RE Y81                 -32.163300E0
+ RE Y82                 -32.154598E0
+ RE Y83                 -32.145901E0
+ RE Y84                 -32.140099E0
+ RE Y85                 -32.131401E0
+ RE Y86                 -32.125599E0
+ RE Y87                 -32.119801E0
+ RE Y88                 -32.111198E0
+ RE Y89                 -32.105400E0
+ RE Y90                 -32.096699E0
+ RE Y91                 -32.090900E0
+ RE Y92                 -32.088001E0
+ RE Y93                 -32.079300E0
+ RE Y94                 -32.073502E0
+ RE Y95                 -32.067699E0
+ RE Y96                 -32.061901E0
+ RE Y97                 -32.056099E0
+ RE Y98                 -32.050301E0
+ RE Y99                 -32.044498E0
+ RE Y100                -32.038799E0
+ RE Y101                -32.033001E0
+ RE Y102                -32.027199E0
+ RE Y103                -32.024300E0
+ RE Y104                -32.018501E0
+ RE Y105                -32.012699E0
+ RE Y106                -32.004002E0
+ RE Y107                -32.001099E0
+ RE Y108                -31.995300E0
+ RE Y109                -31.989500E0
+ RE Y110                -31.983700E0
+ RE Y111                -31.977900E0
+ RE Y112                -31.972099E0
+ RE Y113                -31.969299E0
+ RE Y114                -31.963501E0
+ RE Y115                -31.957701E0
+ RE Y116                -31.951900E0
+ RE Y117                -31.946100E0
+ RE Y118                -31.940300E0
+ RE Y119                -31.937401E0
+ RE Y120                -31.931601E0
+ RE Y121                -31.925800E0
+ RE Y122                -31.922899E0
+ RE Y123                -31.917101E0
+ RE Y124                -31.911301E0
+ RE Y125                -31.908400E0
+ RE Y126                -31.902599E0
+ RE Y127                -31.896900E0
+ RE Y128                -31.893999E0
+ RE Y129                -31.888201E0
+ RE Y130                -31.885300E0
+ RE Y131                -31.882401E0
+ RE Y132                -31.876600E0
+ RE Y133                -31.873699E0
+ RE Y134                -31.867901E0
+ RE Y135                -31.862101E0
+ RE Y136                -31.859200E0
+ RE Y137                -31.856300E0
+ RE Y138                -31.850500E0
+ RE Y139                -31.844700E0
+ RE Y140                -31.841801E0
+ RE Y141                -31.838900E0
+ RE Y142                -31.833099E0
+ RE Y143                -31.830200E0
+ RE Y144                -31.827299E0
+ RE Y145                -31.821600E0
+ RE Y146                -31.818701E0
+ RE Y147                -31.812901E0
+ RE Y148                -31.809999E0
+ RE Y149                -31.807100E0
+ RE Y150                -31.801300E0
+ RE Y151                -31.798401E0
+ RE Y152                -31.795500E0
+ RE Y153                -31.789700E0
+ RE Y154                -31.786800E0
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  BENNETT5  F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR BENNETT5  'DEFAULT'
+
+START POINT
+
+    START1    B1        -2000.0
+    START1    B2        50.0   
+    START1    B3        0.8    
+
+*  Alternative start point
+
+    START2    B1        -1500.0
+    START2    B2        45.0   
+    START2    B3        0.85   
+
+ELEMENT TYPE
+
+ EV E15       V1
+ EV E15       V2
+ EV E15       V3
+ EP E15       X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E15
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO BENNETT5            0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      BENNETT5
+
+TEMPORARIES
+
+ R  E
+ R  V3INV
+ R  V2PX
+ R  V2PXP
+ R  V2PXP1
+ R  V2PXP2
+ R  V2PXL
+ M  LOG
+
+INDIVIDUALS
+
+ T  E15
+ A  V3INV               1.0 / V3
+ A  V2PX                V2 + X
+ A  V2PXL               LOG( V2PX )
+ A  V2PXP               V2PX ** V3INV
+ A  V2PXP1              V2PX ** ( V3INV + 1.0 )
+ A  V2PXP2              V2PX ** ( V3INV + 2.0 )
+ F                      V1 / V2PXP 
+ G  V1                  1.0 / V2PXP 
+ G  V2                  - V1 / ( V3 * V2PXP1 ) 
+ G  V3                  V1 * V2PXL / ( V2PXP * V3 ** 2 )
+ H  V1        V2        - 1.0 / (V3 * V2PXP1) 
+ H  V1        V3        V2PXL / ( V2PXP * V3 ** 2 )
+ H  V2        V2        V1 * (1.0 / V3 + 1.0) / ( V3 * V2PXP2 ) 
+ H  V2        V3        V1 / ( V2PX * V2PXP * V3 **2 )
+ H+                     - V1 * V2PXL / ( V2PXP1 * V3 ** 3 ) 
+ H  V3        V3        V1 * V2PXL**2 / ( V2PXP * V3 ** 4 )
+ H+                     - 2.0 * V1 * V2PXL / ( V2PXP  * V3 ** 3 )
+
+ENDATA
+

@@ -1,0 +1,897 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          HAHN1
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem HAHN1 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = (b1 + b2*x + b3*x**2 + b4*x**3) / 
+*            (1 + b5*x + b6*x**2 + b7*x**3) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Hahn, T., NIST (197?). 
+*     Copper Thermal Expansion Study.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-7-37
+
+*   Number of data values
+
+ IE M                   236
+
+*   Number of variables
+
+ IE N                   7
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                   24.41
+ RE X2                   34.82
+ RE X3                   44.09
+ RE X4                   45.07
+ RE X5                   54.98
+ RE X6                   65.51
+ RE X7                   70.53
+ RE X8                   75.70
+ RE X9                   89.57
+ RE X10                  91.14
+ RE X11                  96.40
+ RE X12                  97.19
+ RE X13                 114.26
+ RE X14                 120.25
+ RE X15                 127.08
+ RE X16                 133.55
+ RE X17                 133.61
+ RE X18                 158.67
+ RE X19                 172.74
+ RE X20                 171.31
+ RE X21                 202.14
+ RE X22                 220.55
+ RE X23                 221.05
+ RE X24                 221.39
+ RE X25                 250.99
+ RE X26                 268.99
+ RE X27                 271.80
+ RE X28                 271.97
+ RE X29                 321.31
+ RE X30                 321.69
+ RE X31                 330.14
+ RE X32                 333.03
+ RE X33                 333.47
+ RE X34                 340.77
+ RE X35                 345.65
+ RE X36                 373.11
+ RE X37                 373.79
+ RE X38                 411.82
+ RE X39                 419.51
+ RE X40                 421.59
+ RE X41                 422.02
+ RE X42                 422.47
+ RE X43                 422.61
+ RE X44                 441.75
+ RE X45                 447.41
+ RE X46                 448.7 
+ RE X47                 472.89
+ RE X48                 476.69
+ RE X49                 522.47
+ RE X50                 522.62
+ RE X51                 524.43
+ RE X52                 546.75
+ RE X53                 549.53
+ RE X54                 575.29
+ RE X55                 576.00
+ RE X56                 625.55
+ RE X57                  20.15
+ RE X58                  28.78
+ RE X59                  29.57
+ RE X60                  37.41
+ RE X61                  39.12
+ RE X62                  50.24
+ RE X63                  61.38
+ RE X64                  66.25
+ RE X65                  73.42
+ RE X66                  95.52
+ RE X67                 107.32
+ RE X68                 122.04
+ RE X69                 134.03
+ RE X70                 163.19
+ RE X71                 163.48
+ RE X72                 175.70
+ RE X73                 179.86
+ RE X74                 211.27
+ RE X75                 217.78
+ RE X76                 219.14
+ RE X77                 262.52
+ RE X78                 268.01
+ RE X79                 268.62
+ RE X80                 336.25
+ RE X81                 337.23
+ RE X82                 339.33
+ RE X83                 427.38
+ RE X84                 428.58
+ RE X85                 432.68
+ RE X86                 528.99
+ RE X87                 531.08
+ RE X88                 628.34
+ RE X89                 253.24
+ RE X90                 273.13
+ RE X91                 273.66
+ RE X92                 282.10
+ RE X93                 346.62
+ RE X94                 347.19
+ RE X95                 348.78
+ RE X96                 351.18
+ RE X97                 450.10
+ RE X98                 450.35
+ RE X99                 451.92
+ RE X100                455.56
+ RE X101                552.22
+ RE X102                553.56
+ RE X103                555.74
+ RE X104                652.59
+ RE X105                656.20
+ RE X106                 14.13
+ RE X107                 20.41
+ RE X108                 31.30
+ RE X109                 33.84
+ RE X110                 39.70
+ RE X111                 48.83
+ RE X112                 54.50
+ RE X113                 60.41
+ RE X114                 72.77
+ RE X115                 75.25
+ RE X116                 86.84
+ RE X117                 94.88
+ RE X118                 96.40
+ RE X119                117.37
+ RE X120                139.08
+ RE X121                147.73
+ RE X122                158.63
+ RE X123                161.84
+ RE X124                192.11
+ RE X125                206.76
+ RE X126                209.07
+ RE X127                213.32
+ RE X128                226.44
+ RE X129                237.12
+ RE X130                330.90
+ RE X131                358.72
+ RE X132                370.77
+ RE X133                372.72
+ RE X134                396.24
+ RE X135                416.59
+ RE X136                484.02
+ RE X137                495.47
+ RE X138                514.78
+ RE X139                515.65
+ RE X140                519.47
+ RE X141                544.47
+ RE X142                560.11
+ RE X143                620.77
+ RE X144                 18.97
+ RE X145                 28.93
+ RE X146                 33.91
+ RE X147                 40.03
+ RE X148                 44.66
+ RE X149                 49.87
+ RE X150                 55.16
+ RE X151                 60.90
+ RE X152                 72.08
+ RE X153                 85.15
+ RE X154                 97.06
+ RE X155                119.63
+ RE X156                133.27
+ RE X157                143.84
+ RE X158                161.91
+ RE X159                180.67
+ RE X160                198.44
+ RE X161                226.86
+ RE X162                229.65
+ RE X163                258.27
+ RE X164                273.77
+ RE X165                339.15
+ RE X166                350.13
+ RE X167                362.75
+ RE X168                371.03
+ RE X169                393.32
+ RE X170                448.53
+ RE X171                473.78
+ RE X172                511.12
+ RE X173                524.70
+ RE X174                548.75
+ RE X175                551.64
+ RE X176                574.02
+ RE X177                623.86
+ RE X178                 21.46
+ RE X179                 24.33
+ RE X180                 33.43
+ RE X181                 39.22
+ RE X182                 44.18
+ RE X183                 55.02
+ RE X184                 94.33
+ RE X185                 96.44
+ RE X186                118.82
+ RE X187                128.48
+ RE X188                141.94
+ RE X189                156.92
+ RE X190                171.65
+ RE X191                190.00
+ RE X192                223.26
+ RE X193                223.88
+ RE X194                231.50
+ RE X195                265.05
+ RE X196                269.44
+ RE X197                271.78
+ RE X198                273.46
+ RE X199                334.61
+ RE X200                339.79
+ RE X201                349.52
+ RE X202                358.18
+ RE X203                377.98
+ RE X204                394.77
+ RE X205                429.66
+ RE X206                468.22
+ RE X207                487.27
+ RE X208                519.54
+ RE X209                523.03
+ RE X210                612.99
+ RE X211                638.59
+ RE X212                641.36
+ RE X213                622.05
+ RE X214                631.50
+ RE X215                663.97
+ RE X216                646.9 
+ RE X217                748.29
+ RE X218                749.21
+ RE X219                750.14
+ RE X220                647.04
+ RE X221                646.89
+ RE X222                746.9 
+ RE X223                748.43
+ RE X224                747.35
+ RE X225                749.27
+ RE X226                647.61
+ RE X227                747.78
+ RE X228                750.51
+ RE X229                851.37
+ RE X230                845.97
+ RE X231                847.54
+ RE X232                849.93
+ RE X233                851.61
+ RE X234                849.75
+ RE X235                850.98
+ RE X236                848.23
+
+ RE Y1                   0.591
+ RE Y2                   1.547
+ RE Y3                   2.902
+ RE Y4                   2.894
+ RE Y5                   4.703
+ RE Y6                   6.307
+ RE Y7                   7.03 
+ RE Y8                   7.898
+ RE Y9                   9.470
+ RE Y10                  9.484
+ RE Y11                 10.072
+ RE Y12                 10.163
+ RE Y13                 11.615
+ RE Y14                 12.005
+ RE Y15                 12.478
+ RE Y16                 12.982
+ RE Y17                 12.970
+ RE Y18                 13.926
+ RE Y19                 14.452
+ RE Y20                 14.404
+ RE Y21                 15.190
+ RE Y22                 15.550
+ RE Y23                 15.528
+ RE Y24                 15.499
+ RE Y25                 16.131
+ RE Y26                 16.438
+ RE Y27                 16.387
+ RE Y28                 16.549
+ RE Y29                 16.872
+ RE Y30                 16.830
+ RE Y31                 16.926
+ RE Y32                 16.907
+ RE Y33                 16.966
+ RE Y34                 17.060
+ RE Y35                 17.122
+ RE Y36                 17.311
+ RE Y37                 17.355
+ RE Y38                 17.668
+ RE Y39                 17.767
+ RE Y40                 17.803
+ RE Y41                 17.765
+ RE Y42                 17.768
+ RE Y43                 17.736
+ RE Y44                 17.858
+ RE Y45                 17.877
+ RE Y46                 17.912
+ RE Y47                 18.046
+ RE Y48                 18.085
+ RE Y49                 18.291
+ RE Y50                 18.357
+ RE Y51                 18.426
+ RE Y52                 18.584
+ RE Y53                 18.610
+ RE Y54                 18.870
+ RE Y55                 18.795
+ RE Y56                 19.111
+ RE Y57                  0.367
+ RE Y58                  0.796
+ RE Y59                  0.892
+ RE Y60                  1.903
+ RE Y61                  2.150
+ RE Y62                  3.697
+ RE Y63                  5.870
+ RE Y64                  6.421
+ RE Y65                  7.422
+ RE Y66                  9.944
+ RE Y67                 11.023
+ RE Y68                 11.87 
+ RE Y69                 12.786
+ RE Y70                 14.067
+ RE Y71                 13.974
+ RE Y72                 14.462
+ RE Y73                 14.464
+ RE Y74                 15.381
+ RE Y75                 15.483
+ RE Y76                 15.59 
+ RE Y77                 16.075
+ RE Y78                 16.347
+ RE Y79                 16.181
+ RE Y80                 16.915
+ RE Y81                 17.003
+ RE Y82                 16.978
+ RE Y83                 17.756
+ RE Y84                 17.808
+ RE Y85                 17.868
+ RE Y86                 18.481
+ RE Y87                 18.486
+ RE Y88                 19.090
+ RE Y89                 16.062
+ RE Y90                 16.337
+ RE Y91                 16.345
+ RE Y92                 16.388
+ RE Y93                 17.159
+ RE Y94                 17.116
+ RE Y95                 17.164
+ RE Y96                 17.123
+ RE Y97                 17.979
+ RE Y98                 17.974
+ RE Y99                 18.007
+ RE Y100                17.993
+ RE Y101                18.523
+ RE Y102                18.669
+ RE Y103                18.617
+ RE Y104                19.371
+ RE Y105                19.330
+ RE Y106                 0.080
+ RE Y107                 0.248
+ RE Y108                 1.089
+ RE Y109                 1.418
+ RE Y110                 2.278
+ RE Y111                 3.624
+ RE Y112                 4.574
+ RE Y113                 5.556
+ RE Y114                 7.267
+ RE Y115                 7.695
+ RE Y116                 9.136
+ RE Y117                 9.959
+ RE Y118                 9.957
+ RE Y119                11.600
+ RE Y120                13.138
+ RE Y121                13.564
+ RE Y122                13.871
+ RE Y123                13.994
+ RE Y124                14.947
+ RE Y125                15.473
+ RE Y126                15.379
+ RE Y127                15.455
+ RE Y128                15.908
+ RE Y129                16.114
+ RE Y130                17.071
+ RE Y131                17.135
+ RE Y132                17.282
+ RE Y133                17.368
+ RE Y134                17.483
+ RE Y135                17.764
+ RE Y136                18.185
+ RE Y137                18.271
+ RE Y138                18.236
+ RE Y139                18.237
+ RE Y140                18.523
+ RE Y141                18.627
+ RE Y142                18.665
+ RE Y143                19.086
+ RE Y144                 0.214
+ RE Y145                 0.943
+ RE Y146                 1.429
+ RE Y147                 2.241
+ RE Y148                 2.951
+ RE Y149                 3.782
+ RE Y150                 4.757
+ RE Y151                 5.602
+ RE Y152                 7.169
+ RE Y153                 8.920
+ RE Y154                10.055
+ RE Y155                12.035
+ RE Y156                12.861
+ RE Y157                13.436
+ RE Y158                14.167
+ RE Y159                14.755
+ RE Y160                15.168
+ RE Y161                15.651
+ RE Y162                15.746
+ RE Y163                16.216
+ RE Y164                16.445
+ RE Y165                16.965
+ RE Y166                17.121
+ RE Y167                17.206
+ RE Y168                17.250
+ RE Y169                17.339
+ RE Y170                17.793
+ RE Y171                18.123
+ RE Y172                18.49 
+ RE Y173                18.566
+ RE Y174                18.645
+ RE Y175                18.706
+ RE Y176                18.924
+ RE Y177                19.1  
+ RE Y178                 0.375
+ RE Y179                 0.471
+ RE Y180                 1.504
+ RE Y181                 2.204
+ RE Y182                 2.813
+ RE Y183                 4.765
+ RE Y184                 9.835
+ RE Y185                10.040
+ RE Y186                11.946
+ RE Y187                12.596
+ RE Y188                13.303
+ RE Y189                13.922
+ RE Y190                14.440
+ RE Y191                14.951
+ RE Y192                15.627
+ RE Y193                15.639
+ RE Y194                15.814
+ RE Y195                16.315
+ RE Y196                16.334
+ RE Y197                16.430
+ RE Y198                16.423
+ RE Y199                17.024
+ RE Y200                17.009
+ RE Y201                17.165
+ RE Y202                17.134
+ RE Y203                17.349
+ RE Y204                17.576
+ RE Y205                17.848
+ RE Y206                18.090
+ RE Y207                18.276
+ RE Y208                18.404
+ RE Y209                18.519
+ RE Y210                19.133
+ RE Y211                19.074
+ RE Y212                19.239
+ RE Y213                19.280
+ RE Y214                19.101
+ RE Y215                19.398
+ RE Y216                19.252
+ RE Y217                19.89 
+ RE Y218                20.007
+ RE Y219                19.929
+ RE Y220                19.268
+ RE Y221                19.324
+ RE Y222                20.049
+ RE Y223                20.107
+ RE Y224                20.062
+ RE Y225                20.065
+ RE Y226                19.286
+ RE Y227                19.972
+ RE Y228                20.088
+ RE Y229                20.743
+ RE Y230                20.83 
+ RE Y231                20.935
+ RE Y232                21.035
+ RE Y233                20.93 
+ RE Y234                21.074
+ RE Y235                21.085
+ RE Y236                20.935
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  HAHN1     F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR HAHN1     'DEFAULT'
+
+START POINT
+
+    START1    B1        10.0     
+    START1    B2        -1.0     
+    START1    B3        0.05     
+    START1    B4        -0.00001 
+    START1    B5        -0.05    
+    START1    B6        0.001    
+    START1    B7        -0.000001
+
+*  Alternative start point
+
+    START2    B1        1.0       
+    START2    B2        -0.1      
+    START2    B3        0.005     
+    START2    B4        -0.000001 
+    START2    B5        -0.005    
+    START2    B6        0.0001    
+    START2    B7        -0.0000001
+
+ELEMENT TYPE
+
+ EV E19       V1
+ EV E19       V2
+ EV E19       V3
+ EV E19       V4
+ EV E19       V5
+ EV E19       V6
+ EV E19       V7
+ EP E19       X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E19
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZV E(I)      V4                       B4
+ ZV E(I)      V5                       B5
+ ZV E(I)      V6                       B6
+ ZV E(I)      V7                       B7
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO HAHN1               0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      HAHN1 
+
+TEMPORARIES
+
+ R  E
+ R  T
+ R  D
+ R  D2
+ R  TD3
+ R  X2
+ R  X3
+ R  X4
+ R  X5
+ R  X6
+ M  EXP
+
+INDIVIDUALS
+
+ T  E19
+ A  X2                  X * X
+ A  X3                  X2 * X
+ A  X4                  X3 * X
+ A  X5                  X4 * X
+ A  X6                  X5 * X
+ A  T                   V1 + V2 * X + V3 * X2 + V4 * X3
+ A  D                   1.0D0 + V5 * X + V6 * X2 + V7 * X3
+ A  D2                  D * D
+ A  TD3                 0.5D0 * D2 * D
+ F                      T / D
+ G  V1                  1.0D0 / D
+ G  V2                  X / D
+ G  V3                  X2 / D
+ G  V4                  X3 / D
+ G  V5                  - X * T / D2
+ G  V6                  - X2 * T / D2
+ G  V7                  - X3 * T / D2
+ H  V1        V5        - X / D2
+ H  V1        V6        - X2 / D2 
+ H  V1        V7        - X3 / D2
+ H  V2        V5        - X2 / D2
+ H  V2        V6        - X3 / D2 
+ H  V2        V7        - X4 / D2  
+ H  V3        V5        - X3 / D2
+ H  V3        V6        - X4 / D2 
+ H  V3        V7        - X5 / D2 
+ H  V4        V5        - X4 / D2
+ H  V4        V6        - X5 / D2 
+ H  V4        V7        - X6 / D2 
+ H  V5        V5        X2 * T / TD3
+ H  V5        V6        X3 * T / TD3
+ H  V5        V7        X4 * T / TD3
+ H  V6        V6        X4 * T / TD3
+ H  V6        V7        X5 * T / TD3
+ H  V7        V7        X6 * T / TD3
+
+ENDATA
+
+
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+               

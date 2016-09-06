@@ -1,0 +1,173 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          GULF
+
+*   Problem :
+*   *********
+
+*   The Gulf RD test problem in 3 variables.
+*   This function  is a nonlinear least squares with 99 groups.  Each
+*   group has a nonlinear element of exponential type.
+
+*   The number of groups may be varied, but must be larger or equal to 3
+
+*   Source: problem 11 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#27
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-MN-3-0
+
+*   Number of groups
+
+ IE M                   99
+
+*   Useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+    X1
+    X2
+    X3
+
+GROUPS
+
+ DO I         1                        M
+ XN G(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ RI RI        I
+ RM TI        RI        0.01
+ Z  GULF      G(I)                     TI
+ ND
+
+BOUNDS
+
+ FR GULF      'DEFAULT'
+
+START POINT
+
+    GULF      X1        5.0
+    GULF      X2        2.5 
+    GULF      X3        0.15
+
+ELEMENT TYPE
+
+ EV GLF       V1                       V2
+ EV GLF       V3
+ EP GLF       T
+
+ELEMENT USES
+
+ XT 'DEFAULT' GLF
+ DO I         1                        M
+ RI RI        I
+ RM TI        RI        0.01
+ ZV E(I)      V1                       X1
+ ZV E(I)      V2                       X2
+ ZV E(I)      V3                       X3
+ ZP E(I)      T                        TI
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ DO I         1                        M
+ XE G(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+ LO GULF                0.0
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      GULF
+
+TEMPORARIES
+
+ R  V1SQ
+ R  YMV2
+ R  YMV2SQ
+ R  LNYMV2
+ R  A
+ R  ALN
+ R  AM1
+ R  EXPMA
+ R  AEXPMA
+
+ M  LOG
+ M  EXP
+ M  ABS
+
+INDIVIDUALS
+
+*   Gulfian function
+
+ T  GLF
+
+ A  V1SQ                V1 * V1
+ A  YMV2                25.0 + ( -50.0 * LOG( T ) )**(2.0/3.0)
+ A+                     - V2
+ A  AM1                 A - 1.0
+ A  YMV2SQ              YMV2 * YMV2
+ A  LNYMV2              LOG( ABS( YMV2 ) )
+ A  A                   ABS( YMV2 )**V3 / V1
+ A  ALN                 A * LNYMV2
+ A  EXPMA               EXP( - A )
+ A  AEXPMA              A * EXPMA
+
+ F                      EXPMA
+
+ G  V1                  AEXPMA / V1
+ G  V2                  V3 * AEXPMA / YMV2
+ G  V3                  - AEXPMA * LNYMV2
+
+ H  V1        V1        ( A - 2.0 ) * AEXPMA / V1SQ
+ H  V1        V2        V3 * AM1 * AEXPMA / ( V1 * YMV2 )
+ H  V1        V3        - ALN * AEXPMA /   V1
+ H  V2        V2        V3 * AEXPMA * (1.0 + V3 * AM1 ) / YMV2SQ
+ H  V2        V3        AEXPMA * ( 1.0 + V3 * ALN )  /   YMV2
+ H  V3        V3        ALN * LNYMV2 * EXPMA * AM1
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        GULF
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

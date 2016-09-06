@@ -1,0 +1,167 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          HELIX
+
+*   Problem :
+*   *********
+
+*   The "Helix" problem in 3 variables
+
+*   Source: problem 7 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#12 (p. 58)
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification  SUR2-AN-3-0
+
+*   Define useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+    X1
+    X2
+    X3
+
+GROUPS
+
+ N  A         X3        1.0
+ N  A         'SCALE'   0.01
+
+ N  B         'SCALE'   0.01
+
+ N  C         X3        1.0
+
+CONSTANTS
+
+    HELIX     B         1.0
+
+BOUNDS
+
+*   All variables are free
+
+ FR HELIX     'DEFAULT'
+
+START POINT
+
+ XV HELIX     'DEFAULT' 0.0
+    HELIX     X1        -1.0
+
+ELEMENT TYPE
+
+ EV THETA     V1                       V2
+ EV TWONRM    V1                       V2
+
+ELEMENT USES
+
+ T  AE        THETA
+ V  AE        V1                       X1
+ V  AE        V2                       X2
+
+ T  BE        TWONRM
+ V  BE        V1                       X1
+ V  BE        V2                       X2
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ E  A         AE        -10.0
+ E  B         BE
+
+OBJECT BOUND
+
+ LO HELIX               0.0
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      HELIX
+
+TEMPORARIES
+
+ R  TWOPII
+ R  T2
+ R  T4
+ R  HD
+ R  V1SQ
+ R  V2SQ
+ R  R2
+ R  SQT
+ R  R2SQT
+ R  HUGE
+ M  SQRT
+ M  ATAN2
+
+GLOBALS
+
+ A  TWOPII              0.15915494
+
+INDIVIDUALS
+
+*   Theta
+
+ T  THETA
+ A  V1SQ                V1 * V1
+ A  V2SQ                V2 * V2
+ A  R2                  V1SQ + V2SQ
+ A  T2                  TWOPII / R2
+ A  T4                  T2 / R2
+ A  HD                  2.0 * T4 * V1 * V2
+ F                      TWOPII * ATAN2( V2, V1 )
+ G  V1                  - T2 * V2
+ G  V2                  T2 * V1
+ H  V1        V1        HD
+ H  V1        V2        T4 * ( V2SQ - V1SQ )
+ H  V2        V2        - HD
+
+*   The 2-norm
+
+ T  TWONRM
+ A  V1SQ                V1 * V1
+ A  V2SQ                V2 * V2
+ A  R2                  V1SQ + V2SQ
+ A  SQT                 SQRT( R2 )
+ A  R2SQT               R2 * SQT
+ F                      SQT
+ G  V1                  V1 / SQT
+ G  V2                  V2 / SQT
+ H  V1        V1        V2SQ / R2SQT
+ H  V1        V2        - V1 * V2 / R2SQT
+ H  V2        V2        V1SQ / R2SQT
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        HELIX
+
+INDIVIDUALS
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

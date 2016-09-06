@@ -1,0 +1,189 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          OSBORNEA
+
+*   Problem :
+*   *********
+
+*   Osborne first problem in 5 variables.
+
+*   This function  is a nonlinear least squares with 33 groups.  Each
+*   group has 2 nonlinear elements and one linear element.
+
+*   Source:  Problem 17 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See alos Buckley#32 (p. 77).
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-MN-5-0
+
+*   Number of groups
+
+ IE M                   33
+
+*   Useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+    X1
+    X2
+    X3
+    X4
+    X5
+
+GROUPS
+
+ DO I         1                        M
+ XN G(I)      X1        1.0
+ ND
+
+CONSTANTS
+
+    OSBORNEA  G1        0.844
+    OSBORNEA  G2        0.908
+    OSBORNEA  G3        0.932
+    OSBORNEA  G4        0.936
+    OSBORNEA  G5        0.925
+    OSBORNEA  G6        0.908
+    OSBORNEA  G7        0.881
+    OSBORNEA  G8        0.850
+    OSBORNEA  G9        0.818
+    OSBORNEA  G10       0.784
+    OSBORNEA  G11       0.751
+    OSBORNEA  G12       0.718
+    OSBORNEA  G13       0.685
+    OSBORNEA  G14       0.658
+    OSBORNEA  G15       0.628
+    OSBORNEA  G16       0.603
+    OSBORNEA  G17       0.580
+    OSBORNEA  G18       0.558
+    OSBORNEA  G19       0.538
+    OSBORNEA  G20       0.522
+    OSBORNEA  G21       0.506
+    OSBORNEA  G22       0.490
+    OSBORNEA  G23       0.478
+    OSBORNEA  G24       0.467
+    OSBORNEA  G25       0.457
+    OSBORNEA  G26       0.448
+    OSBORNEA  G27       0.438
+    OSBORNEA  G28       0.431
+    OSBORNEA  G29       0.424
+    OSBORNEA  G30       0.420
+    OSBORNEA  G31       0.414
+    OSBORNEA  G32       0.411
+    OSBORNEA  G33       0.406
+
+BOUNDS
+
+ FR OSBORNEA  'DEFAULT'
+
+START POINT
+
+    OSBORNEA  X1        0.5
+    OSBORNEA  X2        1.5
+    OSBORNEA  X3        -1.0
+    OSBORNEA  X4        0.01
+    OSBORNEA  X5        0.02
+
+ELEMENT TYPE
+
+ EV PEXP      V1                       V2
+ EP PEXP      T
+
+ELEMENT USES
+
+ DO I         1                        M
+
+ IA I-1       I         -1
+ IM ITI       I-1       10
+ RI MTI       ITI
+ RM TI        MTI       -1.0
+
+ XT A(I)      PEXP
+ ZV A(I)      V1                       X2
+ ZV A(I)      V2                       X4
+ ZP A(I)      T                        TI
+
+ XT B(I)      PEXP
+ ZV B(I)      V1                       X3
+ ZV B(I)      V2                       X5
+ ZP B(I)      T                        TI
+
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ DO I         1                        M
+ XT G(I)      L2
+ XE G(I)      A(I)                     B(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO OSBORNEA            0.0
+
+*   Solution
+
+*LO SOLTN               5.46489D-05
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      OSBORNEA
+
+TEMPORARIES
+
+ R  EXPA
+ R  V1EXPA
+ M  EXP
+
+INDIVIDUALS
+
+*   Parametric product with exponential
+
+ T  PEXP
+ A  EXPA                EXP( T * V2 )
+ A  V1EXPA              V1 * EXPA
+ F                      V1EXPA
+ G  V1                  EXPA
+ G  V2                  T * V1EXPA
+ H  V1        V2        T * EXPA
+ H  V2        V2        T * T * V1EXPA
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        OSBORNEA
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

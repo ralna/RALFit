@@ -1,0 +1,157 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BROWNDEN
+
+*   Problem :
+*   *********
+
+*   Brown and Dennis problem in 4 variables.
+*   This function  is a nonlinear least squares with 20 groups.  Each
+*   group has 2 nonlinear elements.
+
+*   Source: Problem 16 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#30
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-AN-4-0
+
+*   Number of groups
+
+ IE M                   20
+
+*   Useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+    X1
+    X2
+    X3
+    X4
+
+GROUPS
+
+ DO I         1                        M
+ XN G(I)
+ ND
+
+BOUNDS
+
+ FR BROWNDEN  'DEFAULT'
+
+START POINT
+
+    BROWNDEN  X1        25.0
+    BROWNDEN  X2        5.0
+    BROWNDEN  X3        -5.0
+    BROWNDEN  X4        -1.0
+
+ELEMENT TYPE
+
+ EV BRD       V1                       V2
+ EP BRD       CV2                      CIND
+
+ELEMENT USES
+
+ XT 'DEFAULT' BRD
+
+ DO I         1                        M
+
+ RI RI        I
+ RM I/5       RI        0.2
+ R( EI5       EXP                      I/5
+
+ ZV A(I)      V1                       X1
+ ZV A(I)      V2                       X2
+ ZP A(I)      CV2                      I/5
+ ZP A(I)      CIND                     EI5
+
+ R( SI5       SIN                      I/5
+ R( CI5       COS                      I/5
+
+ ZV B(I)      V1                       X3
+ ZV B(I)      V2                       X4
+ ZP B(I)      CV2                      SI5
+ ZP B(I)      CIND                     CI5
+
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ XT 'DEFAULT' L2
+
+ DO I         1                        M
+ XE G(I)      A(I)                     B(I)
+ ND
+
+OBJECT BOUND
+
+ LO BROWNDEN            0.0
+
+*   Solution
+
+*LO SOLTN               85822.2
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      BROWNDEN
+
+TEMPORARIES
+
+ R  A
+ M  EXP
+ M  SIN
+ M  COS
+
+INDIVIDUALS
+
+*   Square of a linear combination
+
+ T  BRD
+
+ A  A                   V1 + CV2 * V2 - CIND
+
+ F                      A * A
+
+ G  V1                  2.0 * A
+ G  V2                  2.0 * A * CV2
+
+ H  V1        V1        2.0
+ H  V1        V2        2.0 * CV2
+ H  V2        V2        2.0 * CV2 * CV2
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        BROWNDEN
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

@@ -1,0 +1,206 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          ROSZMAN1
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem ROSZMAN1 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y =  b1 - b2*x - arctan[b3/(x-b4)]/pi + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*  Reference: Roszman, L., NIST (1979).  
+*    Quantum Defects for Sulfur I Atom.
+
+*   classification NOR2-MN-4-25
+
+*   Number of data values
+
+ IE M                   25
+
+*   Number of variables
+
+ IE N                   4
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  -4868.68
+ RE X2                  -4868.09
+ RE X3                  -4867.41
+ RE X4                  -3375.19
+ RE X5                  -3373.14
+ RE X6                  -3372.03
+ RE X7                  -2473.74
+ RE X8                  -2472.35
+ RE X9                  -2469.45
+ RE X10                 -1894.65
+ RE X11                 -1893.40
+ RE X12                 -1497.24
+ RE X13                 -1495.85
+ RE X14                 -1493.41
+ RE X15                 -1208.68
+ RE X16                 -1206.18
+ RE X17                 -1206.04
+ RE X18                 -997.92
+ RE X19                 -996.61
+ RE X20                 -996.31
+ RE X21                 -834.94
+ RE X22                 -834.66
+ RE X23                 -710.03
+ RE X24                 -530.16
+ RE X25                 -464.17
+
+ RE Y1                  0.252429
+ RE Y2                  0.252141
+ RE Y3                  0.251809
+ RE Y4                  0.297989
+ RE Y5                  0.296257
+ RE Y6                  0.295319
+ RE Y7                  0.339603
+ RE Y8                  0.337731
+ RE Y9                  0.333820
+ RE Y10                 0.389510
+ RE Y11                 0.386998
+ RE Y12                 0.438864
+ RE Y13                 0.434887
+ RE Y14                 0.427893
+ RE Y15                 0.471568
+ RE Y16                 0.461699
+ RE Y17                 0.461144
+ RE Y18                 0.513532
+ RE Y19                 0.506641
+ RE Y20                 0.505062
+ RE Y21                 0.535648
+ RE Y22                 0.533726
+ RE Y23                 0.568064
+ RE Y24                 0.612886
+ RE Y25                 0.624169
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)      B1        1.0
+ AM -X        X(I)      -1.0
+ ZE F(I)      B2                       -X
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  ROSZMAN1  F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR ROSZMAN1  'DEFAULT'
+
+START POINT
+
+    START1    B1        0.1     
+    START1    B2        -0.00001
+    START1    B3        1000.0  
+    START1    B4        -100.0  
+
+*  Alternative start point
+
+    START2    B1        0.2      
+    START2    B2        -0.000005
+    START2    B3        1200.0   
+    START2    B4        -150.0   
+
+ELEMENT TYPE
+
+ EV E7        V1
+ EV E7        V2
+ EP E7        X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E7
+ ZV E(I)      V1                       B3
+ ZV E(I)      V2                       B4
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO ROSZMAN1            0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      ROSZMAN1
+
+TEMPORARIES
+
+ R  PI
+ R  PIR
+ R  PIR2
+ R  V12
+ R  V13
+ R  V2MX
+ R  V2MX2
+ R  V2MX3
+ R  R
+ M  ATAN
+
+GLOBALS
+
+ A  PI                  4.0 * ATAN( 1.0 )
+
+INDIVIDUALS
+
+ T  E7
+ A  V12                 V1 * V1
+ A  V13                 V1 * V12
+ A  V2MX                V2 - X
+ A  V2MX2               V2MX * V2MX
+ A  V2MX3               V2MX * V2MX2
+ A  R                   V12 / V2MX2 + 1.0
+ A  PIR                 PI * R
+ A  PIR2                PIR * R
+ F                      - ATAN( V1 / V2MX ) / PI
+ G  V1                  - 1.0 / ( PIR * V2MX ) 
+ G  V2                  V1 / ( PIR * V2MX2 ) 
+ H  V1        V1        2.0 * V1 / ( PIR2 * V2MX3 ) 
+ H  V1        V2        1.0 / ( PIR * V2MX2 ) 
+ H+                     - 2.0 * V12 / ( PIR2 * V2MX ** 4 ) 
+ H  V2        V2        2.0 * V13 / ( PIR2 * V2MX ** 5 ) 
+ H+                     - 2.0 * V1 / ( PIR * V2MX3 ) 
+
+ENDATA

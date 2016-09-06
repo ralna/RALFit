@@ -1,0 +1,127 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          PENLT1NE
+
+*   Problem :
+*   *********
+
+*   This problem is a sum of n+1 least-squares groups, the first n of
+*   which have only a linear element.
+*   It Hessian matrix is dense. This is a nonlinear equation version
+*   of problem PENALTY1.
+
+*   Source:  Problem 23 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley #181 (p. 79).
+
+*   SIF input: Ph. Toint, Dec 1989.
+*   Modification as a set of nonlinear equations: Nick Gould, Oct 2015.
+
+*   classification NOR2-AN-V-0
+
+*   N is the number of free variables
+
+*IE N                   4              $-PARAMETER
+ IE N                   10             $-PARAMETER
+*IE N                   50             $-PARAMETER
+*IE N                   100            $-PARAMETER
+*IE N                   500            $-PARAMETER
+*IE N                   1000           $-PARAMETER
+*IE N                   20             $-PARAMETER
+
+ IA M         N         1
+
+*   Define useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        N
+ XE G(I)      X(I)      1.0
+ XE G(I)      'SCALE'   100000.0
+ ND
+
+ XE G(M)
+
+CONSTANTS
+
+ DO I         1                        N
+ X  PENALTY1  G(I)      1.0
+ ND
+
+ X  PENALTY1  G(M)      0.25
+
+BOUNDS
+
+ FR PENALTY1  'DEFAULT'
+
+START POINT
+
+ DO I         1                        N
+ RI REALI     I
+ Z  PENALTY1  X(I)                     REALI
+ ND
+
+ELEMENT TYPE
+
+ EV SQ        V1
+
+ELEMENT USES
+
+ DO I         1                        N
+ XT E(I)      SQ
+ ZV E(I)      V1                       X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        N
+ XE G(M)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO PENALTY1            0.0
+
+*   Solution
+
+*LO SOLTN(4)            2.24997D-4
+*LO SOLTN(10)           7.08765D-5
+*LO SOLTN(50)           ???
+*LO SOLTN(100)          ???
+*LO SOLTN(500)          ???
+*LO SOLTN(1000)         ???
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      PENLT1NE
+
+INDIVIDUALS
+
+*   Square type elements
+
+ T  SQ
+ F                      V1 * V1
+ G  V1                  V1 + V1
+ H  V1        V1        2.0
+
+ENDATA

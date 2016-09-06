@@ -1,0 +1,27 @@
+6                     error unit
+6                     normal output unit
+3                     controls the amount of printing --- set to 0, 1, 2 or 3
+3                     method used (1=dogleg, 2=AINT, 3=More-Sorensen, 4=gltr)
+9                     model used (1=first order, 2=Newton)
+1000                  maxits
+1                     TR update strategy		      
+0                     relative trust region? (1=relative)
+1.0                   TR scaling parameter
+100.0                 initial TR radius
+1e-8                  eta_successful
+1e-8                  eta_success_but_reduce
+0.9                   eta_very_successful
+2.0                   eta_too_successful
+2.0                   radius_increase
+0.5                   radius_reduce
+1.0E-7                absolute stopping tolerance
+1.0E-7                relative stopping tolerance
+2.0E-0                hybrid_tol
+1                     hybrid_switch_its
+3                     scale
+T                     output_progress_vectors
+F                     exact second derivatives
+44                    summary unit (not + = don't write)
+GN-Q-H_s3.out         summary file (max 20 chars)
+45                    iteration summary (not + = don't write)		    
+GN-Q-H_s3_iter.out    iteration summary file (max 20 chars)		      
