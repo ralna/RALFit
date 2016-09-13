@@ -15,3 +15,5 @@ RESULT=$?
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
 cd ../../
+
+exit 0

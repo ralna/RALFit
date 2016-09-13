@@ -6,8 +6,8 @@ before_install:
   - sudo apt-get install lcov
 
 script:
-  - ./makebuild
-  - ./makecov
+  - ./makebuild.sh
+  - ./makecov.sh
   
 # send data to codecov:
 after_success:

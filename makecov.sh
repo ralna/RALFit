@@ -22,3 +22,4 @@ cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.gcda ral_nlls_i
 cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.gcno ral_nlls_internal.gcno
 gcov ral_nlls_internal.f90
 
+exit 0
