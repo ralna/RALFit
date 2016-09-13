@@ -18,9 +18,8 @@ script:
   - mkdir coverage
   - cd coverage
   - cmake -DCMAKE_BUILD_TYPE=Debug ..
+  - make
   - make test_coverage
-  - cd test
-  - ./test  
   
 # send data to codecov:
 after_success:
