@@ -20,9 +20,9 @@ script:
   - cmake -DCMAKE_BUILD_TYPE=Debug ..
   - make
   - test/test
-  - cp CMakeFiles/ral_nlls.dir/src/ral_nlls_dtrs_double.f90.gcno .
-  - cp CMakeFiles/ral_nlls.dir/src/ral_nlls_symbols.f90.gcno .
-  - cp CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.gcno .
+  - cp CMakeFiles/ral_nlls.dir/src/ral_nlls_dtrs_double.f90.* .
+  - cp CMakeFiles/ral_nlls.dir/src/ral_nlls_symbols.f90.* .
+  - cp CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.* .
   
 # send data to codecov:
 after_success:
