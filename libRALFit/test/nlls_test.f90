@@ -128,6 +128,40 @@ program nlls_test
         write(*,*) 'info%status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
+     
+     ! Let's do a test where the regularization weight is non-zero
+     X(1) = 1.0
+     X(2) = 2.0
+     options%regularization_weight = 1e-2
+     options%regularization_power = 2.0_wp
+     call nlls_solve(n, m, X,                         &
+          eval_F, eval_J, eval_H, params,  &
+          options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge: non-zero regularization weight'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+
+     ! and, the same test with a regularization power of three:
+     X(1) = 1.0
+     X(2) = 2.0
+     options%regularization_weight = 1e-2
+     options%regularization_power = 3.0_wp
+     call nlls_solve(n, m, X,                         &
+          eval_F, eval_J, eval_H, params,  &
+          options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge: regularization_power = 3.0'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+
+
 
      ! now, let's do the tensor model...
      options%type_of_method = 2 ! regularization
