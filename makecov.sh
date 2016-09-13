@@ -1,0 +1,24 @@
+#!/bin/bash
+
+cd libRALFit
+mkdir coverage
+cd coverage
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 1
+test/test
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 2
+cd ../src
+#cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_dtrs_double.f90.gcda ral_nlls_dtrs_double.gcda
+#cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_dtrs_double.f90.gcno ral_nlls_dtrs_double.gcno
+#gcov ral_nlls_dtrs_double.f90
+#cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_symbols.f90.gcno ral_nlls_symbols.gcno
+#gcov ral_nlls_symbols.f90
+#cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_symbols.f90.gcno ral_nlls_double.gcno
+#gcov ral_nlls_double.f90
+cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.gcda ral_nlls_internal.gcda
+cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.gcno ral_nlls_internal.gcno
+gcov ral_nlls_internal.f90
+
