@@ -14,4 +14,6 @@ script:
   - ./test
   - ./nlls_c_test
   
-    
+# send data to codecov:
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
