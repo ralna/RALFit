@@ -1,0 +1,16 @@
+language: c
+sudo: required
+
+before_install:
+  - sudo apt-get install gfortran
+
+script:
+  - mkdir build
+  - cd build/
+  - cmake ..
+  - make
+  - cd test
+  - ./test
+  - ./nlls_c_test
+  
+    
