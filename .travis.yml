@@ -13,6 +13,13 @@ script:
   - cd test
   - ./test
   - ./nlls_c_test
+  - cd ..
+  - mkdir coverage
+  - cd coverage
+  - cmake -DCMAKE_BUILD_TYPE=Debug ..
+  - make
+  - cd test
+  - ./test  
   
 # send data to codecov:
 after_success:
