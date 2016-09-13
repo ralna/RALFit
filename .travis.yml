@@ -5,6 +5,7 @@ before_install:
   - sudo apt-get install gfortran
 
 script:
+  - cd RALFit/libRALFit/
   - mkdir build
   - cd build/
   - cmake ..
