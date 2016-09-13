@@ -3,6 +3,7 @@ sudo: required
 
 before_install:
   - sudo apt-get install gfortran
+  - sudo apt-get install lcov
 
 script:
   - cd libRALFit/
