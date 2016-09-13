@@ -116,6 +116,7 @@ program nlls_test
      options%tr_update_strategy = 1 ! default tr update
      options%print_level = 1
      options%exact_second_derivatives = .true.
+     options%calculate_svd_J = .true.
 
      call nlls_solve(n, m, X,                         &
           eval_F, eval_J, eval_H, params,  &
