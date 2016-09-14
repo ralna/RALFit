@@ -160,8 +160,25 @@ program nlls_test
         write(*,*) 'info%status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
-
-
+     options%regularization_weight = 0.0_wp
+     options%regularization_power = 0.0_wp
+     
+     ! now test optimal reg_order
+     X(1) = 1.0
+     X(2) = 2.0
+     options%type_of_method = 2
+     options%model = 1
+     options%reg_order = -1.0
+     call nlls_solve(n, m, X,                         &
+          eval_F, eval_J, eval_H, params,  &
+          options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge: negative reg_order'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
 
      ! now, let's do the tensor model...
      options%type_of_method = 2 ! regularization
