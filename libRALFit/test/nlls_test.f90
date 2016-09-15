@@ -117,51 +117,53 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
      
-     ! Let's do a test where the regularization weight is non-zero
-     call reset_default_options(options)
-     options%regularization = 1
-     options%regularization_term = 1e-2
-     options%regularization_power = 2.0_wp
-     call solve_basic(X,params,options,status)
-     if ( status%status .ne. 0 ) then
-        write(*,*) 'nlls_solve failed to converge: non-zero regularization weight'
-        write(*,*) 'NLLS_METHOD = ', options%nlls_method
-        write(*,*) 'MODEL = ', options%model
-        write(*,*) 'info%status = ', status%status
-        no_errors_main = no_errors_main + 1
-     end if
+     do i = 1,2
+        ! Let's do a test where the regularization weight is non-zero
+        call reset_default_options(options)
+        options%regularization = i
+        options%regularization_term = 1e-2
+        options%regularization_power = 2.0_wp
+        call solve_basic(X,params,options,status)
+        if ( status%status .ne. 0 ) then
+           write(*,*) 'nlls_solve failed to converge: non-zero regularization weight'
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'info%status = ', status%status
+           no_errors_main = no_errors_main + 1
+        end if
 
-     ! and, the same test with a regularization power of three:
-     call reset_default_options(options)
-     options%regularization = 1
-     options%regularization_term = 1e-2
-     options%regularization_power = 3.0_wp
-     call solve_basic(X,params,options,status)
-     if ( status%status .ne. 0 ) then
-        write(*,*) 'nlls_solve failed to converge: regularization_power = 3.0'
-        write(*,*) 'NLLS_METHOD = ', options%nlls_method
-        write(*,*) 'MODEL = ', options%model
-        write(*,*) 'info%status = ', status%status
-        no_errors_main = no_errors_main + 1
-     end if
+        ! and, the same test with a regularization power of three:
+        call reset_default_options(options)
+        options%regularization = i
+        options%regularization_term = 1e-2
+        options%regularization_power = 3.0_wp
+        call solve_basic(X,params,options,status)
+        if ( status%status .ne. 0 ) then
+           write(*,*) 'nlls_solve failed to converge: regularization_power = 3.0'
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'info%status = ', status%status
+           no_errors_main = no_errors_main + 1
+        end if
 
-     
-     ! now let's get regularization with model = 2
-     call reset_default_options(options)
-     options%regularization = 1
-     options%regularization_term = 1e-2
-     options%regularization_power = 3.0_wp
-     options%model = 2
-     options%exact_second_derivatives = .true.
-     call solve_basic(X,params,options,status)
-     if ( status%status .ne. 0 ) then
-        write(*,*) 'nlls_solve failed to converge: regularization_power = 3.0'
-        write(*,*) 'NLLS_METHOD = ', options%nlls_method
-        write(*,*) 'MODEL = ', options%model
-        write(*,*) 'info%status = ', status%status
-        no_errors_main = no_errors_main + 1
-     end if
-     
+
+        ! now let's get regularization with model = 2
+        call reset_default_options(options)
+        options%regularization = i
+        options%regularization_term = 1e-2
+        options%regularization_power = 3.0_wp
+        options%model = 2
+        options%exact_second_derivatives = .true.
+        call solve_basic(X,params,options,status)
+        if ( status%status .ne. 0 ) then
+           write(*,*) 'nlls_solve failed to converge: regularization_power = 3.0'
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'info%status = ', status%status
+           no_errors_main = no_errors_main + 1
+        end if
+     end do
+
      ! now test optimal reg_order
      call reset_default_options(options)
      options%type_of_method = 2
