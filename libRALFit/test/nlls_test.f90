@@ -198,7 +198,7 @@ program nlls_test
      options%model = 4 ! hybrid model
      options%exact_second_derivatives = .true.
 
-     do inner_method = 1,2
+     do inner_method = 1,4
         options%inner_method = inner_method
         call solve_basic(X,params,options,status)
         if ( status%status .ne. 0 ) then
