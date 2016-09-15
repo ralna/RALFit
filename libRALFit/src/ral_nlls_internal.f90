@@ -1992,7 +1992,7 @@ return
        real(wp) :: hf_local, p, sigma, normx
 
        ! given a Hessian, hf, update as required if solving a regularized problem
-       if (options%regularization == 3 ) then 
+       if (options%regularization == 2 ) then 
           p = options%regularization_power
           sigma = options%regularization_term
           normx = norm2(X(1:n))
