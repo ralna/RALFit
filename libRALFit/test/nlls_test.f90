@@ -392,6 +392,34 @@ program nlls_test
      end if
      status%status = 0
      
+     ! three tests for incorrect returns from eval_f/J/H
+     call reset_default_options(options)
+     n = 2
+     m = 67
+     options%exact_second_derivatives = .true.
+     do i = 1,3       
+        X = [1.0, 2.0]
+        select case (i)
+        case (1)
+           call nlls_solve(n, m, X,                         &
+                eval_F_error, eval_J, eval_H, params,  &
+                options, status )   
+        case (2)
+           call nlls_solve(n, m, X,                         &
+                eval_F, eval_J_error, eval_H, params,  &
+                options, status )   
+        case (3)
+           call nlls_solve(n, m, X,                         &
+                eval_F, eval_J, eval_H_error, params,  &
+                options, status )   
+        end select
+     end do
+     if ( status%status .ne. ERROR%EVALUATION ) then 
+        write(*,*) 'Error: error return from eval_x not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
      if (no_errors_main == 0) then
         write(*,*) '*** All (main) tests passed successfully! ***'
      else

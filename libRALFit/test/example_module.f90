@@ -56,6 +56,20 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        
      END SUBROUTINE eval_F
 
+     subroutine eval_F_error( status, n, m, X, f, params)
+       ! a fake eval_f to flag an error 
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n, m 
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(in) :: params
+
+       status = -1
+       
+     end subroutine eval_F_error
 
      SUBROUTINE eval_J( status, n, m, X, J, params)
 
@@ -108,10 +122,25 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      END SUBROUTINE eval_J
 
 
-SUBROUTINE eval_H( status, n, m, X, f, h, params)
+     subroutine eval_J_error( status, n, m, X, J, params)
+       ! a fake eval_J to flag an error 
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n, m 
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(in) :: params
+
+       status = -1
+       
+     end subroutine eval_J_error
+
+     SUBROUTINE eval_H( status, n, m, X, f, h, params)
 
 !  -------------------------------------------------------------------
-!  eval_F, a subroutine for evaluating the function f at a point X
+!  eval_H, a subroutine for evaluating the second derivative hessian terms
 !  -------------------------------------------------------------------
 
        USE ISO_FORTRAN_ENV
@@ -165,6 +194,25 @@ SUBROUTINE eval_H( status, n, m, X, f, h, params)
        
      END SUBROUTINE eval_H
 
+     subroutine eval_H_error( status, n, m, X, f, h, params)
+
+!  -------------------------------------------------------------------
+!  a fake eval_H for flagging an error
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n, m 
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: h
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(in) :: params
+
+       status = -1
+       
+     end subroutine eval_H_error
 
      subroutine generate_data_example(params)
        
