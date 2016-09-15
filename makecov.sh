@@ -21,5 +21,7 @@ cd ../src
 cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.gcda ral_nlls_internal.gcda
 cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_internal.f90.gcno ral_nlls_internal.gcno
 gcov ral_nlls_internal.f90
-
+cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_workspaces.f90.gcda ral_nlls_workspaces.gcda
+cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_workspaces.f90.gcno ral_nlls_workspaces.gcno
+gcov ral_nlls_workspaces.f90
 exit 0
