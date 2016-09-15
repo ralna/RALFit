@@ -1,7 +1,7 @@
 % The beginning summary section
 {\tt \fullpackagename} computes a solution $\vx$ to the non-linear least-squares problem
 \begin{equation}
-\min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_{\vW}^2,
+\min_\vx \  F(\vx) := \frac{1}{2}\| \vr(\vx) \|_{\vW}^2 + \frac{\sigma}{p}\| \vx\|_2^p,
 \label{eq:nlls_problem}
 \end{equation}
 where $\vW\in\mathbb{R}^{m\times m}$ is a diagonal, non-negative, weighting matrix, and $\vr(\vx) =(\comp[1]{r}(\vx), \comp[2]{r}(\vx),...,\comp[m]{r}(\vx))^T$ is a non-linear function.

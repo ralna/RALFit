@@ -3,6 +3,7 @@
 module ral_nlls_double
 
   use ral_nlls_internal
+  use ral_nlls_workspaces, only : params_base_type, nlls_options, nlls_inform, nlls_workspace
 
   implicit none
 
