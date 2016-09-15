@@ -106,9 +106,9 @@ program nlls_test
      options%inner_method = 2 
      options%print_level = 1
      options%exact_second_derivatives = .true.
-	 options%calculate_svd_J = .true.
-
-	 call solve_basic(X,params,options,status)
+     options%calculate_svd_J = .true.
+     
+     call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: regularization'
         write(*,*) 'NLLS_METHOD = ', options%nlls_method
@@ -118,13 +118,11 @@ program nlls_test
      end if
      
      ! Let's do a test where the regularization weight is non-zero
-     X(1) = 1.0
-     X(2) = 2.0
+     call reset_default_options(options)
+     options%regularization = 1
      options%regularization_term = 1e-2
      options%regularization_power = 2.0_wp
-     call nlls_solve(n, m, X,                         &
-          eval_F, eval_J, eval_H, params,  &
-          options, status )
+     call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: non-zero regularization weight'
         write(*,*) 'NLLS_METHOD = ', options%nlls_method
@@ -134,13 +132,11 @@ program nlls_test
      end if
 
      ! and, the same test with a regularization power of three:
-     X(1) = 1.0
-     X(2) = 2.0
+     call reset_default_options(options)
+     options%regularization = 1
      options%regularization_term = 1e-2
      options%regularization_power = 3.0_wp
-     call nlls_solve(n, m, X,                         &
-          eval_F, eval_J, eval_H, params,  &
-          options, status )
+     call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: regularization_power = 3.0'
         write(*,*) 'NLLS_METHOD = ', options%nlls_method
@@ -148,18 +144,13 @@ program nlls_test
         write(*,*) 'info%status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
-     options%regularization_term = 0.0_wp
-     options%regularization_power = 0.0_wp
      
      ! now test optimal reg_order
-     X(1) = 1.0
-     X(2) = 2.0
+     call reset_default_options(options)
      options%type_of_method = 2
      options%model = 1
      options%reg_order = -1.0
-     call nlls_solve(n, m, X,                         &
-          eval_F, eval_J, eval_H, params,  &
-          options, status )
+     call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: negative reg_order'
         write(*,*) 'NLLS_METHOD = ', options%nlls_method
