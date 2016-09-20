@@ -1,0 +1,11 @@
+.. list-table::
+
+    * - 1
+      - Powell's dogleg method (approximates the solution).
+    * - 2
+      - The Adachi-Iwata-Nakatsukasa-Takeda (AINT) method.
+    * - 3
+      - The More-Sorensen method.
+    * - 4
+      - ``Galahad``'s ``DTRS`` method if ``type_of_method=1``, or ``Galahad``'s 
+        ``DRQS`` method if ``type_of_method=2``.

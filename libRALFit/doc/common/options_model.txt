@@ -1,0 +1,10 @@
+.. list-table::
+	
+    * - 1 
+      - Gauss-Newton (no Hessian).
+    * - 2
+      - (Quasi-)Newton (uses exact Hessian if ``exact_second_derivatives`` is true, otherwise builds an approximation to the Hessian).
+    * - 3
+      - Hybrid method (mixture of Gauss-Newton/(Quasi-)Newton, as determined by the package).
+    * - 4
+      - Newton-tensor method.

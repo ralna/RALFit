@@ -1,0 +1,6 @@
+.. list-table::	
+   
+   * - 1 
+     - The current regularization parameter is passed in as a base regularization parameter.
+   * - 2
+     - The regularization term is added to the sum of squares to be solved in the inner problem.

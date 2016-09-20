@@ -1,0 +1,6 @@
+.. list-table::
+	 
+    * - 1 
+      - Trust-region method.
+    * - 2 
+      - Regularization.

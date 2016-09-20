@@ -1,0 +1,6 @@
+.. list-table::
+      
+    * - 1
+      - use the usual step function.
+    * - 2
+      - use a the continuous method.

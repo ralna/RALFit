@@ -1,0 +1,10 @@
+.. list-table::
+    
+    * - 0 
+      - No scaling is applied :math:`{\tt D} ={\tt I}`.
+    * - 1 
+      - Scale using the rows of the Jacobian, :math:`{\tt D}_{i,i} = \|{\tt J}(i,:)\|_2^2`.
+    * - 2 
+      - Scale using the rows of the Hessian,  
+        :math:`{\tt D}_{i,i} = \|{\tt H}(i,:)\|_2^2`, 
+        where :math:`{\tt H}` is the (approximation to) the Hessian matrix.
