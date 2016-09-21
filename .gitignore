@@ -13,6 +13,7 @@ libRALFit/build-compiled-lapack/*
 libRALFit/buildx/*
 libRALFit/coverage/*
 libRALFit/doc/Fortran/_build/*
+libRALFit/doc/C/_build/*
 src/data/*
 cutest/sif/*
 libRALFit/doc/ral_nlls.aux
