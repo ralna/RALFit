@@ -54,6 +54,8 @@ The second derivative is given by :math:`\nabla^2\widehat{\vr}_{m+1} = \left(\fr
 
 *Solved implicitly...* **todo**
 
+.. _models:
+
 The models
 ----------
 

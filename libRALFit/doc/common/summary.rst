@@ -25,8 +25,7 @@ For this reason we refer to the function :math:`\vr` as the *residual* function.
 
 The algorithm is iterative.
 At each point, :math:`\iter{\vx}`, the algorithm builds a model of the function at the next step, :math:`F({\iter{\vx}+\iter{\vs}})`, which we refer to as :math:`m_k(\cdot)`.  We allow either a Gauss-Newton model, a (quasi-)Newton model, or a Newton-tensor model; 
-see Section **TODO** \ref{sec:model_description} 
-for more details about these models.  
+see :ref:`models` for more details.
 
 Once the model has been formed we find a candidate for the next step by either solving a trust-region sub-problem of the form
 
