@@ -3,9 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-===============================================
-User Documentation for RALFit (Fortran version)
-===============================================
+===========================================
+User Documentation for RALFit (C interface)
+===========================================
 
 .. include:: ../common/summary.rst
 
