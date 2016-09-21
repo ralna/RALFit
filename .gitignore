@@ -10,6 +10,9 @@ libRALFit/build_cov/*
 libRALFit/build_test_install/*
 libRALFit/debug/*
 libRALFit/build-compiled-lapack/*
+libRALFit/buildx/*
+libRALFit/coverage/*
+libRALFit/doc/Fortran/_build/*
 src/data/*
 cutest/sif/*
 libRALFit/doc/ral_nlls.aux

@@ -15,6 +15,10 @@ User Documentation for RALFit
 
    howtouse.rst
 
+   method.rst
+
+   examples.rst
+
 Indices and tables
 ==================
 

@@ -1,3 +1,5 @@
+.. include:: macros.rst
+
 Description of the method used
 ==============================
 

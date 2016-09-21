@@ -1,5 +1,3 @@
-.. include:: ../common/options.rst
-
 .. default-domain:: Fortran
 
 How to use the package
@@ -304,6 +302,9 @@ Data types
 The derived data type for holding options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. include:: ../common/options.rst
+
+
 .. f:type:: nlls_options
 	    
    This is used to hold controlling data. The components  are automatically given default values in the definition of the type.
@@ -432,13 +433,54 @@ The derived data type for holding options
 The derived data type for holding information
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. include:: ../common/inform.rst
+
 .. f:type:: nlls_inform
 	    
    This is used to hold information about the progress of the algorithm.
 
+   :f integer status: |status|
+
+   :f character error_message(80): |error_message|
+
+   :f integer alloc_status: |alloc_status|
+
+   :f character bad_alloc(80): |bad_alloc|
+
+   :f integer iter: |iter|
+
+   :f integer f_eval: |f_eval|
+		      
+   :f integer g_eval: |g_eval|
+
+   :f integer h_eval: |h_eval|
+
+   :f integer convergence_normf: |convergence_normf|
+
+   :f integer convergence_normf: |convergence_normg|
+				
+   :f integer convergence_normf: |convergence_norms|
+				   
+   :f real resvec(iter+1): |resvec|
+
+   :f real resvec(iter+1): |gradvec|
+
+   :f real obj: |obj|
+
+   :f real norm_g: |norm_g|
+
+   :f real scaled_g: |scaled_g|
+
+   :f integer external_return: |external_return|
+   
+   :f character external_name(80): |external_name|
+   
 
 Warning and error messages
 --------------------------
 
+A successful return from a subroutine in the package is indicated by ``nlls_inform%status`` having the value zero.  A non-zero value is asscociated with an error message that will be output on ``nlls_options%error``
+
+.. include:: ../common/errors.rst
 
    
