@@ -20,7 +20,7 @@ Access to the package requires a ``USE`` statement
 
 The user can then call one of the procedures:
 
-:f:subr:`nlls_solve()` solves the non-linear least squares problem.
+|nlls_solve| solves the non-linear least squares problem.
 
 |nlls_iterate| performs one iteration of the non-linear least squares
 solver.
@@ -32,7 +32,7 @@ The derived data types
 ^^^^^^^^^^^^^^^^^^^^^^
 
 For each problem, the user must employ the derived types
-defined by the module to declare scalars of the types :f:type:`nlls_inform` and :f:type:`nlls_options`. 
+defined by the module to declare scalars of the types |nlls_inform| and |nlls_options|. 
 If |nlls_iterate| is to be used, then a scalar of the type :f:type:`nlls_workspace` must also be defined. 
 The following pseudocode illustrates this.
 
@@ -46,9 +46,7 @@ The following pseudocode illustrates this.
    ...
 
 
-The components of :f:type:`nlls_options` and 
-:f:type:`nlls_inform` are explained below in
-:ref:`data_types`.
+The components of |nlls_options| and |nlls_inform| are explained below in :ref:`data_types`.
 
 .. _arg-lists:
 
@@ -61,9 +59,8 @@ additional optional arguments in future releases of the code, **we
 strongly recommend that all optional arguments be called by keyword, not
 by position**.
 
-The term **package type** is used to mean default real if the single
-precision version is being used and double precision real for the double
-precision version.
+The term **package type** is used to mean double precision.
+
 
 To solve the non-linear least squares problem
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
