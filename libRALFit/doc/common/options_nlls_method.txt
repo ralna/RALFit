@@ -9,3 +9,5 @@
     * - 4
       - ``Galahad``'s ``DTRS`` method if ``type_of_method=1``, or ``Galahad``'s 
         ``DRQS`` method if ``type_of_method=2``.
+
+See :ref:`subproblem-solves` for details.

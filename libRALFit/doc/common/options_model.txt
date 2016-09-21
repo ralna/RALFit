@@ -8,3 +8,5 @@
       - Hybrid method (mixture of Gauss-Newton/(Quasi-)Newton, as determined by the package).
     * - 4
       - Newton-tensor method.
+
+See :ref:`models` for details.

@@ -342,6 +342,16 @@ The derived data type for holding options
 						    
    :f logical exact_second_derivatives [default=false]: |exact_second_derivatives|
 
+   **Solving a regularized problem**
+
+   :f integer regularization [default=0]: |regularization|
+					  
+					  .. include:: ../common/options_regularization.txt
+					  
+   :f real regularization_term [default=0.0]: |regularization_term|
+						
+   :f real regularization_power [default=0.0]: |regularization_power|
+
 
    **Stopping rules**
 
@@ -382,10 +392,6 @@ The derived data type for holding options
 
 					      .. include:: ../common/options_tr_update_strategy.txt
 	 
-   :f real regularization_weight [default=0.0]: |regularization_weight|
-						
-   :f real regularization_power [default=0.0]: |regularization_power|
-
    **Scaling options**
    
    :f integer scale [default=1]: |scale|

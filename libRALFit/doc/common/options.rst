@@ -38,7 +38,11 @@
 
 .. |initial_radius| replace:: specifies the initial trust-region radius, :math:`\Delta`.
 
-.. |regularization_weight| replace:: specifies the regularization weight, :math:`\sigma`, used in the least-squares problem.
+.. |regularization| replace:: specifies if a regularized non-linear least squares 
+			      problem needs to be solves, and if so, what method is 
+			      used to solve it.  Possible values are:
+
+.. |regularization_term| replace:: specifies the regularization weight, :math:`\sigma`, used in the least-squares problem.
 
 .. |regularization_power| replace:: specifies the regularization weight, :math:`p`, used in the least-squares problem.
 
