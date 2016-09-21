@@ -1,5 +1,7 @@
 .. default-domain:: Fortran
 
+.. include:: macros.rst
+
 How to use the package
 ======================
 
@@ -19,10 +21,11 @@ Access to the package requires a ``USE`` statement
 The user can then call one of the procedures:
 
 :f:subr:`nlls_solve()` solves the non-linear least squares problem.
-(**TODO**: link)
 
-:f:subr:`nlls_iterate()` performs one iteration of the non-linear least squares
+|nlls_iterate| performs one iteration of the non-linear least squares
 solver.
+
+The calling sequences of these subroutines are outlined in :ref:`arg-lists`.
 
 
 The derived data types
@@ -30,7 +33,7 @@ The derived data types
 
 For each problem, the user must employ the derived types
 defined by the module to declare scalars of the types :f:type:`nlls_inform` and :f:type:`nlls_options`. 
-If :f:subr:`nlls_iterate()` is to be used, then a scalar of the type :f:type:`nlls_workspace` must also be defined. 
+If |nlls_iterate| is to be used, then a scalar of the type :f:type:`nlls_workspace` must also be defined. 
 The following pseudocode illustrates this.
 
 .. code-block:: Fortran
@@ -44,8 +47,10 @@ The following pseudocode illustrates this.
 
 
 The components of :f:type:`nlls_options` and 
-:f:type:`nlls_inform` are explained in
-Sections **TODO**
+:f:type:`nlls_inform` are explained below in
+:ref:`data_types`.
+
+.. _arg-lists:
 
 Argument lists and calling sequences
 ------------------------------------
@@ -80,20 +85,20 @@ To solve the non-linear least squares problem
    :p procedure eval_r: given a point :math:`{\bm x} _{k}^{}`, 
 		 returns the vector :math:`{\bm r} ({\bm x} _{k}^{})`. 
 		 Further details of the format required are given in 
-		 Section **TODO**.
+		 :f:subr:`eval_r` in :ref:`user-routines`.
    :p procedure eval_J: given a point :math:`{\bm x} _{k}^{}`, 
 			returns the :math:`m \times n` Jacobian matrix, 
 			:math:`{\bm J} _{k}^{}`, of :math:`{\bm r}` evaluated at 
 			:math:`{\bm x} _{k}^{}`. 
 			Further details of the format required are given in
-			Section **TODO**.
+			:f:subr:`eval_J` in :ref:`user-routines`.
    :p procedure eval_Hf: given vectors :math:`{\bm x} \in \mathbb{R}^n` and
 			 :math:`{\bm r} \in \mathbb{R}^m`, 
 			 returns the quantity
 			 :math:`\sum_{i=1}^m ( {\bm r} )_i \nabla^2  {\bm r} _i ( {\bm x} )`.
 			 Further details of the format required are given in
-			 Section **TODO**. 
-			 If ``nlls_options%exact_second_derivative = .false.``, 
+			 :f:subr:`eval_Hf` in :ref:`user-routines`.
+			 If ``exact_second_derivative = .false.`` in |nlls_options|, 
 			 then this is not referenced.
 
    :p params_base_type params [in]: holds parameters to be
@@ -102,18 +107,18 @@ To solve the non-linear least squares problem
 				    :f:subr:`eval_J()`, 
 				    and :f:subr:`eval_Hf()`.
 				    Further details of its use are given in
-				    Section **todo**
+				    :ref:`user-routines`.
 
    :p nlls_options options [in]: controls execution of algorithm.
 
    :p nlls_inform inform [out]:  components provide information
-				 about the execution of the subroutine, as explained in
-				 Section **todo**.
+				 about the execution of the subroutine.
 
    :o real weights(n):  If present,
 			this holds the square-roots of the diagonal entries of the weighting
-			matrix, :math:`{\bm W}`, in **todo:ref**. 
-			If absent, then the norm in **todo::ref** is taken to be the 2-norm,
+			matrix, :math:`{\bm W}`. 
+			If absent, then the norm in the least squares problem 
+			is taken to be the 2-norm,
 			that is, :math:`{\bm W} = I`.
 
 To iterate once
@@ -132,23 +137,25 @@ To iterate once
 			 :math:`\bm x`. On return it holds the value of 
 			 :math:`\bm x` at the current iterate, 
 			 and must be passed unaltered to any subsequent 
-			 call to :f:subr:`nlls_iterate()`.
+			 call to |nlls_iterate|.
 
    :p nlls_workspace w [inout]: is used to store the
-				current state of the iteration and should not be altered by the
-				user.
+				current state of the iteration and should 
+				not be altered by the user.
 
-The user may use the components ``info%convergence_normf`` and
-``info%convergence_normg`` to determine whether the iteration has
+The user may use the components ``convergence_normf`` and
+``convergence_normg`` and ``converge_norms`` in |nlls_inform| to determine whether the iteration has
 converged.
+
+.. _user-routines:
 
 User-supplied function evaluation routines
 ------------------------------------------
 
-To evaluate the residual, Jacobian and Hessian at a point, the user must
-supply subroutines that perform this operation that **RALFit** will call internally.
+The user must supply routines to evaluate the residual, Jacobian and Hessian 
+at a point.  **RALFit** will call these routines internally.
 
-In order to pass user-defined data into the evaluation calls, :f:type::`params_base_type` is extended to a :f:type::`user_type`, as follows:
+In order to pass user-defined data into the evaluation calls, :f:type:`params_base_type` is extended to a :f:type:`user_type`, as follows:
 
 .. code-block:: Fortran
 
@@ -192,18 +199,18 @@ interface:
 .. f:subroutine:: eval_r(n,m,params,x,r,status)
    
    :p integer n [in]: is passed unchanged as provided in the call to
-		  :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+		  |nlls_solve|/|nlls_iterate|.
    :p integer m [in]: is passed unchanged as provided in the call to
-		  :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+		  |nlls_solve|/|nlls_iterate|.
    :p params_base_type params [in]: is passed unchanged as provided in the call to
-      :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+      |nlls_solve|/|nlls_iterate|.
    :p real X(n) [in]: holds the current point :math:`{\bm x}_{k}^{}` at which to evaluate
       :math:`{\bm r} ( {\bm x} _{k}^{})`.
    :p real r(m) [out]: must be set by the routine to hold the residual function evaluated at
       the current point :math:`{\bm x} _{k}^{}`, :math:`{\bm r} ({\bm x} _{k}^{})`.
    :p integer status [inout]: is initialised to ``0`` before the routine is called. 
 			   If it is set to a non-zero value by the routine, 
-			   then :f:subr:`nlls_solve()` / :f:subr:`nlls_iterate()`
+			   then |nlls_solve| / |nlls_iterate|
 			   will exit with error.
 
 For evaluating the function :math:`{\bm J} = \nabla  {\bm r} ( {\bm x} )`
@@ -229,11 +236,11 @@ A subroutine must be supplied to calculate
 .. f:subroutine:: eval_J(n,m,params,x,J,status)
    
    :p integer n [in]: is passed unchanged as provided in the call to
-		  :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+		  |nlls_solve|/|nlls_iterate|.
    :p integer m [in]: is passed unchanged as provided in the call to
-		  :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+		  |nlls_solve|/|nlls_iterate|.
    :p params_base_type params [in]: is passed unchanged as provided in the call to
-      :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+      |nlls_solve|/|nlls_iterate|.
    :p real X(n) [in]: holds the current point :math:`{\bm x}_{k}^{}` at which to evaluate
       :math:`{\bm J} (  {\bm x} _{k}^{})`.
    :p real J(m*n) [out]: must be set by the routine to 
@@ -244,7 +251,7 @@ A subroutine must be supplied to calculate
 			 :math:`\nabla_{x_j} r_i(  {\bm x} _{k}^{})`.
    :p integer status [inout]: is initialised to ``0`` before the routine is called. 
 			   If it is set to a non-zero value by the routine, 
-			   then :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`
+			   then |nlls_solve|/|nlls_iterate|
 			   will exit with error.
 
 
@@ -276,16 +283,16 @@ subroutine must implement the following interface:
 .. f:subroutine:: eval_Hf(n,m,params,x,r,Hf,status)
    
    :p integer n [in]: is passed unchanged as provided in the call to
-		  :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+		  |nlls_solve|/|nlls_iterate|.
    :p integer m [in]: is passed unchanged as provided in the call to
-		  :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+		  |nlls_solve|/|nlls_iterate|.
    :p params_base_type params [in]: is passed unchanged as provided in the call to
-      :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`.
+      |nlls_solve|/|nlls_iterate|.
    :p real X(n) [in]: holds the current point :math:`{\bm x}_{k}^{}` at which to evaluate
       :math:`\sum_{i=1}^m ( {\bm r} )_i \nabla^2 r_i( {\bm x} )`.
    :p real r(m) [in]: holds :math:`{\bm W}  {\bm r} ( {\bm x} )`, the (weighted) 
 		      residual, as computed from vector returned by the last call 
-		      to :f:subr::`eval_r()`.
+		      to :f:subr:`eval_r()`.
    :p real Hf(n*n) [out]: must be set by the routine to hold the matrix
       :math:`\sum_{i = 1}^m ( {\bm r} )_{i}\nabla^2 r_{i}^{}(  {\bm x} _{k}^{})`,
       held by columns as a vector, where :math:`( {\bm r} )_i`
@@ -293,8 +300,10 @@ subroutine must implement the following interface:
       the vector passed to the routine.
    :p integer status [inout]: is initialised to ``0`` before the routine is called. 
 			   If it is set to a non-zero value by the routine, 
-			   then :f:subr:`nlls_solve()`/:f:subr:`nlls_iterate()`
+			   then |nlls_solve|/|nlls_iterate|
 			   will exit with error.
+
+.. _data_types:
 
 Data types
 ----------
@@ -476,10 +485,15 @@ The derived data type for holding information
    :f character external_name(80): |external_name|
    
 
+.. _errors:
+
 Warning and error messages
 --------------------------
 
-A successful return from a subroutine in the package is indicated by ``nlls_inform%status`` having the value zero.  A non-zero value is asscociated with an error message that will be output on ``nlls_options%error``
+A successful return from a subroutine in the package is indicated by ``status``
+in |nlls_inform| having the value zero.  
+A non-zero value is asscociated with an error message,
+which will be output on ``error`` in |nlls_inform|.
 
 .. include:: ../common/errors.rst
 

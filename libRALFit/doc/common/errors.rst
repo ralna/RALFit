@@ -35,12 +35,12 @@ Possible values are:
     * - -202
       -  Matrix with odd number of columns sent to ``max_eig`` subroutine (``nlls_method=2``).
     * - -301
-      - ``nlls_options\ct more_sorensen_max_its`` is exceeded in ``more_sorensen`` subroutine (``nlls_method=3``).
+      - ``more_sorensen_max_its`` is exceeded in ``more_sorensen`` subroutine (``nlls_method=3``).
     * - -302
       - Too many shifts taken in ``more_sorensen`` subroutine (``nlls_method=3``).
     * - -303
       -  No progress being made in ``more_sorensen`` subroutine (``nlls_method=3``).
     * - -401
-      - ``nlls_options``\ct ``model = 4`` selected, but ``nlls_options``\ct ``exact_second_derivatives`` is set to ``false``. 
+      - ``model = 4`` selected, but ``exact_second_derivatives`` is set to ``false``. 
     * - -501
-      - ``nlls_options``\ct ``type_of_method = 2`` selected, but ``nlls_options``\ct ``type_of_method`` is not equal to {\tt 4}.
+      - ``type_of_method = 2`` selected, but ``nlls_method`` is not equal to {\tt 4}.

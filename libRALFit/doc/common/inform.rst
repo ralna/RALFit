@@ -1,4 +1,4 @@
-.. |status| replace:: gives the exit status of the subroutine.  See Section~\ref{hslerrors} for details.
+.. |status| replace:: gives the exit status of the subroutine.  See :ref:`errors` for details.
 
 .. |error_message| replace:: holds the error message corresponding to the exit status.
 
@@ -20,9 +20,9 @@
 
 .. |convergence_norms| replace:: that tells us if the test on the step length is satisfied.
 
-.. |resvec| replace:: if ``nlls_options\ct output_progress_vectors=true``, holds the vector of residuals.
+.. |resvec| replace:: if ``output_progress_vectors=true`` in |nlls_options|, holds the vector of residuals.
 
-.. |gradvec| replace:: if ``nlls_options\ct output_progress_vectors=true``, holds the vector of gradients.
+.. |gradvec| replace:: if ``output_progress_vectors=true`` in |nlls_options|, holds the vector of gradients.
 
 .. |obj| replace:: holds the value of the objective function at the best estimate of the solution determined by the algorithm.
 

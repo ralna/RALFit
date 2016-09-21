@@ -20,6 +20,48 @@ or a regularized problem
       
    \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{p} \|\vs\|_B^p,
 
+The algorithm is iterative.
+At each point, :math:`\iter{\vx}`, the algorithm builds a model of the function at the next step, :math:`F({\iter{\vx}+\iter{\vs}})`, which we refer to as :math:`m_k(\cdot)`.  We allow either a Gauss-Newton model, a (quasi-)Newton model, or a Newton-tensor model; 
+see :ref:`models` for more details.
+
+Once the model has been formed we find a candidate for the next step by either solving a trust-region sub-problem of the form
+
+.. math:: 
+
+  \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs) \quad \mathrm{s.t.} \quad  \|\vs\|_B \leq \Delta_k,
+
+or by solving the regularized problem 
+
+.. math::
+
+   \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{p} \|\vs\|_B^p,
+
+where :math:`\Delta_k` is a parameter of the algorithm 
+(the trust region radius or the inverse of the regularization parameter respectively), 
+:math:`p` is a given integer, and 
+:math:`B` is a symmetric positive definite weighting matrix that is calculated by the algorithm.
+The quantity
+
+.. math::
+   
+   \rho = \frac{F(\iter{\vx}) - F(\iter{\vx} + \iter{\vs})}{\iter{m}(\iter{\vx}) - \iter{m}(\iter{\vx} + \iter{\vs})}
+
+is then calculated.
+If this is sufficiently large we accept the step, and 
+:math:`\iter[k+1]{\vx}` is set to 
+:math:`\iter{\vx} + \iter{\vs}`; if not, the parameter 
+:math:`\Delta_k` is reduced and  the resulting new trust-region sub-problem is solved.  
+If the step is very successful -- in that 
+:math:`\rho` is close to one --
+:math:`\Delta_k` is increased.
+
+This process continues until either the residual, 
+:math:`\|\vr(\iter{\vx})\|_\vW`, or a measure of the gradient,
+:math:`\|{\iter{\vJ}}^T\vW\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_\vW`, 
+is sufficiently small.
+
+
+
 Incorporating the regularization term
 -------------------------------------
 
@@ -61,7 +103,7 @@ The models
 
 A vital component of the algorithm is the choice of model employed.
 There are four choices available, controlled by the parameter
-``model`` of the ``nlls_options`` |struct|.
+``model`` of |nlls_options|.
 
 ``model = 1``
   this implements the **Gauss-Newton** model. Here we
@@ -147,12 +189,11 @@ of subroutines. The most vital is the subroutine ``calculate_step``, which
 finds a step that minimizes the model chosen, subject to a globalization
 strategy. The algorithm supports the use of two such strategies: using a
 trust-region, and regularization. If Gauss-Newton, (quasi-)Newton, or a
-hybrid method is used (``model = 1,2,3`` in the ``nlls_options`` |struct|), 
+hybrid method is used (``model = 1,2,3`` in |nlls_options|), 
 then the model function is
 quadratic, and the methods available to solve the subproblem are
-described in Sections :ref:`trust-region` and :ref:`regularization`. 
-If the Newton-Tensor model is selected (``model = 4`` in the 
-``nlls_options`` |struct|), then this model
+described in :ref:`sec_tr` and :ref:`sec_reg`. 
+If the Newton-Tensor model is selected (``model = 4`` in |nlls_options|), then this model
 is not quadratic, and the methods available are described in
 :ref:`newton-tensor-subproblem`.
 
@@ -231,6 +272,8 @@ this subproblem is supported:
   Galahad routine DRQS; see the Galahad [3]_ documentation for further
   details.
 
+.. _newton-tensor-subproblem:
+
 Newton-Tensor subproblem
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -294,7 +337,7 @@ parameter, as appropriate, should grow, shrink, or remain the same.
 These decisions are made with reference to a parameter, :math:`\rho`,
 which measures the ratio of the actual reduction in the model to the
 predicted reduction in the model. If this is larger than
-``eta_successful`` in the ``options`` |struct|, then the step 
+``eta_successful`` in |nlls_options|, then the step 
 ise accepted  **TODO** (see Line 28 of Algorithm[ alg:nlls_solve]).
 
 The value of :math:`\Delta_k` then needs to be updated, if appropriate.

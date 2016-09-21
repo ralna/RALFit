@@ -4,13 +4,16 @@
    contain the root `toctree` directive.
 
 ===============================================
-User Documentation for RALFit (Fortran edition)
+User Documentation for RALFit (Fortran version)
 ===============================================
+
+.. include:: ../common/summary.rst
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
-
-   summary.rst
 
    install.rst
 

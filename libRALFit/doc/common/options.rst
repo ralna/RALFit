@@ -14,7 +14,7 @@
 .. !|  3 | As 2, plus gives more verbose (debugging) output.                      |
 .. !+----+------------------------------------------------------------------------+
 
-.. |maxit| replace:: gives the number of iterations the algorithm is allowed to take before being stopped.  This is not accessed if ``nlls_iterate()`` is used. 
+.. |maxit| replace:: gives the number of iterations the algorithm is allowed to take before being stopped.  This is not accessed if |nlls_iterate| is used. 
 
 .. |model| replace:: specifies the model, :math:`m_k(\cdot)`, used.  Possible values are:
 
@@ -36,11 +36,11 @@
 
 .. |initial_radius_scale| replace:: specifies the scaling parameter for the initial trust region radius, which is only used if ``relative_tr_radius = 1``.
 
-.. |initial_radius| replace:: that specifies the initial trust-region radius, :math:`\Delta`.
+.. |initial_radius| replace:: specifies the initial trust-region radius, :math:`\Delta`.
 
-.. |regularization_weight| replace:: that specifies the regularization weight, :math:`\sigma`, used in the least-squares problem.
+.. |regularization_weight| replace:: specifies the regularization weight, :math:`\sigma`, used in the least-squares problem.
 
-.. |regularization_power| replace:: that specifies the regularization weight, :math:`p`, used in the least-squares problem.
+.. |regularization_power| replace:: specifies the regularization weight, :math:`p`, used in the least-squares problem.
 
 .. |maximum_radius| replace:: specifies the maximum size permitted for the trust-region radius.
 
@@ -50,7 +50,7 @@
 
 .. |eta_very_successful| replace:: specifies the value of :math:`\rho` after which the trust-region radius is increased.
 
-.. |eta_too_successful| replace:: that specifies that value of :math:`\rho` after which the step is accepted, but keep the trust-region radius unchanged.
+.. |eta_too_successful| replace:: specifies that value of :math:`\rho` after which the step is accepted, but keep the trust-region radius unchanged.
 
 .. |radius_increase| replace:: specifies the factor to increase the trust-region radius by.
 
@@ -60,7 +60,7 @@
 
 .. |hybrid_switch| replace:: specifies the value, if ``model=3``, at which second derivatives are used.
 
-.. |exact_second_derivatives| replace:: that, if ``true``, signifies that the exact second derivatives are available (and, if ``false``, approximates them using a secant method).
+.. |exact_second_derivatives| replace:: if ``true``, signifies that the exact second derivatives are available (and, if ``false``, approximates them using a secant method).
 
 .. |scale| replace:: specifies how, if at all, we scale the Jacobian.  We calculate a diagonal scaling matrix, :math:`{\tt D}`, as follows: 
 
