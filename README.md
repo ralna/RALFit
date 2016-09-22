@@ -19,7 +19,7 @@ make
 
 The package is written in modern Fortran, and we provide a number of interfaces for other languages.  For documentation, follow the links below:
 
-Fortran Documentation [![Fortran doc](https://readthedocs.org/projects/ralfit-fortran/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Fortran/en/latest/?badge=latest)
+[![Fortran doc](https://readthedocs.org/projects/ralfit-fortran/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Fortran/en/latest/?badge=latest) Documentation for Fortran version.
 
-C Documentation [![C doc](https://readthedocs.org/projects/ralfit-c/badge/?version=latest)](http://ralfit.readthedocs.io/projects/C/en/latest/?badge=latest)
+[![C doc](https://readthedocs.org/projects/ralfit-c/badge/?version=latest)](http://ralfit.readthedocs.io/projects/C/en/latest/?badge=latest) Documentation for C interface.
 
