@@ -74,4 +74,4 @@ to the data:
 | y | 3.0 | 4.0 | 6.0 | 11.0 | 20.0 |
 +---+-----+-----+-----+------+------+
 
-.. literalinclude:: ../example/Python/solve.py
+.. literalinclude:: ../../example/Python/solve.py

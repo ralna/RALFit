@@ -1,17 +1,9 @@
-============
-Installation
-============
+.. include:: ../common/install.rst
 
-First, build the non-python part of the library:
+Building the Python interface
+-----------------------------
 
-.. code::
-
-   mkdir build
-   cd build
-   ../configure
-   make
-
-Then, run the distutils build script:
+Run the `distutils` build script:
 
 .. code::
 
