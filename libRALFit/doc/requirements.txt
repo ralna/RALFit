@@ -1,0 +1,5 @@
+#
+## requirements.txt ##
+#
+
+sphinx-fortran
