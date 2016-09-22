@@ -459,8 +459,6 @@ The derived data type for holding options
 		 .. include:: ../common/options_inner_method.txt		      
 		 Default is 2.
 
-   **TODO** check this!
-
    **More-Sorensen options**  These options are used if ``nlls_method=3``
    
    .. c:member:: int more_sorensen_maxits

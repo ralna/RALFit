@@ -3,4 +3,6 @@
    * - 1 
      - The current regularization parameter is passed in as a base regularization parameter.
    * - 2
-     - The regularization term is added to the sum of squares to be solved in the inner problem.
+     - A larger non-linear least squares problem is explicitly formed to be solved as the subproblem.
+   * - 3
+     - The regularization is handled implicitly by calling **RALFit** recursively.
