@@ -17,4 +17,9 @@ cmake ..
 make
 ```
 
-Documentation and usage instructions can be found in the `libRALFit/doc/` directory.
+The package is written in modern Fortran, and we provide a number of interfaces for other languages.  For documentation, follow the links below:
+
+Fortran Documentation [![Fortran doc](https://readthedocs.org/projects/ralfit-fortran/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Fortran/en/latest/?badge=latest)
+
+C Documentation [![C doc](https://readthedocs.org/projects/ralfit-c/badge/?version=latest)](http://ralfit.readthedocs.io/projects/C/en/latest/?badge=latest)
+
