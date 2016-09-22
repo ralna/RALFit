@@ -3,3 +3,4 @@
 #
 
 sphinx-fortran
+Sphinx>=1.4.3
