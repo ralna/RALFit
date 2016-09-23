@@ -25,16 +25,16 @@ def J(x, t, y):
 
 # Calculate:
 # Hr = sum_i r_i H_i
-# Where H_i = [ 1                t_i e^(x_2 t_i)    ]
-#             [ t_i e^(x_2 t_i)  t_i^2 e^(x_2 t_i)  ]
+# Where H_i = [ 0                     t_i x_1 e^(x_2 t_i)    ]
+#             [ t_i x_1 e^(x_2 t_i)   x_1 t_i^2 e^(x_2 t_i)  ]
 def Hr(x, r, t, y):
     x1 = x[0]; x2 = x[1]
 
     Hr = numpy.zeros((2,2))
-    Hr[0,0] = numpy.sum(r)              # H_11
+    Hr[0,0] = 0.0                       # H_11
     v = t * numpy.exp(x2*t)
     Hr[1,0] = numpy.dot(r, v)           # H_21
-    Hr[1,1] = numpy.dot(r, t*v)         # H_22
+    Hr[1,1] = numpy.dot(r, (t*x1)*v)    # H_22
 
     return Hr
 
@@ -48,7 +48,7 @@ x0 = numpy.array([2.5, 0.25])
 # Call fitting routine
 (x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=(t,y),
         options = {
-            'print_level': 0
+            'print_level': 1
             }
         )
 
