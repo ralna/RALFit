@@ -14,6 +14,7 @@ libRALFit/buildx/*
 libRALFit/coverage/*
 libRALFit/doc/Fortran/_build/*
 libRALFit/doc/C/_build/*
+libRALFit/doc/Python/_build/*
 src/data/*
 cutest/sif/*
 libRALFit/doc/ral_nlls.aux
@@ -24,6 +25,7 @@ libRALFit/doc/nlls_c.pdf
 libRALFit/doc/nlls_c.synctex.gz
 libRALFit/doc/nlls_fortran.pdf
 libRALFit/doc/nlls_fortran.synctex.gz
+libRALFit/doc/_build/*
 libRALFit/doc/spec.aux
 libRALFit/doc/spec.fdb_latexmk
 libRALFit/test/comparison_tests/data/*
