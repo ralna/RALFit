@@ -3,23 +3,33 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ral_nlls's documentation!
-====================================
+================================================
+User Documentation for RALFit (Python interface)
+================================================
 
-Contents:
+.. include:: ../common/summary.rst
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
 
-   install
+   install.rst
+
+   howtouse.rst
+
    ral_nlls
 
+   method.rst
+
+   examples.rst
+   
 
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 
