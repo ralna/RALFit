@@ -545,11 +545,11 @@ The derived data type for holding information
 		 
 		 |convergence_normf|
 
-   .. c:member:: int convergence_normf
+   .. c:member:: int convergence_normg
 		 
 		 |convergence_normg|
 				
-   .. c:member:: int convergence_normf 
+   .. c:member:: int convergence_norms 
 
 		 |convergence_norms|
 				   
@@ -557,7 +557,7 @@ The derived data type for holding information
 		 
 		 |resvec|
 
-   .. c:member:: double resvec(iter+1)
+   .. c:member:: double gradvec(iter+1)
 		 
 		 |gradvec|
 
