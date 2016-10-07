@@ -177,6 +177,24 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          PyErr_SetString(PyExc_RuntimeError, "Non-string option, can't interpret!");
          return false;
       }
+      if(strcmp(key_name, "error")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['error'] must be an integer.");
+	  return false;
+	}
+	options->error = (int) v;
+	continue;
+      }
+      if(strcmp(key_name, "out")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['out'] must be an integer.");
+	  return false;
+	}
+	options->out = (int) v;
+	continue;
+      }
       if(strcmp(key_name, "print_level")==0) {
          long v = PyInt_AsLong(value);
          if(v==-1 && PyErr_Occurred()) {
@@ -204,6 +222,15 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          options->model = (int) v;
          continue;
       }
+      if(strcmp(key_name, "type_of_method")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['type_of_method'] must be an integer.");
+	  return false;
+	}
+	options->type_of_method = (int) v;
+	continue;
+      }
       if(strcmp(key_name, "nlls_method")==0) {
          long v = PyInt_AsLong(value);
          if(v==-1 && PyErr_Occurred()) {
@@ -212,6 +239,15 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          }
          options->nlls_method = (int) v;
          continue;
+      }
+      if(strcmp(key_name, "lls_solver")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['lls_solver'] must be an integer.");
+	  return false;
+	}
+	options->lls_solver = (int) v;
+	continue;
       }
       if(strcmp(key_name, "stop_g_absolute")==0) {
          double v = PyFloat_AsDouble(value);
@@ -231,6 +267,39 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          options->stop_g_relative = v;
          continue;
       }
+
+      
+      if(strcmp(key_name, "stop_f_absolute")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['stop_f_absolute'] must be a float.");
+	  return false;
+	}
+	options->stop_f_absolute = v;
+	continue;
+      }
+      
+      if(strcmp(key_name, "stop_f_relative")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['stop_f_relative'] must be a float.");
+	  return false;
+	}
+	options->stop_f_relative = v;
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "stop_s")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['stop_s'] must be a float.");
+	  return false;
+	}
+	options->stop_s = v;
+	continue;
+      }
+      
       if(strcmp(key_name, "relative_tr_radius")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
@@ -258,6 +327,39 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          options->initial_radius = v;
          continue;
       }
+
+      if(strcmp(key_name, "regularization")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['regularization'] must be an integer.");
+	  return false;
+	}
+	options->regularization = (int) v;
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "regularization_term")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['regularization_term'] must be a float.");
+	  return false;
+	}
+	options->regularization_term = v;
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "regularization_power")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['regularization_power'] must be a float.");
+	  return false;
+	}
+	options->regularization_power = v;
+	continue;
+      }
+      
       if(strcmp(key_name, "maximum_radius")==0) {
          double v = PyFloat_AsDouble(value);
          if(v==-1.0 && PyErr_Occurred()) {
@@ -333,12 +435,13 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
       if(strcmp(key_name, "tr_update_strategy")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
-            PyErr_SetString(PyExc_RuntimeError, "options['tr_update_strategy'] must be a float.");
+            PyErr_SetString(PyExc_RuntimeError, "options['tr_update_strategy'] must be an integer.");
             return false;
 	}
-	options->tr_update_strategy = v;
+	options->tr_update_strategy = (int) v;
 	continue;
       }
+      
       if(strcmp(key_name, "hybrid_switch")==0) {
          double v = PyFloat_AsDouble(value);
          if(v==-1.0 && PyErr_Occurred()) {
@@ -362,6 +465,7 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	options->scale = v;
 	continue;
       }
+      
       if(strcmp(key_name, "scale_max")==0) {
          double v = PyFloat_AsDouble(value);
          if(v==-1.0 && PyErr_Occurred()) {
@@ -380,10 +484,95 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          options->scale_min = v;
          continue;
       }
-      // bool :: scale_trim_min
-      // bool :: scale_trim_max
-      // bool :: scale_require_increase
-      // bool :: calculate_svd
+
+      if(strcmp(key_name, "scale_trim_min")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->scale_trim_min=true;
+	}else if (vint == 0){
+	  options->scale_trim_min=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['scale_trim_min'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "scale_trim_max")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->scale_trim_max=true;
+	}else if (vint == 0){
+	  options->scale_trim_max=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['scale_trim_max'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "scale_require_increase")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->scale_require_increase=true;
+	}else if (vint == 0){
+	  options->scale_require_increase=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['scale_require_increase'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+           
+      if(strcmp(key_name, "calculate_svd_J")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->calculate_svd_J=true;
+	}else if (vint == 0){
+	  options->calculate_svd_J=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['calculate_svd_J'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      if(strcmp(key_name, "setup_workspaces")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->setup_workspaces=true;
+	}else if (vint == 0){
+	  options->setup_workspaces=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['setup_workspaces'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "remove_workspaces")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->remove_workspaces=true;
+	}else if (vint == 0){
+	  options->remove_workspaces=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['remove_workspaces'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+      
       if(strcmp(key_name, "more_sorensen_maxits")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
@@ -420,15 +609,6 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          options->more_sorensen_tol = v;
          continue;
       }
-      if(strcmp(key_name, "more_sorensen_tol")==0) {
-         double v = PyFloat_AsDouble(value);
-         if(v==-1.0 && PyErr_Occurred()) {
-            PyErr_SetString(PyExc_RuntimeError, "options['more_sorensen_tol'] must be a float.");
-            return false;
-         }
-         options->more_sorensen_tol = v;
-         continue;
-      }
       if(strcmp(key_name, "hybrid_tol")==0) {
          double v = PyFloat_AsDouble(value);
          if(v==-1.0 && PyErr_Occurred()) {
@@ -441,13 +621,64 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
       if(strcmp(key_name, "hybrid_switch_its")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
-            PyErr_SetString(PyExc_RuntimeError, "options['hybrid_switch_its'] must be a float.");
+            PyErr_SetString(PyExc_RuntimeError, "options['hybrid_switch_its'] must be an integer.");
             return false;
 	}
-	options->hybrid_switch_its = v;
+	options->hybrid_switch_its = (int) v;
 	continue;
       }
-      // If we reach this point, unreconised option
+      
+      if(strcmp(key_name, "reg_order")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['reg_order'] must be a float.");
+	  return false;
+	}
+	options->reg_order = v;
+	continue;
+      }
+      
+      if(strcmp(key_name, "inner_method")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['inner_method'] must be an integer.");
+	  return false;
+	}
+	options->inner_method = (int) v;
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "output_progress_vectors")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->output_progress_vectors=true;
+	}else if (vint == 0){
+	  options->output_progress_vectors=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['output_progress_vectors'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      
+      if(strcmp(key_name, "update_lower_order")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->update_lower_order=true;
+	}else if (vint == 0){
+	  options->update_lower_order=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['update_lower_order'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+      
+      // If we reach this point, unrecognised option
       char errmsg[200];
       snprintf(errmsg, 200, "Bad key options['%s']\n", key_name);
       PyErr_SetString(PyExc_RuntimeError, errmsg);
