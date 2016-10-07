@@ -25,6 +25,11 @@ PyObject* build_arglist(Py_ssize_t sz, PyObject* extra) {
    return arglist;
 }
 
+///
+/// the eval_f subroutine
+///
+
+
 static
 int eval_f(int n, int m, const void *params, const double *x, double *f) {
    // Recover our datatype
@@ -68,6 +73,11 @@ int eval_f(int n, int m, const void *params, const double *x, double *f) {
    return 0; // Success
 }
 
+
+///
+/// the eval_J subroutine
+///
+
 static
 int eval_J(int n, int m, const void *params, const double *x, double *J) {
    // Recover our datatype
@@ -110,6 +120,10 @@ int eval_J(int n, int m, const void *params, const double *x, double *J) {
 
    return 0; // Success
 }
+
+///
+/// the eval_H subroutine
+///
 
 static
 int eval_Hr(int n, int m, const void *params, const double *x, const double *r, double *Hr) {
@@ -163,6 +177,11 @@ int eval_Hr(int n, int m, const void *params, const double *x, const double *r, 
    return 0; // Success
 }
 
+///
+/// set the options up...
+/// pick up the defaults from the C code, and update any
+/// passed via Python
+///
 static
 bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
    ral_nlls_default_options_d(options);
@@ -288,7 +307,6 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	options->stop_f_relative = v;
 	continue;
       }
-
       
       if(strcmp(key_name, "stop_s")==0) {
 	double v = PyFloat_AsDouble(value);
@@ -452,10 +470,21 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          continue;
       }
       // bool: exact_second_derivatives
-      // bool: subproblem_eig_fact
-      //      if (strcmp(key_name, "subproblem_eig_fact")==0) {
-      //	bool v = PyBool
-      //      }
+      
+      if(strcmp(key_name, "subproblem_eig_fact")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	printf("%d\n",vint);
+	if (vint == 1){
+	  options->subproblem_eig_fact=true;
+	}else if (vint == 0){
+	  options->subproblem_eig_fact=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['subproblem_eig_fact'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
       if(strcmp(key_name, "scale")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
@@ -662,7 +691,6 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	}
 	continue;
       }
-
       
       if(strcmp(key_name, "update_lower_order")==0) {
 	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
@@ -688,6 +716,11 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
    return true; // success
 }
 
+//
+// Take the info struct from C, and turn it into
+// a python dictionary
+//
+
 static PyObject*
 make_info_dict(const struct ral_nlls_inform *inform) {
    PyObject *pyinfo = PyDict_New();
@@ -696,19 +729,23 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyDict_SetItemString(pyinfo, "f_eval", PyInt_FromLong(inform->f_eval));
    PyDict_SetItemString(pyinfo, "g_eval", PyInt_FromLong(inform->g_eval));
    PyDict_SetItemString(pyinfo, "h_eval", PyInt_FromLong(inform->h_eval));
-   PyDict_SetItemString(pyinfo, "convergence_normf",
-         PyInt_FromLong(inform->convergence_normf)
-         );
+   PyDict_SetItemString(pyinfo, "convergence_normf",PyInt_FromLong(inform->convergence_normf));
+   PyDict_SetItemString(pyinfo, "convergence_normg",PyInt_FromLong(inform->convergence_normg));
+   PyDict_SetItemString(pyinfo, "convergence_norms",PyInt_FromLong(inform->convergence_norms));
    //   PyDict_SetItemString(pyinfo, "resinf", PyFloat_FromDouble(inform->resinf));
    //   PyDict_SetItemString(pyinfo, "gradinf", PyFloat_FromDouble(inform->gradinf));
    PyDict_SetItemString(pyinfo, "obj", PyFloat_FromDouble(inform->obj));
    PyDict_SetItemString(pyinfo, "norm_g", PyFloat_FromDouble(inform->norm_g));
-   PyDict_SetItemString(pyinfo, "scaled_g",
-         PyFloat_FromDouble(inform->scaled_g)
-         );
+   PyDict_SetItemString(pyinfo, "scaled_g",PyFloat_FromDouble(inform->scaled_g));
 
    return pyinfo;
 }
+
+
+///
+/// call the solve routine
+/// 
+
 
 /*
  * x = ral_nlls.solve(x0, f, J=None, Hr=None, params=(), options={})
@@ -788,78 +825,9 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
      PyErr_SetString(PyExc_RuntimeError,
 		     "Exceeded maximum number of iterations");
      goto output;
-   case -2: // Error return from evaluation of f/J/Hr
-     // No error msg, allow existing one to propagate
-     goto fail;
-   case -3: // Unsupported choice of model
+   default:
      PyErr_SetString(PyExc_RuntimeError,
-		     "Bad model");
-     goto fail;
-   case -4: // Error from external
-     PyErr_SetString(PyExc_RuntimeError,
-		     "External routine gave an error");
-     goto fail;
-   case -5: // Unsupported method
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Bad method");
-     goto fail;
-   case -6: // Allocation error
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Error allocating memory");
-     goto fail;
-   case -7: // max_tr_reductions
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Max number of TR reductions");
-     goto output;
-   case -8: // no progress in x
-     PyErr_SetString(PyExc_RuntimeError,
-		     "No progress in x");
-     goto output;
-   case -9: //n_gt_m
-     PyErr_SetString(PyExc_RuntimeError,
-		     "n > m");
-     goto fail;
-   case -10: //bad_tr_strategy
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Bad trust region strategy");
-     goto fail;
-   case -11: // find_beta
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Error in find_beta");
-     goto output;
-   case -12: // bad_scaling
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Bad trust region strategy");
-     goto fail;
-   case -101: // dogleg_model
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Bad model for dogleg");
-     goto fail;
-   case -201: // aint_eig_imag
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Error in aint_eig_imag");
-     goto output;
-   case -202: // aint_eig_odd
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Error in aint_eig_odd");
-     goto output;
-   case -301: // ms_maxits
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Max iters reached in More Sorensen");
-     goto output;
-   case -302: // ms_too_many_shifts
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Too many shifts in More-sorensen");
-     goto output;
-   case -303: // ms_no_progress
-     PyErr_SetString(PyExc_RuntimeError,
-		     "No progress in More Sorensen");
-     goto output;
-   default: ; // empty statement for language conformatity.
-     char errmsg[100];
-     sprintf(errmsg, "NLLS_SOLVE failed with unrecognised error code %d\n",
-	     inform.status);
-     PyErr_SetString(PyExc_RuntimeError, errmsg);
+		     inform.error_message); // print out the error message passed
      goto fail;
    }
 
