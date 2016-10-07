@@ -9,4 +9,4 @@ Examples
 
 This returns the following output: 
 
-.. literalinclude:: ../../test/Python_example_output.out
+.. literalinclude:: ../../test/solve_python.output
