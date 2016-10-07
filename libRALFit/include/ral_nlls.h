@@ -35,11 +35,18 @@ struct ral_nlls_options_d {
   int type_of_method; /* what method to use? */
   int nlls_method; /* what nlls method to use? */
   int lls_solver; /* which lls solver to use? */
-  ral_nllspkgtype_d_ stop_g_absolute; /* absolute stopping tolerance */
-  ral_nllspkgtype_d_ stop_g_relative; /* relative stopping tolerance */
+  ral_nllspkgtype_d_ stop_g_absolute; /* absolute stopping tolerance for gradient*/
+  ral_nllspkgtype_d_ stop_g_relative; /* relative stopping tolerance for gradient*/
+  ral_nllspkgtype_d_ stop_f_absolute; /* absolute stopping tolerance for function*/
+  ral_nllspkgtype_d_ stop_f_relative; /* relative stopping tolerance for function*/
+  ral_nllspkgtype_d_ stop_s; /* stopping test on change in solution */
   int relative_tr_radius; /* non-zero if we scale the initial tr radius */
   ral_nllspkgtype_d_ initial_radius_scale; /* what should we scale tr rad by? */
   ral_nllspkgtype_d_ initial_radius; /* initial trust region radius */
+  ral_nllspkgtype_d_ base_regularization; /* if needed, the base reg parameter */
+  int regularization; /* what method used to solve the regularized nlls problem */
+  ral_nllspkgtype_d_ regularization_term; /* reg weight used if regularization != 0 */
+  ral_nllspkgtype_d_ regularization_power; /* reg order used if regularization != 0 */
   ral_nllspkgtype_d_ maximum_radius; /* maximux trust region radius */
   ral_nllspkgtype_d_ eta_successful; /* trust region step successful level */
   ral_nllspkgtype_d_ eta_success_but_reduce;
@@ -58,14 +65,19 @@ struct ral_nlls_options_d {
   bool scale_trim_min; /* if min attained, trim? (or set to 1) */
   bool scale_trim_max; /* if max attained, trim? (or set to 1) */
   bool scale_require_increase; /* scaling matrix must increase to update */
-  bool calculate_svd_J; 
+  bool calculate_svd_J;
+  bool setup_workspaces;
+  bool remove_workspaces;
   int more_sorensen_maxits;
   ral_nllspkgtype_d_ more_sorensen_shift;
   ral_nllspkgtype_d_ more_sorensen_tiny;
   ral_nllspkgtype_d_ more_sorensen_tol;
   ral_nllspkgtype_d_ hybrid_tol;
   int hybrid_switch_its;
+  ral_nllspkgtype_d_ reg_order;
+  int inner_method;
   bool output_progress_vectors;
+  bool update_lower_order;
 };
 
 struct ral_nlls_inform_d {
@@ -74,11 +86,13 @@ struct ral_nlls_inform_d {
   int alloc_status;
   char bad_alloc[81];
   int iter;
+  int inner_iter;
   int f_eval;
   int g_eval;
   int h_eval;
   int convergence_normf;
   int convergence_normg;
+  int convergence_norms;
   ral_nllspkgtype_d_ resinf;
   ral_nllspkgtype_d_ gradinf;
   ral_nllspkgtype_d_ obj;

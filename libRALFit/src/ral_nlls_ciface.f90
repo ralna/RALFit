@@ -25,9 +25,16 @@ module ral_nlls_ciface
      integer(C_INT) :: lls_solver
      real(wp) :: stop_g_absolute
      real(wp) :: stop_g_relative
+     real(wp) :: stop_f_absolute
+     real(wp) :: stop_f_relative
+     real(wp) :: stop_s
      integer(c_int) :: relative_tr_radius
      real(wp) :: initial_radius_scale
      real(wp) :: initial_radius
+     real(wp) :: base_regularization
+     integer(c_int) :: regularization
+     real(wp) :: regularization_term
+     real(wp) :: regularization_power
      real(wp) :: maximum_radius
      real(wp) :: eta_successful
      real(wp) :: eta_success_but_reduce
@@ -47,13 +54,18 @@ module ral_nlls_ciface
      logical(c_bool) :: scale_trim_max
      logical(c_bool) :: scale_require_increase
      logical(c_bool) :: calculate_svd_J
+     logical(c_bool) :: setup_workspaces
+     logical(c_bool) :: remove_workspaces
      integer(c_int) :: more_sorensen_maxits
      real(wp) :: more_sorensen_shift
      real(wp) :: more_sorensen_tiny
      real(wp) :: more_sorensen_tol
      real(wp) :: hybrid_tol
      integer(c_int) :: hybrid_switch_its
+     real(wp) :: reg_order
+     integer(c_int) :: inner_method
      logical(c_bool) :: output_progress_vectors
+     logical(c_bool) :: update_lower_order
   end type nlls_options
 
   type, bind(C) :: nlls_inform 
@@ -62,11 +74,13 @@ module ral_nlls_ciface
      integer(C_INT) :: alloc_status
      character( kind = c_char), dimension(81) :: bad_alloc
      integer(C_INT) :: iter
+     integer(C_INT) :: inner_iter
      integer(C_INT) :: f_eval
      integer(C_INT) :: g_eval
      integer(C_INT) :: h_eval
      integer(C_INT) :: convergence_normf
      integer(C_INT) :: convergence_normg
+     integer(C_INT) :: convergence_norms
      real(wp) :: resinf
      real(wp) :: gradinf
      real(wp) :: obj
@@ -138,9 +152,16 @@ contains
     foptions%lls_solver = coptions%lls_solver
     foptions%stop_g_absolute = coptions%stop_g_absolute
     foptions%stop_g_relative = coptions%stop_g_relative
+    foptions%stop_f_absolute = coptions%stop_f_absolute
+    foptions%stop_f_relative = coptions%stop_f_relative
+    foptions%stop_s = coptions%stop_s
     foptions%relative_tr_radius = coptions%relative_tr_radius
     foptions%initial_radius_scale = coptions%initial_radius_scale
     foptions%initial_radius = coptions%initial_radius
+    foptions%base_regularization = coptions%base_regularization
+    foptions%regularization = coptions%regularization
+    foptions%regularization_term = coptions%regularization_term
+    foptions%regularization_power = coptions%regularization_power
     foptions%maximum_radius = coptions%maximum_radius
     foptions%eta_successful = coptions%eta_successful
     foptions%eta_success_but_reduce = coptions%eta_success_but_reduce
@@ -160,14 +181,17 @@ contains
     foptions%scale_trim_min = coptions%scale_trim_min
     foptions%scale_require_increase = coptions%scale_require_increase
     foptions%calculate_svd_J = coptions%calculate_svd_J
+    foptions%setup_workspaces = coptions%setup_workspaces
+    foptions%remove_workspaces = coptions%remove_workspaces
     foptions%more_sorensen_maxits = coptions%more_sorensen_maxits
     foptions%more_sorensen_shift = coptions%more_sorensen_shift
     foptions%more_sorensen_tiny = coptions%more_sorensen_tiny
     foptions%more_sorensen_tol = coptions%more_sorensen_tol
     foptions%hybrid_tol = coptions%hybrid_tol
     foptions%hybrid_switch_its = coptions%hybrid_switch_its
+    foptions%reg_order = coptions%reg_order
+    foptions%inner_method = coptions%inner_method
     foptions%output_progress_vectors = coptions%output_progress_vectors
-
   end subroutine copy_options_in
 
   subroutine copy_info_out(finfo,cinfo)
@@ -188,11 +212,13 @@ contains
     end do
     cinfo%bad_alloc(len(finfo%bad_alloc) + 1) = C_NULL_CHAR
     cinfo%iter = finfo%iter
+    cinfo%inner_iter = finfo%iter
     cinfo%f_eval = finfo%f_eval
     cinfo%g_eval = finfo%g_eval
     cinfo%h_eval = finfo%h_eval
     cinfo%convergence_normf = finfo%convergence_normf
-    cinfo%convergence_normg = finfo%convergence_normf
+    cinfo%convergence_normg = finfo%convergence_normg
+    cinfo%convergence_norms = finfo%convergence_norms
     if(allocated(finfo%resvec)) &
        cinfo%resinf = maxval(abs(finfo%resvec(:)))
     if(allocated(finfo%gradvec)) &
@@ -272,9 +298,16 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%lls_solver = foptions%lls_solver
   coptions%stop_g_absolute = foptions%stop_g_absolute
   coptions%stop_g_relative = foptions%stop_g_relative
+  coptions%stop_f_absolute = foptions%stop_f_absolute
+  coptions%stop_f_relative = foptions%stop_f_relative
+  coptions%stop_s = foptions%stop_s
   coptions%relative_tr_radius = foptions%relative_tr_radius
   coptions%initial_radius_scale = foptions%initial_radius_scale
   coptions%initial_radius = foptions%initial_radius
+  coptions%base_regularization = foptions%base_regularization
+  coptions%regularization = foptions%regularization
+  coptions%regularization_term = foptions%regularization_term
+  coptions%regularization_power = foptions%regularization_power
   coptions%maximum_radius = foptions%maximum_radius
   coptions%eta_successful = foptions%eta_successful
   coptions%eta_very_successful = foptions%eta_very_successful
@@ -293,13 +326,18 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%scale_trim_min = foptions%scale_trim_min
   coptions%scale_require_increase = foptions%scale_require_increase
   coptions%calculate_svd_J = foptions%calculate_svd_J
+  coptions%setup_workspaces = foptions%setup_workspaces
+  coptions%remove_workspaces = foptions%remove_workspaces
   coptions%more_sorensen_maxits = foptions%more_sorensen_maxits
   coptions%more_sorensen_shift = foptions%more_sorensen_shift
   coptions%more_sorensen_tiny = foptions%more_sorensen_tiny
   coptions%more_sorensen_tol = foptions%more_sorensen_tol
   coptions%hybrid_tol = foptions%hybrid_tol
   coptions%hybrid_switch_its = foptions%hybrid_switch_its
+  coptions%reg_order = foptions%reg_order
+  coptions%inner_method = foptions%inner_method
   coptions%output_progress_vectors = foptions%output_progress_vectors
+  coptions%update_lower_order = foptions%update_lower_order
 end subroutine ral_nlls_default_options_d
 
 subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights) bind(C)
