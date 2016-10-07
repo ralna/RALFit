@@ -23,3 +23,4 @@ The package is written in modern Fortran, and we provide a number of interfaces 
 
 [![C doc](https://readthedocs.org/projects/ralfit-c/badge/?version=latest)](http://ralfit.readthedocs.io/projects/C/en/latest/?badge=latest) Documentation for C interface.
 
+[![Python doc](https://readthedocs.org/projects/ralfit-python/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Python/en/latest/?badge=latest) Documentation for Python interface.
