@@ -353,22 +353,6 @@ The dictionary for holding information
 
 This is used to hold information about the progress of the algorithm.
 
-   *  status (int)
-		 
-		 |status|
-
-   *   error_message (string)
-
-		 |error_message|
-
-   *  alloc_status  (int)
-      
-		 |alloc_status|
-
-   *  bad_alloc (string)
-		 
-		 |bad_alloc|
-
    *  iter (int)
 
 		 |iter|
@@ -397,14 +381,6 @@ This is used to hold information about the progress of the algorithm.
 
 		 |convergence_norms|
 				   
-   *  resvec(iter+1) (float)
-		 
-		 |resvec|
-
-   *  resvec(iter+1) (float)
-		 
-		 |gradvec|
-
    *  obj (float)
 		 
 		 |obj|
@@ -417,25 +393,3 @@ This is used to hold information about the progress of the algorithm.
 
 		 |scaled_g|
 
-   *  external_return (int)
-			       
-		 |external_return|
-   
-   *   external_name (string)
-
-		 |external_name|
-   
-
-.. _errors:
-
-Warning and error messages
---------------------------
-
-A successful return from a subroutine in the package is indicated by ``status``
-in |nlls_inform| having the value zero.  
-A non-zero value is asscociated with an error message,
-which will be output on ``error`` in |nlls_inform|.
-
-.. include:: ../common/errors.rst
-
-   
