@@ -46,11 +46,7 @@ y = numpy.array([3.0, 4.0, 6.0, 11.0, 20.0])
 x0 = numpy.array([2.5, 0.25])
 
 # Call fitting routine
-(x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=(t,y),
-        options = {
-            'print_level': 1
-            }
-        )
+(x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=(t,y))
 
 # Print result
 print "Found a local optimum at x = ", x

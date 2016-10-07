@@ -7,6 +7,8 @@ NLLS_TEST_SRC=$NLLS_BASE/test/
 NLLS_TEST=$NLLS_DEBUG/test/
 NLLS_EXAMPLE=$NLLS_DEBUG/example/
 
+make clean -C $NLLS_DEBUG
+
 make -C $NLLS_DEBUG
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 1
