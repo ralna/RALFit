@@ -32,6 +32,7 @@ struct ral_nlls_options_d {
   int print_level; /* levels of print output */
   int maxit; /* maximum number of iterations */
   int model; /* what model to use? */
+  int type_of_method; /* what method to use? */
   int nlls_method; /* what nlls method to use? */
   int lls_solver; /* which lls solver to use? */
   ral_nllspkgtype_d_ stop_g_absolute; /* absolute stopping tolerance */

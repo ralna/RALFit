@@ -20,6 +20,7 @@ module ral_nlls_ciface
      integer(C_INT) :: print_level
      integer(C_INT) :: maxit
      integer(C_INT) :: model
+     integer(C_INT) :: type_of_method
      integer(C_INT) :: nlls_method
      integer(C_INT) :: lls_solver
      real(wp) :: stop_g_absolute
@@ -132,6 +133,7 @@ contains
     foptions%print_level = coptions%print_level
     foptions%maxit = coptions%maxit
     foptions%model = coptions%model
+    foptions%type_of_method = coptions%type_of_method
     foptions%nlls_method = coptions%nlls_method
     foptions%lls_solver = coptions%lls_solver
     foptions%stop_g_absolute = coptions%stop_g_absolute
@@ -265,6 +267,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%print_level = foptions%print_level
   coptions%maxit = foptions%maxit
   coptions%model = foptions%model
+  coptions%type_of_method = foptions%type_of_method
   coptions%nlls_method = foptions%nlls_method
   coptions%lls_solver = foptions%lls_solver
   coptions%stop_g_absolute = foptions%stop_g_absolute
