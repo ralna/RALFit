@@ -26,7 +26,11 @@ def main():
         cutestdir = os.environ.get("CUTEST")
     except:
         print "ERROR: the CUTEST environment variable doesn't appear to be set"
-
+    
+    # copy the ral_nlls files to cutest
+    subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_test.f90",cutestdir+"/src/ral_nlls/"])
+    subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_main.f90",cutestdir+"/src/ral_nlls/"])
+        
     # get the current git hash
     short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
 
@@ -85,10 +89,11 @@ def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue):
         plt.semilogy(progress[i]['grad'], label=control_files[i])
     plt.legend()
 
+    print os.getcwd()
     plt.title(problem+': gradients')
     plt.xlabel('Iteration number')
     plt.ylabel('$||J^Tr||_2$')
-    plt.savefig('../../../doc/img/'+problem+'_'+short_hash+'.png')
+    plt.savefig('data/img/'+problem+'_'+short_hash+'.png')
 
     plt.figure(2)
     for i in range(no_tests):
@@ -98,7 +103,7 @@ def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue):
     plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
     plt.xlabel('Iteration number')
     plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
-    plt.savefig('../../../doc/img/'+problem+'_res_'+short_hash+'.png')
+    plt.savefig('data/img/'+problem+'_res_'+short_hash+'.png')
 
     plt.show()
 
