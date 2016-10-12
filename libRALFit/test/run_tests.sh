@@ -21,7 +21,9 @@ RESULT=$?
 
 echo "cutest example..."
 cp $NLLS_TEST_SRC/comparison_tests/control_files/TESTSPEC \
-    $NLLS_TEST_SRC/comparison_tests/cutest/sif/RAL_NLLS.SPC
+   $NLLS_TEST_SRC/comparison_tests/cutest/sif/RAL_NLLS.SPC
+cp $NLLS_TEST_SRC/comparison_tests/cutest/src/ral_nlls/*.f90 \
+   $CUTEST/src/ral_nlls/
 cd $NLLS_TEST_SRC/comparison_tests/cutest/sif/
 runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF | \
     diff <(head -n 150 $NLLS_TEST_SRC/rat43.output) <(head -n 150 -)
