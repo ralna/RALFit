@@ -44,7 +44,7 @@ def main():
     print "*************************************"
 
     print "Testing ",no_probs," problems with ",no_tests," minimizers"
-
+    
     for i in range(no_probs):
         if compute_results:
             # let's run the tests!
@@ -342,7 +342,11 @@ def compute(no_tests,control_files,problems,i,starting_point):
         cutestdir = os.environ.get("CUTEST")
     except:
         raise Error("the CUTEST environment variable doesn't appear to be set")
-    
+
+    # copy the ral_nlls files to cutest
+    subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_test.f90",cutestdir+"/src/ral_nlls/"])
+    subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_main.f90",cutestdir+"/src/ral_nlls/"])
+        
     for j in range(no_tests):
         if control_files[j] == "gsl":
             package = "gsl"
