@@ -17,6 +17,10 @@ def main():
                         "--reuse_data", 
                         help="if present, we regenerate tables of iterations from previously computed data", 
                         action="store_true")
+    parser.add_argument("-t",
+                        "--test_times",
+                        help="if present, runs tests ten times to produce accurate timing pprofs",
+                        action="store_true")
     parser.add_argument("-p",
                         "--problem_list", 
                         help="which list of problems to use? (default=names_nist_first)",
