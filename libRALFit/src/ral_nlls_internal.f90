@@ -470,10 +470,10 @@ contains
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
        call calculate_rho(w%normF,normFnew,md,rho,options)
-       if (rho > options%eta_successful) then
-          num_successful_steps = num_successful_steps + 1
-          success = .true.
-       else
+       if ( (rho > HUGE(wp)) .or. &
+            (rho .ne. rho) .or. &
+            (rho .le. options%eta_successful) ) then
+          ! rho is either very large, NaN, or unsuccessful
           num_successful_steps = 0
           if ( (w%use_second_derivatives) .and.  &
                (options%model == 3) .and. & 
@@ -489,6 +489,10 @@ contains
                 cycle
              end if
           end if
+       else
+          ! success!!
+          num_successful_steps = num_successful_steps + 1
+          success = .true.
        end if
        
        !++++++++++++++++++++++!
