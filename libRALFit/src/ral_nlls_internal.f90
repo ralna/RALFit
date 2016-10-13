@@ -470,10 +470,10 @@ contains
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
        call calculate_rho(w%normF,normFnew,md,rho,options)
-       if (rho > options%eta_successful) then
-          num_successful_steps = num_successful_steps + 1
-          success = .true.
-       else
+       if ( (rho > HUGE(wp)) .or. &
+            (rho .ne. rho) .or. &
+            (rho .le. options%eta_successful) ) then
+          ! rho is either very large, NaN, or unsuccessful
           num_successful_steps = 0
           if ( (w%use_second_derivatives) .and.  &
                (options%model == 3) .and. & 
@@ -489,6 +489,10 @@ contains
                 cycle
              end if
           end if
+       else
+          ! success!!
+          num_successful_steps = num_successful_steps + 1
+          success = .true.
        end if
        
        !++++++++++++++++++++++!
@@ -2032,8 +2036,13 @@ return
 
        ! now, let's scale hd (Nocedal and Wright, Section 10.2)
        dSks = abs(dot_product(w%d,w%Sks))
-       alpha = abs(dot_product(w%d,w%y_sharp))/ dSks
-       alpha = min(one,alpha)
+       if ( abs(dSks) < 10.0 * epsmch ) then
+          ! check this first to avoid possible overflow
+          alpha = one
+       else
+          alpha = abs(dot_product(w%d,w%y_sharp))/ dSks
+          alpha = min(one,alpha)
+       end if
        hf(:)  = alpha * hf(:)
 
        ! update S_k (again, as in N&W, Section 10.2)
