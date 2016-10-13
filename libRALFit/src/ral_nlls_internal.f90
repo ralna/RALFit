@@ -2032,8 +2032,13 @@ return
 
        ! now, let's scale hd (Nocedal and Wright, Section 10.2)
        dSks = abs(dot_product(w%d,w%Sks))
-       alpha = abs(dot_product(w%d,w%y_sharp))/ dSks
-       alpha = min(one,alpha)
+       if ( abs(dSks) < 10.0 * epsmch ) then
+          ! check this first to avoid possible overflow
+          alpha = one
+       else
+          alpha = abs(dot_product(w%d,w%y_sharp))/ dSks
+          alpha = min(one,alpha)
+       end if
        hf(:)  = alpha * hf(:)
 
        ! update S_k (again, as in N&W, Section 10.2)
