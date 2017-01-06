@@ -388,7 +388,7 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights
   
 end subroutine nlls_solve_d
 
-subroutine ral_nlls_init_workspace_d(cw)
+subroutine ral_nlls_init_workspace_d(cw) bind(C)
    use ral_nlls_ciface
    implicit none
 
@@ -400,7 +400,7 @@ subroutine ral_nlls_init_workspace_d(cw)
    cw = c_loc(fw)
 end subroutine ral_nlls_init_workspace_d
 
-subroutine ral_nlls_free_workspace_d(cw)
+subroutine ral_nlls_free_workspace_d(cw) bind(C)
    use ral_nlls_ciface
    implicit none
 
