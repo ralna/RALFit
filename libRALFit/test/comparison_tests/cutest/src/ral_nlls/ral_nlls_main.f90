@@ -33,6 +33,7 @@
       INTEGER, PARAMETER :: input = 55, indr = 46, out = 6
       LOGICAL :: filexx
       INTEGER :: fnevals, jacevals, hessevals, localiter, inner_iter
+      REAL( c_double ) :: solve_time
 
 
 !  open the relevant files
@@ -284,6 +285,7 @@
       jacevals = inform%g_eval!int( calls(6) ) 
       hessevals = inform%h_eval!int( calls(7) ) 
       inner_iter = inform%inner_iter
+      solve_time = CPU(2)
       
       if ( inform%status .ne. 0 ) then 
          localiter = -localiter
@@ -294,11 +296,11 @@
 
       IF ( summary_unit > 0 ) THEN
         BACKSPACE( summary_unit )
-        WRITE( summary_unit, "( A10, 7I6, I8, ES23.15E3, ES23.15E3, ES23.15E3 )" ) &
+        WRITE( summary_unit, "( A10, 7I6, I8, 4ES25.15E3 )" ) & !, ES23.15E3, ES23.15E3, ES23.15E3 )" ) &
           pname, n, m, inform%status,localiter,                                &
           fnevals, jacevals, hessevals,                                        &
           inner_iter,                                                          &
-          inform%obj, inform%norm_g, inform%scaled_g
+          inform%obj, inform%norm_g, inform%scaled_g, abs(solve_time)
         CLOSE(  summary_unit )
       END IF
       
