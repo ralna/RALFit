@@ -6,6 +6,31 @@ project (RALFit)
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
+#option(UseMKL "Use Intel's MKL library" Off)
+
+# Set the location for cmake module files
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
+
+set(CMAKE_EXE_LINKER_FLAGS "-Wl,-export-dynamic")
+
+# Set the source files that we're going to compile
+set ( SRC_FILES
+        src/ral_nlls_double.f90
+	src/ral_nlls_internal.f90
+	src/ral_nlls_dtrs_double.f90
+	src/ral_nlls_symbols.f90
+	src/ral_nlls_ciface.f90
+	src/ral_nlls_workspaces.f90
+	)	
+
+#if (UseMKL)
+#set( ENV{BLA_VENDOR} "Intel" )
+#   find_package(MKL)
+#   if(MKL_FOUND)
+#	message("found mkl!")
+#   endif()
+#   message("sup!")
+#endif()
 
 # see if the build type is debug.  First, convert to lower
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
@@ -16,16 +41,23 @@ if(CMAKE_BUILD_TYPE_LOWER MATCHES debug)
   set(CompileMiniLAPACK On)
   # set the test coverage switch
   set(TestCoverage On)
+elseif(CMAKE_BUILD_TYPE_LOWER MATCHES profile)
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -pg -O3")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg -O3")
+  set(CMAKE_LDFLAGS "${CMAKE_Fortran_FLAGS} -pg -O3")		    
+else()
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
 
-# Set the location for cmake module files
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
 # Set flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
 #set(CMAKE_Fortran_COMPILER nagfor)
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC")
+
+set( CMAKE_VERBOSE_MAKEFILE on )		
 if(TestCoverage)
    set( CMAKE_VERBOSE_MAKEFILE on )
    INCLUDE(CodeCoverage)
@@ -37,7 +69,8 @@ endif(TestCoverage)
 
 # Main libral_nlls library
 include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
-add_library (ral_nlls src/ral_nlls_double.f90 src/ral_nlls_internal.f90 src/ral_nlls_dtrs_double.f90 src/ral_nlls_symbols.f90 src/ral_nlls_ciface.f90 src/ral_nlls_workspaces.f90)
+add_library (ral_nlls SHARED ${SRC_FILES} ) 
+target_link_libraries(ral_nlls lapack -lm -ldl)
 
 if(NOT CompileMiniLAPACK)
   # try to find lapack..
@@ -83,7 +116,10 @@ if(CompileMiniLAPACK)
    find_package(BLAS REQUIRED)
 endif()
 
+message( STATUS BLAS found: ${BLAS_LIBRARIES} )
+
 # Tests and examples
 add_subdirectory (test)
 add_subdirectory (example/C)
 add_subdirectory (example/Fortran)
+#add_subdirectory (example/C++)

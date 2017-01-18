@@ -74,6 +74,11 @@ int main(void) {
    struct ral_nlls_options options;
    ral_nlls_default_options(&options);
 
+   // initialize the workspace
+   void * workspace;
+
+   ral_nlls_init_workspace(&workspace);
+   
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
    struct ral_nlls_inform inform;
@@ -81,14 +86,22 @@ int main(void) {
    weights =  malloc(m*sizeof(double)); // weights
    for(int i=0; i<m; i++) weights[i] = 2.0;
 
-   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, weights);
-   if(inform.status != 0) {
-      printf("ral_nlls() returned with error flag %d\n", inform.status);
-      return 1; // Error
-   }
+   for (int i=0; i<options.maxit; i++){
+     ral_nlls_iterate(2, m, x, workspace, eval_r, eval_J, eval_HF, &params, &options, &inform, weights);
+     if(inform.status != 0) {
+       printf("ral_nlls() returned with error flag %d\n", inform.status);
+       return 1; 
+     } // error return
+     if ((inform.convergence_normf >0)||(inform.convergence_normg>0)||(inform.convergence_norms>0)){
+       break; // converged!
+     }
+   } // iteration loop
+
+   //   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, weights);
    
    free(weights);
-  
+   ral_nlls_free_workspace(&workspace);
+   
    // Print result
    printf ("Found a local optimum at x = %e %e\n", x[0], x[1]);
    printf ("Took %d iterations\n", inform.iter);
