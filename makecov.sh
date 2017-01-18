@@ -7,7 +7,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 make
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 1
-test/test
+test/nlls_f90_test
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 2
 cd ../src

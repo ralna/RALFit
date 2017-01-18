@@ -8,7 +8,7 @@ make
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 1
 cd test
-./test
+./nlls_f90_test
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 2
 ./nlls_c_test
