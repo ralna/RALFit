@@ -48,44 +48,26 @@ def main():
     print "*************************************"
 
     print "Testing ",no_probs," problems with ",no_tests," minimizers"
-    
-    for i in range(no_probs):
-        if compute_results:
-            # let's run the tests!
-            print "**** "+ problems[i] +" ****"
-            compute(no_tests,args.control_files,problems,i,args.starting_point)
-    
+
     if compute_results:
-        for j in range(no_tests):
-            # copy the data file locally
-            subprocess.call(["mv", "cutest/sif/"+args.control_files[j]+".out", \
-                             "data/"+args.control_files[j]+".out"])
-            if args.control_files[j] == "gsl":
-                # c doesn't end with a newline, so add one
-                gslresults = open("data/gsl.out","a")
-                gslresults.write("\n")
-                gslresults.close()
-            # get the hash of the git version
-            short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
-            f = open('data/'+args.control_files[j]+".hash",'w')
-            f.write(short_hash+"\t"+str(no_probs))
-            f.close()
+        # run the tests!
+        run_cutest_and_copy_results_locally(args,problems)
 
     # # now we have all the data, we just need to process it....
      
     # setup the datatype that we'll store the results in
     info = np.dtype({'names' :   ['pname','n','m','status','iter',
                                   'func','jac','hess','inner',
-                                  'res','grad','ratio'],
+                                  'res','grad','ratio','solve_time'],
                      'formats' : ['S10' ,int ,int,int,int,
                                   int, int, int, int,
-                                  float,float,float]})
+                                  float,float,float,float]})
     info_noinner = np.dtype({'names' :   ['pname','n','m','status','iter',
                                           'func','jac','hess',
-                                          'res','grad','ratio'],
+                                          'res','grad','ratio','solve_time'],
                              'formats' : ['S10' ,int ,int,int,int,
                                           int, int, int, 
-                                          float,float,float]})
+                                          float,float,float,float]})
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
                          'formats' : ['S7',int]})
 
@@ -112,15 +94,58 @@ def main():
             # only in this case, don't look for inner iterations
             data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
             InnerResults = 0
+            # we want to put this back into a file that *does* have inner iterations,
+            # so that the performance profiles work below...
+            add_inner_information(args.control_files[j],no_probs,data[j])
         metadata[j] = np.loadtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
-        if args.control_files[j] == "gsl":
+        if "gsl" in args.control_files[j]: # == "gsl":
             too_many_its[j] = -2
         else:
             too_many_its[j] = -1
 
+    
+    if args.test_times:
+        # repeat the experiment another 9 times, and get the average time over ten runs
+        local_data = [None for i in range(no_tests)]
+        sum_times = np.zeros([no_tests, no_probs])
+        for j in range(no_tests):
+            sum_times[j][:] = data[j]['solve_time'][:]
+
+        print sum_times
+        no_runs = 0
+        while no_runs < 10:
+            run_cutest_and_copy_results_locally(args,problems)
+            no_runs += 1
+            for j in range(no_tests):
+                try:
+                    data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+                except ValueError:
+                    # these are results that don't include inner iterations
+                    # (i.e. from gsl)
+                    # only in this case, don't look for inner iterations
+                    data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
+                    InnerResults = 0
+                    # we want to put this back into a file that *does* have inner iterations,
+                    # so that the performance profiles work below...
+                    add_inner_information(args.control_files[j],no_probs,data[j])
+                sum_times[j][:] += data[j]['solve_time'][:]
+                print "sum_times = "
+                print sum_times
+                print "solve_time = "
+                print data[j]['solve_time'][:]
+        print "final solve time = "
+        for j in range(no_tests):
+            data[j]['solve_time'][:] = sum_times[j][:]/no_runs
+            print data[j]['solve_time'][:]
+        
+            
+            
+
+            
     all_iterates = [data[j]['iter'] for j in range(no_tests)]
     all_func = [data[j]['func'] for j in range(no_tests)]
     all_status = [data[j]['status'] for j in range(no_tests)]
+    all_solve_time = [data[j]['solve_time'] for j in range(no_tests)]
     if InnerResults:
         all_inner = [data[j]['inner'] for j in range(no_tests)]
     else:
@@ -134,6 +159,7 @@ def main():
     normalized_iterates = np.copy(all_iterates)#[data[j]['iter'] for j in range(no_tests)]
     normalized_func = np.copy(all_func)
     normalized_inner = np.copy(all_inner)
+    normalized_solve_time = np.copy(all_solve_time)
     failure = np.zeros((no_probs, no_tests))
 
     # finally, run through the data....
@@ -184,18 +210,24 @@ def main():
     smallest_iterates = np.amin(np.absolute(normalized_iterates), axis = 0)
     smallest_func = np.amin(np.absolute(normalized_func), axis = 0)
     smallest_inner = np.amin(np.absolute(normalized_inner), axis = 0)
+    smallest_solve_time = np.amin(np.absolute(normalized_solve_time), axis = 0)
     normalized_mins = np.transpose(normalized_mins)
     normalized_iterates = np.transpose(normalized_iterates)
     normalized_func = np.transpose(normalized_func)
     normalized_inner = np.transpose(normalized_inner)
+    normalized_solve_time = np.transpose(normalized_solve_time)
     mins_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
     iter_boundaries = np.array([2, 5, 10, 30])
     func_boundaries = np.array([2, 5, 10, 30])
     inner_boundaries = np.array([2, 5, 10, 30])
+    solve_time_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
     additive = 0
     print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
                   mins_boundaries, 'normalized_mins', args.control_files, failure, additive,
                   short_hash)
+    print_to_html(no_probs, no_tests, problems, normalized_solve_time, smallest_solve_time, 
+                  solve_time_boundaries, 'normalized_solve_time', args.control_files, 
+                  failure, additive, short_hash)
     additive = 1
     print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates,
                   iter_boundaries, 'normalized_iters', args.control_files, failure, additive,
@@ -233,7 +265,9 @@ def main():
         if average_inner[j] > average_iterates[j]:
             print args.control_files[j]+" took ", average_inner[j],\
                 " inner iterations on average"
-    
+
+    for j in range (0,no_tests):
+        print args.control_files[j]+" took "+str(np.sum(all_solve_time[:][j]))+"s to solve all problems"
 
     if hash_error == True:
         print "\n\n"
@@ -331,6 +365,7 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
     output.write('</body>\n')
     output.write('</html>\n')
     output.close()
+    print("Check output on file://"+os.getcwd()+"/data/"+filename+".html")
 
 def format(number):
     if isinstance(number, int):
@@ -339,6 +374,68 @@ def format(number):
         return "%.4g" % number
 
 
+def add_inner_information(method_name,no_probs,data):
+    # take the file method_name.out (which does not have inner information),
+    # and add it in.
+    # This is needed so that the output file is the same as that for RALFit, and
+    # therefore pypprof can compare them
+    copy_file = open("data/"+method_name+".out","w")
+    for i in range(no_probs):
+        space = "   "
+        line_to_print = (data['pname'][i]+
+                         space+
+                         str(data['n'][i])+
+                         space+
+                         str(data['m'][i])+
+                         space+
+                         str(data['status'][i])+
+                         space+
+                         str(data['iter'][i])+
+                         space+
+                         str(data['func'][i])+
+                         space+
+                         str(data['jac'][i])+
+                         space+
+                         "0"+
+                         space+
+                         str(data['hess'][i])+
+                         space+
+                         str(data['res'][i])+
+                         space+
+                         str(data['grad'][i])+
+                         space+
+                         str(data['ratio'][i])+
+                         space+
+                         str(data['solve_time'][i])+
+                         "\n"
+        )
+        copy_file.write(line_to_print)
+    copy_file.close()
+    
+def run_cutest_and_copy_results_locally(args,problems):
+    no_tests = len(args.control_files)
+    no_probs = len(problems)
+    for i in range(no_probs):
+        # let's run the tests!
+        print "**** "+ problems[i] +" ****"
+        compute(no_tests,args.control_files,problems,i,args.starting_point)
+        
+    for j in range(no_tests):
+        # copy the data file locally
+        subprocess.call(["mv", "cutest/sif/"+args.control_files[j]+".out", \
+                         "data/"+args.control_files[j]+".out"])
+        if "gsl" in args.control_files[j]: # == "gsl":
+            # c doesn't end with a newline, so add one
+            gslresults = open("data/gsl.out","a")
+            gslresults.write("\n")
+            gslresults.close()
+        # get the hash of the git version
+        short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
+        f = open('data/'+args.control_files[j]+".hash",'w')
+        f.write(short_hash+"\t"+str(no_probs))
+        f.close()
+
+    
 
 def compute(no_tests,control_files,problems,i,starting_point):
     # read the cutest directory from the environment variables
@@ -352,7 +449,7 @@ def compute(no_tests,control_files,problems,i,starting_point):
     subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_main.f90",cutestdir+"/src/ral_nlls/"])
         
     for j in range(no_tests):
-        if control_files[j] == "gsl":
+        if "gsl" in control_files[j]: # == "gsl":
             package = "gsl"
         else: # assume ral_nlls is being called
             package = "ral_nlls"
@@ -381,7 +478,8 @@ def compute(no_tests,control_files,problems,i,starting_point):
 def plot_prof(control_files,no_tests,prob_list,np):
     # performance profiles for iterations
     Strings = ["./pypprof -c 5 -s iterations ",
-               "./pypprof -c 6 -s fevals "]
+               "./pypprof -c 6 -s fevals ",
+               "./pypprof -c 13 -s time "]
     data_files = ""
     for j in range(no_tests):
         data_files += control_files[j]+".out"
