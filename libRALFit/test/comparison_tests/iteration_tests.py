@@ -479,7 +479,7 @@ def plot_prof(control_files,no_tests,prob_list,np):
     # performance profiles for iterations
     Strings = ["./pypprof -c 5 -s iterations ",
                "./pypprof -c 6 -s fevals ",
-               "./pypprof -c 13 -s time "]
+               "./pypprof --log -c 13 -s time "]
     data_files = ""
     for j in range(no_tests):
         data_files += control_files[j]+".out"
