@@ -1850,17 +1850,21 @@
 
         INTEGER :: print_level = 0
 
+!   at most maxit inner iterations are allowed
+
+        INTEGER :: maxit = 1000
+
 !  maximum degree of Taylor approximant allowed
 
         INTEGER :: taylor_max_degree = 3
 
 !  any entry of H that is smaller than h_min * MAXVAL( H ) we be treated as zero
 
-        REAL ( KIND = wp ) :: h_min = epsmch
+        REAL ( KIND = wp ) :: h_min = epsmch ** 2
 
 !  any entry of C that is smaller than c_min * MAXVAL( C ) we be treated as zero
 
-        REAL ( KIND = wp ) :: c_min = epsmch
+        REAL ( KIND = wp ) :: c_min = epsmch ** 2
 
 !  lower and upper bounds on the multiplier, if known
 
@@ -2080,6 +2084,7 @@
 !    lambda = s_h lambda_s
 !    q(x) = ( s_c^2 / s_ h ) q_s(x_s)
 
+!write(6,"( ' sigma ', ES13.4E3 )" ) sigma
 !write(6,"( A2, 5ES13.4E3 )" ) 'H', H
 !write(6,"( A2, 5ES13.4E3 )" ) 'C', C
 
@@ -2246,6 +2251,10 @@
         CLOSE( control%problem )
       END IF
 
+!write(6,"( ' sigma ', ES13.4E3 )" ) sigma
+!write(6,"( A2, 5ES13.4E3 )" ) 'H', H
+!write(6,"( A2, 5ES13.4E3 )" ) 'C', C
+
 !  set initial values
 
       X = zero ; inform%x_norm = zero
@@ -2265,8 +2274,8 @@
 !  check for n < 0 or sigma < 0
 
       IF ( n < 0 .or. sigma < 0 ) THEN
-         inform%status = RAL_NLLS_error_restrictions
-         RETURN
+        inform%status = RAL_NLLS_error_restrictions
+        RETURN
       END IF
 
 !  compute the two-norm of c and the extreme eigenvalues of H
@@ -2289,8 +2298,8 @@
       IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
         lambda = zero ; target = zero
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region,              &
-            it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+          WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,          &
+            it, inform%x_norm - target, lambda, ABS( delta_lambda )
           WRITE( out, "( A,                                                    &
       &    ' Normal stopping criteria satisfied' )" ) prefix
         END IF
@@ -2342,6 +2351,30 @@
         MIN( control%upper, MAX( zero,                                         &
              DRQS_lambda_root( lambda_min, c_norm * sigma ** oopm2, oopm2 ) ) )
       lambda = lambda_l
+!     write( 6,*) ' initial lambda ', lambda
+
+!  find a better starting point for the p = 3 case
+
+      IF ( p == 3 ) THEN
+        DO i = 1, n
+          a_0 = - sigma * ABS( C( i ) )
+          a_1 = H( i )
+          a_2 = one
+          a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ) )
+          IF ( a_max > zero ) THEN
+            a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
+          END IF
+          CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
+                                roots( 1 ), roots( 2 ), roots_debug )
+          lambda = MAX( lambda, roots( 2 ) )
+        END DO
+!       write( 6,*) ' improved lambda ', lambda
+      END IF
+
+!write(6,*) ' lambda_l, lambda_u ', lambda_l, lambda_u
+
+!lambda = SQRT( ABS( C( 1 ) * sigma ) )
+!lambda = 1.0D-22
 
 !  check for the "hard case"
 
@@ -2399,8 +2432,8 @@
             inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
 
             IF ( printi ) THEN
-              WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region,          &
-                it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+              WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,      &
+                it, inform%x_norm - target, lambda, ABS( delta_lambda )
               WRITE( out, "( A,                                                &
           &    ' Normal stopping criteria satisfied' )" ) prefix
             END IF
@@ -2441,7 +2474,7 @@
 !  sum of squares of the singular terms is equal to target^2
 
         ELSE
-          lambda = MAX( epsmch,                                                &
+          lambda = MAX( lambda * ( one + epsmch ),                             &
             DRQS_lambda_root( lambda_min, SQRT( c2 ) * sigma ** oopm2, oopm2 ) )
           lambda_l = MAX( lambda_l, lambda )
         END IF
@@ -2495,6 +2528,7 @@
                             roots( 1 ), roots( 2 ), roots( 3 ), roots( 4 ),    &
                             roots_debug )
           WRITE( out, * ) ' starting lambda = ', roots( : nroots )
+!         lambda = MAX( roots( nroots ), lambda + epsmch )
           lambda = roots( nroots )
         END IF
       END IF
@@ -2512,7 +2546,11 @@
 
       DO
         it = it + 1
-
+        IF ( control%maxit > 0 .AND. it > control%maxit ) THEN
+          inform%status = RAL_NLLS_error_max_iterations
+          IF ( printi ) WRITE( out, "( ' iteration limit exceeded' )" )
+          EXIT
+        END IF
 
 !  if H(lambda) is positive definite, solve  H(lambda) x = - c
 
@@ -2543,8 +2581,8 @@
           END IF
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region,            &
-              it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+            WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,        &
+              it, inform%x_norm - target, lambda, ABS( delta_lambda )
             WRITE( out, "( A,                                                  &
         &    ' Normal stopping criteria satisfied' )" ) prefix
           END IF
@@ -2557,8 +2595,8 @@
 !  a lambda in L has been found. It is now simply a matter of applying
 !  a variety of Taylor-series-based methods starting from this lambda
 
-        IF ( printi ) WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix,          &
-          region, it, ABS( inform%x_norm - target ), lambda, ABS( delta_lambda )
+        IF ( printi ) WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix,      &
+          region, it, inform%x_norm - target, lambda, ABS( delta_lambda )
 
 !  precaution against rounding producing lambda outside L
 
@@ -2568,8 +2606,8 @@
             WRITE( out, 2030 ) prefix
             WRITE( out, "( A, 2X, I4, 3ES22.15, /, A,                          &
            &               ' normal exit with lambda outside L' )" )           &
-              prefix, it, ABS( inform%x_norm - target ),                       &
-              lambda, ABS( delta_lambda ), prefix
+              prefix, it, inform%x_norm - target, lambda, ABS( delta_lambda ), &
+              prefix
           END IF
           EXIT
         END IF
@@ -2913,7 +2951,9 @@
 
 !  check that the best Taylor improvement is significant
 
-        IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
+!write(6,*) ABS( delta_lambda ), epsmch * MAX( one, ABS( lambda ) )
+!       IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
+        IF ( ABS( delta_lambda ) < epsmch * ABS( lambda ) ) THEN
           inform%status = RAL_NLLS_ok
           IF ( printi ) WRITE( out, "( A, ' normal exit with no ',             &
          &                     'significant Taylor improvement' )" ) prefix
@@ -2946,9 +2986,9 @@
 
 ! Non-executable statements
 
- 2030 FORMAT( A, '    it    ||x||-target              lambda ',                &
+ 2030 FORMAT( A, '    it     ||x||-target              lambda ',               &
                  '              d_lambda' )
- 2050 FORMAT( A, ' time( SLS_solve ) = ', F0.2 )
+!2050 FORMAT( A, ' time( SLS_solve ) = ', F0.2 )
 
 !  End of subroutine DRQS_solve_main
 
@@ -2992,16 +3032,31 @@
 
       hbeta = half * beta
       pi_beta( 0 ) = x_norm2( 0 ) ** hbeta
-      pi_beta( 1 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - one ) ) * x_norm2( 1 )
-      IF ( max_order == 1 ) RETURN
-      pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - two ) ) *             &
-        ( ( hbeta - one ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
-      IF ( max_order == 2 ) RETURN
-      pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - three ) ) *           &
-        ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - one ) *                 &
-          ( three * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +               &
-            ( hbeta - two ) * x_norm2( 1 ) ** 3 ) )
-
+      IF ( hbeta == one ) THEN
+        pi_beta( 1 ) = x_norm2( 1 )
+        IF ( max_order == 1 ) RETURN
+        pi_beta( 2 ) = x_norm2( 2 )
+        IF ( max_order == 2 ) RETURN
+        pi_beta( 3 ) = x_norm2( 3 )
+      ELSE IF ( hbeta == two ) THEN
+        pi_beta( 1 ) = two * x_norm2( 0 ) * x_norm2( 1 )
+        IF ( max_order == 1 ) RETURN
+        pi_beta( 2 ) = two * ( x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
+        IF ( max_order == 2 ) RETURN
+        pi_beta( 3 ) = two *                                                   &
+          ( x_norm2( 0 ) * x_norm2( 3 ) + three * x_norm2( 1 ) * x_norm2( 2 ) )
+      ELSE
+        pi_beta( 1 )                                                           &
+          = hbeta * ( x_norm2( 0 ) ** ( hbeta - one ) ) * x_norm2( 1 )
+        IF ( max_order == 1 ) RETURN
+        pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - two ) ) *           &
+          ( ( hbeta - one ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
+        IF ( max_order == 2 ) RETURN
+        pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - three ) ) *         &
+          ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - one ) *               &
+            ( three * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +             &
+              ( hbeta - two ) * x_norm2( 1 ) ** 3 ) )
+      END IF
       RETURN
 
 !  End of subroutine DRQS_pi_derivs
@@ -3047,13 +3102,27 @@
       oos = one / sigma
 
       theta_beta( 0 ) = los ** beta
-      theta_beta( 1 ) = beta * ( los ** ( beta - one ) ) * oos
-      IF ( max_order == 1 ) RETURN
-      theta_beta( 2 ) = beta * ( los ** ( beta - two ) ) *                     &
-                        ( beta - one ) * oos ** 2
-      IF ( max_order == 2 ) RETURN
-      theta_beta( 3 ) = beta * ( los ** ( beta - three ) ) *                   &
-                        ( beta - one ) * ( beta - two ) * oos ** 3
+      IF ( beta == one ) THEN
+        theta_beta( 1 ) = oos
+        IF ( max_order == 1 ) RETURN
+        theta_beta( 2 ) = zero
+        IF ( max_order == 2 ) RETURN
+        theta_beta( 3 ) = zero
+      ELSE IF ( beta == two ) THEN
+        theta_beta( 1 ) = two * los * oos
+        IF ( max_order == 1 ) RETURN
+        theta_beta( 2 ) = oos ** 2
+        IF ( max_order == 2 ) RETURN
+        theta_beta( 3 ) = zero
+      ELSE
+        theta_beta( 1 ) = beta * ( los ** ( beta - one ) ) * oos
+        IF ( max_order == 1 ) RETURN
+        theta_beta( 2 ) = beta * ( los ** ( beta - two ) ) *                   &
+                          ( beta - one ) * oos ** 2
+        IF ( max_order == 2 ) RETURN
+        theta_beta( 3 ) = beta * ( los ** ( beta - three ) ) *                 &
+                          ( beta - one ) * ( beta - two ) * oos ** 3
+      END IF
 
       RETURN
 
