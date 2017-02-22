@@ -816,7 +816,7 @@ contains
     ! copy options from those input
     w%tensor_options = options
     ! use a hybrid method for the inner loop
-    w%tensor_options%model = 2
+    w%tensor_options%model = 3
     w%tensor_options%maxit = 100
     w%tensor_options%reg_order = -one
     w%tensor_options%output_progress_vectors = .false.
@@ -837,9 +837,9 @@ contains
        w%tensor_options%model = 2
 
        w%m_in = m
-    case (2)
-       w%tensor_options%model = 2
-       w%tensor_options%type_of_method = 1 ! make this changable by the user
+    case (2,5)
+       w%tensor_options%model = 3
+       w%tensor_options%type_of_method = 2 ! make this changable by the user
        w%tensor_options%nlls_method = 4
        !         w%tensor_options%radius_increase = 2.0_wp
        !         w%tensor_options%radius_reduce = 0.5_wp
@@ -852,8 +852,8 @@ contains
           w%m_in = m + n
        end if
     case (3,4)
-       w%tensor_options%model = 2
-       w%tensor_options%type_of_method = 1
+       w%tensor_options%model = 3
+       w%tensor_options%type_of_method = 2
        w%tensor_options%nlls_method = 4
        !         w%tensor_options%stop_g_absolute = 1e-14
        !         w%tensor_options%stop_g_relative = 1e-14

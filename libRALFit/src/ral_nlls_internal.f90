@@ -2640,18 +2640,23 @@ return
        select case (options%inner_method)
        case (1) ! send in a base regularization parameter
           w%tensor_options%base_regularization = 1.0_wp/Delta
-       case (2)
-          ! do nothing!
-          w%tparams%p = 3
+       case (2)  ! this uses p = 3, and solves a nlls problem in more unknowns explicitly
+          w%tparams%p = 3.0
           w%tparams%extra = 2
-          w%m_in = m + 1
           d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'          
-       case (3)
+       case (3)  ! this uses p = 2, and solves implicitly
           w%tensor_options%regularization_term = 1.0_wp / Delta
-       case (4)
+!          write(*,*) 'regularization_term = ', w%tensor_options%regularization_term
+          w%m_in = m
+       case (4) ! this uses p = 3, and solves implicitly 
           d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'
           w%tensor_options%regularization_term = 1.0_wp / Delta
+          w%m_in = m
+       case (5) ! this uses p = 2, and solves a nlls problem in more unknowns explicitly
+          w%tparams%p = 2.0
+          w%tparams%extra = 1
        end select
+       
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, & 
                inner_workspace, & 
