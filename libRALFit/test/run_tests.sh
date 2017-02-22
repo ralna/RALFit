@@ -34,7 +34,7 @@ echo "passed"
 
 # run the test suite...
 echo "fortran tests..."
-$NLLS_TEST/test | diff $NLLS_TEST_SRC/test.output -
+$NLLS_TEST/nlls_f90_test | diff $NLLS_TEST_SRC/test.output -
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
 echo "passed"
