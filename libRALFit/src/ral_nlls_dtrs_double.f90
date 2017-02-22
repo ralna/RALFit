@@ -1245,7 +1245,7 @@
           lambda = zero
         END IF
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,             &
+          WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,             &
           0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
           WRITE( out, "( A,                                                    &
        &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1403,7 +1403,7 @@
           inform%status = RAL_NLLS_ok
           region = 'L'
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 2ES22.15 )" ) prefix,                    &
+            WRITE( out, "( A, A2, I4, 2ES22.13 )" ) prefix,                    &
               region, it, inform%x_norm - radius, lambda
             WRITE( out, "( A, ' Interior stopping criteria satisfied')" ) prefix
           END IF
@@ -1423,7 +1423,7 @@
           END IF
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,           &
+            WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,           &
             it, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
             WRITE( out, "( A,                                                  &
          &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1442,7 +1442,7 @@
           WRITE( out, "( A, 3ES20.12 )") prefix, lambda, inform%x_norm, radius
         ELSE IF ( printi ) THEN
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
-          WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region, it,          &
+          WRITE( out, "( A, A2, I4, 3ES22.13 )" ) prefix, region, it,          &
             ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
         END IF
 
@@ -2298,7 +2298,7 @@
       IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
         lambda = zero ; target = zero
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,          &
+          WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,          &
             it, inform%x_norm - target, lambda, ABS( delta_lambda )
           WRITE( out, "( A,                                                    &
       &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -2432,7 +2432,7 @@
             inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
 
             IF ( printi ) THEN
-              WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,      &
+              WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,      &
                 it, inform%x_norm - target, lambda, ABS( delta_lambda )
               WRITE( out, "( A,                                                &
           &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -2581,7 +2581,7 @@
           END IF
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,        &
+            WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,        &
               it, inform%x_norm - target, lambda, ABS( delta_lambda )
             WRITE( out, "( A,                                                  &
         &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -2595,7 +2595,7 @@
 !  a lambda in L has been found. It is now simply a matter of applying
 !  a variety of Taylor-series-based methods starting from this lambda
 
-        IF ( printi ) WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix,      &
+        IF ( printi ) WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix,      &
           region, it, inform%x_norm - target, lambda, ABS( delta_lambda )
 
 !  precaution against rounding producing lambda outside L
@@ -2604,7 +2604,7 @@
           inform%status = RAL_NLLS_error_ill_conditioned
           IF ( printi ) THEN
             WRITE( out, 2030 ) prefix
-            WRITE( out, "( A, 2X, I4, 3ES22.15, /, A,                          &
+            WRITE( out, "( A, 2X, I4, 3ES22.13, /, A,                          &
            &               ' normal exit with lambda outside L' )" )           &
               prefix, it, inform%x_norm - target, lambda, ABS( delta_lambda ), &
               prefix
