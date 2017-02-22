@@ -160,9 +160,10 @@ program lanczos
   allocate(x(n))
   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
 
-  options%print_level = 1
+  options%print_level = 0
   options%exact_second_derivatives = .true.
-  options%model = 4
+  options%model = 3
+  options%nlls_method = 4
   options%type_of_method = 2
   options%regularization_term = 1.0e-2
   options%regularization_power = 2.0
