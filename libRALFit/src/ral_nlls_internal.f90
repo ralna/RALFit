@@ -512,8 +512,8 @@ contains
     ! if we reach here, a successful step has been found
     
     ! update X and f
-    X(:) = w%Xnew(:)
-    w%f(:) = w%fnew(:)
+    X(1:n) = w%Xnew(1:n)
+    w%f(1:m) = w%fnew(1:m)
     
     if (.not. options%exact_second_derivatives) then 
        ! first, let's save some old values...
@@ -2702,7 +2702,6 @@ return
        real(wp), dimension(*), intent(out)   :: f
        class( params_base_type ), intent(in) :: params
 
-       real(wp) :: t_ik
        integer :: ii, jj, kk
        
        ! note:: tenJ is a global (but private to this module) derived type 
@@ -2716,28 +2715,19 @@ return
           ! note: params%m contains 'm' from the original problem
           ! if we're passing in the reg. factor via the function/Jacobian, then 
           ! 'm' here is m+n from the original problem
-          f(1:params%m) = params%f(1:params%m)  ! f_tensor = r_nlls originally
-          
+
+          ! First, calculate Js
           call mult_J(params%J(1:n*params%m),n,params%m,s,tenJ%Js)
-          f(1:params%m) = f(1:params%m) + tenJ%Js(1:params%m) ! f_tensor = r + J s
-          do ii = 1,params%m
-             t_ik = params%f(ii)
-             t_ik = t_ik + dot_product(s(1:n),params%J(ii : n*params%m : params%m))
-             tenJ%Hs(1:n) = zero
-             do jj = 1, n
-                ! get Hs = H_i * s
-                do kk = 1,n
-                   tenJ%Hs(jj) = tenJ%Hs(jj) +  params%Hi(jj,kk,ii) * s(kk)
-                end do
-             end do
-             ! f_tensor_i = r_i + J_is + 0.5 * s'H_is
-             f(ii) = f(ii) + 0.5 * dot_product(s(1:n),tenJ%Hs(1:n))
-          end do
+
+          ! Now, calculate s'Hs
+          call calculate_sHs(n,m, s, params)
+          
+          ! put them all together for the first 1:m terms of f
+          f(1:params%m) = params%f(1:params%m) + tenJ%Js(1:params%m) + 0.5*tenJ%stHs(1:params%m)
+
           if (params%extra == 1) then 
              ! we're passing in the regularization via the function/Jacobian
-             do ii = 1, n
-                f(params%m + ii) = sqrt(1.0/params%Delta) * s(ii)
-             end do
+             f(params%m + 1: params%m + n) = (1.0/sqrt(params%Delta)) * s(1:n)
           elseif (params%extra == 2) then 
              f(params%m + 1) = sqrt(2.0/(params%Delta * params%p)) * & 
                                (norm2(s(1:n))**(params%p/2.0))
@@ -2746,6 +2736,24 @@ return
        end select
 
      end subroutine evaltensor_f
+
+     subroutine calculate_sHs( n, m, s, params)
+       integer, intent(in) :: n, m
+       real(wp), dimension(*), intent(in) :: s
+       class( params_base_type ), intent(in) :: params
+
+       integer :: ii
+       select type(params)
+       type is(tensor_params_type)
+          do ii = 1,params%m
+             tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
+             tenJ%Hs(1:n,ii) = zero
+             call dgemv('N',n,n,1.0_wp,tenJ%H(1,1),n,s,1,0.0_wp,tenJ%Hs(1,ii),1)
+          end do
+          call dgemv('T',n,params%m,1.0_wp,tenJ%Hs(1,1),n,s,1,0.0_wp, tenJ%stHs(1),1)
+       end select
+       
+     end subroutine calculate_sHs
 
      subroutine evaltensor_J(status, n, m, s, J, params)
        integer, intent(out) :: status
@@ -2766,25 +2774,19 @@ return
           ! note: params%m contains 'm' from the original problem
           ! if we're passing in the reg. factor via the function/Jacobian, then 
           ! 'm' here is m+n from the original problem
-          J(1:n*m) = zero
-          ! first, copy in the original J...
-!          J(1:n*m) = params%J(1:n*m)
+          J(1:n*m) = zero        
           do jj = 1,n ! columns
+             ! tenJ%Hs has been set by evaltensor_f, which is called first
              J( (jj-1)*m + 1 : (jj-1)*m + params%m) &
-                  = params%J((jj-1)*params%m + 1 : jj*params%m)
-             do ii = 1,params%m ! rows 
-                do kk = 1,n
-                   J( (jj-1)*m + ii) = J( (jj-1)*m + ii) + params%Hi(jj,kk,ii)*s(kk)
-                end do
-             end do
+                  = params%J((jj-1)*params%m + 1 : jj*params%m) + tenJ%Hs(jj,1:params%m)
           end do
-          if (params%extra == 1) then 
+          if (params%extra == 1) then
              ! we're passing in the regularization via the function/Jacobian
              do ii = 1,n ! loop over the columns...
                 J(m*(ii-1) + params%m + ii) = sqrt(1.0/params%Delta)
              end do
           elseif (params%extra == 2) then 
-             do ii = 1, n
+             do ii = 1, n ! loop over the columns....
                 J(m*ii) = sqrt( (params%p)/(2.0 * params%Delta) ) * & 
                                       (norm2(s(1:n))**( (params%p/2.0) - 2.0)) * & 
                                       s(ii)
@@ -2806,18 +2808,16 @@ return
 
        integer :: ii, jj, kk
        real(wp) :: normx, hf_local
-       
-       HF(1:n*n) = zero
+
+       tenJ%H(1:n,1:n) = zero
        select type(params)
        type is (tensor_params_type)
           do ii = 1,params%m
-             do jj = 1,n
-                do kk = 1,n
-                   HF( (jj - 1)*n + kk ) = HF( (jj -1)*n + kk) + & 
-                        f(ii)*params%Hi(jj,kk,ii)
-                end do
-             end do
+             tenJ%H(1:n,1:n) = tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
           end do
+
+          HF(1:n**2) = reshape(tenJ%H(1:n,1:n), (/n**2/))
+          
           if (params%extra == 2) then 
              normx = norm2(s(1:n))
  !            write(*,*) 'f(m) = ', f(m)

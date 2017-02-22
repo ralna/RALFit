@@ -554,7 +554,9 @@ module ral_nlls_workspaces
 
   type, public :: tenJ_type ! workspace for evaltensor_J
      logical :: allocated = .false.
-     real(wp), allocatable :: Hs(:), Js(:) ! work arrays for evaltensor_f
+     real(wp), allocatable :: Hs(:,:), Js(:) ! work arrays for evaltensor_f
+     real(wp), allocatable :: H(:,:)       ! and another....
+     real(wp), allocatable :: stHs(:)      ! yet another....
   end type tenJ_type
   type( tenJ_type ), public :: tenJ
   type( nlls_workspace ), public :: inner_workspace ! to be used to solve recursively    
@@ -819,7 +821,9 @@ contains
     w%tensor_options%reg_order = -one
     w%tensor_options%output_progress_vectors = .false.
 
-    allocate(tenJ%Hs(n), tenJ%Js(m), stat=inform%alloc_status)
+    allocate(tenJ%Hs(n,m), tenJ%Js(m), stat=inform%alloc_status)
+    allocate(tenJ%H(n,n), stat=inform%alloc_status)
+    allocate(tenJ%stHs(m), stat=inform%alloc_status)
     if (inform%alloc_status > 0) goto 9000
 
     select case (options%inner_method)
@@ -842,7 +846,11 @@ contains
        w%tensor_options%stop_g_absolute = 1e-10
        w%tensor_options%stop_g_relative = 1e-10
        w%tparams%m1 = m
-       w%m_in = m + n
+       if (options%inner_method == 2) then
+          w%m_in = m + 1
+       else
+          w%m_in = m + n
+       end if
     case (3,4)
        w%tensor_options%model = 2
        w%tensor_options%type_of_method = 1
@@ -891,6 +899,8 @@ contains
     if(allocated(w%tparams%Hi)) deallocate(w%tparams%Hi)
     if(allocated(tenJ%Hs)) deallocate(tenJ%Hs)
     if(allocated(tenJ%Js)) deallocate(tenJ%Js)
+    if(allocated(tenJ%H)) deallocate(tenJ%H)
+    if(allocated(tenJ%stHs)) deallocate(tenJ%stHs)
 
     call remove_workspaces(inner_workspace, w%tensor_options)
 
