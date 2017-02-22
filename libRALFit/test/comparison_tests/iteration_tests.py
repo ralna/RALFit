@@ -20,7 +20,8 @@ def main():
     parser.add_argument("-t",
                         "--test_times",
                         help="if present, runs tests ten times to produce accurate timing pprofs",
-                        action="store_true")
+                        type=int,
+                        default=0)
     parser.add_argument("-p",
                         "--problem_list", 
                         help="which list of problems to use? (default=names_nist_first)",
@@ -104,8 +105,9 @@ def main():
             too_many_its[j] = -1
 
     
-    if args.test_times:
-        # repeat the experiment another 9 times, and get the average time over ten runs
+    if args.test_times > 0:
+        # repeat the experiment another 'args.test_times' times, and get the average time over
+        # that many runs
         local_data = [None for i in range(no_tests)]
         sum_times = np.zeros([no_tests, no_probs])
         for j in range(no_tests):
@@ -113,9 +115,11 @@ def main():
 
         print sum_times
         no_runs = 0
-        while no_runs < 10:
+        while no_runs < args.test_times:
             run_cutest_and_copy_results_locally(args,problems)
             no_runs += 1
+            print "run "+str(no_runs)+"/"+str(args.test_times)
+
             for j in range(no_tests):
                 try:
                     data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
@@ -380,8 +384,9 @@ def add_inner_information(method_name,no_probs,data):
     # This is needed so that the output file is the same as that for RALFit, and
     # therefore pypprof can compare them
     copy_file = open("data/"+method_name+".out","w")
+    print "no_probs = "+str(no_probs)
+    space = "   "
     for i in range(no_probs):
-        space = "   "
         line_to_print = (data['pname'][i]+
                          space+
                          str(data['n'][i])+
