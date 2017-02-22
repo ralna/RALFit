@@ -1031,20 +1031,24 @@ return
      if (.not. w%allocated) goto 1010
 
      select case (options%scale)
-     case (1,2)
+     case (1,2,3)
         do ii = 1,n
            temp = extra_scale(ii)
            what_scale: if (options%scale == 1) then
               ! use the scaling present in gsl:
               ! scale by W, W_ii = ||J(i,:)||_2^2
-              do jj = 1,m
-                 call get_element_of_matrix(J,m,jj,ii,Jij)
-                 temp = temp + Jij**2
-              end do
+!              temp = temp + norm2(J( (ii-1)*m + 1 : ii*m) )**2
+              temp = temp + dot_product(J( (ii-1)*m + 1 : ii*m), J( (ii-1)*m + 1 : ii*m) )
            elseif ( options%scale == 2) then 
               ! scale using the (approximate) hessian
               do jj = 1,n
                  temp = temp + A(ii,jj)**2
+              end do
+           elseif ( options%scale == 3) then
+              ! a less sophisticated version of scale = 1
+              do jj = 1,m
+                 call get_element_of_matrix(J,m,jj,ii,Jij)
+                 temp = temp + Jij**2
               end do
            end if what_scale
            trim_scale: if (temp < options%scale_min) then 
