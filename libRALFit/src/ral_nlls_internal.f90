@@ -891,8 +891,8 @@ contains
        call matmult_inner(J,n,m,w%A)
        ! add any second order information...
        ! so A = J^T J + HF
-       w%A = w%A + reshape(hf(1:n**2),[n,n])
-
+       call add_matrices(w%A,hf,n**2,w%A)
+       
        ! and, now, let's add on a reg parameter, if needed
        select case (options%regularization) 
        case (1)
@@ -2197,6 +2197,16 @@ return
 
      end subroutine mult_Jt
 
+     subroutine add_matrices(A,B,n,C)
+
+       real(wp), intent(in) :: A(*), B(*)
+       integer, intent(in) :: n
+       real(wp), intent(out) :: C(*)
+
+       C(1:n) = A(1:n) + B(1:n)
+       
+     end subroutine add_matrices
+     
      subroutine get_element_of_matrix(J,m,ii,jj,Jij)
        real(wp), intent(in) :: J(*)
        integer, intent(in) :: m
