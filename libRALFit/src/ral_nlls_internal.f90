@@ -2346,6 +2346,8 @@ return
 
        integer :: lwork
 
+!       real(wp), allocatable :: A_copy(:,:)
+       
        if (.not. w%allocated) goto 1000
 
        ! copy the matrix A into the eigenvector array
@@ -2364,6 +2366,15 @@ return
           inform%external_name = 'lapack_dsyev'
           return
        end if
+
+       ! Uncomment this to use 
+       !      allocate(A_copy(n,n))
+       !     A_copy(1:n,1:n) = A(1:n,1:n)
+       !       if (lwork < 5*n) then
+       !         deallocate(w%work)
+       !        allocate(w%work(5*n))
+       !     end if
+       ! call ea06cd(A_copy,ew,ev,n,n,n,w%work)
 
        return
 
