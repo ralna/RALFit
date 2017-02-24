@@ -897,9 +897,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         A(2,2) = 10.0
         g = [-7.4, -28.9]
         Delta = 0.02_wp
-        work%calculate_step_ws%solve_galahad_ws%reg_order = 2.0_wp
         call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
-             d,normd,options,status,&
+             d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. 0 ) then
            write(*,*) testname,'test failed, status = ', status%status
@@ -918,7 +917,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         
         Delta = -100_wp
         call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
-             d,normd,options,status,&
+             d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
            write(*,*) testname,'test failed, expected status = ', ERROR%FROM_EXTERNAL

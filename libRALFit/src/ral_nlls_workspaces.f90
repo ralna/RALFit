@@ -477,7 +477,6 @@ module ral_nlls_workspaces
   type, public :: solve_galahad_work ! workspace for subroutine dtrs_work
      logical :: allocated = .false.
      real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:)
-     real(wp) :: reg_order
      type( all_eig_symm_work ) :: all_eig_symm_ws
   end type solve_galahad_work
 
@@ -515,6 +514,7 @@ module ral_nlls_workspaces
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:), xxt(:,:)
      real(wp), allocatable :: v(:), scale(:), extra_scale(:)
+     real(wp) :: reg_order = two ! reg. by + 1/p || \sigma || ** p
      type( AINT_tr_work ) :: AINT_tr_ws
      type( dogleg_work ) :: dogleg_ws
      type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
@@ -538,7 +538,6 @@ module ral_nlls_workspaces
      real(wp) :: normJFold, normJF_Newton
      real(wp) :: Delta
      real(wp) :: normd
-     real(wp) :: reg_order = two ! reg. by + 1/p || \sigma || ** p
      logical :: use_second_derivatives = .false.
      integer :: hybrid_count = 0
      real(wp) :: hybrid_tol = 1.0

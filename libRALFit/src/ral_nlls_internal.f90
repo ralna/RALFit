@@ -320,7 +320,7 @@ contains
        end if
        
        ! set the reg_order to that in the options
-       w%reg_order = options%reg_order
+       w%calculate_step_ws%reg_order = options%reg_order
 
        !! Select the order of the model to be used..
        select case (options%model)
@@ -330,7 +330,7 @@ contains
           if ( ( options%type_of_method == 2) .and. &
                (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
-             w%reg_order = two
+             w%calculate_step_ws%reg_order = two
           end if
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
@@ -353,7 +353,7 @@ contains
           if ( ( options%type_of_method == 2) .and. & 
                (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
-             w%reg_order = three
+             w%calculate_step_ws%reg_order = three
           end if
        case (3) ! hybrid (MNT)
           ! set the tolerance :: make this relative
@@ -364,7 +364,7 @@ contains
           if ( (options%type_of_method == 2) .and. & 
                (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
-             w%reg_order = two
+             w%calculate_step_ws%reg_order = two
           end if
           if (.not. options%exact_second_derivatives) then 
              ! initialize hf_temp too 
@@ -427,8 +427,6 @@ contains
        !    d                                      !   
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-       w%calculate_step_ws%solve_galahad_ws%reg_order = w%reg_order 
-       ! todo: fix this...don't copy over...
        call calculate_step(w%J,w%f,w%hf,w%g,& 
             X,md,md_gn,& 
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, & 
@@ -756,7 +754,7 @@ contains
     ! reset all the scalars
     w%first_call = 1
     w%iter = 0
-    w%reg_order = 0.0
+    w%calculate_step_ws%reg_order = 0.0
     w%use_second_derivatives = .false.
     w%hybrid_count = 0 
     w%hybrid_tol = 1.0
@@ -951,7 +949,7 @@ contains
           case (4) ! Galahad
              if (options%print_level >= 2) write(options%out,3000) 'DTRS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
-                  d,normd,options,inform,w%solve_galahad_ws)
+                  d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
           case default
              inform%status = ERROR%UNSUPPORTED_METHOD
              goto 1000
@@ -961,11 +959,11 @@ contains
           case (3) ! home-rolled regularization solver
              if (options%print_level >= 2) write(options%out,3020) 'RALFit solver'
              call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
-                  d,normd,options,inform,w%regularization_solver_ws)
+                  d,normd,w%reg_order,options,inform,w%regularization_solver_ws)
           case(4) ! Galahad
              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
-                  d,normd,options,inform,w%solve_galahad_ws)
+                  d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
           case default
              inform%status = ERROR%UNSUPPORTED_METHOD
              goto 1000
@@ -1117,7 +1115,7 @@ return
      if ((options%type_of_method == 2) .and. & 
           (options%reg_order .le. zero)) then 
         ! switch to optimal regularization
-        w%reg_order = two
+        w%calculate_step_ws%reg_order = two
      end if
      ! save hf as hf_temp
      w%hf_temp(1:n**2) = w%hf(1:n**2)
@@ -1135,7 +1133,7 @@ return
      if ((options%type_of_method == 2).and. & 
         (options%reg_order .le. zero)) then
         ! switch to optimal regularization
-        w%reg_order = three
+        w%calculate_step_ws%reg_order = three
      end if
      w%hybrid_count = 0
      ! copy hf from hf_temp
@@ -1585,7 +1583,7 @@ return
 
    end subroutine get_pd_shift
    
-   subroutine solve_galahad(A,v,n,m,Delta,num_successful_steps,d,normd,options,inform,w)
+   subroutine solve_galahad(A,v,n,m,Delta,num_successful_steps,d,normd,reg_order,options,inform,w)
 
      !---------------------------------------------
      ! solve_galahad
@@ -1604,6 +1602,7 @@ return
      integer, intent(in) :: num_successful_steps
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
+     real(wp), intent(in) :: reg_order
      type( solve_galahad_work ) :: w
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -1684,7 +1683,7 @@ return
         do while (.not. proceed)          
            reg_param = options%base_regularization + 1.0_wp/Delta
            call drqs_solve & 
-                (n,w%reg_order, reg_param, zero, w%v_trans, w%ew, w%d_trans, & 
+                (n, reg_order, reg_param, zero, w%v_trans, w%ew, w%d_trans, & 
                 drqs_options, drqs_inform)
            if ( drqs_inform%status == -7 ) then
               ! drqs_solve has failed because the matrix
@@ -1725,7 +1724,8 @@ return
    end subroutine solve_galahad
 
 
-   subroutine regularization_solver(A,v,n,m,Delta,num_successful_steps,d,normd,options,inform,w)
+   subroutine regularization_solver(A,v,n,m,Delta,num_successful_steps,&
+        d,normd,reg_order,options,inform,w)
 
      !---------------------------------------------
      ! regularization_sovler
@@ -1739,6 +1739,7 @@ return
      integer, intent(in) :: num_successful_steps
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
+     real(wp), intent(in) :: reg_order
      type( regularization_solver_work ) :: w
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
