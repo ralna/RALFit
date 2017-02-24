@@ -958,6 +958,10 @@ contains
           end select ! nlls_method
        elseif (options%type_of_method == 2) then
           select case (options%nlls_method)
+          case (3) ! home-rolled regularization solver
+             if (options%print_level >= 2) write(options%out,3020) 'RALFit solver'
+             call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
+                  d,normd,options,inform,w%regularization_solver_ws)
           case(4) ! Galahad
              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
@@ -1720,6 +1724,33 @@ return
 
    end subroutine solve_galahad
 
+
+   subroutine regularization_solver(A,v,n,m,Delta,num_successful_steps,d,normd,options,inform,w)
+
+     !---------------------------------------------
+     ! regularization_sovler
+     ! Solve the regularized subproblem using 
+     ! a home-rolled algorithm
+     !--------------------------------------------
+
+     REAL(wp), intent(in) :: A(:,:), v(:)
+     REAL(wp), intent(inout) :: Delta
+     integer, intent(in)  :: n, m
+     integer, intent(in) :: num_successful_steps
+     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
+     type( regularization_solver_work ) :: w
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+
+
+     
+     write(*,*) 'Unsupported at the moment...'
+     
+     return
+     
+     
+   end subroutine regularization_solver
 
    SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
        

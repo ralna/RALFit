@@ -481,6 +481,10 @@ module ral_nlls_workspaces
      type( all_eig_symm_work ) :: all_eig_symm_ws
   end type solve_galahad_work
 
+  type, public :: regularization_solver_work ! workspace for subroutine regularization_solver
+     ! empty for now...
+  end type regularization_solver_work
+  
   type, public :: more_sorensen_work ! workspace for subroutine more_sorensen
      logical :: allocated = .false.
      real(wp), allocatable :: LtL(:,:), AplusSigma(:,:)
@@ -516,6 +520,7 @@ module ral_nlls_workspaces
      type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
      type( more_sorensen_work ) :: more_sorensen_ws
      type( solve_galahad_work ) :: solve_galahad_ws
+     type( regularization_solver_work ) :: regularization_solver_ws
      type( evaluate_model_work) :: evaluate_model_ws
      type( generate_scaling_work ) :: generate_scaling_ws
   end type calculate_step_work
@@ -942,28 +947,45 @@ contains
 
     else
 
-       select case (options%nlls_method)
 
-       case (1) ! use the dogleg method
-          call setup_workspace_dogleg(n,m,w%dogleg_ws, & 
+       if ( options%type_of_method == 1) then 
+          select case (options%nlls_method)
+             
+          case (1) ! use the dogleg method
+             call setup_workspace_dogleg(n,m,w%dogleg_ws, & 
                options, inform)
-          if (inform%alloc_status > 0) goto 9010
+             if (inform%alloc_status > 0) goto 9010
+             
+          case(2) ! use the AINT method
+             call setup_workspace_AINT_tr(n,m,w%AINT_tr_ws, & 
+                  options, inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case(3) ! More-Sorensen 
+             call setup_workspace_more_sorensen(n,m,&
+                  w%more_sorensen_ws,options,inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case (4) ! dtrs (Galahad)
+             call setup_workspace_solve_galahad(n,m, & 
+                  w%solve_galahad_ws, options, inform)
+             if (inform%alloc_status > 0) goto 9010
+          end select
+       elseif (options%type_of_method == 2) then
 
-       case(2) ! use the AINT method
-          call setup_workspace_AINT_tr(n,m,w%AINT_tr_ws, & 
-               options, inform)
-          if (inform%alloc_status > 0) goto 9010
-
-       case(3) ! More-Sorensen 
-          call setup_workspace_more_sorensen(n,m,&
-               w%more_sorensen_ws,options,inform)
-          if (inform%alloc_status > 0) goto 9010
-
-       case (4) ! dtrs (Galahad)
-          call setup_workspace_solve_galahad(n,m, & 
-               w%solve_galahad_ws, options, inform)
-          if (inform%alloc_status > 0) goto 9010
-       end select
+          select case (options%nlls_method)
+          case (3)
+             call setup_workspace_regularization_solver(n,m, & 
+                  w%regularization_solver_ws, options, inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case (4)
+             call setup_workspace_solve_galahad(n,m, & 
+                  w%solve_galahad_ws, options, inform)
+             if (inform%alloc_status > 0) goto 9010
+          end select
+          
+       end if
     end if
 
     if (options%scale > 0) then
@@ -1007,25 +1029,38 @@ contains
             options)
     else
 
-       select case (options%nlls_method)
+       if (options%type_of_method == 1) then 
+          select case (options%nlls_method)
 
-       case (1) ! use the dogleg method
-          call remove_workspace_dogleg(w%dogleg_ws, & 
-               options)
+          case (1) ! use the dogleg method
+             call remove_workspace_dogleg(w%dogleg_ws, & 
+                  options)
+             
+          case(2) ! use the AINT method
+             call remove_workspace_AINT_tr(w%AINT_tr_ws, & 
+                  options)
+             
+          case(3) ! More-Sorensen 
+             call remove_workspace_more_sorensen(&
+                  w%more_sorensen_ws,options)
+             
+          case (4) ! dtrs (Galahad)
+             call remove_workspace_solve_galahad(& 
+                  w%solve_galahad_ws, options)
+             
+          end select
+       elseif (options%type_of_method == 2) then 
 
-       case(2) ! use the AINT method
-          call remove_workspace_AINT_tr(w%AINT_tr_ws, & 
-               options)
-
-       case(3) ! More-Sorensen 
-          call remove_workspace_more_sorensen(&
-               w%more_sorensen_ws,options)
-
-       case (4) ! dtrs (Galahad)
-          call remove_workspace_solve_galahad(& 
-               w%solve_galahad_ws, options)
-
-       end select
+          select case (options%nlls_method)
+          case (3) ! regularization_solver             
+             call remove_workspace_regularization_solver(&
+                  w%regularization_solver_ws, options)
+             
+          case (4) ! dtrs (Galahad)
+             call remove_workspace_solve_galahad(& 
+                  w%solve_galahad_ws, options)
+          end select
+       end if
 
     end if
 
@@ -1516,6 +1551,24 @@ contains
     return
 
   end subroutine remove_workspace_solve_galahad
+
+  subroutine setup_workspace_regularization_solver(n,m,w,options,inform)
+    integer, intent(in) :: n,m
+    type ( regularization_solver_work ) :: w
+    type ( nlls_options ), intent(in) :: options
+    type( nlls_inform ), intent(out) :: inform
+
+    ! nothing...
+    return
+    
+  end subroutine setup_workspace_regularization_solver
+  
+  subroutine remove_workspace_regularization_solver(w,options)
+    type( regularization_solver_work ) :: w
+    type( nlls_options ), intent(in) :: options
+
+      ! nothing ...
+  end subroutine remove_workspace_regularization_solver
 
   subroutine setup_workspace_all_eig_symm(n,m,w,options,inform)
     integer, intent(in) :: n,m
