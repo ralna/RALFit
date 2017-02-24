@@ -2032,6 +2032,15 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call nlls_strerror(status)
      expected_string =  'Error accessing pre-allocated workspace'
      if (status%error_message .ne. expected_string) then 
+        write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+             status%status
+        fails = fails + 1
+     end if
+
+     status%status = ERROR%UNSUPPORTED_TYPE_METHOD
+     call nlls_strerror(status)
+     expected_string =  'Unsupported value of type_of_method passed in options'
+     if (status%error_message .ne. expected_string) then 
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -2105,14 +2114,6 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
      
-     status%status = ERROR%NT_BAD_SUBPROBLEM
-     call nlls_strerror(status)
-     expected_string = 'nlls_method = 4 needed if type_of_method=2'
-     if (status%error_message .ne. expected_string) then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         fails = fails + 1
-     end if
      
 
 

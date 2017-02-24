@@ -233,10 +233,6 @@ contains
        if ( options%print_level >= 1 ) write( options%out, 1000 )
        ! first, check if n < m
        if (n > m) goto 4070
-       if (options%type_of_method == 2) then
-          ! now check that if type_of_method = 2, we have an appropriate subproblem solverx
-          if (options%nlls_method .ne. 4) goto 4110
-       end if
        ! set scalars...
        w%first_call = 0
        w%tr_nu = options%radius_increase
@@ -727,11 +723,6 @@ contains
     inform%status = ERROR%WORKSPACE_ERROR
     goto 4000
     
-4110 continue
-    ! bad subproblem solver
-    inform%status = ERROR%NT_BAD_SUBPROBLEM
-    goto 4000
-
 ! convergence 
 5000 continue
     ! convegence test satisfied
@@ -810,6 +801,8 @@ contains
        inform%error_message = 'Unsupported value of scale passed in options'
     elseif ( inform%status == ERROR%WORKSPACE_ERROR ) then
        inform%error_message = 'Error accessing pre-allocated workspace'
+    elseif ( inform%status == ERROR%UNSUPPORTED_TYPE_METHOD ) then
+       inform%error_message = 'Unsupported value of type_of_method passed in options'
     elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
        inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
     elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
@@ -824,8 +817,6 @@ contains
        inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
     elseif ( inform%status == ERROR%NO_SECOND_DERIVATIVES ) then
        inform%error_message = 'Exact second derivatives needed for tensor model'
-    elseif ( inform%status == ERROR%NT_BAD_SUBPROBLEM ) then
-       inform%error_message = 'nlls_method = 4 needed if type_of_method=2'
     else 
        inform%error_message = 'Unknown error number'           
     end if
@@ -946,29 +937,41 @@ contains
 
        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
-       select case (options%nlls_method)
-       case (1) ! Powell's dogleg
-          if (options%print_level >= 2) write(options%out,3000) 'dogleg'
-          call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
-        case (2) ! The AINT method
-           if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
-           call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
-        case (3) ! More-Sorensen
-           if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
-           call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
-        case (4) ! Galahad
-           if (options%type_of_method == 1) then
-              if (options%print_level >= 2) write(options%out,3000) 'DTRS'
-           elseif (options%type_of_method == 2) then 
-              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
-           end if           
-           call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
-                d,normd,options,inform,w%solve_galahad_ws)
-        case default
-           inform%status = ERROR%UNSUPPORTED_METHOD
-           goto 1000
-        end select
-
+       if ( options%type_of_method == 1) then
+          select case (options%nlls_method)
+          case (1) ! Powell's dogleg
+             if (options%print_level >= 2) write(options%out,3000) 'dogleg'
+             call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
+          case (2) ! The AINT method
+             if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
+             call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+          case (3) ! More-Sorensen
+             if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
+             call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
+          case (4) ! Galahad
+             if (options%print_level >= 2) write(options%out,3000) 'DTRS'
+             call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
+                  d,normd,options,inform,w%solve_galahad_ws)
+          case default
+             inform%status = ERROR%UNSUPPORTED_METHOD
+             goto 1000
+          end select ! nlls_method
+       elseif (options%type_of_method == 2) then
+          select case (options%nlls_method)
+          case(4) ! Galahad
+             if (options%print_level >= 2) write(options%out,3020) 'DRQS'
+             call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
+                  d,normd,options,inform,w%solve_galahad_ws)
+          case default
+             inform%status = ERROR%UNSUPPORTED_METHOD
+             goto 1000
+          end select ! nlls_method
+       else
+          inform%status = ERROR%UNSUPPORTED_TYPE_METHOD
+          goto 1000
+       end if ! type_of_method
+        
+        
         ! reverse the scaling on the step
         if ( (scaling_used) ) then 
            do i = 1, n

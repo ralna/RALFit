@@ -383,6 +383,7 @@ module ral_nlls_workspaces
      INTEGER :: FIND_BETA = -11 
      INTEGER :: BAD_SCALING = -12 
      INTEGER :: WORKSPACE_ERROR = -13
+     INTEGER :: UNSUPPORTED_TYPE_METHOD = -14
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -101
      ! AINT errors
@@ -395,7 +396,6 @@ module ral_nlls_workspaces
      ! DTRS errors
      ! Tensor model errors
      INTEGER :: NO_SECOND_DERIVATIVES = -401
-     INTEGER :: NT_BAD_SUBPROBLEM = -402
 
   END TYPE NLLS_ERROR
 
