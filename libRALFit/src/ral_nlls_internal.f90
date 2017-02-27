@@ -1744,13 +1744,33 @@ return
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
-
+     real(wp) :: reg_param
+     integer :: i 
      
-     write(*,*) 'Unsupported at the moment...'
+     reg_param = 1.0_wp/Delta
+     
+     if ( reg_order == two ) then
+
+        call shift_matrix(A,reg_param,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+        if ( inform%status .ne. 0 ) goto 1000
+
+     else 
+        
+        write(*,*) 'Unsupported at the moment...'
+
+     end if
      
      return
+
+1000 continue
+     ! bad error return from external package
+     goto 4000
      
-     
+4000 continue
+     ! exit the routine
+     return 
+
    end subroutine regularization_solver
 
    SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)

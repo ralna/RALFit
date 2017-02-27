@@ -481,7 +481,8 @@ module ral_nlls_workspaces
   end type solve_galahad_work
 
   type, public :: regularization_solver_work ! workspace for subroutine regularization_solver
-     ! empty for now...
+     logical :: allocated = .false.
+     real(wp), allocatable :: AplusSigma(:,:),LtL(:,:)
   end type regularization_solver_work
   
   type, public :: more_sorensen_work ! workspace for subroutine more_sorensen
@@ -1556,8 +1557,19 @@ contains
     type ( regularization_solver_work ) :: w
     type ( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(out) :: inform
+    
+    allocate(w%LtL(n,n),stat = inform%alloc_status)
+    if (inform%alloc_status > 0) goto 9000
+    allocate(w%AplusSigma(n,n),stat = inform%alloc_status)
+    if (inform%alloc_status > 0) goto 9000
 
-    ! nothing...
+    w%allocated = .true.
+    
+    return
+    
+    9000 continue ! allocation error here
+    inform%status = ERROR%ALLOCATION
+    inform%bad_alloc = "regularization_solver"
     return
     
   end subroutine setup_workspace_regularization_solver
@@ -1566,7 +1578,14 @@ contains
     type( regularization_solver_work ) :: w
     type( nlls_options ), intent(in) :: options
 
-      ! nothing ...
+
+    if(allocated( w%LtL )) deallocate(w%LtL)
+    if(allocated( w%AplusSigma )) deallocate(w%AplusSigma)
+    
+    w%allocated = .false.
+
+    return
+    
   end subroutine remove_workspace_regularization_solver
 
   subroutine setup_workspace_all_eig_symm(n,m,w,options,inform)
