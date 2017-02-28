@@ -487,6 +487,9 @@ program nlls_test
      call more_sorensen_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
+     call trust_region_subproblem_tests(options,fails)
+     no_errors_helpers = no_errors_helpers + fails
+     
      call evaluate_model_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
      
