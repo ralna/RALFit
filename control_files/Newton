@@ -31,6 +31,7 @@ Newton                control_name
 0.1                   hybrid_switch 
 T                     exact_second_derivatives
 F                     subproblem_eig_fact
+T                     use_ews_subproblem
 1                     scale
 1e11                  scale_max
 1e-11                 scale_min
