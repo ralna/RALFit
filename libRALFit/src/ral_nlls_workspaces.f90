@@ -208,7 +208,9 @@ module ral_nlls_workspaces
 !   use a factorization (dsyev) to find the smallest eigenvalue for the subproblem
 !    solve? (alternative is an iterative method (dsyevx)
      LOGICAL :: subproblem_eig_fact = .FALSE. ! undocumented....
-     
+
+     ! use eigendecomposition in subproblem solve?
+     LOGICAL :: use_ews_subproblem = .TRUE.
 
 !   scale the variables?
 !   0 - no scaling
@@ -490,6 +492,7 @@ module ral_nlls_workspaces
      real(wp), allocatable :: LtL(:,:), AplusSigma(:,:)
      real(wp), allocatable :: q(:), y1(:)
      type( min_eig_symm_work ) :: min_eig_symm_ws
+     real(wp), allocatable :: norm_work(:)
   end type more_sorensen_work
 
   type, public :: AINT_tr_work ! workspace for subroutine AINT_tr
@@ -1659,6 +1662,9 @@ contains
     call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,inform)
     if (inform%status > 0) goto 9010
 
+    allocate(w%norm_work(n), stat = inform%alloc_status)
+    if (inform%alloc_status > 0 ) goto 9000
+    
     w%allocated = .true.
 
     return
@@ -1684,6 +1690,8 @@ contains
 
     call remove_workspace_min_eig_symm(w%min_eig_symm_ws,options)
 
+    if(allocated( w%norm_work )) deallocate(w%norm_work)
+    
     w%allocated = .false.
 
     return

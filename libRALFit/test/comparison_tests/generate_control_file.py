@@ -41,6 +41,7 @@ def main():
                      'hybrid_switch',
                      'exact_second_derivatives',
                      'subproblem_eig_fact',
+                     'use_ews_subproblem',
                      'scale',
                      'scale_max',
                      'scale_min',

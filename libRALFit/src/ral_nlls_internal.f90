@@ -1368,6 +1368,31 @@ return
      ! Solve the trust-region subproblem using 
      ! the method of More and Sorensen
      !
+     ! main output :: d, the soln to the TR subproblem
+     ! -----------------------------------------
+
+     REAL(wp), intent(in) :: A(:,:), v(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: nd ! ||d||_D
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+     type( more_sorensen_work ) :: w
+
+     if (options%use_ews_subproblem) then
+        call more_sorensen_ew(A,v,n,m,Delta,d,nd,options,inform,w)
+     else
+        call more_sorensen_noew(A,v,n,m,Delta,d,nd,options,inform,w)
+     end if
+
+   end subroutine more_sorensen
+
+   subroutine more_sorensen_ew(A,v,n,m,Delta,d,nd,options,inform,w)
+     ! -----------------------------------------
+     ! more_sorensen
+     ! Solve the trust-region subproblem using 
+     ! the method of More and Sorensen
+     !
      ! Using the implementation as in Algorithm 7.3.6
      ! of Trust Region Methods
      ! 
@@ -1529,9 +1554,347 @@ return
 6060 FORMAT('Return d + alpha*y_1') 
 6070 FORMAT('Converged! ||d|| = Delta at iteration ',i4)      
 6080 FORMAT('nq = ',ES12.4)
+   end subroutine more_sorensen_ew
 
-   end subroutine more_sorensen
+   subroutine more_sorensen_noew(A,v,n,m,Delta,d,nd,options,inform,w)
+     ! -----------------------------------------
+     ! more_sorensen
+     ! Solve the trust-region subproblem using 
+     ! the method of More and Sorensen
+     !
+     ! Using the implementation as in Algorithm 7.3.4
+     ! of Trust Region Methods
+     ! 
+     ! main output :: d, the soln to the TR subproblem
+     ! -----------------------------------------
 
+     REAL(wp), intent(in) :: A(:,:), v(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: nd ! ||d||_D
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+     type( more_sorensen_work ) :: w
+
+     real(wp) :: nq, epsilon
+     real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
+     integer :: i, jj, kk,  no_restarts
+     real(wp) :: sigma_l, sigma_u
+     integer :: region ! 1:N, 2:L, 3:G (2-3:F)
+     real(wp) :: normF_A, norminf_A
+     real(wp) :: dlange, dasum
+     real(wp) :: Aii, abs_Aii_sum, lower_sum, upper_sum, min_Aii, max_lower_sum, max_upper_sum, nv
+     real(wp) :: uHu, dHd, theta, kappa_easy, kappa_hard, indef_delta
+     integer :: location_of_breakdown
+     character(1) :: region_char
+     logical :: factorization_done
+     
+     ! The code finds 
+     !  d = arg min_p   v^T p + 0.5 * p^T A p
+     !       s.t. ||p|| \leq Delta
+     !
+     ! set A and v for the model being considered here...
+
+     if (.not. w%allocated) goto 1010
+
+     theta = 0.5
+     kappa_easy = 0.001
+     kappa_hard = 0.002
+     
+     ! Set up the initial variables....
+     normF_A = dlange('F',n,n,A,n,w%norm_work)
+     norminf_A = dlange('I',n,n,A,n,w%norm_work)
+     do i = 1, n
+        Aii = A(i,i)
+        abs_Aii_sum = dasum(n,A(:,i),1) ! = sum |A_ij|
+        if (Aii < zero) then
+           lower_sum = abs_Aii_sum + 2*Aii ! A_ij + sum_(i ne j) |A_ij|
+           upper_sum = abs_Aii_sum
+        else
+           lower_sum = abs_Aii_sum 
+           upper_sum = abs_Aii_sum + 2*Aii ! A_ij + sum_(i ne j) |A_ij|
+        end if
+        if (i == 1) then
+           min_Aii = Aii
+           max_lower_sum = lower_sum
+           max_upper_sum = upper_sum
+        else
+           min_Aii = min(Aii,min_Aii)
+           max_lower_sum = max(lower_sum, max_lower_sum)
+           max_upper_sum = max(upper_sum, max_upper_sum)
+        end if
+     end do
+     nv = norm2(v)
+
+     sigma_l = max(zero, -min_Aii, nv/Delta - min(max_lower_sum,normF_A,norminf_A))
+     sigma_u = max(zero,nv/Delta + min(max_upper_sum,normF_A,norminf_A))
+     
+     local_ms_shift = options%more_sorensen_shift
+     sigma = max(zero,sigma_l)
+     ! todo: if the model hasn't changed, use the terminating sigma there instead (p192, TR book)...
+     if (options%print_level >= 3) write(options%out,6030) sigma_l, sigma, sigma_u
+
+     if (options%print_level >= 2) write(options%out,5000)
+
+     factorization_done = .false.
+     
+     ! now start the iteration...
+     do i = 1, options%more_sorensen_maxits
+        ! d = -A\v
+        if (.not. factorization_done) then 
+           call shift_matrix(A,sigma,w%AplusSigma,n)
+           call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+        else 
+           factorization_done = .false.
+        end if
+        if (inform%status .eq. 0) then
+           ! A is symmetric positive definite....
+           if (options%print_level >= 3) write(options%out,6000)
+           nd = norm2(d)
+           if (nd < Delta) then
+              region = 3 ! G
+              region_char = 'G'
+              sigma_u = sigma
+              if (options%print_level >= 3) write(options%out,6010) sigma_u
+              ! check for interior convergence....
+              if ( abs(sigma) < 1e-16) then
+                 if (options%print_level >= 3) write(options%out,5060)
+                 goto 4000
+              end if
+           else
+              region = 2 ! L
+              region_char = 'L'
+              sigma_l = sigma
+              if (options%print_level >= 3) write(options%out,6020) sigma_l
+           end if
+           if (options%print_level >=3) write(options%out,6000)
+        else
+           if (options%print_level >=3) write(options%out,6050)
+           location_of_breakdown = inform%external_return
+           ! reset the error calls -- handled in the code....
+           inform%status = 0
+           inform%external_return = 0
+           inform%external_name = REPEAT( ' ', 80 )
+           region = 1 ! N
+           region_char = 'N'
+           sigma_l = sigma
+           if (options%print_level >= 3) write(options%out,6020) sigma_l
+        end if
+        
+        if (region .ne. 1 ) then ! in F
+           w%q = d ! w%q = R'\d
+           CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
+                1, one, w%LtL, n, w%q, n )
+           nq = norm2(w%q)
+           if (options%print_level >= 3) write(options%out,6080) nq
+           sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
+           if (options%print_level >=3) write(options%out,6070) sigma_shift
+           if (region == 3) then ! lambda in G
+              ! use the linpack method...
+              call linpack_method(n,w%AplusSigma,w%LtL,w%y1,uHu)
+              sigma_l = max(sigma_l, sigma - uHu)
+              if (options%print_level >= 3) write(options%out,6020) sigma_l
+              dHd = dot_product(d, matmul(w%AplusSigma,d))
+              call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
+              d = d + alpha * w%y1
+              ! check for termination
+              if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
+                 if (options%print_level >= 2) write(options%out,5050)
+                 goto 4000
+              end if
+              if (inform%status .ne. 0 ) goto 1000  
+              if (options%print_level >= 3) write(options%out,6060)
+           end if
+        else  ! not in F
+           ! find an alpha and y1 such that
+           !  (A + sigmaI + alpha e_k e_k^T)v = 0
+!!$           write(*,*) 'location of breakdown = ', location_of_breakdown
+!!$           write(*,*) 'A = '
+!!$           do jj = 1, n
+!!$              write(*,*) w%AplusSigma(:,jj)
+!!$           end do
+!!$           write(*,*) 'LtL = '
+!!$           do jj = 1, n
+!!$              write(*,*) w%LtL(:,jj)
+!!$           end do
+           indef_delta = -w%AplusSigma(location_of_breakdown,location_of_breakdown)
+           do jj = 1, location_of_breakdown-1
+              indef_delta = indef_delta + w%LtL(location_of_breakdown,jj)**2
+           end do
+
+           w%y1 = zero
+           w%y1(location_of_breakdown) = 1.0_wp
+           do jj = location_of_breakdown - 1, 1, -1
+              do kk = jj + 1, location_of_breakdown
+                 w%y1(jj) = w%LtL(kk,jj) * w%y1(kk)
+              end do
+              w%y1(jj) = -w%y1(jj) / w%LtL(jj,jj)
+           end do
+
+           sigma_l = max(sigma_l, sigma + indef_delta/norm2(w%y1))
+        end if
+        
+        ! check for termination
+        if ( (region == 2) .or. (region == 3) ) then ! region F
+           if (abs(nd - Delta) .le. kappa_easy * Delta) then
+              if (options%print_level >= 2) write(options%out,5030)
+              goto 4000
+           end if
+           if ( region == 3 ) then ! region G
+              if (sigma == 0) then
+                 if (options%print_level >= 2) write(options%out,5040)
+                 goto 4000
+              else
+!!$                 dHd = dot_product(d, matmul(w%AplusSigma,d))
+!!$                 if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
+!!$                    if (options%print_level >= 2) write(options%out,5050)
+!!$                    d = d + alpha * w%y1
+!!$                    goto 4000
+!!$                 end if
+!!$                 ! update d (as this wasn't done earlier)
+!!$                 d = d + alpha * w%y1
+              end if
+           end if
+        end if
+        
+        
+        if ( ( region == 2 ) .and. ( norm2(v) > 0) ) then
+           sigma = sigma + sigma_shift
+            if (options%print_level >= 3) write(options%out,6040) sigma
+        elseif (region == 3) then
+           call shift_matrix(A,sigma + sigma_shift,w%AplusSigma,n)
+           call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+           if (inform%status == 0) then
+              region = 2
+              sigma = sigma + sigma_shift
+              factorization_done = .true.
+              if (options%print_level >= 3) write(options%out,6040) sigma
+           else
+              sigma_l = max(sigma_l, sigma+sigma_shift)
+              ! check sigma_l for interior convergence
+              sigma = max( sqrt(sigma_l * sigma_u), &
+                   sigma_l + theta * ( sigma_u - sigma_l) )              
+              if (options%print_level >= 3) write(options%out,6090) sigma
+           end if
+        else
+           sigma = max( sqrt(sigma_l * sigma_u), &
+                sigma_l + theta * ( sigma_u - sigma_l) )
+           if (options%print_level >= 3) write(options%out,6090) sigma
+        end if
+
+        if (options%print_level >= 2) write(options%out,5010) i, region_char, nd, sigma_l, sigma, sigma_u
+        
+     end do
+     
+     
+     goto 1040
+     
+1000 continue 
+     ! bad error return from external package
+     goto 4000
+     
+1010 continue
+     inform%status = ERROR%WORKSPACE_ERROR
+     goto 4000
+
+1040 continue
+     ! maxits reached, not converged
+     if (options%print_level >=2) write(options%out,5020)
+     inform%status = ERROR%MS_MAXITS
+     goto 4000
+
+          
+4000 continue
+     ! exit the routine
+     nd = norm2(d)
+     if (options%print_level >= 2) write(options%out,5010) i, region_char, nd, sigma_l, sigma, sigma_u
+     return 
+
+     ! Printing statements
+     ! print_level >= 2 
+5000 FORMAT('iter',2x,'region',2x,'||d||',9x,'sigma_l',9x,'sigma',9x,'sigma_u')
+5010 FORMAT(i4,2x,A,5x,ES12.4,2x,ES12.4,4x,ES12.4,2x,ES12.4)
+5020 FORMAT('More-Sorensen failed to converge within max number of iterations')
+5030 FORMAT('Converged! | ||d|| - Delta | <= kappa_easy * Delta')
+5040 FORMAT('Converged! sigma = 0 in region G')
+5050 FORMAT('Converged! MINPACK test')    
+5060 FORMAT('Converged!')    
+    
+     
+     ! print_level >= 3
+6000 FORMAT('A + sigma I is symmetric positive definite')
+6010 FORMAT('Replacing sigma_u by ',ES12.4)     
+6020 FORMAT('Replacing sigma_l by ',ES12.4)
+6030 FORMAT('sigma_l = ',ES12.4,' sigma = ',ES12.4, ' sigma_u = ', ES12.4)
+6040 FORMAT('Replacing sigma by sigma + sigma_shift = ',ES12.4)
+6050 FORMAT('A + sigma I is indefinite')    
+6060 FORMAT('Return d + alpha*y_1')
+6070 FORMAT('sigma_shift = ',ES12.4)
+6080 FORMAT('nq = ',ES12.4)
+6090 FORMAT('Replacing sigma by max(gm,av) = ', ES12.4)
+
+
+
+   end subroutine more_sorensen_noew
+
+   
+   subroutine linpack_method(n,H,LLt,u,uHu)
+
+     !-------------------------------------------------
+     ! linpack_method
+     !
+     ! Find a u such that (u,H(sigma)u) is small
+     ! Uses the 'linpack method' described in Section 7.3
+     ! (page 191) of the Trust Region book
+     !-------------------------------------------------
+
+     integer, intent(in) :: n
+     real(wp), intent(in) :: H(:,:), LLt(:,:)
+     real(wp), intent(out) :: u(:), uHu
+
+     real(wp) :: v_minus, v_plus, ltimesw
+     integer :: i
+
+     u = zero
+
+!!$     write(*,*) 'LLt = '
+!!$     do i = 1, n
+!!$        write(*,*) LLt(:,i)
+!!$     end do
+
+     do i = 1, n
+        v_plus = 1
+        v_minus = -1
+        if (i > 1) then
+           ltimesw = dot_product(LLt(i,1:i-1),u(1:i-1))
+           v_plus = 1 - ltimesw
+           v_minus = -1 - ltimesw
+        end if
+        v_plus = v_plus / LLt(i,i)
+        v_minus = v_minus / LLt(i,i)
+        if ( v_plus > v_minus) then
+           u(i) = v_plus
+        else
+           u(i) = v_minus
+        end if   
+     end do
+
+     ! in the above, u is the w in the TR book
+     ! now set u = L'\u
+     CALL DTRSM( 'Left', 'Lower', 'Transpose', 'Non-unit', n, & 
+          1, one, LLt, n, u, n )
+     u = u / norm2(u)   ! and normalize   
+
+!!$     write(*,*) 'H = '
+!!$     do i = 1, n
+!!$        write(*,*) H(:,i)
+!!$     end do
+
+     uHu = dot_product(u, matmul(H,u))
+!     write(*,*) 'uHu = ', uHu
+     
+   end subroutine linpack_method
+   
    subroutine get_pd_shift(n,A,v,sigma,d,options,inform,w)
 
      !--------------------------------------------------
@@ -2287,6 +2650,8 @@ return
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
 
+       inform%status = 0
+       
        ! A wrapper for the lapack subroutine dposv.f
        ! get workspace for the factors....
        LtL(1:n,1:n) = A(1:n,1:n)

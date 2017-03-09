@@ -839,6 +839,9 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      
      fails = 0
 
+     options%out = 6
+     options%print_level = 0
+     
      n = 4
      m = 5
      allocate(A(n,n), g(n), d(n))
@@ -887,8 +890,9 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
            elseif (problem == 6) then 
               Delta = 1.5_wp ! point lies in the tr radius
            end if
+           write(problem_name,'(A,ES12.4)') '7.3.1.3, Delta = ',Delta
         end select
-        do method = 1,2 ! now, let's loop through the methods available...
+        do method = 1,3 ! now, let's loop through the methods available...
            select case (method)
            case (1) ! more sorensen, eigenvalues
               method_name = 'more sorensen, eigenvalues'
@@ -904,8 +908,18 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
               call setup_workspaces(work,n,m,options,status)
               call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
                    d,normd,2.0_wp,options,status,&
-                   work%calculate_step_ws%solve_galahad_ws )              
+                   work%calculate_step_ws%solve_galahad_ws )
+           case (3) ! more sorensen, no eigenvalues
+              method_name = 'more_sorensen, no eigenvalues'
+              options%nlls_method = 3
+              options%use_ews_subproblem = .false.
+              call setup_workspaces(work,n,m,options,status)
+              call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+                   work%calculate_step_ws%more_sorensen_ws)              
            end select
+           if (options%print_level > 0 ) then 
+              write(*,*) 'method = ', method_name, ' problem = ', problem_name, 'normd = ', normd
+           end if
            if ( (status%status .ne. 0)) then
               write(*,*) 'Error: unexpected error in ', method_name
               write(*,*) '(status = ',status%status,')'
@@ -921,6 +935,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
            end if
         end do       
      end do
+
+     options%out = 17
      
    end subroutine trust_region_subproblem_tests
    
