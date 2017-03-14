@@ -1451,26 +1451,35 @@ return
      no_restarts = 0
      ! set 'small' in the context of the algorithm
      epsilon = max( options%more_sorensen_tol * Delta, options%more_sorensen_tiny )
+
+     ! First, check if we're in the t.r. and adjust accordingly
+     if (nd .le. Delta) then
+        ! we're within the tr radius
+        if (options%print_level >= 3) write(options%out,6030)
+        if ( abs(sigma) < options%more_sorensen_tiny ) then
+           ! we're good....exit
+           if (options%print_level >= 3) write(options%out,6040)
+           goto 1020
+        else if ( abs( nd - Delta ) < epsilon ) then
+           ! also good...exit
+           if (options%print_level >= 3) write(options%out,6050)
+           goto 1020              
+        end if
+        call findbeta(d,w%y1,Delta,alpha,inform)
+        if (inform%status .ne. 0 ) goto 1000  
+        d = d + alpha * w%y1
+        nd = norm2(d)
+        if (options%print_level >= 3) write(options%out,6060)
+        ! also good....exit
+        goto 1020
+     end if
+     
      do i = 1, options%more_sorensen_maxits
         if (options%print_level >= 2) write(options%out,5010) i-1, nd, sigma, sigma_shift
                 
         if (nd .le. Delta + epsilon) then
-           ! we're within the tr radius
-           if (options%print_level >= 3) write(options%out,6030)
-           if ( abs(sigma) < options%more_sorensen_tiny ) then
-              ! we're good....exit
-              if (options%print_level >= 3) write(options%out,6040)
-              goto 1020
-           else if ( abs( nd - Delta ) < epsilon ) then
-              ! also good...exit
-              if (options%print_level >= 3) write(options%out,6050)
-              goto 1020              
-           end if
-           call findbeta(d,w%y1,Delta,alpha,inform)
-           if (inform%status .ne. 0 ) goto 1000  
-           d = d + alpha * w%y1
-           if (options%print_level >= 3) write(options%out,6060)
-           ! also good....exit
+           ! we're within the tr radius -- exit
+           if (options%print_level >= 3) write(options%out,6035)
            goto 1020
         end if
 
@@ -1517,7 +1526,8 @@ return
      goto 4000
 
 1020 continue
-     ! inital point was successful
+     ! initial point was successful
+     nd = norm2(d)
      if (options%print_level==2) write(options%out,5040)
      goto 4000
 
@@ -1548,7 +1558,8 @@ return
 6000 FORMAT('A is symmetric positive definite')     
 6010 FORMAT('Trying a shift of sigma = ',ES12.4)     
 6020 FORMAT('A + sigma I is symmetric positive definite') 
-6030 FORMAT('We''re within the trust region radius initially')     
+6030 FORMAT('We''re within the trust region radius initially')
+6035 FORMAT('We''re within the trust region radius')
 6040 FORMAT('Sigma tiny, so exit')  
 6050 FORMAT('||d|| = Delta, so exit')   
 6060 FORMAT('Return d + alpha*y_1') 
