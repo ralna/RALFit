@@ -1916,7 +1916,7 @@ return
    subroutine check_shift_and_solve(n,A,AplusSigma,v,sigma,d,options,inform,w)
 
      !--------------------------------------------------
-     ! get_pd_shift
+     ! check_shift_and_solve
      !
      ! Given an indefinite matrix A, find a ensures that
      ! the input shift sigma makes (A + sigma I) is positive
@@ -1965,58 +1965,7 @@ return
      
 
    end subroutine check_shift_and_solve
-   
-   
-   subroutine get_pd_shift(n,A,v,sigma,d,options,inform,w)
-
-     !--------------------------------------------------
-     ! get_pd_shift
-     !
-     ! Given an indefinite matrix A, find a shift sigma
-     ! such that (A + sigma I) is positive definite
-     !--------------------------------------------------
-     
-     integer, intent(in) :: n 
-     real(wp), intent(in) :: A(:,:), v(:)
-     real(wp), intent(inout) :: sigma
-     real(wp), intent(inout) :: d(:)
-     TYPE( nlls_options ), INTENT( IN ) :: options
-     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-     type( more_sorensen_work ), intent(inout) :: w
-
-     integer :: no_shifts
-     logical :: successful_shift
-     
-     no_shifts = 0
-     successful_shift = .false.
-     do while( .not. successful_shift )
-        call shift_matrix(A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
-        if ( inform%status .ne. 0 ) then
-           ! reset the error calls -- handled in the code....
-           inform%status = 0
-           inform%external_return = 0
-           inform%external_name = REPEAT( ' ', 80 )
-           no_shifts = no_shifts + 1
-           if ( no_shifts == 10 ) goto 3000 ! too many shifts -- exit
-           sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
-           if (options%print_level >=3) write(options%out,6010) sigma
-        else
-           successful_shift = .true.
-        end if
-     end do
-
-     return
-
-3000 continue
-     ! too many shifts
-     inform%status = ERROR%MS_TOO_MANY_SHIFTS
-     return     
-
-6010 FORMAT('Trying a shift of sigma = ',ES12.4)
-     
-
-   end subroutine get_pd_shift
+      
    
    subroutine solve_galahad(A,v,n,m,Delta,num_successful_steps,d,normd,reg_order,options,inform,w)
 
