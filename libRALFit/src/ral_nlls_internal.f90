@@ -1423,7 +1423,10 @@ return
      local_ms_shift = options%more_sorensen_shift
 
      ! d = -A\v
-     call solve_spd(A,-v,w%LtL,d,n,inform)
+     ! in this case, A = AplusSigma
+     w%AplusSigma(1:n,1:n) = A(1:n,1:n)
+     call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
+     
      if (inform%status .eq. 0) then
         ! A is symmetric positive definite....
         sigma = zero
@@ -1437,8 +1440,9 @@ return
         if (inform%status .ne. 0) goto 1000
         sigma = -(sigma - local_ms_shift)
         if (options%print_level >= 3) write(options%out,6010) sigma
-        ! find a shift that makes (A + sigma I) positive definite
-        call get_pd_shift(n,A,v,sigma,d,options,inform,w)
+        ! find a shift that makes (A + sigma I) positive definite,
+        ! and solve (A + sigma I) (-v) = d 
+        call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
         if (inform%status .ne. 0) goto 4000
         if (options%print_level >=3) write(options%out,6020)
      end if
@@ -1458,10 +1462,12 @@ return
         if (options%print_level >= 3) write(options%out,6030)
         if ( abs(sigma) < options%more_sorensen_tiny ) then
            ! we're good....exit
+           if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
            if (options%print_level >= 3) write(options%out,6040)
            goto 1020
         else if ( abs( nd - Delta ) < epsilon ) then
            ! also good...exit
+                      if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
            if (options%print_level >= 3) write(options%out,6050)
            goto 1020              
         end if
@@ -1469,6 +1475,7 @@ return
         if (inform%status .ne. 0 ) goto 1000  
         d = d + alpha * w%y1
         nd = norm2(d)
+        if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
         if (options%print_level >= 3) write(options%out,6060)
         ! also good....exit
         goto 1020
@@ -1476,8 +1483,8 @@ return
      
      do i = 1, options%more_sorensen_maxits
         if (options%print_level >= 2) write(options%out,5010) i-1, nd, sigma, sigma_shift
-                
-        if (nd .le. Delta + epsilon) then
+
+        if ( abs(nd  - Delta) .le. epsilon) then
            ! we're within the tr radius -- exit
            if (options%print_level >= 3) write(options%out,6035)
            goto 1020
@@ -1485,16 +1492,16 @@ return
 
         w%q = d ! w%q = R'\d
         CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
-             1, one, w%LtL, n, w%q, n )
-        
+             1, one, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
+
         nq = norm2(w%q)
         if (options%print_level >= 3) write(options%out,6080) nq
-        
+
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
         if (abs(sigma_shift) < options%more_sorensen_tiny * abs(sigma) ) then
            if (no_restarts < 1) then 
               ! find a shift that makes (A + sigma I) positive definite
-              call get_pd_shift(n,A,v,sigma,d,options,inform,w)
+              call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
               if (inform%status .ne. 0) goto 4000
               no_restarts = no_restarts + 1
            else
@@ -1504,10 +1511,10 @@ return
            end if
         else 
            sigma = sigma + sigma_shift
+           call shift_matrix(A,sigma,w%AplusSigma,n)
+           call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
         end if
-
-        call shift_matrix(A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+        
         if (inform%status .ne. 0) goto 1000
         
         nd = norm2(d)
@@ -1905,6 +1912,60 @@ return
 !     write(*,*) 'uHu = ', uHu
      
    end subroutine linpack_method
+
+   subroutine check_shift_and_solve(n,A,AplusSigma,v,sigma,d,options,inform,w)
+
+     !--------------------------------------------------
+     ! get_pd_shift
+     !
+     ! Given an indefinite matrix A, find a ensures that
+     ! the input shift sigma makes (A + sigma I) is positive
+     ! definite, factorizes (A+sigmaI), and solves (A + sigma I)(-v) = d
+     !--------------------------------------------------
+     
+     integer, intent(in) :: n 
+     real(wp), intent(in) :: A(:,:), v(:)
+     real(wp), intent(inout) :: AplusSigma(:,:)
+     real(wp), intent(inout) :: sigma
+     real(wp), intent(inout) :: d(:)
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+     type( more_sorensen_work ), intent(inout) :: w
+
+     integer :: no_shifts
+     logical :: successful_shift
+     
+     no_shifts = 0
+     successful_shift = .false.
+     do while( .not. successful_shift )
+        call shift_matrix(A,sigma,w%AplusSigma,n)
+        call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
+        if ( inform%status .ne. 0 ) then
+           ! reset the error calls -- handled in the code....
+           inform%status = 0
+           inform%external_return = 0
+           inform%external_name = REPEAT( ' ', 80 )
+           no_shifts = no_shifts + 1
+           if ( no_shifts == 10 ) goto 3000 ! too many shifts -- exit
+           sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
+           if (options%print_level >=3) write(options%out,6010) sigma
+        else
+           successful_shift = .true.
+        end if
+     end do
+
+     return
+
+3000 continue
+     ! too many shifts
+     inform%status = ERROR%MS_TOO_MANY_SHIFTS
+     return     
+
+6010 FORMAT('Trying a shift of sigma = ',ES12.4)
+     
+
+   end subroutine check_shift_and_solve
+   
    
    subroutine get_pd_shift(n,A,v,sigma,d,options,inform,w)
 
@@ -2525,11 +2586,11 @@ return
                 ! regularized case works too
              end select
              if (options%print_level > 2) write(options%out,3030) w%Delta
-          else if (rho >= options%eta_too_successful) then
-             ! too successful....accept step, but don't change w%Delta
+          else if (rho < HUGE(wp)) then
              if (options%print_level > 2) write(options%out,3040) w%Delta 
+             ! too successful...accept step, but don't change w%Delta
           else
-             ! just incase (NaNs and the like...)
+             ! just incase (NaNs, rho too big, and the like...)
              if (options%print_level > 2) write(options%out,3050) w%Delta 
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -one ! set to be negative, so that the logic works....
@@ -2675,6 +2736,42 @@ return
        end if
 
      end subroutine solve_spd
+
+     subroutine solve_spd_nocopy(A,b,x,n,inform)
+       REAL(wp), intent(inout) :: A(:,:)
+       REAL(wp), intent(in) :: b(:)
+       REAL(wp), intent(out) :: x(:)
+       integer, intent(in) :: n
+       type( nlls_inform), intent(inout) :: inform
+
+       integer :: row 
+       
+       inform%status = 0
+!!$       write(*,*) 'A_in = '
+!!$       do row = 1, n
+!!$          write(*,*) A(row,:)
+!!$       end do
+       ! A wrapper for the lapack subroutine dposv.f
+       ! get workspace for the factors....
+       x(1:n) = b(1:n)
+       
+       call dposv('L', n, 1, A, n, x, n, inform%external_return)
+       if (inform%external_return .ne. 0) then
+          inform%status = ERROR%FROM_EXTERNAL
+          inform%external_name = 'lapack_dposv'
+          
+!!$          write(*,*) 'A_out = '
+!!$          do row = 1, n
+!!$             write(*,*) A(row,:)
+!!$          end do
+          
+          return
+       end if
+       
+       inform%status = 0
+
+     end subroutine solve_spd_nocopy
+
 
      subroutine solve_general(A,b,x,n,inform,w)
        REAL(wp), intent(in) :: A(:,:)
