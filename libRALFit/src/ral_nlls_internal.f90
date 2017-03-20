@@ -849,7 +849,7 @@ contains
     TYPE( calculate_step_work ) :: w
         
     real(wp) :: md_bad
-    integer :: i
+    integer :: i, jj
     logical :: scaling_used = .false.
     real(wp) :: coeff ! coefficient in front of diag(s) if reg. problem being solved
     real(wp) :: sum_reg
@@ -927,9 +927,18 @@ contains
        IF (scaling_used) then
           do i = 1,n
              w%v(i) = w%v(i) / w%scale(i)
-             w%A(i,:) = w%A(i,:) / w%scale(i)
-             w%A(:,i) = w%A(:,i) / w%scale(i)
+             call dscal(n, 1/w%scale(i), w%A(:,i), 1)
           end do
+          do jj = 1, n ! swap order for efficiency
+             do i = 1, n
+                w%A(i,jj) = w%A(i,jj) / w%scale(i)
+             end do
+          end do
+
+          ! Let's test how well other methods work...
+!          do i = 1, n
+!             call dscal(n, 1/1.0_wp, w%A(:,i), 1)
+!          end do
        end IF
    
 
