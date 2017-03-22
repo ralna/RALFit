@@ -582,7 +582,19 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
           write(*,*) 'status = ', inform%status,' returned.'
           fails = fails + 1
           inform%status = 0 
-     end if
+       end if
+
+       !** scale = 3 **
+       options%scale = 3
+       call generate_scaling(J,A,n,m,scale,scale_extra,& 
+            w%calculate_step_ws%generate_scaling_ws, &
+            options,inform)
+       if (inform%status .ne. 0 ) then
+          write(*,*) 'Error: unexpected error in generate_scaling when scale = 2'
+          write(*,*) 'status = ', inform%status,' returned.'
+          fails = fails + 1
+          inform%status = 0 
+       end if
 
      !** scale undefined
      options%scale = 786
