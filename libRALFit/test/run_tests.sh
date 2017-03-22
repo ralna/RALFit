@@ -26,7 +26,7 @@ cp $NLLS_TEST_SRC/comparison_tests/cutest/src/ral_nlls/*.f90 \
    $CUTEST/src/ral_nlls/
 cd $NLLS_TEST_SRC/comparison_tests/cutest/sif/
 runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF | \
-    diff <(head -n 150 $NLLS_TEST_SRC/rat43.output) <(head -n 150 -)
+    diff <(head -n 150 $NLLS_TEST_SRC/rat43.output) <(head -n 72 -)
 # skip the final few lines, so as to avoid the timings 
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 2

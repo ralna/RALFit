@@ -1,11 +1,11 @@
 Found a local optimum at x =  [ 2.54104569  0.2595048 ]
 obj : 2.24713062521
 iter : 4
-norm_g : 4.09798787768e-06
+norm_g : 4.09798716601e-06
 h_eval : 0
 convergence_norms : 0
 g_eval : 5
-scaled_g : 1.9330429882e-06
+scaled_g : 1.9330426525e-06
 f_eval : 5
 convergence_normg : 1
 convergence_normf : 0
