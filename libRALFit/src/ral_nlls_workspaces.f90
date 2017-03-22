@@ -208,7 +208,9 @@ module ral_nlls_workspaces
 !   use a factorization (dsyev) to find the smallest eigenvalue for the subproblem
 !    solve? (alternative is an iterative method (dsyevx)
      LOGICAL :: subproblem_eig_fact = .FALSE. ! undocumented....
-     
+
+     ! use eigendecomposition in subproblem solve?
+     LOGICAL :: use_ews_subproblem = .TRUE.
 
 !   scale the variables?
 !   0 - no scaling
@@ -383,6 +385,7 @@ module ral_nlls_workspaces
      INTEGER :: FIND_BETA = -11 
      INTEGER :: BAD_SCALING = -12 
      INTEGER :: WORKSPACE_ERROR = -13
+     INTEGER :: UNSUPPORTED_TYPE_METHOD = -14
      ! dogleg errors
      INTEGER :: DOGLEG_MODEL = -101
      ! AINT errors
@@ -395,7 +398,6 @@ module ral_nlls_workspaces
      ! DTRS errors
      ! Tensor model errors
      INTEGER :: NO_SECOND_DERIVATIVES = -401
-     INTEGER :: NT_BAD_SUBPROBLEM = -402
 
   END TYPE NLLS_ERROR
 
@@ -477,15 +479,20 @@ module ral_nlls_workspaces
   type, public :: solve_galahad_work ! workspace for subroutine dtrs_work
      logical :: allocated = .false.
      real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:)
-     real(wp) :: reg_order
      type( all_eig_symm_work ) :: all_eig_symm_ws
   end type solve_galahad_work
 
+  type, public :: regularization_solver_work ! workspace for subroutine regularization_solver
+     logical :: allocated = .false.
+     real(wp), allocatable :: AplusSigma(:,:),LtL(:,:)
+  end type regularization_solver_work
+  
   type, public :: more_sorensen_work ! workspace for subroutine more_sorensen
      logical :: allocated = .false.
      real(wp), allocatable :: LtL(:,:), AplusSigma(:,:)
      real(wp), allocatable :: q(:), y1(:)
      type( min_eig_symm_work ) :: min_eig_symm_ws
+     real(wp), allocatable :: norm_work(:)
   end type more_sorensen_work
 
   type, public :: AINT_tr_work ! workspace for subroutine AINT_tr
@@ -511,11 +518,13 @@ module ral_nlls_workspaces
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:), xxt(:,:)
      real(wp), allocatable :: v(:), scale(:), extra_scale(:)
+     real(wp) :: reg_order = two ! reg. by + 1/p || \sigma || ** p
      type( AINT_tr_work ) :: AINT_tr_ws
      type( dogleg_work ) :: dogleg_ws
      type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
      type( more_sorensen_work ) :: more_sorensen_ws
      type( solve_galahad_work ) :: solve_galahad_ws
+     type( regularization_solver_work ) :: regularization_solver_ws
      type( evaluate_model_work) :: evaluate_model_ws
      type( generate_scaling_work ) :: generate_scaling_ws
   end type calculate_step_work
@@ -533,7 +542,6 @@ module ral_nlls_workspaces
      real(wp) :: normJFold, normJF_Newton
      real(wp) :: Delta
      real(wp) :: normd
-     real(wp) :: reg_order = two ! reg. by + 1/p || \sigma || ** p
      logical :: use_second_derivatives = .false.
      integer :: hybrid_count = 0
      real(wp) :: hybrid_tol = 1.0
@@ -942,28 +950,45 @@ contains
 
     else
 
-       select case (options%nlls_method)
 
-       case (1) ! use the dogleg method
-          call setup_workspace_dogleg(n,m,w%dogleg_ws, & 
+       if ( options%type_of_method == 1) then 
+          select case (options%nlls_method)
+             
+          case (1) ! use the dogleg method
+             call setup_workspace_dogleg(n,m,w%dogleg_ws, & 
                options, inform)
-          if (inform%alloc_status > 0) goto 9010
+             if (inform%alloc_status > 0) goto 9010
+             
+          case(2) ! use the AINT method
+             call setup_workspace_AINT_tr(n,m,w%AINT_tr_ws, & 
+                  options, inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case(3) ! More-Sorensen 
+             call setup_workspace_more_sorensen(n,m,&
+                  w%more_sorensen_ws,options,inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case (4) ! dtrs (Galahad)
+             call setup_workspace_solve_galahad(n,m, & 
+                  w%solve_galahad_ws, options, inform)
+             if (inform%alloc_status > 0) goto 9010
+          end select
+       elseif (options%type_of_method == 2) then
 
-       case(2) ! use the AINT method
-          call setup_workspace_AINT_tr(n,m,w%AINT_tr_ws, & 
-               options, inform)
-          if (inform%alloc_status > 0) goto 9010
-
-       case(3) ! More-Sorensen 
-          call setup_workspace_more_sorensen(n,m,&
-               w%more_sorensen_ws,options,inform)
-          if (inform%alloc_status > 0) goto 9010
-
-       case (4) ! dtrs (Galahad)
-          call setup_workspace_solve_galahad(n,m, & 
-               w%solve_galahad_ws, options, inform)
-          if (inform%alloc_status > 0) goto 9010
-       end select
+          select case (options%nlls_method)
+          case (3)
+             call setup_workspace_regularization_solver(n,m, & 
+                  w%regularization_solver_ws, options, inform)
+             if (inform%alloc_status > 0) goto 9010
+             
+          case (4)
+             call setup_workspace_solve_galahad(n,m, & 
+                  w%solve_galahad_ws, options, inform)
+             if (inform%alloc_status > 0) goto 9010
+          end select
+          
+       end if
     end if
 
     if (options%scale > 0) then
@@ -1007,25 +1032,38 @@ contains
             options)
     else
 
-       select case (options%nlls_method)
+       if (options%type_of_method == 1) then 
+          select case (options%nlls_method)
 
-       case (1) ! use the dogleg method
-          call remove_workspace_dogleg(w%dogleg_ws, & 
-               options)
+          case (1) ! use the dogleg method
+             call remove_workspace_dogleg(w%dogleg_ws, & 
+                  options)
+             
+          case(2) ! use the AINT method
+             call remove_workspace_AINT_tr(w%AINT_tr_ws, & 
+                  options)
+             
+          case(3) ! More-Sorensen 
+             call remove_workspace_more_sorensen(&
+                  w%more_sorensen_ws,options)
+             
+          case (4) ! dtrs (Galahad)
+             call remove_workspace_solve_galahad(& 
+                  w%solve_galahad_ws, options)
+             
+          end select
+       elseif (options%type_of_method == 2) then 
 
-       case(2) ! use the AINT method
-          call remove_workspace_AINT_tr(w%AINT_tr_ws, & 
-               options)
-
-       case(3) ! More-Sorensen 
-          call remove_workspace_more_sorensen(&
-               w%more_sorensen_ws,options)
-
-       case (4) ! dtrs (Galahad)
-          call remove_workspace_solve_galahad(& 
-               w%solve_galahad_ws, options)
-
-       end select
+          select case (options%nlls_method)
+          case (3) ! regularization_solver             
+             call remove_workspace_regularization_solver(&
+                  w%regularization_solver_ws, options)
+             
+          case (4) ! dtrs (Galahad)
+             call remove_workspace_solve_galahad(& 
+                  w%solve_galahad_ws, options)
+          end select
+       end if
 
     end if
 
@@ -1517,6 +1555,42 @@ contains
 
   end subroutine remove_workspace_solve_galahad
 
+  subroutine setup_workspace_regularization_solver(n,m,w,options,inform)
+    integer, intent(in) :: n,m
+    type ( regularization_solver_work ) :: w
+    type ( nlls_options ), intent(in) :: options
+    type( nlls_inform ), intent(out) :: inform
+    
+    allocate(w%LtL(n,n),stat = inform%alloc_status)
+    if (inform%alloc_status > 0) goto 9000
+    allocate(w%AplusSigma(n,n),stat = inform%alloc_status)
+    if (inform%alloc_status > 0) goto 9000
+
+    w%allocated = .true.
+    
+    return
+    
+    9000 continue ! allocation error here
+    inform%status = ERROR%ALLOCATION
+    inform%bad_alloc = "regularization_solver"
+    return
+    
+  end subroutine setup_workspace_regularization_solver
+  
+  subroutine remove_workspace_regularization_solver(w,options)
+    type( regularization_solver_work ) :: w
+    type( nlls_options ), intent(in) :: options
+
+
+    if(allocated( w%LtL )) deallocate(w%LtL)
+    if(allocated( w%AplusSigma )) deallocate(w%AplusSigma)
+    
+    w%allocated = .false.
+
+    return
+    
+  end subroutine remove_workspace_regularization_solver
+
   subroutine setup_workspace_all_eig_symm(n,m,w,options,inform)
     integer, intent(in) :: n,m
     type( all_eig_symm_work ) :: w
@@ -1588,6 +1662,9 @@ contains
     call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,inform)
     if (inform%status > 0) goto 9010
 
+    allocate(w%norm_work(n), stat = inform%alloc_status)
+    if (inform%alloc_status > 0 ) goto 9000
+    
     w%allocated = .true.
 
     return
@@ -1613,6 +1690,8 @@ contains
 
     call remove_workspace_min_eig_symm(w%min_eig_symm_ws,options)
 
+    if(allocated( w%norm_work )) deallocate(w%norm_work)
+    
     w%allocated = .false.
 
     return

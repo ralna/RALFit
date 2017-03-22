@@ -821,6 +821,124 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call reset_default_options(options)
      
    end subroutine more_sorensen_tests
+
+   subroutine trust_region_subproblem_tests(options,fails)
+
+     type( nlls_options ), intent(inout) :: options
+     integer, intent(out) :: fails
+     
+     real(wp), allocatable :: g(:), d(:), A(:,:)
+     real(wp) :: Delta, normd
+     type( nlls_inform ) :: status
+     type( nlls_workspace ) :: work
+     integer :: n,m
+     integer :: problem, method
+     character (len=40) :: problem_name
+     character (len=40) :: method_name
+     integer :: num_successful_steps
+     
+     fails = 0
+
+     options%out = 6
+     options%print_level = 0
+     
+     n = 4
+     m = 5
+     allocate(A(n,n), g(n), d(n))
+
+     do problem = 1, 6
+        select case (problem)
+        case (1,2) ! Convex, within the tr radius
+           g = 1.0_wp
+           A = 0.0_wp
+           A(1,1) = 1.0_wp
+           A(2,2) = 2.0_wp
+           A(3,3) = 3.0_wp
+           A(4,4) = 4.0_wp
+
+           if (problem == 1) then
+              Delta = 1.0_wp ! point lies on the tr radius
+           elseif (problem == 2) then 
+              Delta = 3.0_wp ! point lies in the tr radius
+           end if
+           
+           write(problem_name,'(A,ES12.4)') '7.3.1.1, Delta = ',Delta
+        case (3,4)  ! Nonconvex
+           g = 1.0_wp
+           A = 0.0_wp           
+           A(1,1) = -2.0_wp
+           A(2,2) = -1.0_wp
+           A(3,3) =  0.0_wp
+           A(4,4) =  1.0_wp
+           if (problem == 3) then
+              Delta = 1.0_wp ! point lies on the tr radius
+           elseif (problem == 4) then 
+              Delta = 3.0_wp ! point lies in the tr radius
+           end if
+           
+           write(problem_name,'(A,ES12.4)') '7.3.1.2, Delta = ',Delta
+        case (5,6) ! hard case
+           g = 1.0_wp
+           g(1) = 0.0_wp
+           A = 0.0_wp           
+           A(1,1) = -2.0_wp
+           A(2,2) = -1.0_wp
+           A(3,3) =  0.0_wp
+           A(4,4) =  1.0_wp
+           if (problem == 5) then
+              Delta = 1.0_wp ! point lies on the tr radius
+           elseif (problem == 6) then 
+              Delta = 1.5_wp ! point lies in the tr radius
+           end if
+           write(problem_name,'(A,ES12.4)') '7.3.1.3, Delta = ',Delta
+        end select
+        do method = 1,3 ! now, let's loop through the methods available...
+           select case (method)
+           case (1) ! more sorensen, eigenvalues
+              method_name = 'more sorensen, eigenvalues'
+              options%nlls_method = 3 
+              options%use_ews_subproblem = .true.
+              call setup_workspaces(work,n,m,options,status)
+              call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+                   work%calculate_step_ws%more_sorensen_ws)
+           case (2) ! dltr
+              method_name = 'dltr'
+              options%nlls_method = 4
+              num_successful_steps = 0 
+              call setup_workspaces(work,n,m,options,status)
+              call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
+                   d,normd,2.0_wp,options,status,&
+                   work%calculate_step_ws%solve_galahad_ws )
+           case (3) ! more sorensen, no eigenvalues
+              method_name = 'more_sorensen, no eigenvalues'
+              options%nlls_method = 3
+              options%use_ews_subproblem = .false.
+              call setup_workspaces(work,n,m,options,status)
+              call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+                   work%calculate_step_ws%more_sorensen_ws)              
+           end select
+           if (options%print_level > 0 ) then 
+              write(*,*) 'method = ', method_name, ' problem = ', problem_name, 'normd = ', normd
+           end if
+           if ( (status%status .ne. 0)) then
+              write(*,*) 'Error: unexpected error in ', method_name
+              write(*,*) '(status = ',status%status,')'
+              write(*,*) 'TR Book Example ',problem_name
+              fails = fails + 1
+              status%status = 0
+           elseif ( normd - Delta > 1e-3 ) then
+              write(*,*) 'Error: answer returned outside the TR Radius'
+              write(*,*) 'TR Book Example ', trim(problem_name),' using method ',method_name
+              write(*,*) 'Delta = ', Delta, '||d|| = ', normd
+              fails = fails + 1
+              status%status = 0
+           end if
+        end do       
+     end do
+
+     options%out = 17
+     
+   end subroutine trust_region_subproblem_tests
    
    subroutine evaluate_model_tests(options,fails)
      
@@ -897,9 +1015,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         A(2,2) = 10.0
         g = [-7.4, -28.9]
         Delta = 0.02_wp
-        work%calculate_step_ws%solve_galahad_ws%reg_order = 2.0_wp
         call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
-             d,normd,options,status,&
+             d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. 0 ) then
            write(*,*) testname,'test failed, status = ', status%status
@@ -918,7 +1035,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         
         Delta = -100_wp
         call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
-             d,normd,options,status,&
+             d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
            write(*,*) testname,'test failed, expected status = ', ERROR%FROM_EXTERNAL
@@ -2032,6 +2149,15 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call nlls_strerror(status)
      expected_string =  'Error accessing pre-allocated workspace'
      if (status%error_message .ne. expected_string) then 
+        write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
+             status%status
+        fails = fails + 1
+     end if
+
+     status%status = ERROR%UNSUPPORTED_TYPE_METHOD
+     call nlls_strerror(status)
+     expected_string =  'Unsupported value of type_of_method passed in options'
+     if (status%error_message .ne. expected_string) then 
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -2105,14 +2231,6 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
      
-     status%status = ERROR%NT_BAD_SUBPROBLEM
-     call nlls_strerror(status)
-     expected_string = 'nlls_method = 4 needed if type_of_method=2'
-     if (status%error_message .ne. expected_string) then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         fails = fails + 1
-     end if
      
 
 

@@ -221,20 +221,6 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
 
-
-     ! Let's get a subproblem solver error
-     call reset_default_options(options)
-     options%model = 4
-     options%nlls_method = 1
-     options%type_of_method = 2
-     call solve_basic(X,params,options,status)
-     if ( status%status .ne. ERROR%NT_BAD_SUBPROBLEM) then
-        write(*,*) 'Error: incorrect error return when wrong subproblem solver selected'
-        write(*,*) 'Expected', ERROR%NT_BAD_SUBPROBLEM, ' but got ', status%status
-        no_errors_main = no_errors_main + 1
-     end if
-     status%status = 0 
-
      ! Let's get to maxits
      call reset_default_options(options)
      options%type_of_method = 1
@@ -398,6 +384,29 @@ program nlls_test
      end if
      status%status = 0
 
+     ! test for unsupported method, with type_of_method = 2
+     call reset_default_options(options)
+     options%type_of_method = 2
+     options%nlls_method = 3125
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. ERROR%UNSUPPORTED_METHOD ) then 
+        write(*,*) 'Error: unsupported method (nlls_method=2) passed and not caught'
+        write(*,*) 'status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! test for unsupported type_of_method
+     call reset_default_options(options)
+     options%type_of_method = 2343
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. ERROR%UNSUPPORTED_TYPE_METHOD ) then 
+        write(*,*) 'Error: unsupported type_of_method passed and not caught'
+        write(*,*) 'status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
      ! test for unsupported tr strategy
      call reset_default_options(options)
      options%tr_update_strategy = 323
@@ -478,6 +487,9 @@ program nlls_test
      call more_sorensen_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
+     call trust_region_subproblem_tests(options,fails)
+     no_errors_helpers = no_errors_helpers + fails
+     
      call evaluate_model_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
      

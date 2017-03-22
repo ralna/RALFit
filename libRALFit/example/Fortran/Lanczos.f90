@@ -101,7 +101,8 @@ program lanczos
   real(wp), allocatable :: x(:)
   type(params_type) :: params
   integer :: inner_method
-
+  real(wp) :: tic, toc
+  
   ! data to be fitted
   m = 24
   allocate(params%t(m), params%y(m))
@@ -162,19 +163,23 @@ program lanczos
 
   options%print_level = 0
   options%exact_second_derivatives = .true.
-  options%model = 3
-  options%nlls_method = 4
-  options%type_of_method = 2
+  options%model = 1
+  options%nlls_method = 3
+  options%use_ews_subproblem = .true.
+  options%type_of_method = 1
   options%regularization_term = 1.0e-2
   options%regularization_power = 2.0
   options%reg_order = -1.0
   options%inner_method = 3
-  
+  options%maxit = 1000
+
+  call cpu_time(tic)
   call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
   if(inform%status.ne.0) then
      print *, "ral_nlls() returned with error flag ", inform%status
      stop
   endif
+  call cpu_time(toc)
   
   ! Print result
   print *, "Found a local optimum at x = ", x
@@ -182,4 +187,5 @@ program lanczos
   print *, "     ", inform%f_eval, " function evaluations"
   print *, "     ", inform%g_eval, " gradient evaluations"
   print *, "     ", inform%h_eval, " hessian evaluations"
+  print *, "     ", toc-tic, " seconds"
 end program lanczos

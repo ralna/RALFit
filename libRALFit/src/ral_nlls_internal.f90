@@ -233,10 +233,6 @@ contains
        if ( options%print_level >= 1 ) write( options%out, 1000 )
        ! first, check if n < m
        if (n > m) goto 4070
-       if (options%type_of_method == 2) then
-          ! now check that if type_of_method = 2, we have an appropriate subproblem solverx
-          if (options%nlls_method .ne. 4) goto 4110
-       end if
        ! set scalars...
        w%first_call = 0
        w%tr_nu = options%radius_increase
@@ -324,7 +320,7 @@ contains
        end if
        
        ! set the reg_order to that in the options
-       w%reg_order = options%reg_order
+       w%calculate_step_ws%reg_order = options%reg_order
 
        !! Select the order of the model to be used..
        select case (options%model)
@@ -334,7 +330,7 @@ contains
           if ( ( options%type_of_method == 2) .and. &
                (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
-             w%reg_order = two
+             w%calculate_step_ws%reg_order = two
           end if
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
@@ -357,7 +353,7 @@ contains
           if ( ( options%type_of_method == 2) .and. & 
                (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
-             w%reg_order = three
+             w%calculate_step_ws%reg_order = three
           end if
        case (3) ! hybrid (MNT)
           ! set the tolerance :: make this relative
@@ -368,7 +364,7 @@ contains
           if ( (options%type_of_method == 2) .and. & 
                (options%reg_order .le. zero)) then 
              ! regularization method, use optimal reg
-             w%reg_order = two
+             w%calculate_step_ws%reg_order = two
           end if
           if (.not. options%exact_second_derivatives) then 
              ! initialize hf_temp too 
@@ -431,8 +427,6 @@ contains
        !    d                                      !   
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-       w%calculate_step_ws%solve_galahad_ws%reg_order = w%reg_order 
-       ! todo: fix this...don't copy over...
        call calculate_step(w%J,w%f,w%hf,w%g,& 
             X,md,md_gn,& 
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, & 
@@ -727,11 +721,6 @@ contains
     inform%status = ERROR%WORKSPACE_ERROR
     goto 4000
     
-4110 continue
-    ! bad subproblem solver
-    inform%status = ERROR%NT_BAD_SUBPROBLEM
-    goto 4000
-
 ! convergence 
 5000 continue
     ! convegence test satisfied
@@ -765,7 +754,7 @@ contains
     ! reset all the scalars
     w%first_call = 1
     w%iter = 0
-    w%reg_order = 0.0
+    w%calculate_step_ws%reg_order = 0.0
     w%use_second_derivatives = .false.
     w%hybrid_count = 0 
     w%hybrid_tol = 1.0
@@ -810,6 +799,8 @@ contains
        inform%error_message = 'Unsupported value of scale passed in options'
     elseif ( inform%status == ERROR%WORKSPACE_ERROR ) then
        inform%error_message = 'Error accessing pre-allocated workspace'
+    elseif ( inform%status == ERROR%UNSUPPORTED_TYPE_METHOD ) then
+       inform%error_message = 'Unsupported value of type_of_method passed in options'
     elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
        inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
     elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
@@ -824,8 +815,6 @@ contains
        inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
     elseif ( inform%status == ERROR%NO_SECOND_DERIVATIVES ) then
        inform%error_message = 'Exact second derivatives needed for tensor model'
-    elseif ( inform%status == ERROR%NT_BAD_SUBPROBLEM ) then
-       inform%error_message = 'nlls_method = 4 needed if type_of_method=2'
     else 
        inform%error_message = 'Unknown error number'           
     end if
@@ -860,7 +849,7 @@ contains
     TYPE( calculate_step_work ) :: w
         
     real(wp) :: md_bad
-    integer :: i
+    integer :: i, jj
     logical :: scaling_used = .false.
     real(wp) :: coeff ! coefficient in front of diag(s) if reg. problem being solved
     real(wp) :: sum_reg
@@ -938,37 +927,62 @@ contains
        IF (scaling_used) then
           do i = 1,n
              w%v(i) = w%v(i) / w%scale(i)
-             w%A(i,:) = w%A(i,:) / w%scale(i)
-             w%A(:,i) = w%A(:,i) / w%scale(i)
+             call dscal(n, 1/w%scale(i), w%A(:,i), 1)
           end do
+          do jj = 1, n ! swap order for efficiency
+             do i = 1, n
+                w%A(i,jj) = w%A(i,jj) / w%scale(i)
+             end do
+          end do
+
+          ! Let's test how well other methods work...
+!          do i = 1, n
+!             call dscal(n, 1/1.0_wp, w%A(:,i), 1)
+!          end do
        end IF
    
 
        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
-       select case (options%nlls_method)
-       case (1) ! Powell's dogleg
-          if (options%print_level >= 2) write(options%out,3000) 'dogleg'
-          call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
-        case (2) ! The AINT method
-           if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
-           call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
-        case (3) ! More-Sorensen
-           if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
-           call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
-        case (4) ! Galahad
-           if (options%type_of_method == 1) then
-              if (options%print_level >= 2) write(options%out,3000) 'DTRS'
-           elseif (options%type_of_method == 2) then 
-              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
-           end if           
-           call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
-                d,normd,options,inform,w%solve_galahad_ws)
-        case default
-           inform%status = ERROR%UNSUPPORTED_METHOD
-           goto 1000
-        end select
-
+       if ( options%type_of_method == 1) then
+          select case (options%nlls_method)
+          case (1) ! Powell's dogleg
+             if (options%print_level >= 2) write(options%out,3000) 'dogleg'
+             call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
+          case (2) ! The AINT method
+             if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
+             call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+          case (3) ! More-Sorensen
+             if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
+             call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
+          case (4) ! Galahad
+             if (options%print_level >= 2) write(options%out,3000) 'DTRS'
+             call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
+                  d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+          case default
+             inform%status = ERROR%UNSUPPORTED_METHOD
+             goto 1000
+          end select ! nlls_method
+       elseif (options%type_of_method == 2) then
+          select case (options%nlls_method)
+          case (3) ! home-rolled regularization solver
+             if (options%print_level >= 2) write(options%out,3020) 'RALFit solver'
+             call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
+                  d,normd,w%reg_order,options,inform,w%regularization_solver_ws)
+          case(4) ! Galahad
+             if (options%print_level >= 2) write(options%out,3020) 'DRQS'
+             call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
+                  d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+          case default
+             inform%status = ERROR%UNSUPPORTED_METHOD
+             goto 1000
+          end select ! nlls_method
+       else
+          inform%status = ERROR%UNSUPPORTED_TYPE_METHOD
+          goto 1000
+       end if ! type_of_method
+        
+        
         ! reverse the scaling on the step
         if ( (scaling_used) ) then 
            do i = 1, n
@@ -1110,7 +1124,7 @@ return
      if ((options%type_of_method == 2) .and. & 
           (options%reg_order .le. zero)) then 
         ! switch to optimal regularization
-        w%reg_order = two
+        w%calculate_step_ws%reg_order = two
      end if
      ! save hf as hf_temp
      w%hf_temp(1:n**2) = w%hf(1:n**2)
@@ -1128,7 +1142,7 @@ return
      if ((options%type_of_method == 2).and. & 
         (options%reg_order .le. zero)) then
         ! switch to optimal regularization
-        w%reg_order = three
+        w%calculate_step_ws%reg_order = three
      end if
      w%hybrid_count = 0
      ! copy hf from hf_temp
@@ -1363,6 +1377,31 @@ return
      ! Solve the trust-region subproblem using 
      ! the method of More and Sorensen
      !
+     ! main output :: d, the soln to the TR subproblem
+     ! -----------------------------------------
+
+     REAL(wp), intent(in) :: A(:,:), v(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: nd ! ||d||_D
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+     type( more_sorensen_work ) :: w
+
+     if (options%use_ews_subproblem) then
+        call more_sorensen_ew(A,v,n,m,Delta,d,nd,options,inform,w)
+     else
+        call more_sorensen_noew(A,v,n,m,Delta,d,nd,options,inform,w)
+     end if
+
+   end subroutine more_sorensen
+
+   subroutine more_sorensen_ew(A,v,n,m,Delta,d,nd,options,inform,w)
+     ! -----------------------------------------
+     ! more_sorensen
+     ! Solve the trust-region subproblem using 
+     ! the method of More and Sorensen
+     !
      ! Using the implementation as in Algorithm 7.3.6
      ! of Trust Region Methods
      ! 
@@ -1393,7 +1432,10 @@ return
      local_ms_shift = options%more_sorensen_shift
 
      ! d = -A\v
-     call solve_spd(A,-v,w%LtL,d,n,inform)
+     ! in this case, A = AplusSigma
+     w%AplusSigma(1:n,1:n) = A(1:n,1:n)
+     call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
+     
      if (inform%status .eq. 0) then
         ! A is symmetric positive definite....
         sigma = zero
@@ -1407,8 +1449,9 @@ return
         if (inform%status .ne. 0) goto 1000
         sigma = -(sigma - local_ms_shift)
         if (options%print_level >= 3) write(options%out,6010) sigma
-        ! find a shift that makes (A + sigma I) positive definite
-        call get_pd_shift(n,A,v,sigma,d,options,inform,w)
+        ! find a shift that makes (A + sigma I) positive definite,
+        ! and solve (A + sigma I) (-v) = d 
+        call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
         if (inform%status .ne. 0) goto 4000
         if (options%print_level >=3) write(options%out,6020)
      end if
@@ -1421,41 +1464,53 @@ return
      no_restarts = 0
      ! set 'small' in the context of the algorithm
      epsilon = max( options%more_sorensen_tol * Delta, options%more_sorensen_tiny )
+
+     ! First, check if we're in the t.r. and adjust accordingly
+     if (nd .le. Delta) then
+        ! we're within the tr radius
+        if (options%print_level >= 3) write(options%out,6030)
+        if ( abs(sigma) < options%more_sorensen_tiny ) then
+           ! we're good....exit
+           if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
+           if (options%print_level >= 3) write(options%out,6040)
+           goto 1020
+        else if ( abs( nd - Delta ) < epsilon ) then
+           ! also good...exit
+                      if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
+           if (options%print_level >= 3) write(options%out,6050)
+           goto 1020              
+        end if
+        call findbeta(d,w%y1,Delta,alpha,inform)
+        if (inform%status .ne. 0 ) goto 1000  
+        d = d + alpha * w%y1
+        nd = norm2(d)
+        if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
+        if (options%print_level >= 3) write(options%out,6060)
+        ! also good....exit
+        goto 1020
+     end if
+     
      do i = 1, options%more_sorensen_maxits
         if (options%print_level >= 2) write(options%out,5010) i-1, nd, sigma, sigma_shift
-                
-        if (nd .le. Delta + epsilon) then
-           ! we're within the tr radius
-           if (options%print_level >= 3) write(options%out,6030)
-           if ( abs(sigma) < options%more_sorensen_tiny ) then
-              ! we're good....exit
-              if (options%print_level >= 3) write(options%out,6040)
-              goto 1020
-           else if ( abs( nd - Delta ) < epsilon ) then
-              ! also good...exit
-              if (options%print_level >= 3) write(options%out,6050)
-              goto 1020              
-           end if
-           call findbeta(d,w%y1,Delta,alpha,inform)
-           if (inform%status .ne. 0 ) goto 1000  
-           d = d + alpha * w%y1
-           if (options%print_level >= 3) write(options%out,6060)
-           ! also good....exit
+
+        if ( abs(nd  - Delta) .le. epsilon) then
+           ! we're within the tr radius -- exit
+           if (options%print_level >= 3) write(options%out,6035)
            goto 1020
         end if
 
         w%q = d ! w%q = R'\d
         CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
-             1, one, w%LtL, n, w%q, n )
-        
+             1, one, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
+
         nq = norm2(w%q)
         if (options%print_level >= 3) write(options%out,6080) nq
-        
+
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
         if (abs(sigma_shift) < options%more_sorensen_tiny * abs(sigma) ) then
            if (no_restarts < 1) then 
               ! find a shift that makes (A + sigma I) positive definite
-              call get_pd_shift(n,A,v,sigma,d,options,inform,w)
+              call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
               if (inform%status .ne. 0) goto 4000
               no_restarts = no_restarts + 1
            else
@@ -1465,10 +1520,10 @@ return
            end if
         else 
            sigma = sigma + sigma_shift
+           call shift_matrix(A,sigma,w%AplusSigma,n)
+           call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
         end if
-
-        call shift_matrix(A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+        
         if (inform%status .ne. 0) goto 1000
         
         nd = norm2(d)
@@ -1487,7 +1542,8 @@ return
      goto 4000
 
 1020 continue
-     ! inital point was successful
+     ! initial point was successful
+     nd = norm2(d)
      if (options%print_level==2) write(options%out,5040)
      goto 4000
 
@@ -1518,26 +1574,367 @@ return
 6000 FORMAT('A is symmetric positive definite')     
 6010 FORMAT('Trying a shift of sigma = ',ES12.4)     
 6020 FORMAT('A + sigma I is symmetric positive definite') 
-6030 FORMAT('We''re within the trust region radius initially')     
+6030 FORMAT('We''re within the trust region radius initially')
+6035 FORMAT('We''re within the trust region radius')
 6040 FORMAT('Sigma tiny, so exit')  
 6050 FORMAT('||d|| = Delta, so exit')   
 6060 FORMAT('Return d + alpha*y_1') 
 6070 FORMAT('Converged! ||d|| = Delta at iteration ',i4)      
 6080 FORMAT('nq = ',ES12.4)
+   end subroutine more_sorensen_ew
 
-   end subroutine more_sorensen
+   subroutine more_sorensen_noew(A,v,n,m,Delta,d,nd,options,inform,w)
+     ! -----------------------------------------
+     ! more_sorensen
+     ! Solve the trust-region subproblem using 
+     ! the method of More and Sorensen
+     !
+     ! Using the implementation as in Algorithm 7.3.4
+     ! of Trust Region Methods
+     ! 
+     ! main output :: d, the soln to the TR subproblem
+     ! -----------------------------------------
 
-   subroutine get_pd_shift(n,A,v,sigma,d,options,inform,w)
+     REAL(wp), intent(in) :: A(:,:), v(:), Delta
+     integer, intent(in)  :: n, m
+     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: nd ! ||d||_D
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+     type( more_sorensen_work ) :: w
+
+     real(wp) :: nq, epsilon
+     real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
+     integer :: i, jj, kk,  no_restarts
+     real(wp) :: sigma_l, sigma_u
+     integer :: region ! 1:N, 2:L, 3:G (2-3:F)
+     real(wp) :: normF_A, norminf_A
+     real(wp) :: dlange, dasum
+     real(wp) :: Aii, abs_Aii_sum, lower_sum, upper_sum, min_Aii, max_lower_sum, max_upper_sum, nv
+     real(wp) :: uHu, dHd, theta, kappa_easy, kappa_hard, indef_delta
+     integer :: location_of_breakdown
+     character(1) :: region_char
+     logical :: factorization_done
+     
+     ! The code finds 
+     !  d = arg min_p   v^T p + 0.5 * p^T A p
+     !       s.t. ||p|| \leq Delta
+     !
+     ! set A and v for the model being considered here...
+
+     if (.not. w%allocated) goto 1010
+
+     theta = 0.5
+     kappa_easy = 0.001
+     kappa_hard = 0.002
+     
+     ! Set up the initial variables....
+     normF_A = dlange('F',n,n,A,n,w%norm_work)
+     norminf_A = dlange('I',n,n,A,n,w%norm_work)
+     do i = 1, n
+        Aii = A(i,i)
+        abs_Aii_sum = dasum(n,A(:,i),1) ! = sum |A_ij|
+        if (Aii < zero) then
+           lower_sum = abs_Aii_sum + 2*Aii ! A_ij + sum_(i ne j) |A_ij|
+           upper_sum = abs_Aii_sum
+        else
+           lower_sum = abs_Aii_sum 
+           upper_sum = abs_Aii_sum + 2*Aii ! A_ij + sum_(i ne j) |A_ij|
+        end if
+        if (i == 1) then
+           min_Aii = Aii
+           max_lower_sum = lower_sum
+           max_upper_sum = upper_sum
+        else
+           min_Aii = min(Aii,min_Aii)
+           max_lower_sum = max(lower_sum, max_lower_sum)
+           max_upper_sum = max(upper_sum, max_upper_sum)
+        end if
+     end do
+     nv = norm2(v)
+
+     sigma_l = max(zero, -min_Aii, nv/Delta - min(max_lower_sum,normF_A,norminf_A))
+     sigma_u = max(zero,nv/Delta + min(max_upper_sum,normF_A,norminf_A))
+     
+     local_ms_shift = options%more_sorensen_shift
+     sigma = max(zero,sigma_l)
+     ! todo: if the model hasn't changed, use the terminating sigma there instead (p192, TR book)...
+     if (options%print_level >= 3) write(options%out,6030) sigma_l, sigma, sigma_u
+
+     if (options%print_level >= 2) write(options%out,5000)
+
+     factorization_done = .false.
+     
+     ! now start the iteration...
+     do i = 1, options%more_sorensen_maxits
+        ! d = -A\v
+        if (.not. factorization_done) then 
+           call shift_matrix(A,sigma,w%AplusSigma,n)
+           call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+        else 
+           factorization_done = .false.
+        end if
+        if (inform%status .eq. 0) then
+           ! A is symmetric positive definite....
+           if (options%print_level >= 3) write(options%out,6000)
+           nd = norm2(d)
+           if (nd < Delta) then
+              region = 3 ! G
+              region_char = 'G'
+              sigma_u = sigma
+              if (options%print_level >= 3) write(options%out,6010) sigma_u
+              ! check for interior convergence....
+              if ( abs(sigma) < 1e-16) then
+                 if (options%print_level >= 3) write(options%out,5060)
+                 goto 4000
+              end if
+           else
+              region = 2 ! L
+              region_char = 'L'
+              sigma_l = sigma
+              if (options%print_level >= 3) write(options%out,6020) sigma_l
+           end if
+           if (options%print_level >=3) write(options%out,6000)
+        else
+           if (options%print_level >=3) write(options%out,6050)
+           location_of_breakdown = inform%external_return
+           ! reset the error calls -- handled in the code....
+           inform%status = 0
+           inform%external_return = 0
+           inform%external_name = REPEAT( ' ', 80 )
+           region = 1 ! N
+           region_char = 'N'
+           sigma_l = sigma
+           if (options%print_level >= 3) write(options%out,6020) sigma_l
+        end if
+        
+        if (region .ne. 1 ) then ! in F
+           w%q = d ! w%q = R'\d
+           CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
+                1, one, w%LtL, n, w%q, n )
+           nq = norm2(w%q)
+           if (options%print_level >= 3) write(options%out,6080) nq
+           sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
+           if (options%print_level >=3) write(options%out,6070) sigma_shift
+           if (region == 3) then ! lambda in G
+              ! use the linpack method...
+              call linpack_method(n,w%AplusSigma,w%LtL,w%y1,uHu)
+              sigma_l = max(sigma_l, sigma - uHu)
+              if (options%print_level >= 3) write(options%out,6020) sigma_l
+              dHd = dot_product(d, matmul(w%AplusSigma,d))
+              call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
+              d = d + alpha * w%y1
+              ! check for termination
+              if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
+                 if (options%print_level >= 2) write(options%out,5050)
+                 goto 4000
+              end if
+              if (inform%status .ne. 0 ) goto 1000  
+              if (options%print_level >= 3) write(options%out,6060)
+           end if
+        else  ! not in F
+           ! find an alpha and y1 such that
+           !  (A + sigmaI + alpha e_k e_k^T)v = 0
+!!$           write(*,*) 'location of breakdown = ', location_of_breakdown
+!!$           write(*,*) 'A = '
+!!$           do jj = 1, n
+!!$              write(*,*) w%AplusSigma(:,jj)
+!!$           end do
+!!$           write(*,*) 'LtL = '
+!!$           do jj = 1, n
+!!$              write(*,*) w%LtL(:,jj)
+!!$           end do
+           indef_delta = -w%AplusSigma(location_of_breakdown,location_of_breakdown)
+           do jj = 1, location_of_breakdown-1
+              indef_delta = indef_delta + w%LtL(location_of_breakdown,jj)**2
+           end do
+
+           w%y1 = zero
+           w%y1(location_of_breakdown) = 1.0_wp
+           do jj = location_of_breakdown - 1, 1, -1
+              do kk = jj + 1, location_of_breakdown
+                 w%y1(jj) = w%LtL(kk,jj) * w%y1(kk)
+              end do
+              w%y1(jj) = -w%y1(jj) / w%LtL(jj,jj)
+           end do
+
+           sigma_l = max(sigma_l, sigma + indef_delta/norm2(w%y1))
+        end if
+        
+        ! check for termination
+        if ( (region == 2) .or. (region == 3) ) then ! region F
+           if (abs(nd - Delta) .le. kappa_easy * Delta) then
+              if (options%print_level >= 2) write(options%out,5030)
+              goto 4000
+           end if
+           if ( region == 3 ) then ! region G
+              if (sigma == 0) then
+                 if (options%print_level >= 2) write(options%out,5040)
+                 goto 4000
+              else
+!!$                 dHd = dot_product(d, matmul(w%AplusSigma,d))
+!!$                 if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
+!!$                    if (options%print_level >= 2) write(options%out,5050)
+!!$                    d = d + alpha * w%y1
+!!$                    goto 4000
+!!$                 end if
+!!$                 ! update d (as this wasn't done earlier)
+!!$                 d = d + alpha * w%y1
+              end if
+           end if
+        end if
+        
+        
+        if ( ( region == 2 ) .and. ( norm2(v) > 0) ) then
+           sigma = sigma + sigma_shift
+            if (options%print_level >= 3) write(options%out,6040) sigma
+        elseif (region == 3) then
+           call shift_matrix(A,sigma + sigma_shift,w%AplusSigma,n)
+           call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+           if (inform%status == 0) then
+              region = 2
+              sigma = sigma + sigma_shift
+              factorization_done = .true.
+              if (options%print_level >= 3) write(options%out,6040) sigma
+           else
+              sigma_l = max(sigma_l, sigma+sigma_shift)
+              ! check sigma_l for interior convergence
+              sigma = max( sqrt(sigma_l * sigma_u), &
+                   sigma_l + theta * ( sigma_u - sigma_l) )              
+              if (options%print_level >= 3) write(options%out,6090) sigma
+           end if
+        else
+           sigma = max( sqrt(sigma_l * sigma_u), &
+                sigma_l + theta * ( sigma_u - sigma_l) )
+           if (options%print_level >= 3) write(options%out,6090) sigma
+        end if
+
+        if (options%print_level >= 2) write(options%out,5010) i, region_char, nd, sigma_l, sigma, sigma_u
+        
+     end do
+     
+     
+     goto 1040
+     
+1000 continue 
+     ! bad error return from external package
+     goto 4000
+     
+1010 continue
+     inform%status = ERROR%WORKSPACE_ERROR
+     goto 4000
+
+1040 continue
+     ! maxits reached, not converged
+     if (options%print_level >=2) write(options%out,5020)
+     inform%status = ERROR%MS_MAXITS
+     goto 4000
+
+          
+4000 continue
+     ! exit the routine
+     nd = norm2(d)
+     if (options%print_level >= 2) write(options%out,5010) i, region_char, nd, sigma_l, sigma, sigma_u
+     return 
+
+     ! Printing statements
+     ! print_level >= 2 
+5000 FORMAT('iter',2x,'region',2x,'||d||',9x,'sigma_l',9x,'sigma',9x,'sigma_u')
+5010 FORMAT(i4,2x,A,5x,ES12.4,2x,ES12.4,4x,ES12.4,2x,ES12.4)
+5020 FORMAT('More-Sorensen failed to converge within max number of iterations')
+5030 FORMAT('Converged! | ||d|| - Delta | <= kappa_easy * Delta')
+5040 FORMAT('Converged! sigma = 0 in region G')
+5050 FORMAT('Converged! MINPACK test')    
+5060 FORMAT('Converged!')    
+    
+     
+     ! print_level >= 3
+6000 FORMAT('A + sigma I is symmetric positive definite')
+6010 FORMAT('Replacing sigma_u by ',ES12.4)     
+6020 FORMAT('Replacing sigma_l by ',ES12.4)
+6030 FORMAT('sigma_l = ',ES12.4,' sigma = ',ES12.4, ' sigma_u = ', ES12.4)
+6040 FORMAT('Replacing sigma by sigma + sigma_shift = ',ES12.4)
+6050 FORMAT('A + sigma I is indefinite')    
+6060 FORMAT('Return d + alpha*y_1')
+6070 FORMAT('sigma_shift = ',ES12.4)
+6080 FORMAT('nq = ',ES12.4)
+6090 FORMAT('Replacing sigma by max(gm,av) = ', ES12.4)
+
+
+
+   end subroutine more_sorensen_noew
+
+   
+   subroutine linpack_method(n,H,LLt,u,uHu)
+
+     !-------------------------------------------------
+     ! linpack_method
+     !
+     ! Find a u such that (u,H(sigma)u) is small
+     ! Uses the 'linpack method' described in Section 7.3
+     ! (page 191) of the Trust Region book
+     !-------------------------------------------------
+
+     integer, intent(in) :: n
+     real(wp), intent(in) :: H(:,:), LLt(:,:)
+     real(wp), intent(out) :: u(:), uHu
+
+     real(wp) :: v_minus, v_plus, ltimesw
+     integer :: i
+
+     u = zero
+
+!!$     write(*,*) 'LLt = '
+!!$     do i = 1, n
+!!$        write(*,*) LLt(:,i)
+!!$     end do
+
+     do i = 1, n
+        v_plus = 1
+        v_minus = -1
+        if (i > 1) then
+           ltimesw = dot_product(LLt(i,1:i-1),u(1:i-1))
+           v_plus = 1 - ltimesw
+           v_minus = -1 - ltimesw
+        end if
+        v_plus = v_plus / LLt(i,i)
+        v_minus = v_minus / LLt(i,i)
+        if ( v_plus > v_minus) then
+           u(i) = v_plus
+        else
+           u(i) = v_minus
+        end if   
+     end do
+
+     ! in the above, u is the w in the TR book
+     ! now set u = L'\u
+     CALL DTRSM( 'Left', 'Lower', 'Transpose', 'Non-unit', n, & 
+          1, one, LLt, n, u, n )
+     u = u / norm2(u)   ! and normalize   
+
+!!$     write(*,*) 'H = '
+!!$     do i = 1, n
+!!$        write(*,*) H(:,i)
+!!$     end do
+
+     uHu = dot_product(u, matmul(H,u))
+!     write(*,*) 'uHu = ', uHu
+     
+   end subroutine linpack_method
+
+   subroutine check_shift_and_solve(n,A,AplusSigma,v,sigma,d,options,inform,w)
 
      !--------------------------------------------------
-     ! get_pd_shift
+     ! check_shift_and_solve
      !
-     ! Given an indefinite matrix A, find a shift sigma
-     ! such that (A + sigma I) is positive definite
+     ! Given an indefinite matrix A, find a ensures that
+     ! the input shift sigma makes (A + sigma I) is positive
+     ! definite, factorizes (A+sigmaI), and solves (A + sigma I)(-v) = d
      !--------------------------------------------------
      
      integer, intent(in) :: n 
      real(wp), intent(in) :: A(:,:), v(:)
+     real(wp), intent(inout) :: AplusSigma(:,:)
      real(wp), intent(inout) :: sigma
      real(wp), intent(inout) :: d(:)
      TYPE( nlls_options ), INTENT( IN ) :: options
@@ -1551,7 +1948,7 @@ return
      successful_shift = .false.
      do while( .not. successful_shift )
         call shift_matrix(A,sigma,w%AplusSigma,n)
-        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+        call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
         if ( inform%status .ne. 0 ) then
            ! reset the error calls -- handled in the code....
            inform%status = 0
@@ -1576,9 +1973,10 @@ return
 6010 FORMAT('Trying a shift of sigma = ',ES12.4)
      
 
-   end subroutine get_pd_shift
+   end subroutine check_shift_and_solve
+      
    
-   subroutine solve_galahad(A,v,n,m,Delta,num_successful_steps,d,normd,options,inform,w)
+   subroutine solve_galahad(A,v,n,m,Delta,num_successful_steps,d,normd,reg_order,options,inform,w)
 
      !---------------------------------------------
      ! solve_galahad
@@ -1597,6 +1995,7 @@ return
      integer, intent(in) :: num_successful_steps
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
+     real(wp), intent(in) :: reg_order
      type( solve_galahad_work ) :: w
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -1677,7 +2076,7 @@ return
         do while (.not. proceed)          
            reg_param = options%base_regularization + 1.0_wp/Delta
            call drqs_solve & 
-                (n,w%reg_order, reg_param, zero, w%v_trans, w%ew, w%d_trans, & 
+                (n, reg_order, reg_param, zero, w%v_trans, w%ew, w%d_trans, & 
                 drqs_options, drqs_inform)
            if ( drqs_inform%status == -7 ) then
               ! drqs_solve has failed because the matrix
@@ -1717,6 +2116,55 @@ return
 
    end subroutine solve_galahad
 
+
+   subroutine regularization_solver(A,v,n,m,Delta,num_successful_steps,&
+        d,normd,reg_order,options,inform,w)
+
+     !---------------------------------------------
+     ! regularization_sovler
+     ! Solve the regularized subproblem using 
+     ! a home-rolled algorithm
+     !--------------------------------------------
+
+     REAL(wp), intent(in) :: A(:,:), v(:)
+     REAL(wp), intent(inout) :: Delta
+     integer, intent(in)  :: n, m
+     integer, intent(in) :: num_successful_steps
+     real(wp), intent(out) :: d(:)
+     real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
+     real(wp), intent(in) :: reg_order
+     type( regularization_solver_work ) :: w
+     TYPE( nlls_options ), INTENT( IN ) :: options
+     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+
+     real(wp) :: reg_param
+     integer :: i 
+     
+     reg_param = 1.0_wp/Delta
+     
+     if ( reg_order == two ) then
+
+        call shift_matrix(A,reg_param,w%AplusSigma,n)
+        call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
+        if ( inform%status .ne. 0 ) goto 1000
+
+     else 
+        
+        write(*,*) 'Unsupported at the moment...'
+
+     end if
+     
+     return
+
+1000 continue
+     ! bad error return from external package
+     goto 4000
+     
+4000 continue
+     ! exit the routine
+     return 
+
+   end subroutine regularization_solver
 
    SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
        
@@ -2096,11 +2544,11 @@ return
                 ! regularized case works too
              end select
              if (options%print_level > 2) write(options%out,3030) w%Delta
-          else if (rho >= options%eta_too_successful) then
-             ! too successful....accept step, but don't change w%Delta
+          else if (rho < HUGE(wp)) then
              if (options%print_level > 2) write(options%out,3040) w%Delta 
+             ! too successful...accept step, but don't change w%Delta
           else
-             ! just incase (NaNs and the like...)
+             ! just incase (NaNs, rho too big, and the like...)
              if (options%print_level > 2) write(options%out,3050) w%Delta 
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -one ! set to be negative, so that the logic works....
@@ -2232,6 +2680,8 @@ return
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
 
+       inform%status = 0
+       
        ! A wrapper for the lapack subroutine dposv.f
        ! get workspace for the factors....
        LtL(1:n,1:n) = A(1:n,1:n)
@@ -2244,6 +2694,42 @@ return
        end if
 
      end subroutine solve_spd
+
+     subroutine solve_spd_nocopy(A,b,x,n,inform)
+       REAL(wp), intent(inout) :: A(:,:)
+       REAL(wp), intent(in) :: b(:)
+       REAL(wp), intent(out) :: x(:)
+       integer, intent(in) :: n
+       type( nlls_inform), intent(inout) :: inform
+
+       integer :: row 
+       
+       inform%status = 0
+!!$       write(*,*) 'A_in = '
+!!$       do row = 1, n
+!!$          write(*,*) A(row,:)
+!!$       end do
+       ! A wrapper for the lapack subroutine dposv.f
+       ! get workspace for the factors....
+       x(1:n) = b(1:n)
+       
+       call dposv('L', n, 1, A, n, x, n, inform%external_return)
+       if (inform%external_return .ne. 0) then
+          inform%status = ERROR%FROM_EXTERNAL
+          inform%external_name = 'lapack_dposv'
+          
+!!$          write(*,*) 'A_out = '
+!!$          do row = 1, n
+!!$             write(*,*) A(row,:)
+!!$          end do
+          
+          return
+       end if
+       
+       inform%status = 0
+
+     end subroutine solve_spd_nocopy
+
 
      subroutine solve_general(A,b,x,n,inform,w)
        REAL(wp), intent(in) :: A(:,:)

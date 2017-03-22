@@ -117,6 +117,7 @@
       READ( indr, "(E12.0)") control%hybrid_switch
       READ( indr, "(L)") control%exact_second_derivatives
       READ( indr, "(L)") control%subproblem_eig_fact
+      READ( indr, "(L)") control%use_ews_subproblem
       READ( indr, "(I6)") control%scale
       READ( indr, "(E12.0)") control%scale_max
       READ( indr, "(E12.0)") control%scale_min

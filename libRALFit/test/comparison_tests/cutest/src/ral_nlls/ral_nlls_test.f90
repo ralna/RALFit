@@ -60,6 +60,7 @@ module ral_nlls_workspaces
      real ( kind = wp ) :: hybrid_switch = 0.1_wp
      logical :: exact_second_derivatives = .true.
      LOGICAL :: subproblem_eig_fact = .FALSE.
+     LOGICAL :: use_ews_subproblem = .FALSE.
      integer :: scale = 0
      real(wp) :: scale_max = 1e12
      real(wp) :: scale_min = 1e-12

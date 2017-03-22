@@ -28,6 +28,8 @@ Possible values are:
       -  Unsupported scaling method.
     * - -13
       -  Error accessing pre-allocated workspace.
+    * - -14
+      -  Unsupported value in type_of_method
     * - -101
       -  Unsupported model in dogleg (``nlls_method = 1``).
     * - -201
@@ -42,5 +44,3 @@ Possible values are:
       -  No progress being made in ``more_sorensen`` subroutine (``nlls_method=3``).
     * - -401
       - ``model = 4`` selected, but ``exact_second_derivatives`` is set to ``false``. 
-    * - -501
-      - ``type_of_method = 2`` selected, but ``nlls_method`` is not equal to {\tt 4}.
