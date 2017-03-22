@@ -194,8 +194,9 @@ program nlls_test
 
      ! now test home rolled regularization
      call reset_default_options(options)
-     options%type_of_method = 2
-     options%model = 1
+     options%type_of_method = 2  ! regularization
+     options%model = 1 ! Gauss-Newton
+     options%nlls_method = 3
      options%reg_order = 2.0
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
