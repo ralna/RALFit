@@ -192,6 +192,20 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
 
+     ! now test home rolled regularization
+     call reset_default_options(options)
+     options%type_of_method = 2
+     options%model = 1
+     options%reg_order = 2.0
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge: negative reg_order'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+
      ! now, let's do the tensor model...
      call reset_default_options(options)
      options%type_of_method = 2 ! regularization
