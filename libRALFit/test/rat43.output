@@ -11,13 +11,11 @@ sifdecoder -A pc64.lnx.gfo -st   RAT43.SIF
  
  
  File successfully decoded
-/home/trees/Projects/RALFit/libRALFit/test/comparison_tests/cutest/sif
+/home/trees/Projects/RALFit/libRALFit/test/RALFit_tools/cutest/sif
  CUTEST: tools (double precision version) compiled successfully
  Compiling ral_nlls_dummy 		[ OK ]
  Compiling ral_nlls_main  		[ OK ]
  CUTEst: ral_nlls (double precision version) compiled successfully
-profile = 0
-FFLAGS =  -I/home/trees/cutest_files/cutest-mirror/modules/pc64.lnx.gfo/ -fopenmp
  summary_file = TESTSPEC.out                  
  iter_summary_file = TESTSPEC_iter.out             
  control%print_level =            1
@@ -70,3 +68,8 @@ status = 0       iter = 18
  # residual evaluations  =  21
  # Jacobian evaluations  =  19
  # Hessian evaluations   =  19
+ Set up time             =  .00 seconds
+ Solve time              =  .02 seconds
+
+******************************************************************
+
