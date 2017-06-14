@@ -1,4 +1,4 @@
-.. |n| replace:: holds the number :math:`n` of variables to be fitted; i.e., :math:`n` is [yas] elisp error!he length of the unknown vector :math:`\bm x`. **Restriction:** **n** :math:`>` **0**.
+.. |n| replace:: holds the number :math:`n` of variables to be fitted; i.e., :math:`n` is the length of the unknown vector :math:`\bm x`. **Restriction:** **n** :math:`>` **0**.
 
 .. |m| replace:: holds the number :math:`m` of data points available; i.e., :math:`m` is the number of residuals :math:`r_i`. **Restriction:** **m** :math:`\geq` **0**.
 
