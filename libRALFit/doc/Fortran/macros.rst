@@ -15,3 +15,6 @@
 .. |eval_J| replace:: :f:subr:`eval_J`
 
 .. |eval_Hf| replace:: :f:subr:`eval_Hf`
+
+.. |eval_HP| replace:: :f:subr:`eval_HP`
+		       

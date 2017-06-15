@@ -67,7 +67,7 @@ To solve the non-linear least squares problem
 
 .. include:: ../common/subroutines.rst
 
-.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights])
+.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP])
 
    Solves the non-linear least squares problem.
    
@@ -90,6 +90,8 @@ To solve the non-linear least squares problem
    :p nlls_inform inform [out]:  |inform|
 
    :o real weights(n): |weights|
+
+   :o procedure eval_HP: |eval_HP_desc|
 
 To iterate once
 ^^^^^^^^^^^^^^^
@@ -249,6 +251,46 @@ subroutine must implement the following interface:
    :p real Hf(n*n) [out]: |eval_Hf_Hf|
 
    :p integer status [inout]: |eval_Hf_status|
+
+For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A subroutine must be supplied to calculate
+:math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})` for
+given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^n`. The
+subroutine must implement the following interface:
+
+.. code-block:: Fortran
+
+    abstract interface
+       subroutine eval_HP_type(n, m, params, x, y, HP, status)
+           integer, intent(in) :: n
+           integer, intent(in) :: m
+           class(params_base_type), intent(in) :: params
+           double precision, dimension(n), intent(in)  :: x
+           double precision, dimension(n), intent(in)  :: y
+           double precision, dimension(n*m), intent(out) :: HP
+           integer, intent(inout) :: status
+         end subroutine eval_HP_type
+    end interface
+    :language: Fortran
+
+.. f:subroutine:: eval_HP(n,m,params,x,r,Hf,status)
+   
+   :p integer n [in]: |eval_HP_n|
+
+   :p integer m [in]: |eval_HP_m|
+		      
+   :p params_base_type params [in]: |eval_HP_params|
+
+   :p real x(n) [in]: |eval_HP_x|
+
+   :p real y(n) [in]: |eval_HP_y|
+
+   :p real HP(n*m) [out]: |eval_HP_HP|
+
+   :p integer status [inout]: |eval_HP_status|
+			   
 
 .. _data_types:
 
