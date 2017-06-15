@@ -152,29 +152,30 @@ interface:
 .. code-block:: Fortran
 
     abstract interface
-       subroutine eval_r(n, m, params, x, r, status)
+       subroutine eval_r(status, n, m, x, r, params)
+          integer, intent(inout) :: status
           integer, intent(in) :: n
           integer, intent(in) :: m
-          class(params_base_type), intent(in) :: params
           double precision, dimension(n), intent(in) :: x
-          double precision, dimension(m), intent(out) :: r
-          integer, intent(inout) :: status
+	  double precision, dimension(m), intent(out) :: r
+          class(params_base_type), intent(in) :: params
        end subroutine eval_r
     end interface
 
-.. f:subroutine:: eval_r(n,m,params,x,r,status)
+.. f:subroutine:: eval_r(status, n, m, x, r, params)
    
+   :p integer status [inout]: |eval_r_status|
+			   
    :p integer n [in]: |eval_r_n|
 
    :p integer m [in]: |eval_r_m|
 		      
-   :p params_base_type params [in]: |eval_r_params|
-
    :p real X(n) [in]: |eval_r_X|
 	    
    :p real r(m) [out]: |eval_r_r|
+		    
+   :p params_base_type params [in]: |eval_r_params|
 
-   :p integer status [inout]: |eval_r_status|
 
 For evaluating the function :math:`{\bm J} = \nabla  {\bm r} ( {\bm x} )`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -186,29 +187,29 @@ A subroutine must be supplied to calculate
 .. code-block:: Fortran
 
     abstract interface
-       subroutine eval_J(n, m, params, x, J, status)
-          integer, intent(in) :: n
-          integer, intent(in) :: m
-          class(params_base_type), intent(in) :: params
-          double precision, dimension(n), intent(in)  :: x
-          double precision, dimension(n*m), intent(out) :: J
+       subroutine eval_J(status, n, m, x, J, params)
           integer, intent(inout) :: status
+	  integer, intent(in) :: n
+          integer, intent(in) :: m
+          double precision, dimension(n), intent(in)  :: x
+	  double precision, dimension(n*m), intent(out) :: J
+	  class(params_base_type), intent(in) :: params
       end subroutine eval_J
     end interface
 
-.. f:subroutine:: eval_J(n,m,params,x,J,status)
+.. f:subroutine:: eval_J(status,n,m,x,J,params)
    
+   :p integer status [inout]: |eval_J_status|
+
    :p integer n [in]: |eval_J_n|
 		      
    :p integer m [in]: |eval_J_m|
-		      
-   :p params_base_type params [in]: |eval_J_params|
 
    :p real X(n) [in]: |eval_J_X|
 
    :p real J(m*n) [out]: |eval_J_r|
 
-   :p integer status [inout]: |eval_J_status|
+   :p params_base_type params [in]: |eval_J_params|
 
 
 For evaluating the function :math:`Hf = \sum_{i=1}^m r_i( {\bm x} )  {\bm W} \nabla^2 r_i( {\bm x} )`
@@ -224,25 +225,25 @@ subroutine must implement the following interface:
 .. code-block:: Fortran
 
     abstract interface
-       subroutine eval_Hf_type(n, m, params, x, r, Hf, status)
-           integer, intent(in) :: n
+       subroutine eval_Hf_type(status, n, m, x, r, Hf, params)
+           integer, intent(inout) :: status           
+	   integer, intent(in) :: n
            integer, intent(in) :: m
-           class(params_base_type), intent(in) :: params
            double precision, dimension(n), intent(in)  :: x
            double precision, dimension(m), intent(in)  :: r
-           double precision, dimension(n*n), intent(out) :: Hf
-           integer, intent(inout) :: status
+	   double precision, dimension(n*n), intent(out) :: Hf
+	   class(params_base_type), intent(in) :: params
          end subroutine eval_Hf_type
     end interface
     :language: Fortran
 
-.. f:subroutine:: eval_Hf(n,m,params,x,r,Hf,status)
+.. f:subroutine:: eval_Hf(status,n,m,x,r,Hf,params)
    
+   :p integer status [inout]: |eval_Hf_status|
+
    :p integer n [in]: |eval_Hf_n|
 
    :p integer m [in]: |eval_Hf_m|
-		      
-   :p params_base_type params [in]: |eval_Hf_params|
 
    :p real X(n) [in]: |eval_Hf_X|
 
@@ -250,7 +251,7 @@ subroutine must implement the following interface:
 
    :p real Hf(n*n) [out]: |eval_Hf_Hf|
 
-   :p integer status [inout]: |eval_Hf_status|
+   :p params_base_type params [in]: |eval_Hf_params|
 
 For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
