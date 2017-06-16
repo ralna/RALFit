@@ -214,6 +214,41 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        
      end subroutine eval_H_error
 
+     subroutine eval_HP ( status, n, m, x, y, hp, params )
+       
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n, m 
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: x
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: y
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: hp
+       class( params_base_type ), intent(in) :: params
+
+       ! does nothing for now...
+
+       integer :: i
+
+       ! X(1) = m, X(2) = c
+       select type(params)
+       type is(user_type)
+
+          hp(1:n*m) = 0.0
+          do i = 1, m ! loop over the columns
+             ! need to put H(x)*y in each row
+             hp( n*(i-1) + 1 ) = &
+                  y(1)* (- (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
+                  y(2)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) )
+             hp( n*(i-1) + 2 ) = &
+                  y(1)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
+                  y(2)* (-  exp( X(1) * params%x_values(i) + X(2) ) )
+          end do
+ 
+       end select
+       
+       status = 0
+       
+     end subroutine eval_HP
+
      subroutine generate_data_example(params)
        
        type ( user_type ), intent(out) :: params

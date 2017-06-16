@@ -63,6 +63,19 @@ module ral_nlls_internal
      end subroutine eval_hf_type
   end interface
 
+  abstract interface
+     subroutine eval_hp_type(status, n, m, x, y, hp, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: y
+       double precision, dimension(*), intent(out) :: hp
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hp_type     
+  end interface
+
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: solve_galahad, findbeta, mult_j
     public :: mult_jt, solve_spd, solve_general, matmult_inner
@@ -85,9 +98,9 @@ contains
   !!******************************************************!!
 
   RECURSIVE SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
-                         eval_F, eval_J, eval_HF,   & 
-                         params,                    &
-                         options, inform, weights )
+                         eval_F, eval_J, eval_HF,             & 
+                         params,                              &
+                         options, inform, weights, eval_HP )
     
 !  -----------------------------------------------------------------------------
 !  RAL_NLLS, a fortran subroutine for finding a first-order critical
@@ -109,6 +122,7 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
     real( wp ), dimension( m ), intent(in), optional :: weights
+    procedure( eval_hp_type ), optional :: eval_HP
       
     integer  :: i
     
@@ -145,18 +159,36 @@ contains
     main_loop: do i = 1,options%maxit
        
        if ( present(weights) ) then
-          call nlls_iterate(n, m, X,      & 
-               w,                         &
-               eval_F, eval_J, eval_HF,   & 
-               params,                    &
-               inform, options, weights)
+          if ( present(eval_HP) ) then 
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options, weights=weights,eval_HP=eval_HP)
+          else
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options, weights=weights)
+
+          end if
        else
-          call nlls_iterate(n, m, X,      & 
-               w,                         &
-               eval_F, eval_J, eval_HF,   & 
-               params,                    &
-               inform, options)
+          if ( present(eval_HP) ) then
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options, eval_HP=eval_HP)
+          else
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options)
+          end if
        end if
+       
        ! test the returns to see if we've converged
 
        if (inform%status < 0) then 
@@ -198,7 +230,7 @@ contains
                           w,                         & 
                           eval_F, eval_J, eval_HF,   & 
                           params,                    &
-                          inform, options, weights)
+                          inform, options, weights, eval_HP)
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
@@ -210,6 +242,8 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
     REAL( wp ), DIMENSION( m ), INTENT( IN ), optional :: weights
+    procedure( eval_hp_type ), optional :: eval_HP
+    
       
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100

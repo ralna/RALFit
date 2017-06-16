@@ -225,6 +225,23 @@ program nlls_test
         end if
      end do
 
+     ! let's try one with HP included...
+     options%inner_method = 2
+     n = 2
+     m = 67
+     X = [1.0, 2.0]
+     call nlls_solve(n, m, X,                        &
+          eval_F,eval_J,eval_H, params,   &
+          options, status, eval_HP=eval_HP)
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge: tensor model, eval_HP'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+     
+
      ! now, let's get an error return...
      call reset_default_options(options)
      options%model = 4
@@ -300,7 +317,7 @@ program nlls_test
         options%model = model
         call nlls_solve(n, m, X,                         &
              eval_F, eval_J, eval_H, params,  &
-             options, status, w )
+             options, status, weights=w )
         if ( status%status .ne. 0 ) then
            write(*,*) 'nlls_solve failed to converge (weighted):'
            write(*,*) 'NLLS_METHOD = ', options%nlls_method
