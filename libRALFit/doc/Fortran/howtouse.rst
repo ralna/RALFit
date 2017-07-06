@@ -256,7 +256,7 @@ subroutine must implement the following interface:
 For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A subroutine must be supplied to calculate
+A subroutine may be supplied to calculate
 :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})` for
 given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^n`. The
 subroutine must implement the following interface:
