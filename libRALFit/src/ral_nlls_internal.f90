@@ -281,6 +281,12 @@ contains
        elseif (.not. w%allocated) then 
           goto 4100
        end if
+
+       ! if needed, setup assign eval_Hp
+       if (options%model==4 .and. present(eval_HP)) then
+          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP
+          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .true.
+       end if
        
        ! evaluate the residual
        call eval_F(inform%external_return, n, m, X, w%f, params)
@@ -893,7 +899,9 @@ contains
     
     d(1:n) = zero
     w%scale = one
-    
+
+    normd = zero ! set normd so that it can't be undefined later
+
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
        
@@ -3145,7 +3153,7 @@ return
        real(wp), intent(out) :: d(:)
        real(wp), intent(out) :: md
        procedure( eval_hf_type ) :: eval_HF
-       class( params_base_type ) :: params              
+       class( params_base_type ), target :: params              
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        type( solve_newton_tensor_work ) :: w
@@ -3173,11 +3181,24 @@ return
        ! save the Jacobian to params
        w%tparams%J(1:n*m) = J(1:n*m)
 
-       ! now, let's get all the Hi's...
-       do i = 1,m
-          call get_Hi(n, m, X, params, i, w%tparams%Hi(:,:,i), eval_HF, inform)
-       end do
+       ! save the current X to params
+       w%tparams%X(1:n) = X(1:n)
+       
+       ! save eval_HF to params
+       w%tparams%eval_HF => eval_HF
 
+       ! and save parms to tparams
+       w%tparams%parent_params => params
+
+       if (.not. w%tparams%eval_hp_provided) then 
+          ! let's get all the Hi's...
+          do i = 1,m
+             call get_Hi(n, m, X, params, i, w%tparams%Hi(:,:,i), eval_HF, inform)
+          end do
+          
+       end if
+
+       
        d(1:n) = zero
 
        ! send to ral_nlls to solve the subproblem recursively
@@ -3292,14 +3313,20 @@ return
        real(wp), dimension(*), intent(in) :: s
        class( params_base_type ), intent(in) :: params
 
-       integer :: ii
+       integer :: ii, status
        select type(params)
        type is(tensor_params_type)
-          do ii = 1,params%m
-             tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
-             tenJ%Hs(1:n,ii) = zero
-             call dgemv('N',n,n,1.0_wp,tenJ%H(1,1),n,s,1,0.0_wp,tenJ%Hs(1,ii),1)
-          end do
+          if (params%eval_hp_provided) then 
+!          if (associated(params%eval_HP)) then
+             ! TODO:: put code here -- must return tenJ%Hs
+             call params%eval_HP(status,n,params%m,params%x,s(1:n),tenJ%Hs,params%parent_params)
+          else
+             do ii = 1,params%m
+                tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
+                tenJ%Hs(1:n,ii) = zero
+                call dgemv('N',n,n,1.0_wp,tenJ%H(1,1),n,s,1,0.0_wp,tenJ%Hs(1,ii),1)
+             end do
+          end if
           call dgemv('T',n,params%m,1.0_wp,tenJ%Hs(1,1),n,s,1,0.0_wp, tenJ%stHs(1),1)
        end select
        
@@ -3362,15 +3389,15 @@ return
        tenJ%H(1:n,1:n) = zero
        select type(params)
        type is (tensor_params_type)
-          do ii = 1,params%m
-             tenJ%H(1:n,1:n) = tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
-          end do
-
-          HF(1:n**2) = reshape(tenJ%H(1:n,1:n), (/n**2/))
+          call params%eval_HF(status,n,params%m,params%x,f(1:m),HF(1:n**2),params%parent_params)
+!!$          do ii = 1,params%m
+!!$             tenJ%H(1:n,1:n) = tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
+!!$          end do
+!!$
+!!$          HF(1:n**2) = reshape(tenJ%H(1:n,1:n), (/n**2/))
           
           if (params%extra == 2) then 
              normx = norm2(s(1:n))
- !            write(*,*) 'f(m) = ', f(m)
              do jj = 1,n
                 do kk = 1,n
                    hf_local = s(jj)*s(kk)

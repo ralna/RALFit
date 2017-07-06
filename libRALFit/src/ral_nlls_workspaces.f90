@@ -408,10 +408,36 @@ module ral_nlls_workspaces
      ! deliberately empty
   end type params_base_type
 
+  abstract interface
+     subroutine eval_hf_type(status, n, m, x, f, h, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: f
+       double precision, dimension(*), intent(out) :: h
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hf_type
+  end interface
 
+  abstract interface
+     subroutine eval_hp_type(status, n, m, x, y, hp, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: y
+       double precision, dimension(*), intent(out) :: hp
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hp_type     
+  end interface
+  
   type, extends( params_base_type ), public :: tensor_params_type
-     ! blank?
+
      real(wp), dimension(:), allocatable :: f
+     real(wp), dimension(:), allocatable :: x
      real(wp), dimension(:), allocatable :: J
      real(wp), dimension(:,:,:), allocatable :: Hi
      real(wp) :: Delta
@@ -419,6 +445,12 @@ module ral_nlls_workspaces
      integer :: m
      integer :: m1 = 0
      integer :: extra = 0
+     procedure( eval_hf_type ), pointer, nopass :: eval_HF
+     procedure( eval_hp_type ), pointer, nopass :: eval_HP
+     logical :: eval_hp_provided = .false.
+     class( params_base_type ), pointer :: parent_params
+
+
   end type tensor_params_type
 
 
@@ -811,6 +843,9 @@ contains
     if (inform%alloc_status > 0) goto 9000
 
     allocate(w%tparams%f(m), stat=inform%alloc_status)
+    if (inform%alloc_status > 0) goto 9000
+
+    allocate(w%tparams%x(n), stat=inform%alloc_status)
     if (inform%alloc_status > 0) goto 9000
 
     allocate(w%tparams%J(n*m), stat=inform%alloc_status)
