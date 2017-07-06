@@ -11,7 +11,6 @@ sifdecoder -A pc64.lnx.gfo -st   RAT43.SIF
  
  
  File successfully decoded
-/home/trees/Projects/RALFit/libRALFit/test/RALFit_tools/cutest/sif
  CUTEST: tools (double precision version) compiled successfully
  Compiling ral_nlls_dummy 		[ OK ]
  Compiling ral_nlls_main  		[ OK ]
@@ -69,7 +68,7 @@ status = 0       iter = 18
  # Jacobian evaluations  =  19
  # Hessian evaluations   =  19
  Set up time             =  .00 seconds
- Solve time              =  .02 seconds
+ Solve time              =  .01 seconds
 
 ******************************************************************
 
