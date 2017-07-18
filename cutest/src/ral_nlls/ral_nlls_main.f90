@@ -442,24 +442,16 @@
         allocate( chp_ind(lchp) )
         
         
-        if (lchp .ne. m*n) then
-           allocate( chp_val(lchp) )
-           call cutest_cchprods(status, n, m, .false., x, y, lchp, &
-                chp_val(1:lchp), chp_ind(1:lchp), chp_ptr(1:m+1))
-           hp(1:n*m) = 0.0
-           do i =  1,m ! loop over the columns
-              do j = chp_ptr(i),chp_ptr(i+1)-1 ! and the rows...
-                 hp((i-1)*n + chp_ind(j)) = chp_val(j)
-              end do
+        allocate( chp_val(lchp) )
+        call cutest_cchprods(status, n, m, .false., x, y, lchp, &
+             chp_val(1:lchp), chp_ind(1:lchp), chp_ptr(1:m+1))
+        hp(1:n*m) = 0.0
+        do i =  1,m ! loop over the columns
+           do j = chp_ptr(i),chp_ptr(i+1)-1 ! and the rows...
+              hp((i-1)*n + chp_ind(j)) = chp_val(j)
            end do
-           deallocate ( chp_val)
-        else
-           ! there's no sparsity in HP, so the array of values will just
-           ! equal the dense array in the format I need it 
-           call cutest_cchprods(status, n, m, .false., x, y, lchp, &
-                hp, chp_ind, chp_ptr)
-        end if
-        deallocate( chp_ptr, chp_ind )
+        end do
+        deallocate ( chp_val, chp_ptr, chp_ind )
         
       end subroutine eval_HP
 
