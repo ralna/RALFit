@@ -5,7 +5,7 @@
 
 # standard methods....
 ./generate_control_file.py GaussNewton --model 1 \
-                                       --maxit 1000 \
+                                       --maxit 5000 \
                                        --exact_second_derivatives T \
                                        --output_progress_vectors T
 ./generate_control_file.py Newton -b GaussNewton --model 2
@@ -14,7 +14,7 @@
 # Newton-Tensor models
 ./generate_control_file.py NewtonTen2 \
                            --print_level 1 \
-                           --maxit 1000 \
+                           --maxit 5000 \
                            --model 4 \
                            --type_of_method 2 \
                            --radius_increase 10.0 --radius_reduce 0.1 \
