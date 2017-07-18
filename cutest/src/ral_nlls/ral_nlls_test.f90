@@ -80,7 +80,6 @@ module ral_nlls_workspaces
      
      real(wp) :: reg_order = zero
      integer :: inner_method = 1
-     integer :: inner_scaling = 1
      
      logical :: output_progress_vectors = .false.
      logical :: update_lower_order = .true.

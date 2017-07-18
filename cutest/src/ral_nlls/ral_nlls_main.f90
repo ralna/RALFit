@@ -135,7 +135,6 @@
       READ( indr, "(I6)") control%hybrid_switch_its                                          
       READ( indr, "(E12.0)") control%reg_order
       READ( indr, "(I6)") control%inner_method
-      REAd( indr, "(I6)") control%inner_scaling
       READ( indr, "(L)") control%output_progress_vectors
       READ( indr, "(L)") control%update_lower_order
       READ( indr, "(I6)") summary_unit
