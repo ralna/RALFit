@@ -34,7 +34,7 @@
       LOGICAL :: filexx
       INTEGER :: fnevals, jacevals, hessevals, localiter, inner_iter
       REAL( c_double ) :: solve_time
-
+      integer :: supply_eval_hp
 
 !  open the relevant files
 
@@ -139,6 +139,7 @@
       READ( indr, "(L)") control%update_lower_order
       READ( indr, "(I6)") summary_unit
       READ( indr, "(I6)") iter_summary_unit
+      READ( indr, "(I6)") supply_eval_hp
 
 !!$      READ( indr, "( I6, 8( /, I6 ), 11( /, E12.0 ), 3( /, I6 ) 2( /, E12.0),  &
 !!$                     5 ( /, L20 ), /, I6, /, A, /, I6, /, A ) ")               &
@@ -257,8 +258,13 @@
       
 !  call the minimizer
       write(*,*) 'sending to nlls_solve'
-      CALL NLLS_SOLVE( n, m, X, eval_F, eval_J, eval_HF,                         &
-           params, control, inform, eval_HP=eval_HP )
+      if (supply_eval_hp == 1) then 
+         CALL NLLS_SOLVE( n, m, X, eval_F, eval_J, eval_HF,                         &
+              params, control, inform, eval_HP=eval_HP )
+      else
+         CALL NLLS_SOLVE( n, m, X, eval_F, eval_J, eval_HF,                         &
+              params, control, inform)
+      end if
 !           params, control, inform)
 
       WRITE( out , "( A, I0, A, I0)") 'status = ', inform%status,              &

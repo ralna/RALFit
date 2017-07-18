@@ -62,7 +62,8 @@ def main():
                      'output_progress_vectors',
                      'update_lower_order',
                      'summary_unit',
-                     'iteration_summary']
+                     'iteration_summary',
+                     'supply_eval_hp']
     
     for arg in opt_arguments:
         parser.add_argument('--'+arg)
