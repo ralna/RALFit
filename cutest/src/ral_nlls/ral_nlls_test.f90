@@ -114,6 +114,32 @@ module ral_nlls_workspaces
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
+
+  abstract interface
+     subroutine eval_hf_type(status, n, m, x, f, h, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: f
+       double precision, dimension(*), intent(out) :: h
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hf_type
+  end interface
+
+  abstract interface
+     subroutine eval_hp_type(status, n, m, x, y, hp, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: y
+       double precision, dimension(*), intent(out) :: hp
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hp_type     
+  end interface
   
 end module ral_nlls_workspaces
 
@@ -184,13 +210,25 @@ module ral_nlls_internal
      end subroutine eval_hf_type
   end interface
 
+  abstract interface
+     subroutine eval_hp_type(status, n, m, x, y, hp, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: y
+       double precision, dimension(*), intent(out) :: hp
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hp_type     
+  end interface
 
   public :: nlls_solve
   
 contains
 
           SUBROUTINE NLLS_SOLVE( n, m, X, eval_F, eval_J, eval_HF,                    &
-          params, options, inform, weights )
+          params, options, inform, weights, eval_HP )
     
 !  -----------------------------------------------------------------------------
 !  RAL_NLLS, a fortran subroutine for finding a first-order critical
@@ -212,6 +250,7 @@ contains
      procedure( eval_j_type ) :: eval_J
      procedure( eval_hf_type ) :: eval_HF
      real( c_double ), dimension(:), intent(in), optional :: weights
+     procedure( eval_hp_type ), optional :: eval_HP
      
 !  Interface blocks
 
@@ -345,6 +384,20 @@ end module ral_nlls_internal
        class( params_base_type ), intent( in ) :: params
      END SUBROUTINE eval_HF_type
   END INTERFACE
+
+  abstract interface
+     subroutine eval_hp_type(status, n, m, x, y, hp, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: y
+       double precision, dimension(*), intent(out) :: hp
+       class(params_base_type), intent(in) :: params
+     end subroutine eval_hp_type     
+  end interface
+
   
   public :: nlls_solve
   public :: nlls_options, nlls_inform

@@ -258,7 +258,8 @@
 !  call the minimizer
       write(*,*) 'sending to nlls_solve'
       CALL NLLS_SOLVE( n, m, X, eval_F, eval_J, eval_HF,                         &
-           params, control, inform )
+           params, control, inform, eval_HP=eval_HP )
+!           params, control, inform)
 
       WRITE( out , "( A, I0, A, I0)") 'status = ', inform%status,              &
           '       iter = ', inform%iter
@@ -389,23 +390,72 @@
       END SUBROUTINE eval_J
 
       SUBROUTINE eval_HF( status, n, m, X, F, H, params )
-      USE ISO_C_BINDING
-      use :: ral_nlls_double, only : params_base_type
-      
-      INTEGER ( c_int ), INTENT( OUT ) :: status
-      INTEGER ( c_int ), INTENT( IN ) :: n, m
-      REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: X
-      REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: F
-      REAL ( c_double ), DIMENSION( * ), INTENT( OUT ) :: H
-      class( params_base_type ), intent(in) :: params
-      
-      real ( c_double ), dimension(n,n) :: Hmatrix
-!  evaluate the product H = sum F_i Hessian F_i
+        USE ISO_C_BINDING
+        use :: ral_nlls_double, only : params_base_type
+        
+        INTEGER ( c_int ), INTENT( OUT ) :: status
+        INTEGER ( c_int ), INTENT( IN ) :: n, m
+        REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: X
+        REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: F
+        REAL ( c_double ), DIMENSION( * ), INTENT( OUT ) :: H
+        class( params_base_type ), intent(in) :: params
+        
+        real ( c_double ), dimension(n,n) :: Hmatrix
+        !  evaluate the product H = sum F_i Hessian F_i
 
-      CALL CUTEST_cdhc( status, n, m, X, F, n, Hmatrix )
-      H(1:n*n) = reshape(Hmatrix, (/n*n/) )
-      RETURN
+        CALL CUTEST_cdhc( status, n, m, X, F, n, Hmatrix )
+        
+        H(1:n*n) = reshape(Hmatrix, (/n*n/) )
+        RETURN
       END SUBROUTINE eval_HF
+
+      subroutine eval_HP(status, n, m, x, y, hp, params)
+        use iso_c_binding
+        use :: ral_nlls_double, only : params_base_type
+        
+        integer ( c_int ), intent( out ) :: status
+        integer ( c_int ), intent( in ) :: n, m
+        real ( c_double ), dimension(*), intent( in ) :: x, y
+        real ( c_double ), dimension(*), intent( out ) :: hp
+        class( params_base_type ), intent(in) :: params
+
+        ! the cutest routine will return the matrix in a sparse format
+        integer, allocatable :: chp_ptr(:) 
+        integer, allocatable :: chp_ind(:)
+        real ( c_double ) , allocatable :: chp_val(:)
+        
+        integer :: lchp  ! this is the size of the HP matrix
+        integer :: i, j
+
+        call cutest_cdimchp(status, lchp)
+!        lchp = n*m
+        
+        if (status .ne. 0) return
+
+        allocate( chp_ptr(m+1) )
+        allocate( chp_ind(lchp) )
+        
+        
+        if (lchp .ne. m*n) then
+           allocate( chp_val(lchp) )
+           call cutest_cchprods(status, n, m, .false., x, y, lchp, &
+                chp_val(1:lchp), chp_ind(1:lchp), chp_ptr(1:m+1))
+           hp(1:n*m) = 0.0
+           do i =  1,m ! loop over the columns
+              do j = chp_ptr(i),chp_ptr(i+1)-1 ! and the rows...
+                 hp((i-1)*n + chp_ind(j)) = chp_val(j)
+              end do
+           end do
+           deallocate ( chp_val)
+        else
+           ! there's no sparsity in HP, so the array of values will just
+           ! equal the dense array in the format I need it 
+           call cutest_cchprods(status, n, m, .false., x, y, lchp, &
+                hp, chp_ind, chp_ptr)
+        end if
+        deallocate( chp_ptr, chp_ind )
+        
+      end subroutine eval_HP
 
     END PROGRAM RAL_NLLS_main
 
