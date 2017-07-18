@@ -2,10 +2,10 @@ BaseReg               control_name
 6                     out
 6                     error
 1                     print_level
-1000                  maxit
+5000                  maxit
 4                     model
 2                     type_of_method
-4                     nlls_method
+3                     nlls_method
 1                     lls_solver
 1e-5                  stop_g_absolute
 1e-8                  stop_g_relative
@@ -49,7 +49,6 @@ T                     remove_workspaces
 1                     hybrid_switch_its
 -1.0                  reg_order
 1                     inner_method
-1                     inner_scaling
 T                     output_progress_vectors
 T                     update_lower_order
 44                    summary_unit
