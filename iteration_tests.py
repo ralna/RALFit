@@ -97,14 +97,16 @@ def main():
             InnerResults = 0
             # we want to put this back into a file that *does* have inner iterations,
             # so that the performance profiles work below...
-            add_inner_information(args.control_files[j],no_probs,data[j])
+            add_inner_information(args.control_files[j],data[j])
         metadata[j] = np.loadtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
         if "gsl" in args.control_files[j]: # == "gsl":
             too_many_its[j] = -2
         else:
             too_many_its[j] = -1
+   
+        
+    no_probs = len(data[0]['res'])
 
-    
     if args.test_times > 0:
         # repeat the experiment another 'args.test_times' times, and get the average time over
         # that many runs
@@ -131,7 +133,7 @@ def main():
                     InnerResults = 0
                     # we want to put this back into a file that *does* have inner iterations,
                     # so that the performance profiles work below...
-                    add_inner_information(args.control_files[j],no_probs,data[j])
+                    add_inner_information(args.control_files[j],data[j])
                 sum_times[j][:] += data[j]['solve_time'][:]
                 print "sum_times = "
                 print sum_times
@@ -164,8 +166,19 @@ def main():
     normalized_func = np.copy(all_func)
     normalized_inner = np.copy(all_inner)
     normalized_solve_time = np.copy(all_solve_time)
-    failure = np.zeros((no_probs, no_tests))
 
+    print "no_tests = "+str(no_tests)
+    print "no_probs = "+str(no_probs)
+
+    
+    print "********************"
+    for j in range(no_tests):
+        for i in range(no_probs):
+            print data[j]['pname'][i]    
+    print "********************"
+    
+    failure = np.zeros((no_probs, no_tests))
+    
     # finally, run through the data....
     for j in range (0,no_tests):
         if j == 0:
@@ -226,20 +239,20 @@ def main():
     inner_boundaries = np.array([2, 5, 10, 30])
     solve_time_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
     additive = 0
-    print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
+    print_to_html(no_probs, no_tests, data[0]['pname'], normalized_mins, smallest_resid, 
                   mins_boundaries, 'normalized_mins', args.control_files, failure, additive,
                   short_hash)
-    print_to_html(no_probs, no_tests, problems, normalized_solve_time, smallest_solve_time, 
+    print_to_html(no_probs, no_tests, data[0]['pname'], normalized_solve_time, smallest_solve_time, 
                   solve_time_boundaries, 'normalized_solve_time', args.control_files, 
                   failure, additive, short_hash)
     additive = 1
-    print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates,
+    print_to_html(no_probs, no_tests, data[0]['pname'], normalized_iterates, smallest_iterates,
                   iter_boundaries, 'normalized_iters', args.control_files, failure, additive,
                   short_hash)
-    print_to_html(no_probs, no_tests, problems, normalized_func, smallest_func, 
+    print_to_html(no_probs, no_tests, data[0]['pname'], normalized_func, smallest_func, 
                   func_boundaries, 'normalized_func', args.control_files, failure, additive,
                   short_hash)
-    print_to_html(no_probs, no_tests, problems, normalized_inner, smallest_inner, 
+    print_to_html(no_probs, no_tests, data[0]['pname'], normalized_inner, smallest_inner, 
                   inner_boundaries, 'normalized_inner', args.control_files, 
                   failure, additive, short_hash)
     
@@ -251,7 +264,7 @@ def main():
     print " "
 
     for i in range(0,no_probs):
-        print "%10s" % problems[i],
+        print "%10s" % data[0]['pname'][i],
         for j in range(0,no_tests):
             print ' ', 
             print "%16d" % all_iterates[j][i],
@@ -378,15 +391,14 @@ def format(number):
         return "%.4g" % number
 
 
-def add_inner_information(method_name,no_probs,data):
+def add_inner_information(method_name,data):
     # take the file method_name.out (which does not have inner information),
     # and add it in.
     # This is needed so that the output file is the same as that for RALFit, and
     # therefore pypprof can compare them
     copy_file = open("data/"+method_name+".out","w")
-    print "no_probs = "+str(no_probs)
     space = "   "
-    for i in range(no_probs):
+    for i in range(len(data['pname'])):
         line_to_print = (data['pname'][i]+
                          space+
                          str(data['n'][i])+
@@ -418,25 +430,27 @@ def add_inner_information(method_name,no_probs,data):
     copy_file.close()
     
 def run_cutest_and_copy_results_locally(args,problems):
-    no_tests = len(args.control_files)
+#    no_tests = len(args.control_files)
+    no_tests = 0 
     no_probs = len(problems)
     for i in range(no_probs):
         # let's run the tests!
         print "**** "+ problems[i] +" ****"
         compute(no_tests,args.control_files,problems,i,args.starting_point)
-        
-    for j in range(no_tests):
+    
+    
+    for test in args.control_files:#range(no_tests):
         # copy the data file locally
-        subprocess.call(["mv", "cutest/sif/"+args.control_files[j]+".out", \
-                         "data/"+args.control_files[j]+".out"])
-        if "gsl" in args.control_files[j]: # == "gsl":
+        subprocess.call(["mv", "cutest/sif/"+test+".out", \
+                         "data/"+test+".out"])
+        if "gsl" in test: # == "gsl":
             # c doesn't end with a newline, so add one
             gslresults = open("data/gsl.out","a")
             gslresults.write("\n")
             gslresults.close()
         # get the hash of the git version
         short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
-        f = open('data/'+args.control_files[j]+".hash",'w')
+        f = open('data/'+test+".hash",'w')
         f.write(short_hash+"\t"+str(no_probs))
         f.close()
 
@@ -452,39 +466,50 @@ def compute(no_tests,control_files,problems,i,starting_point):
     # copy the ral_nlls files to cutest
     subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_test.f90",cutestdir+"/src/ral_nlls/"])
     subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_main.f90",cutestdir+"/src/ral_nlls/"])
-        
-    for j in range(no_tests):
-        if "gsl" in control_files[j]: # == "gsl":
+
+    j = 0
+    
+    for test in control_files:
+        j += 1
+        if "gsl" in test: # == "gsl":
             package = "gsl"
         else: # assume ral_nlls is being called
             package = "ral_nlls"
             
         try:
-            subprocess.call(["cp", "control_files/"+control_files[j], \
+            subprocess.call(["cp", "control_files/"+test, \
                              "cutest/sif/"+package.upper()+".SPC"])
         except:
-            raise Error("No control file " + control_files[j] + " found")
+            raise Error("No control file " + test + " found")
            
         os.chdir("cutest/sif/")
                
         if i == 0:
             # very first call, so create blank file...
-            subprocess.call(["cp","/dev/null",control_files[j]+".out"])
+            subprocess.call(["cp","/dev/null",test+".out"])
 
-        if j == 0:
-            # and then call sifdecoder as well as cutest
-            subprocess.call(["runcutest","-p",package,"--decode",problems[i], \
-                             "-st",str(starting_point)])
-        else: # no need to decode again....
-            subprocess.call(["runcutest","-p",package])
-        
+        if (int(starting_point) == 0) and (problems[i] in open('nist.txt').read()):
+            # we have a nist problem
+            range_sp = ['1','2']
+        else:
+            range_sp = [str(starting_point)]
+
+        for sp in range_sp:
+            if (j == 1) or (int(starting_point)==0): # and then call sifdecoder as well as cutest
+                subprocess.call(["runcutest","-p",package,"--decode",problems[i], \
+                                 "-st",sp])
+                no_tests += 1
+            else: # no need to decode again....
+                subprocess.call(["runcutest","-p",package,"-st",sp])
+                no_tests += 1
+
         os.chdir("../../")
 
 def plot_prof(control_files,no_tests,prob_list,np):
     # performance profiles for iterations
-    Strings = ["./pypprof -c 5 -s iterations ",
-               "./pypprof -c 6 -s fevals ",
-               "./pypprof --log -c 13 -s time "]
+    Strings = ["./pypprof -ne -c 5 -s iterations ",
+               "./pypprof -ne -c 6 -s fevals ",
+               "./pypprof -ne -nf --log -c 13 -s time "]
     data_files = ""
     for j in range(no_tests):
         data_files += control_files[j]+".out"

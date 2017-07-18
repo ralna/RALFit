@@ -32,15 +32,15 @@ module ral_nlls_workspaces
      INTEGER :: out = 6
      INTEGER :: print_level = 0
      INTEGER :: maxit = 100
-     INTEGER :: model = 1
+     INTEGER :: model = 3
      INTEGER :: type_of_method = 1
-     INTEGER :: nlls_method = 1
+     INTEGER :: nlls_method = 4
      INTEGER :: lls_solver = 1
      REAL ( KIND = wp ) :: stop_g_absolute = tenm5
      REAL ( KIND = wp ) :: stop_g_relative = tenm8
      REAL ( KIND = wp ) :: stop_f_absolute = tenm5
      REAL ( KIND = wp ) :: stop_f_relative = tenm8
-     REAL ( KIND = wp ) :: stop_s = zero
+     REAL ( KIND = wp ) :: stop_s = epsmch
      INTEGER :: relative_tr_radius = 0
      REAL ( KIND = wp ) :: initial_radius_scale = 1.0!tenm3
      REAL ( KIND = wp ) :: initial_radius = hundred
@@ -58,28 +58,28 @@ module ral_nlls_workspaces
      REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
      integer :: tr_update_strategy = 1
      real ( kind = wp ) :: hybrid_switch = 0.1_wp
-     logical :: exact_second_derivatives = .true.
+     logical :: exact_second_derivatives = .false.
      LOGICAL :: subproblem_eig_fact = .FALSE.
-     LOGICAL :: use_ews_subproblem = .FALSE.
-     integer :: scale = 0
-     real(wp) :: scale_max = 1e12
-     real(wp) :: scale_min = 1e-12
-     logical :: scale_trim_min = .FALSE.
+     LOGICAL :: use_ews_subproblem = .TRUE.
+     integer :: scale = 1
+     real(wp) :: scale_max = 1e11
+     real(wp) :: scale_min = 1e-11
+     logical :: scale_trim_min = .TRUE.
      LOGICAL :: scale_trim_max = .TRUE.
      LOGICAL :: scale_require_increase = .FALSE.
-     LOGICAL :: calculate_svd_J = .TRUE.
+     LOGICAL :: calculate_svd_J = .FALSE.
      logical :: setup_workspaces = .true.
      logical :: remove_workspaces = .true.
      integer  :: more_sorensen_maxits = 500
-     real(wp) :: more_sorensen_shift = 1e-8
-     real(wp) :: more_sorensen_tiny = 10.0 * epsmch
-     real(wp) :: more_sorensen_tol = 1e-6
+     real(wp) :: more_sorensen_shift = 1e-13
+     real(wp) :: more_sorensen_tiny = 10.0_wp * epsmch
+     real(wp) :: more_sorensen_tol = 1e-3
      
-     real(wp) :: hybrid_tol = 0.02
-     integer :: hybrid_switch_its = 3
+     real(wp) :: hybrid_tol = 2.0
+     integer :: hybrid_switch_its = 1
      
-     real(wp) :: reg_order = zero
-     integer :: inner_method = 1
+     real(wp) :: reg_order = -one
+     integer :: inner_method = 2
      
      logical :: output_progress_vectors = .false.
      logical :: update_lower_order = .true.
