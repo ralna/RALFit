@@ -1,7 +1,7 @@
 TESTSPEC              control_name
 6                     out
 6                     error
-3                     print_level
+1                     print_level
 1000                  maxit
 2                     model
 1                     type_of_method
