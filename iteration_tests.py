@@ -518,7 +518,7 @@ def plot_prof(control_files,no_tests,prob_list,np):
     Strings[:] = [string + data_files for string in Strings]
 
     if prob_list=="names_nist_first" or prob_list=="sif_names":
-        testset = "'All tests'"
+        testset = "'test problems'"
     elif prob_list=="nist":
         testset = "'NIST tests'"
     else:
