@@ -286,8 +286,10 @@ contains
        if (options%model==4 .and. present(eval_HP)) then
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .true.
+       else
+          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .false.
        end if
-       
+
        ! evaluate the residual
        call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
