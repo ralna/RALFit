@@ -124,7 +124,7 @@ module ral_nlls_workspaces
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: f
        double precision, dimension(*), intent(out) :: h
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hf_type
   end interface
 
@@ -137,7 +137,7 @@ module ral_nlls_workspaces
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: y
        double precision, dimension(*), intent(out) :: hp
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hp_type     
   end interface
   
@@ -181,7 +181,7 @@ module ral_nlls_internal
        integer, intent(in) :: n,m 
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: f
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_f_type
   end interface
 
@@ -193,7 +193,7 @@ module ral_nlls_internal
        integer, intent(in) :: n,m 
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: J
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_j_type
   end interface
 
@@ -206,7 +206,7 @@ module ral_nlls_internal
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: f
        double precision, dimension(*), intent(out) :: h
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hf_type
   end interface
 
@@ -219,7 +219,7 @@ module ral_nlls_internal
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: y
        double precision, dimension(*), intent(out) :: hp
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hp_type     
   end interface
 
@@ -356,7 +356,7 @@ end module ral_nlls_internal
        INTEGER, INTENT( IN ) :: n, m
        double precision, DIMENSION( * ), INTENT( IN ) :: X
        double precision, DIMENSION( * ), INTENT( OUT ) :: F
-       class( params_base_type ), intent( in ) :: params
+       class( params_base_type ), intent( inout ) :: params
      END SUBROUTINE eval_F_type
   END INTERFACE
 
@@ -368,7 +368,7 @@ end module ral_nlls_internal
        INTEGER ( c_int ), INTENT( IN ) :: n, m
        REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: X
        REAL ( c_double ), DIMENSION( * ), INTENT( OUT ) :: J
-       class( params_base_type ), intent( in ) :: params
+       class( params_base_type ), intent( inout ) :: params
      END SUBROUTINE eval_j_type
   END INTERFACE
 
@@ -381,7 +381,7 @@ end module ral_nlls_internal
        REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: X
        REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: F
        REAL ( c_double ), DIMENSION( * ), INTENT( OUT ) :: H
-       class( params_base_type ), intent( in ) :: params
+       class( params_base_type ), intent( inout ) :: params
      END SUBROUTINE eval_HF_type
   END INTERFACE
 
@@ -394,7 +394,7 @@ end module ral_nlls_internal
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: y
        double precision, dimension(*), intent(out) :: hp
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hp_type     
   end interface
 

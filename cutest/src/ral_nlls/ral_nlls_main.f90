@@ -11,7 +11,11 @@
       IMPLICIT NONE
 
       type, extends( params_base_type ) :: user_type
-         ! still empty
+         logical :: GotH
+         integer :: lchp
+         integer(c_int), allocatable :: chp_ptr(:)
+         integer(c_int), allocatable :: chp_ind(:)
+         real(c_double), allocatable :: chp_val(:)
       end type user_type
 
       INTEGER :: status, i, m, n
@@ -51,7 +55,7 @@
       ALLOCATE( X( n ), X_l( n ), X_u( n ), Y( m ), C_l( m ), C_u( m ),        &
                 EQUATN( m ), LINEAR( m ), STAT = status )
       IF ( status /= 0 ) GO TO 990
-
+      
 !  initialize problem data structure
 
 !  set up the data structures necessary to hold the problem functions.
@@ -254,8 +258,17 @@
       open( sol_unit, FILE="last.solution", FORM='FORMATTED',   &
            STATUS= 'REPLACE', IOSTAT = iores)!, position='REWIND' )
 
-      write(*,*) 'calling the minimizer...'
+      !  set up structures for eval_hp
+      call cutest_cdimchp(status, params%lchp)
+      IF ( status /= 0) GO TO 910
+      allocate(params%chp_ptr(m+1))
+      allocate(params%chp_ind(params%lchp))
+      allocate(params%chp_val(params%lchp))
+      params%GotH = .false.
       
+      
+      write(*,*) 'calling the minimizer...'
+
 !  call the minimizer
       write(*,*) 'sending to nlls_solve'
       if (supply_eval_hp == 1) then 
@@ -367,7 +380,7 @@
       integer, intent(in) :: n,m
       double precision, dimension(*), intent(in)  :: x
       double precision, dimension(*), intent(out) :: f
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
       double precision :: obj
 !  evaluate the residuals F
 
@@ -382,7 +395,7 @@
       INTEGER ( c_int ), INTENT( IN ) :: n, m
       REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: X
       REAL ( c_double ), DIMENSION( * ), INTENT( OUT ) :: J
-      class( params_base_type ), intent(in) :: params
+      class( params_base_type ), intent(inout) :: params
       REAL ( c_double ), DIMENSION( n ) :: G
       REAL ( c_double ), DIMENSION( m ) :: Y
       REAL ( c_double ), DIMENSION( m , n ) :: Jmatrix
@@ -404,7 +417,7 @@
         REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: X
         REAL ( c_double ), DIMENSION( * ), INTENT( IN ) :: F
         REAL ( c_double ), DIMENSION( * ), INTENT( OUT ) :: H
-        class( params_base_type ), intent(in) :: params
+        class( params_base_type ), intent(inout) :: params
         
         real ( c_double ), dimension(n,n) :: Hmatrix
         !  evaluate the product H = sum F_i Hessian F_i
@@ -423,35 +436,22 @@
         integer ( c_int ), intent( in ) :: n, m
         real ( c_double ), dimension(*), intent( in ) :: x, y
         real ( c_double ), dimension(*), intent( out ) :: hp
-        class( params_base_type ), intent(in) :: params
+        class( params_base_type ), intent(inout) :: params
 
-        ! the cutest routine will return the matrix in a sparse format
-        integer, allocatable :: chp_ptr(:) 
-        integer, allocatable :: chp_ind(:)
-        real ( c_double ) , allocatable :: chp_val(:)
-        
-        integer :: lchp  ! this is the size of the HP matrix
         integer :: i, j
 
-        call cutest_cdimchp(status, lchp)
-!        lchp = n*m
-        
-        if (status .ne. 0) return
-
-        allocate( chp_ptr(m+1) )
-        allocate( chp_ind(lchp) )
-        
-        
-        allocate( chp_val(lchp) )
-        call cutest_cchprods(status, n, m, .false., x, y, lchp, &
-             chp_val(1:lchp), chp_ind(1:lchp), chp_ptr(1:m+1))
-        hp(1:n*m) = 0.0
-        do i =  1,m ! loop over the columns
-           do j = chp_ptr(i),chp_ptr(i+1)-1 ! and the rows...
-              hp((i-1)*n + chp_ind(j)) = chp_val(j)
+        select type(params)
+        type is(user_type)           
+           call cutest_cchprods(status, n, m, params%GotH, x, y, params%lchp, &
+                params%chp_val(1:params%lchp), params%chp_ind(1:params%lchp), params%chp_ptr(1:m+1))
+           hp(1:n*m) = 0.0
+           do i =  1,m ! loop over the columns
+              do j = params%chp_ptr(i),params%chp_ptr(i+1)-1 ! and the rows...
+                 hp((i-1)*n + params%chp_ind(j)) = params%chp_val(j)
+              end do
            end do
-        end do
-        deallocate ( chp_val, chp_ptr, chp_ind )
+           params%GotH = .true.
+        end select
         
       end subroutine eval_HP
 
