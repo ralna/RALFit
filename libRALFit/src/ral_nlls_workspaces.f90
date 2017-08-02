@@ -370,7 +370,6 @@ module ral_nlls_workspaces
 
   END TYPE nlls_inform
 
-
   TYPE, public :: NLLS_ERROR
      INTEGER :: MAXITS = -1
      INTEGER :: EVALUATION = -2
@@ -417,7 +416,7 @@ module ral_nlls_workspaces
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: f
        double precision, dimension(*), intent(out) :: h
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hf_type
   end interface
 
@@ -430,7 +429,7 @@ module ral_nlls_workspaces
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: y
        double precision, dimension(*), intent(out) :: hp
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hp_type     
   end interface
   

@@ -20,7 +20,7 @@ contains
     integer, intent(in) :: m
     real(wp), dimension(*), intent(in) :: x
     real(wp), dimension(*), intent(out) :: r
-    class(params_base_type), intent(in) :: params
+    class(params_base_type), intent(inout) :: params
     
 
     select type(params)
@@ -41,7 +41,7 @@ contains
     integer, intent(in) :: m
     real(wp), dimension(*), intent(in) :: x
     real(wp), dimension(*), intent(out) :: J
-    class(params_base_type), intent(in) :: params
+    class(params_base_type), intent(inout) :: params
 
     select type(params)
     type is(params_type)
@@ -64,9 +64,9 @@ contains
       real(wp), dimension(*), intent(in) :: x
       real(wp), dimension(*), intent(in) :: r
       real(wp), dimension(*), intent(out) :: HF
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
 
-      HF(1:n*n) = 0
+      HF(1:n*n) = 0.0
       select type(params)
       type is(params_type)
          HF(    2) = sum( r(1:m) * params%t(1:m) * exp(-x(2)*params%t(1:m)))  ! H_21
@@ -81,7 +81,37 @@ contains
       end select
 
       status = 0 ! Success
-   end subroutine eval_HF
+    end subroutine eval_HF
+
+    subroutine eval_HP(status, n, m, x, y, HP, params)
+      integer, intent(out) :: status
+      integer, intent(in) :: n
+      integer, intent(in) :: m
+      real(wp), dimension(*), intent(in) :: x
+      real(wp), dimension(*), intent(in) :: y
+      real(wp), dimension(*), intent(out) :: HP
+      class(params_base_type), intent(inout) :: params
+
+      integer :: i
+      
+      HP(1:n*m) = 0.0
+      select type(params)
+      type is (params_type)
+         do i = 1, m
+            HP((n-1)*i + 1) = params%t(i) * exp(-x(2)*params%t(i)) * y(2)
+            HP((n-1)*i + 2) = params%t(i) * exp(-x(2)*params%t(i)) * y(1) - &
+                 (params%t(i)**2) * x(1) * exp(-x(2)*params%t(i)) * y(2)
+            HP((n-1)*i + 3) = params%t(i) * exp(-x(4)*params%t(i)) * y(4)
+            HP((n-1)*i + 4) = params%t(i) * exp(-x(4)*params%t(i)) * y(3) - &
+                 (params%t(i)**2) * x(3) * exp(-x(4)*params%t(i)) * y(4)
+            HP((n-1)*i + 5) = params%t(i) * exp(-x(6)*params%t(i)) * y(6)
+            HP((n-1)*i + 6) = params%t(i) * exp(-x(6)*params%t(i)) * y(5) - &
+                 (params%t(i)**2) * x(5) * exp(-x(6)*params%t(i)) * y(6)
+         end do
+      end select
+         
+      
+    end subroutine eval_HP
     
   
 end module lanczos_module
@@ -161,20 +191,20 @@ program lanczos
   allocate(x(n))
   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
 
-  options%print_level = 0
+  options%print_level = 1
   options%exact_second_derivatives = .true.
-  options%model = 1
+  options%model = 4
   options%nlls_method = 3
   options%use_ews_subproblem = .true.
-  options%type_of_method = 1
+  options%type_of_method = 2
   options%regularization_term = 1.0e-2
   options%regularization_power = 2.0
   options%reg_order = -1.0
-  options%inner_method = 3
+  options%inner_method = 2
   options%maxit = 1000
 
   call cpu_time(tic)
-  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
+  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)!, eval_HP=eval_HP)
   if(inform%status.ne.0) then
      print *, "ral_nlls() returned with error flag ", inform%status
      stop

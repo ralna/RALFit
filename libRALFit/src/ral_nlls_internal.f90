@@ -34,7 +34,7 @@ module ral_nlls_internal
        integer, intent(in) :: n,m 
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: f
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_f_type
   end interface
 
@@ -46,7 +46,7 @@ module ral_nlls_internal
        integer, intent(in) :: n,m 
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: J
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_j_type
   end interface
 
@@ -59,7 +59,7 @@ module ral_nlls_internal
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: f
        double precision, dimension(*), intent(out) :: h
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hf_type
   end interface
 
@@ -72,7 +72,7 @@ module ral_nlls_internal
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: y
        double precision, dimension(*), intent(out) :: hp
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hp_type     
   end interface
 
@@ -3271,7 +3271,7 @@ return
        integer, intent(in)  :: m
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: f
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
        
@@ -3311,14 +3311,13 @@ return
      subroutine calculate_sHs( n, m, s, params)
        integer, intent(in) :: n, m
        real(wp), dimension(*), intent(in) :: s
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        integer :: ii, status
        select type(params)
        type is(tensor_params_type)
           if (params%eval_hp_provided) then 
 !          if (associated(params%eval_HP)) then
-             ! TODO:: put code here -- must return tenJ%Hs
              call params%eval_HP(status,n,params%m,params%x,s(1:n),tenJ%Hs,params%parent_params)
           else
              do ii = 1,params%m
@@ -3338,7 +3337,7 @@ return
        integer, intent(in)  :: m
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: J
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
 
@@ -3381,7 +3380,7 @@ return
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(in)   :: f
        real(wp), dimension(*), intent(out) :: HF
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
        real(wp) :: normx, hf_local

@@ -28,7 +28,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        INTEGER, INTENT( IN ) :: n, m 
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
@@ -65,7 +65,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        INTEGER, INTENT( IN ) :: n, m 
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        status = -1
        
@@ -84,7 +84,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        INTEGER, INTENT( IN ) :: n, m 
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
        REAL ( wp ), DIMENSION( * ),INTENT( IN ) :: X
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
@@ -131,7 +131,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        INTEGER, INTENT( IN ) :: n, m 
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        status = -1
        
@@ -151,7 +151,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: f
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: h
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
@@ -208,7 +208,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: f
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: h
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        status = -1
        
@@ -222,7 +222,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: x
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: y
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: hp
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        ! does nothing for now...
 

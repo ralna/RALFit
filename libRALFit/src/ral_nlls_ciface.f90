@@ -239,7 +239,7 @@ contains
     integer, intent(out) :: evalrstatus
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(out) :: f
-    class(f_params_base_type), intent(in) :: fparams
+    class(f_params_base_type), intent(inout) :: fparams
 
     select type(fparams)
     type is(params_wrapper)
@@ -253,7 +253,7 @@ contains
     integer, intent(out) :: evaljstatus
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(out) :: j
-    class(f_params_base_type), intent(in) :: fparams
+    class(f_params_base_type), intent(inout) :: fparams
 
     select type(fparams)
     type is(params_wrapper)
@@ -268,7 +268,7 @@ contains
     double precision, dimension(*), intent(in) :: x
     double precision, dimension(*), intent(in) :: f
     double precision, dimension(*), intent(out) :: hf
-    class(f_params_base_type), intent(in) :: fparams
+    class(f_params_base_type), intent(inout) :: fparams
 
     select type(fparams)
     type is(params_wrapper)
