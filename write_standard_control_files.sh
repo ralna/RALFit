@@ -13,7 +13,7 @@
 
 # Newton-Tensor models
 ./generate_control_file.py NewtonTen2 \
-                           --print_level 1 \
+                           --print_level 0 \
                            --maxit 5000 \
                            --model 4 \
                            --type_of_method 2 \
