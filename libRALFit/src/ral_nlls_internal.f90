@@ -437,6 +437,12 @@ contains
           write(options%out,1010) w%iter, ' ', w%Delta, rho, inform%obj, &
             inform%norm_g, inform%scaled_g
        end if
+
+       if (.not. options%exact_second_derivatives) then
+          ! let's update g_old, which is needed for call to
+          ! rank_one_update
+          w%g_old = w%g
+       end if
        
     end if
 
@@ -552,9 +558,8 @@ contains
     w%f(1:m) = w%fnew(1:m)
     
     if (.not. options%exact_second_derivatives) then 
-       ! first, let's save some old values...
-       ! g_old = -J_k^T r_k
-       w%g_old = w%g
+       ! save the value of g_mixed, which is needed for
+       ! call to rank_one_update
        ! g_mixed = -J_k^T r_{k+1}
        call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
        w%g_mixed = -w%g_mixed
@@ -633,6 +638,12 @@ contains
                params,options,inform)
        end if
        if (inform%external_return .ne. 0) goto 4030
+    end if
+
+    if (.not. options%exact_second_derivatives) then
+       ! now let's update g_old, which is needed for
+       ! call to rank_one_update
+       w%g_old = w%g
     end if
 
     ! update the stats 
