@@ -1560,9 +1560,8 @@ return
 
         nq = norm2(w%q)
         if (options%print_level >= 3) write(options%out,6080) nq
-
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
-        if (abs(sigma_shift) < options%more_sorensen_tiny * abs(sigma) ) then
+        if (abs(sigma_shift) < max(options%more_sorensen_tiny,epsmch) * abs(sigma) ) then
            if (no_restarts < 1) then 
               ! find a shift that makes (A + sigma I) positive definite
               call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
@@ -1573,7 +1572,7 @@ return
               inform%status = ERROR%MS_NO_PROGRESS
               goto 4000
            end if
-        else 
+        else
            sigma = sigma + sigma_shift
            call shift_matrix(A,sigma,w%AplusSigma,n)
            call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
