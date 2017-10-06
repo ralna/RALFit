@@ -247,7 +247,7 @@ contains
       
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, rho_gn, normFnew, md, md_gn, Jmax, JtJdiag
+    real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue, normX, normXnew
     logical :: success 
     logical :: bad_allocate = .false.
@@ -482,7 +482,18 @@ contains
             w%Xnew,w%d,w%normd, & 
             options,inform,& 
             w%calculate_step_ws)
-       if (inform%status .ne. 0) goto 4000
+       if (inform%status .ne. 0) then
+          if ( (w%use_second_derivatives) .and. &
+               (options%model == 3) ) then
+             ! don't trust this model -- switch to GN
+             ! (See Dennis, Gay and Walsh (1981), Section 5)
+             call switch_to_gauss_newton(w,n,options)
+             w%hf_temp(:) = zero
+             cycle
+          else 
+             goto 4000
+          end if
+       end if
 
        !++++++++++++++++++!
        ! Accept the step? !
@@ -532,9 +543,72 @@ contains
              end if
           end if
        else
-          ! success!!
-          num_successful_steps = num_successful_steps + 1
-          success = .true.
+          ! rho seems to be good -- calculate the Jacobian
+          if (.not. options%exact_second_derivatives) then 
+             ! save the value of g_mixed, which is needed for
+             ! call to rank_one_update
+             ! g_mixed = -J_k^T r_{k+1}
+             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
+             w%g_mixed = -w%g_mixed
+          end if
+
+          ! evaluate J and hf at the new point
+          call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+          inform%g_eval = inform%g_eval + 1
+          if (inform%external_return .ne. 0) goto 4010
+          if ( present(weights) ) then
+             ! set J -> WJ
+             do i = 1, n
+                w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
+             end do
+          end if
+
+          if ( options%calculate_svd_J ) then
+             call get_svd_J(n,m,w%J,&
+                  w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
+                  options,inform,svdstatus,w%get_svd_J_ws)
+             if ((svdstatus .ne. 0).and.(options%print_level >= 3)) then 
+                write( options%out, 3140 ) svdstatus
+             end if
+          end if
+          
+          ! g = -J^Tf
+          call mult_Jt(w%J,n,m,w%fnew,w%g)
+          w%g = -w%g
+          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
+
+          normJFnew = norm2(w%g)
+
+          if ( (log(normJFnew) >100.0) .or. (normJFnew .ne. normJFnew) ) then
+             write(options%out,3120) normJFnew
+             rho = -two
+             ! reset J
+             call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
+             inform%g_eval = inform%g_eval + 1
+             if (inform%external_return .ne. 0) goto 4010
+             if ( present(weights) ) then
+                ! set J -> WJ
+                do i = 1, n
+                   w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
+                end do
+             end if
+             ! reset g
+             if (.not. options%exact_second_derivatives) then
+                ! this is already saved...
+                w%g = w%g_old
+             else
+                call mult_Jt(w%J,n,m,w%f,w%g)
+                w%g = -w%g
+             end if
+          else
+             ! success!!
+             w%normJFold = w%normJF
+             w%normF = normFnew
+             w%normJF = normJFnew
+
+             num_successful_steps = num_successful_steps + 1
+             success = .true.
+          end if
        end if
        
        !++++++++++++++++++++++!
@@ -550,50 +624,14 @@ contains
           end if
           if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
        end if
+
     end do
     ! if we reach here, a successful step has been found
     
     ! update X and f
     X(1:n) = w%Xnew(1:n)
     w%f(1:m) = w%fnew(1:m)
-    
-    if (.not. options%exact_second_derivatives) then 
-       ! save the value of g_mixed, which is needed for
-       ! call to rank_one_update
-       ! g_mixed = -J_k^T r_{k+1}
-       call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
-       w%g_mixed = -w%g_mixed
-    end if
-
-    ! evaluate J and hf at the new point
-    call eval_J(inform%external_return, n, m, X, w%J, params)
-    inform%g_eval = inform%g_eval + 1
-    if (inform%external_return .ne. 0) goto 4010
-    if ( present(weights) ) then
-       ! set J -> WJ
-       do i = 1, n
-          w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
-       end do
-    end if
-    
-    if ( options%calculate_svd_J ) then
-       call get_svd_J(n,m,w%J,&
-            w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
-            options,inform,svdstatus,w%get_svd_J_ws)
-       if ((svdstatus .ne. 0).and.(options%print_level >= 3)) then 
-          write( options%out, 3140 ) svdstatus
-       end if
-    end if
-    
-    ! g = -J^Tf
-    call mult_Jt(w%J,n,m,w%f,w%g)
-    w%g = -w%g
-    if ( options%regularization > 0 ) call update_regularized_gradient(w%g,X,normX,options)
-    
-    w%normJFold = w%normJF
-    w%normF = normFnew
-    w%normJF = norm2(w%g)
-    
+        
     if (options%model == 3) then
        ! hybrid method -- check if we need second derivatives
        
@@ -683,6 +721,7 @@ contains
 
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
+3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.') 
 3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
 
 
