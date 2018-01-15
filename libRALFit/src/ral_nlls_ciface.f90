@@ -371,7 +371,6 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights
 
   if (C_ASSOCIATED(cweights)) then
      call c_f_pointer(cweights, fweights, shape = (/ m /) )
-     write(*,*) 'weights = ', fweights
      call f_nlls_solve( n, m, cx, &
        c_eval_r, c_eval_j,   &
        c_eval_hf, fparams,   &
@@ -450,7 +449,6 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   
   if (C_ASSOCIATED(cweights)) then
      call c_f_pointer(cweights, fweights, shape = (/ m /) )
-     write(*,*) 'weights = ', fweights
      call f_nlls_iterate( n, m, cx, fw, &
           c_eval_r, c_eval_j,   &
           c_eval_hf, fparams,   &
