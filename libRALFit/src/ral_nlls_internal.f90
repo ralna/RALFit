@@ -197,7 +197,9 @@ contains
              write(options%error,'(a,a)') 'ERROR: ', trim(inform%error_message)
           end if
           goto 1000 ! error -- exit
-       elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
+       elseif ((inform%convergence_normf == 1).or.&
+               (inform%convergence_normg == 1).or.&
+               (inform%convergence_norms == 1)) then
           goto 1000 ! converged -- exit
        end if
        
@@ -618,11 +620,15 @@ contains
        if (inform%status .ne. 0) goto 4000
        
        if (.not. success) then
-          ! finally, check d makes progress
           if ( options%print_level >= 1 ) then
              write(options%out,1020) w%iter, second, w%Delta, rho
           end if
-          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
+          ! finally, check d makes progress
+!          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) then
+!             write(*,*) 'rhs = ', epsmch * norm2(w%Xnew)
+!             inform%obj = 0.5*(w%normF**2)
+!             goto 4060
+!          end if
        end if
 
     end do
@@ -704,6 +710,7 @@ contains
     call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,w%normd,options,inform)
     if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
     if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
+    if (inform%convergence_norms == 1) goto 5010 ! <----converged!!
 
 
 ! Non-executable statements
@@ -829,6 +836,14 @@ contains
     end if
     goto 4000
 
+5020 continue
+    if (options%print_level >= 2) then
+       write(options%out,'(a,i0)') 'RAL_NLLS converged (on step length test) at iteration ', &
+            w%iter
+    end if
+    goto 4000
+    
+    
   end subroutine nlls_iterate
   
 
@@ -3284,7 +3299,8 @@ return
              ! there's an error : exit
              exit
           elseif ( (tensor_inform%convergence_normf == 1) & 
-               .or.(tensor_inform%convergence_normg == 1)) then
+               .or.(tensor_inform%convergence_normg == 1) & 
+               .or.(tensor_inform%convergence_norms == 1)) then
              ! we've converged!
              exit
           end if
