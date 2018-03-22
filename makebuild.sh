@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd libRALFit/
+cd ./libRALFit/
 mkdir build
 cd build
 cmake ..
