@@ -14,7 +14,7 @@ struct params_type {
 };
 
 // Calculate r_i(x; t_i, y_i) = x_1 e^(x_2 * t_i) - y_i
-int eval_r(int n, int m, void const* params, double const* x, double* r) {
+int eval_r(int n, int m, void * params, double const* x, double* r) {
    double x1 = x[0];
    double x2 = x[1];
    double const* t = ((struct params_type*) params)->t;
@@ -29,7 +29,7 @@ int eval_r(int n, int m, void const* params, double const* x, double* r) {
 // Calculate:
 // J_i1 = e^(x_2 * t_i)
 // J_i2 = t_i x_1 e^(x_2 * t_i)
-int eval_J(int n, int m, void const* params, double const* x, double* J) {
+int eval_J(int n, int m, void * params, double const* x, double* J) {
    double x1 = x[0];
    double x2 = x[1];
    double const* t = ((struct params_type*) params)->t;
@@ -46,7 +46,7 @@ int eval_J(int n, int m, void const* params, double const* x, double* J) {
 // HF = sum_i r_i H_i
 // Where H_i = [ 1                t_i e^(x_2 t_i)    ]
 //             [ t_i e^(x_2 t_i)  t_i^2 e^(x_2 t_i)  ]
-int eval_HF(int n, int m, void const* params, double const* x, double const* r, double* HF) {
+int eval_HF(int n, int m, void * params, double const* x, double const* r, double* HF) {
    double x1 = x[0];
    double x2 = x[1];
    double const* t = ((struct params_type*) params)->t;
