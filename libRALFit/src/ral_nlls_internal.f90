@@ -341,7 +341,7 @@ contains
        w%normF0 = w%normF
 
        !    g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g)
+       call mult_Jt(w%J,n,m,w%f,w%g,options)
        w%g = -w%g
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = norm2(w%g)
@@ -547,7 +547,7 @@ contains
              ! save the value of g_mixed, which is needed for
              ! call to rank_one_update
              ! g_mixed = -J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
+             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
              w%g_mixed = -w%g_mixed
           end if
 
@@ -570,7 +570,7 @@ contains
           end if
           
           ! g = -J^Tf
-          call mult_Jt(w%J,n,m,w%fnew,w%g)
+          call mult_Jt(w%J,n,m,w%fnew,w%g,options)
           w%g = -w%g
           if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
 
@@ -592,7 +592,7 @@ contains
                 ! this is already saved...
                 w%g = w%g_old
              else
-                call mult_Jt(w%J,n,m,w%f,w%g)
+                call mult_Jt(w%J,n,m,w%f,w%g,options)
                 w%g = -w%g
              end if
           else
@@ -656,7 +656,7 @@ contains
           ! call apply_second_order_info anyway, so that we update the
           ! second order approximation
           if (.not. options%exact_second_derivatives) then
-             call rank_one_update(w%hf_temp,w,n)
+             call rank_one_update(w%hf_temp,w,n,options)
           end if
        end if
 
@@ -979,7 +979,7 @@ contains
        w%extra_scale = zero
 
        ! Set A = J^T J
-       call matmult_inner(J,n,m,w%A)
+       call matmult_inner(J,n,m,w%A,options)
        ! add any second order information...
        ! so A = J^T J + HF
        call add_matrices(w%A,hf,n**2,w%A)
@@ -1272,7 +1272,7 @@ return
      if (.not. w%allocated ) goto 1010
 
      !     Jg = J * g
-     call mult_J(J,n,m,g,w%Jg)
+     call mult_J(J,n,m,g,w%Jg,options)
 
      alpha = norm2(g)**2 / norm2( w%Jg )**2
        
@@ -2383,7 +2383,7 @@ return
        md_gn = zero
 
        !Jd = J*d
-       call mult_J(J,n,m,d,w%Jd)
+       call mult_J(J,n,m,d,w%Jd,options)
        
        md_gn = 0.5 * norm2(f(1:m) + w%Jd(1:m))**2
        
@@ -2496,7 +2496,7 @@ return
           inform%h_eval = inform%h_eval + 1
        else
           ! use the rank-one approximation...
-          call rank_one_update(w%hf,w,n)                      
+          call rank_one_update(w%hf,w,n,options)                      
        end if
        
        ! update the hessian here if we're solving a regularized problem
@@ -2566,11 +2566,12 @@ return
       
      end subroutine update_regularized_hessian
 
-     subroutine rank_one_update(hf,w,n)
+     subroutine rank_one_update(hf,w,n,options)
 
        real(wp), intent(inout) :: hf(:)
        type( NLLS_workspace ), intent(inout) :: w
        integer, intent(in) :: n
+       type( NLLS_options ), intent(in) :: options
       
        real(wp) :: yts, alpha, dSks
 
@@ -2720,10 +2721,11 @@ return
 
      end subroutine test_convergence
 
-     subroutine mult_J(J,n,m,x,Jx)
+     subroutine mult_J(J,n,m,x,Jx,options)
        real(wp), intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        real(wp), intent(out) :: Jx(*)
+       type(nlls_options), optional :: options
 
        real(wp) :: alpha, beta
 
@@ -2735,10 +2737,11 @@ return
 
      end subroutine mult_J
 
-     subroutine mult_Jt(J,n,m,x,Jtx)
+     subroutine mult_Jt(J,n,m,x,Jtx,options)
        double precision, intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        double precision, intent(out) :: Jtx(*)
+       type( nlls_options), optional :: options
 
        double precision :: alpha, beta
 
@@ -2888,11 +2891,12 @@ return
 
      end subroutine matrix_norm
 
-     subroutine matmult_inner(J,n,m,A)
+     subroutine matmult_inner(J,n,m,A,options)
 
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(n,n)
+       type( nlls_options ), intent(in), optional :: options
 
        ! Takes an m x n matrix J and forms the 
        ! n x n matrix A given by
