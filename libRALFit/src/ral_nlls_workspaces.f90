@@ -269,6 +269,9 @@ module ral_nlls_workspaces
 
      logical :: update_lower_order = .true.
 
+     ! C or Fortran storage of Jacobian?
+     logical :: Fortran_Jacobian = .true.
+     
   END TYPE nlls_options
 
 !  - - - - - - - - - - - - - - - - - - - - - - - 

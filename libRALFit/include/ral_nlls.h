@@ -78,6 +78,7 @@ struct ral_nlls_options_d {
   int inner_method;
   bool output_progress_vectors;
   bool update_lower_order;
+  bool Fortran_Jacobian;
 };
 
 struct ral_nlls_inform_d {

@@ -66,6 +66,7 @@ module ral_nlls_ciface
      integer(c_int) :: inner_method
      logical(c_bool) :: output_progress_vectors
      logical(c_bool) :: update_lower_order
+     logical(c_bool) :: Fortran_Jacobian
   end type nlls_options
 
   type, bind(C) :: nlls_inform 
@@ -192,6 +193,7 @@ contains
     foptions%reg_order = coptions%reg_order
     foptions%inner_method = coptions%inner_method
     foptions%output_progress_vectors = coptions%output_progress_vectors
+    foptions%Fortran_Jacobian = coptions%Fortran_Jacobian
   end subroutine copy_options_in
 
   subroutine copy_info_out(finfo,cinfo)
@@ -338,6 +340,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%inner_method = foptions%inner_method
   coptions%output_progress_vectors = foptions%output_progress_vectors
   coptions%update_lower_order = foptions%update_lower_order
+  coptions%Fortran_Jacobian = foptions%Fortran_Jacobian
 end subroutine ral_nlls_default_options_d
 
 subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights) bind(C)
