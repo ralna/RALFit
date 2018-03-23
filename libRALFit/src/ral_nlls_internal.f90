@@ -306,10 +306,7 @@ contains
        inform%g_eval = inform%g_eval + 1
        if (inform%external_return .ne. 0) goto 4010
        if ( present(weights) ) then
-          ! set J -> WJ
-          do i = 1, n
-             w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
-          end do
+          call scale_J_by_weights(w%J,n,m,weights,options)
        end if
        
        if (options%relative_tr_radius == 1) then 
@@ -560,11 +557,9 @@ contains
           if (inform%external_return .ne. 0) goto 4010
           if ( present(weights) ) then
              ! set J -> WJ
-             do i = 1, n
-                w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
-             end do
+             call scale_J_by_weights(w%J,n,m,weights,options)
           end if
-
+       
           if ( options%calculate_svd_J ) then
              call get_svd_J(n,m,w%J,&
                   w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
@@ -590,9 +585,7 @@ contains
              if (inform%external_return .ne. 0) goto 4010
              if ( present(weights) ) then
                 ! set J -> WJ
-                do i = 1, n
-                   w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
-                end do
+                call scale_J_by_weights(w%J,n,m,weights,options)
              end if
              ! reset g
              if (.not. options%exact_second_derivatives) then
@@ -2757,6 +2750,21 @@ return
 
      end subroutine mult_Jt
 
+     subroutine scale_J_by_weights(J,n,m,weights,options)
+
+       real(wp), intent(inout) :: J(*)
+       real(wp), intent(in) :: weights(*)
+       integer, intent(in) :: n,m 
+       type( nlls_options ) :: options
+
+       integer :: i
+       ! set J -> WJ
+          do i = 1, n
+             J( (i-1)*m + 1 : i*m) = weights(1:m)*J( (i-1)*m + 1 : i*m)
+          end do
+          
+     end subroutine scale_J_by_weights
+     
      subroutine add_matrices(A,B,n,C)
 
        real(wp), intent(in) :: A(*), B(*)
