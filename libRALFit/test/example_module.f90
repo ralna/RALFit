@@ -121,7 +121,61 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      END SUBROUTINE eval_J
 
+     SUBROUTINE eval_J_c( status, n, m, X, J, params)
 
+!  -------------------------------------------------------------------
+!  eval_J, a subroutine for evaluating the Jacobian J at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n, m 
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
+       REAL ( wp ), DIMENSION( * ),INTENT( IN ) :: X
+       class( params_base_type ), intent(inout) :: params
+
+! Let's switch to an actual fitting example...
+! min 0.5 || f(m,c)||**2, where
+! f_i(m,c) = y_i - exp( m * x_i + c )
+
+       integer :: i, index
+
+       ! let's work this into the format we need
+       ! X(1) = m, X(2) = c
+       select type(params)
+       type is(user_type)
+          index = 0
+          ! use c-based formatting
+          do i = 1, m
+             J(index + 1) = - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
+             J(index + 2) = - exp( X(1) * params%x_values(i) + X(2) )
+             index = index + 2
+          end do
+       end select
+       
+       status = 0
+
+! end of subroutine eval_J
+
+!!$       ! initialize to zeros...
+!!$       J(1:4,1:4) = 0.0
+!!$       
+!!$       ! enter non-zeros values
+!!$       J(1,1) = 1.0
+!!$       J(1,2) = 10.0
+!!$       J(2,3) = sqrt(5.0)
+!!$       J(2,4) = -sqrt(5.0)
+!!$       J(3,2) = 2.0 * (X(2) - 2.0 * X(3))
+!!$       J(3,3) = -4.0 * (X(2) - 2.0 * X(3)) 
+!!$       J(4,1) = sqrt(10.0) * 2.0 * (X(1) - X(4))
+!!$       J(4,4) = - sqrt(10.0) * 2.0 * (X(1) - X(4))
+
+     END SUBROUTINE eval_J_c
+
+
+     
      subroutine eval_J_error( status, n, m, X, J, params)
        ! a fake eval_J to flag an error 
        USE ISO_FORTRAN_ENV

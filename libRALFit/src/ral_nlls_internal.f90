@@ -313,8 +313,11 @@ contains
           ! first, let's get diag(J^TJ)
           Jmax = 0.0
           do i = 1, n
-             ! note:: assumes column-storage of J
-             JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
+             if (options%Fortran_Jacobian) then 
+                JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
+             else
+                JtJdiag = norm2( w%J( i : n*m : n ) )
+             end if
              if (JtJdiag > Jmax) Jmax = JtJdiag
           end do
           w%Delta = options%initial_radius_scale * (Jmax**2)
@@ -1153,8 +1156,12 @@ return
            what_scale: if (options%scale == 1) then
               ! use the scaling present in gsl:
               ! scale by W, W_ii = ||J(i,:)||_2^2
-!              temp = temp + norm2(J( (ii-1)*m + 1 : ii*m) )**2
-              temp = temp + dot_product(J( (ii-1)*m + 1 : ii*m), J( (ii-1)*m + 1 : ii*m) )
+              !              temp = temp + norm2(J( (ii-1)*m + 1 : ii*m) )**2
+              if (options%Fortran_Jacobian) then
+                 temp = temp + dot_product(J( (ii-1)*m + 1 : ii*m), J( (ii-1)*m + 1 : ii*m) )
+              else
+                 temp = temp + dot_product(J(ii:n*m:n),J(ii:n*m:n))
+              end if
            elseif ( options%scale == 2) then 
               ! scale using the (approximate) hessian
               do jj = 1,n
@@ -2727,14 +2734,22 @@ return
        real(wp), intent(out) :: Jx(*)
        type(nlls_options), optional :: options
 
+       integer i
+       
        real(wp) :: alpha, beta
 
        Jx(1:m) = 1.0
        alpha = 1.0
        beta  = 0.0
 
-       call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
-
+       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+          ! Jacobian held in row major format...
+          call dgemv('T',n,m,alpha,J,n,x,1,beta,Jx,1)
+          
+       else
+          call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
+       end if
+       
      end subroutine mult_J
 
      subroutine mult_Jt(J,n,m,x,Jtx,options)
@@ -2744,13 +2759,19 @@ return
        type( nlls_options), optional :: options
 
        double precision :: alpha, beta
-
+       integer :: i
+       
        Jtx(1:n) = one
        alpha = one
        beta  = zero
 
-       call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
-
+       if (present(options).and. (.not. options%Fortran_Jacobian)) then
+          ! Jacobian held in row major format...
+          call dgemv('N',n,m,alpha,J,n,x,1,beta,Jtx,1)
+       else
+          call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
+       end if
+       
      end subroutine mult_Jt
 
      subroutine scale_J_by_weights(J,n,m,weights,options)
@@ -2762,9 +2783,15 @@ return
 
        integer :: i
        ! set J -> WJ
+       if (options%Fortran_Jacobian) then 
           do i = 1, n
              J( (i-1)*m + 1 : i*m) = weights(1:m)*J( (i-1)*m + 1 : i*m)
           end do
+       else
+          do i = 1, m
+             J( (i-1)*n + 1 : i*n) = weights(i)*J( (i-1)*n + 1 : i*n)
+          end do
+       end if
           
      end subroutine scale_J_by_weights
      
@@ -2898,14 +2925,21 @@ return
        real(wp), intent(out) :: A(n,n)
        type( nlls_options ), intent(in), optional :: options
 
+       integer :: i
        ! Takes an m x n matrix J and forms the 
        ! n x n matrix A given by
        ! A = J' * J
+       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+          ! c format
+          call dgemm('N','T',n, n, m, one,&
+               J, n, J, n, & 
+               zero, A, n)
+       else
+          call dgemm('T','N',n, n, m, one,&
+               J, m, J, m, & 
 
-       call dgemm('T','N',n, n, m, one,&
-            J, m, J, m, & 
-            zero, A, n)
-
+               zero, A, n)
+       end if
 
      end subroutine matmult_inner
 
@@ -3368,6 +3402,7 @@ return
 
           ! First, calculate Js
           call mult_J(params%J(1:n*params%m),n,params%m,s,tenJ%Js)
+          ! TODO: add options to allow calling from C
 
           ! Now, calculate s'Hs
           call calculate_sHs(n,m, s, params)

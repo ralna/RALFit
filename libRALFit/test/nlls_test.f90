@@ -14,7 +14,8 @@ program nlls_test
   type( user_type ), target :: params
   real(wp), allocatable :: v(:),w(:),x(:),y(:),z(:)
   real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
-  real(wp), allocatable :: results(:)
+  real(wp), allocatable :: results(:), resvec(:)
+  real(wp) :: resvec_error
   real(wp) :: alpha, beta, gamma, delta
   integer :: m, n, i, no_errors_helpers, no_errors_main, info
   integer :: nlls_method, model, tr_update, inner_method
@@ -448,6 +449,45 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
+
+     ! test for c-based Jabobians
+     ! run fortran based and c based, and check the resvecs are the same
+     call reset_default_options(options)
+     ! first, let's get a standard output...
+     n = 2
+     m = 67
+     X =[1.0, 2.0]
+     options%output_progress_vectors = .true.
+     call nlls_solve(n, m, X,                         &
+                     eval_F, eval_J, eval_H, params,  &
+                     options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'solve failed'
+        no_errors_main = no_errors_main + 1
+     end if
+     ! save the resvec, so that we can compare later
+     allocate(resvec(status%iter))
+     resvec(1:status%iter) = status%resvec(1:status%iter)
+     ! now run with a row-major ordered Jacobian
+     X = [1.0, 2.0]
+     options%Fortran_Jacobian = .false.
+     call nlls_solve(n, m, X,                         &
+                     eval_F, eval_J_c, eval_H, params,  &
+                     options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'solve failed'
+        no_errors_main = no_errors_main + 1
+     end if
+     resvec(:) = resvec(:) - status%resvec(1:size(resvec))
+     resvec_error = dot_product( resvec(:),resvec(:) )
+     if ( resvec_error > 1e-14 ) then
+        write(*,*) 'C Jacobian test failed: resvec error = ', resvec_error
+        write(*,*) 'resvec = ', resvec
+        no_errors_main = no_errors_main + 1
+     end if
+     
+     
+     deallocate(resvec)
      
      ! three tests for incorrect returns from eval_f/J/H
      call reset_default_options(options)
@@ -460,7 +500,7 @@ program nlls_test
         case (1)
            call nlls_solve(n, m, X,                         &
                 eval_F_error, eval_J, eval_H, params,  &
-                options, status )   
+                options, status )
         case (2)
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J_error, eval_H, params,  &
