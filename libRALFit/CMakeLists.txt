@@ -3,10 +3,13 @@ cmake_minimum_required (VERSION 2.6)
 enable_language (C Fortran)
 
 project (RALFit)
+
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
+
 option(TestCoverage "Perform code coverage analysis" Off)
-#option(UseMKL "Use Intel's MKL library" Off)
+
+option(UseMKL "Use Intel's MKL library" Off)
 
 # Set the location for cmake module files
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
@@ -22,21 +25,17 @@ set ( SRC_FILES
 	src/ral_nlls_ciface.f90
 	src/ral_nlls_workspaces.f90
 	)	
-#	external/ea06d.f
-#	external/ea08d.f
-#	external/ea09d.f
-#       external/mc04d.f
-#	external/fd05d.f
 
-
-#if (UseMKL)
-#set( ENV{BLA_VENDOR} "Intel" )
-#   find_package(MKL)
-#   if(MKL_FOUND)
-#	message("found mkl!")
-#   endif()
-#   message("sup!")
-#endif()
+if (UseMKL)
+   find_package(MKL REQUIRED)
+   if ( NOT MKL_FOUND )
+      message( FATAL_ERROR "MKL required, but not found! Check $MKLROOT or $INTEL environment variables are correctly set.")
+  endif ( NOT MKL_FOUND ) 				
+  message( STATUS "The MKL library was found at" ${MKL_LIBRARIES} )
+  set(LIBS ${LIBS} ${MKL_LIBRARIES}) # ${MKL_INTERFACE_LIBRARY} ${MKL_SEQUENTIAL_LAYER_LIBRARY} ${MKL_CORE_LIBRARY})	
+  include_directories(${MKL_INCLUDE_DIRS})
+  set(CompileMiniLAPACK Off)
+endif(UseMKL)
 
 # see if the build type is debug.  First, convert to lower
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
@@ -74,12 +73,8 @@ if(TestCoverage)
    SETUP_TARGET_FOR_COVERAGE(test_coverage test/test coverage)
 endif(TestCoverage)
 
-# Main libral_nlls library
-include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
-add_library (ral_nlls SHARED ${SRC_FILES} ) 
-target_link_libraries(ral_nlls lapack -lm -ldl)
 
-if(NOT CompileMiniLAPACK)
+if((NOT CompileMiniLAPACK) AND (NOT UseBLAS))
   # try to find lapack..
   find_package(LAPACK)
   if(NOT LAPACK_FOUND)
@@ -124,6 +119,12 @@ if(CompileMiniLAPACK)
 endif()
 
 message( STATUS BLAS found: ${BLAS_LIBRARIES} )
+
+# Main libral_nlls library
+include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
+add_library (ral_nlls SHARED ${SRC_FILES} ) 
+target_link_libraries(ral_nlls ${LAPACK_LIBRARIES} -lm -ldl)
+
 
 # Tests and examples
 add_subdirectory (test)
