@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import os
 import argparse
+import itertools
 
 def main():
     # Let's get the files containing the problem and control parameters from the calling command..
@@ -15,6 +16,8 @@ def main():
     parser.add_argument("-n","--no_plot", help="if present, we do not draw the plots", action="store_true")
     parser.add_argument("-s","--starting_point", help="which starting point to use? (default=1)",default=1)
     parser.add_argument("-nl","--no_legend", help="if present, we do not add a legend", action="store_true")
+    parser.add_argument("-mk","--use_marker", help="if present, use markers", action="store_true")
+    parser.add_argument("-ls","--use_linestyles", help="if present, cycle through linestyles", action="store_true")
     args = parser.parse_args()
     control_files = args.control_files
     no_tests = len(control_files) #!len(sys.argv)-1
@@ -85,9 +88,20 @@ def main():
         plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args)
 
 def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args):
+
+    if args.use_marker:
+        marker = itertools.cycle(('+', '.', 'o', '*', ','))
+    else:
+        marker = itertools.cycle(('',''))
+
+    if args.use_linestyles:
+        linestyle = itertools.cycle((':','-.','--','-'))
+    else:
+        linestyle = itertools.cycle(('-','-'))
+    
     plt.figure(1)
     for i in range(no_tests):
-        plt.semilogy(progress[i]['grad'], label=control_files[i])
+        plt.semilogy(progress[i]['grad'], label=control_files[i], marker=marker.next(), markersize=10.0,markevery=0.4, linestyle=linestyle.next())
     if not args.no_legend:
         plt.legend()
 
@@ -100,7 +114,7 @@ def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args
     plt.figure(2)
     for i in range(no_tests):
         # plt.semilogy(progress[i]['res']-mineps, label=control_files[i])
-        plt.semilogy(progress[i]['res'], label=control_files[i])
+        plt.semilogy(progress[i]['res'], label=control_files[i], marker=marker.next(), markersize=10.0,markevery=0.4, linestyle=linestyle.next())
     if not args.no_legend:
         plt.legend()
     plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
