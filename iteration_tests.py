@@ -99,7 +99,7 @@ def main():
             # so that the performance profiles work below...
             add_inner_information(args.control_files[j],data[j])
         metadata[j] = np.loadtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
-        if "gsl" in args.control_files[j]: # == "gsl":
+        if "gsl" in args.control_files[j].lower(): # == "gsl":
             too_many_its[j] = -2
         else:
             too_many_its[j] = -1
@@ -443,7 +443,7 @@ def run_cutest_and_copy_results_locally(args,problems):
         # copy the data file locally
         subprocess.call(["mv", "cutest/sif/"+test+".out", \
                          "data/"+test+".out"])
-        if "gsl" in test: # == "gsl":
+        if "gsl" in test.lower(): # == "gsl":
             # c doesn't end with a newline, so add one
             gslresults = open("data/gsl.out","a")
             gslresults.write("\n")
@@ -471,7 +471,7 @@ def compute(no_tests,control_files,problems,i,starting_point):
     
     for test in control_files:
         j += 1
-        if "gsl" in test: # == "gsl":
+        if "gsl" in test.lower(): # == "gsl":
             package = "gsl"
         else: # assume ral_nlls is being called
             package = "ral_nlls"

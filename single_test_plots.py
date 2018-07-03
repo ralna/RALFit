@@ -46,7 +46,7 @@ def main():
 
     # now, let's run the tests!
     for i in range(no_tests):
-        if control_files[i] == "gsl":
+        if control_files[i].lower() == "gsl":
             package = "gsl"
         else: # assume ral_nlls is being called
             package = "ral_nlls"
