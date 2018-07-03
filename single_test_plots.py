@@ -14,6 +14,7 @@ def main():
     parser.add_argument("-p","--problem", help="which problem should be use?")
     parser.add_argument("-n","--no_plot", help="if present, we do not draw the plots", action="store_true")
     parser.add_argument("-s","--starting_point", help="which starting point to use? (default=1)",default=1)
+    parser.add_argument("-nl","--no_legend", help="if present, we do not add a legend", action="store_true")
     args = parser.parse_args()
     control_files = args.control_files
     no_tests = len(control_files) #!len(sys.argv)-1
@@ -81,13 +82,14 @@ def main():
     # do the plotting!
     #
     if not args.no_plot:
-        plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue)
+        plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args)
 
-def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue):
+def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args):
     plt.figure(1)
     for i in range(no_tests):
         plt.semilogy(progress[i]['grad'], label=control_files[i])
-    plt.legend()
+    if not args.no_legend:
+        plt.legend()
 
     print os.getcwd()
     plt.title(problem+': gradients')
@@ -97,9 +99,10 @@ def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue):
 
     plt.figure(2)
     for i in range(no_tests):
-        plt.semilogy(progress[i]['res']-mineps, label=control_files[i])
-
-    plt.legend()
+        # plt.semilogy(progress[i]['res']-mineps, label=control_files[i])
+        plt.semilogy(progress[i]['res'], label=control_files[i])
+    if not args.no_legend:
+        plt.legend()
     plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
     plt.xlabel('Iteration number')
     plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
