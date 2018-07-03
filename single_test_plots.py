@@ -105,7 +105,8 @@ def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args
         plt.legend()
     plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
     plt.xlabel('Iteration number')
-    plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
+    #plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
+    plt.ylabel('$1/2||r_k||^2_2$')
     plt.savefig('data/img/'+problem+'_res_'+short_hash+'.png')
 
     plt.show()
