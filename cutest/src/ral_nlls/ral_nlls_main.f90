@@ -316,7 +316,7 @@
 
       IF ( summary_unit > 0 ) THEN
         BACKSPACE( summary_unit )
-        WRITE( summary_unit, "( A10, 7I6, I8, 4ES25.15E3 )" ) & !, ES23.15E3, ES23.15E3, ES23.15E3 )" ) &
+        WRITE( summary_unit, "( A10, 7I8, I8, 4ES25.15E3 )" ) & !, ES23.15E3, ES23.15E3, ES23.15E3 )" ) &
           pname, n, m, inform%status,localiter,                                &
           fnevals, jacevals, hessevals,                                        &
           inner_iter,                                                          &
