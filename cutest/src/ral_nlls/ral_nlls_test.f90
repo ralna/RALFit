@@ -84,6 +84,9 @@ module ral_nlls_workspaces
      logical :: output_progress_vectors = .false.
      logical :: update_lower_order = .true.
 
+     ! C or Fortran storage of Jacobian?
+     logical :: Fortran_Jacobian = .true.
+
   END TYPE Nlls_options
 
   TYPE, public :: NLLS_inform
