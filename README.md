@@ -9,6 +9,12 @@ A non-linear least squares solver that is primarily developed by the Numerical A
 
 ## Installation
 
+### Requirements
+
+RALFit has been tested on Linux, although it should work on other platforms.  It requires Fortran and C compilers, and BLAS and LAPACK must be installed on the system
+
+### Compilation instructions
+
 To compile, move to the `libRALFit` directory and issue the commands:
 ```
 mkdir build
