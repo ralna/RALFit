@@ -10,6 +10,9 @@ RESULT=$?
 test/nlls_f90_test
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 2
+./nlls_c_test
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 3
 cd ../src
 #cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_dtrs_double.f90.gcda ral_nlls_dtrs_double.gcda
 #cp ../coverage/CMakeFiles/ral_nlls.dir/src/ral_nlls_dtrs_double.f90.gcno ral_nlls_dtrs_double.gcno
