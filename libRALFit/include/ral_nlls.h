@@ -78,6 +78,7 @@ struct ral_nlls_options_d {
   int inner_method;
   bool output_progress_vectors;
   bool update_lower_order;
+  bool Fortran_Jacobian;
 };
 
 struct ral_nlls_inform_d {
@@ -109,7 +110,7 @@ void ral_nlls_default_options_d( struct ral_nlls_options_d *options );
 typedef int (*ral_nlls_eval_r_type) (
               int n, 
               int m,
-              const void *params,
+              void *params,
               const ral_nllspkgtype_d_ *x, 
               ral_nllspkgtype_d_ *f
               );
@@ -117,7 +118,7 @@ typedef int (*ral_nlls_eval_r_type) (
 typedef int (*ral_nlls_eval_j_type) (
               int n, 
               int m,
-              const void *params,
+              void *params,
               const ral_nllspkgtype_d_ *x, 
               ral_nllspkgtype_d_ *j
               );
@@ -125,7 +126,7 @@ typedef int (*ral_nlls_eval_j_type) (
 typedef int (*ral_nlls_eval_hf_type) (
                int n, 
                int m,
-               const void *params,
+               void *params,
                const ral_nllspkgtype_d_ *x, 
                const ral_nllspkgtype_d_ *f,
                ral_nllspkgtype_d_ *hf

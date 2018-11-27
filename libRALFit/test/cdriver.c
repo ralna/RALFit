@@ -15,11 +15,11 @@ struct usertype {
 };
 
 void generate_data_example ( double *x_data, double *y_data, const int m); // prototype
-int eval_F  ( const int n, const int m, const void *params, 
+int eval_F  ( const int n, const int m,  void *params, 
       const double *X, double *f);
-int eval_J  ( const int n, const int m, const void *params, 
+int eval_J  ( const int n, const int m,  void *params, 
       const double *X, double *f);
-int eval_HF ( const int n, const int m, const void *params, 
+int eval_HF ( const int n, const int m,  void *params, 
 	       const double *X, const double *f, double *hf);
 
 /* A c driver for the ral_nlls program */
@@ -64,7 +64,7 @@ int main(void) {
 }
 
 /* Do a function evaluation */
-int eval_F(int n, int m, const void *params, 
+int eval_F(int n, int m, void *params, 
 	      const double *X, double *f){
   
   struct usertype *myparams = (struct usertype *) params;
@@ -79,7 +79,7 @@ int eval_F(int n, int m, const void *params,
 }
 
 /* Evaluate the Jacobian */
-int eval_J( const int n, const int m, const void *params, 
+int eval_J( const int n, const int m, void *params, 
 	     const double *X, double *J){
   
   struct usertype *myparams = (struct usertype *) params;
@@ -95,7 +95,7 @@ int eval_J( const int n, const int m, const void *params,
 }
 
 /* Evaluate the Hessian */
-int eval_HF( const int n, const int m, const void *params, 
+int eval_HF( const int n, const int m, void *params, 
 	     const double *X, const double *f, 
 	     double *hf){
   

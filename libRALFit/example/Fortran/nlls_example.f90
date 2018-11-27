@@ -21,7 +21,7 @@ contains
       integer, intent(in) :: m
       real(wp), dimension(*), intent(in) :: x
       real(wp), dimension(*), intent(out) :: r
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
 
       real(wp) :: x1, x2
 
@@ -43,7 +43,7 @@ contains
       integer, intent(in) :: m
       real(wp), dimension(*), intent(in) :: x
       real(wp), dimension(*), intent(out) :: J
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
 
       real(wp) :: x1, x2
 
@@ -68,7 +68,7 @@ contains
       real(wp), dimension(*), intent(in) :: x
       real(wp), dimension(*), intent(in) :: r
       real(wp), dimension(*), intent(out) :: HF
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
 
       real(wp) :: x1, x2
 

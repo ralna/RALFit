@@ -34,7 +34,7 @@ module ral_nlls_internal
        integer, intent(in) :: n,m 
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: f
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_f_type
   end interface
 
@@ -46,7 +46,7 @@ module ral_nlls_internal
        integer, intent(in) :: n,m 
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: J
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_j_type
   end interface
 
@@ -59,8 +59,21 @@ module ral_nlls_internal
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: f
        double precision, dimension(*), intent(out) :: h
-       class(params_base_type), intent(in) :: params
+       class(params_base_type), intent(inout) :: params
      end subroutine eval_hf_type
+  end interface
+
+  abstract interface
+     subroutine eval_hp_type(status, n, m, x, y, hp, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m 
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(in)  :: y
+       double precision, dimension(*), intent(out) :: hp
+       class(params_base_type), intent(inout) :: params
+     end subroutine eval_hp_type     
   end interface
 
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
@@ -85,9 +98,9 @@ contains
   !!******************************************************!!
 
   RECURSIVE SUBROUTINE NLLS_SOLVE( n, m, X,                   & 
-                         eval_F, eval_J, eval_HF,   & 
-                         params,                    &
-                         options, inform, weights )
+                         eval_F, eval_J, eval_HF,             & 
+                         params,                              &
+                         options, inform, weights, eval_HP )
     
 !  -----------------------------------------------------------------------------
 !  RAL_NLLS, a fortran subroutine for finding a first-order critical
@@ -109,6 +122,7 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
     real( wp ), dimension( m ), intent(in), optional :: weights
+    procedure( eval_hp_type ), optional :: eval_HP
       
     integer  :: i
     
@@ -145,18 +159,36 @@ contains
     main_loop: do i = 1,options%maxit
        
        if ( present(weights) ) then
-          call nlls_iterate(n, m, X,      & 
-               w,                         &
-               eval_F, eval_J, eval_HF,   & 
-               params,                    &
-               inform, options, weights)
+          if ( present(eval_HP) ) then 
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options, weights=weights,eval_HP=eval_HP)
+          else
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options, weights=weights)
+
+          end if
        else
-          call nlls_iterate(n, m, X,      & 
-               w,                         &
-               eval_F, eval_J, eval_HF,   & 
-               params,                    &
-               inform, options)
+          if ( present(eval_HP) ) then
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options, eval_HP=eval_HP)
+          else
+             call nlls_iterate(n, m, X,      & 
+                  w,                         &
+                  eval_F, eval_J, eval_HF,   & 
+                  params,                    &
+                  inform, options)
+          end if
        end if
+       
        ! test the returns to see if we've converged
 
        if (inform%status < 0) then 
@@ -165,7 +197,9 @@ contains
              write(options%error,'(a,a)') 'ERROR: ', trim(inform%error_message)
           end if
           goto 1000 ! error -- exit
-       elseif ((inform%convergence_normf == 1).or.(inform%convergence_normg == 1)) then
+       elseif ((inform%convergence_normf == 1).or.&
+               (inform%convergence_normg == 1).or.&
+               (inform%convergence_norms == 1)) then
           goto 1000 ! converged -- exit
        end if
        
@@ -198,7 +232,7 @@ contains
                           w,                         & 
                           eval_F, eval_J, eval_HF,   & 
                           params,                    &
-                          inform, options, weights)
+                          inform, options, weights, eval_HP)
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
@@ -210,10 +244,12 @@ contains
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ) :: params
     REAL( wp ), DIMENSION( m ), INTENT( IN ), optional :: weights
+    procedure( eval_hp_type ), optional :: eval_HP
+    
       
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
-    real(wp) :: rho, rho_gn, normFnew, md, md_gn, Jmax, JtJdiag
+    real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue, normX, normXnew
     logical :: success 
     logical :: bad_allocate = .false.
@@ -247,7 +283,15 @@ contains
        elseif (.not. w%allocated) then 
           goto 4100
        end if
-       
+
+       ! if needed, setup assign eval_Hp
+       if (options%model==4 .and. present(eval_HP)) then
+          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP
+          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .true.
+       else
+          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .false.
+       end if
+
        ! evaluate the residual
        call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
@@ -262,18 +306,18 @@ contains
        inform%g_eval = inform%g_eval + 1
        if (inform%external_return .ne. 0) goto 4010
        if ( present(weights) ) then
-          ! set J -> WJ
-          do i = 1, n
-             w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
-          end do
+          call scale_J_by_weights(w%J,n,m,weights,options)
        end if
        
        if (options%relative_tr_radius == 1) then 
           ! first, let's get diag(J^TJ)
           Jmax = 0.0
           do i = 1, n
-             ! note:: assumes column-storage of J
-             JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
+             if (options%Fortran_Jacobian) then 
+                JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
+             else
+                JtJdiag = norm2( w%J( i : n*m : n ) )
+             end if
              if (JtJdiag > Jmax) Jmax = JtJdiag
           end do
           w%Delta = options%initial_radius_scale * (Jmax**2)
@@ -300,7 +344,7 @@ contains
        w%normF0 = w%normF
 
        !    g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g)
+       call mult_Jt(w%J,n,m,w%f,w%g,options)
        w%g = -w%g
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = norm2(w%g)
@@ -395,6 +439,12 @@ contains
           write(options%out,1010) w%iter, ' ', w%Delta, rho, inform%obj, &
             inform%norm_g, inform%scaled_g
        end if
+
+       if (.not. options%exact_second_derivatives) then
+          ! let's update g_old, which is needed for call to
+          ! rank_one_update
+          w%g_old = w%g
+       end if
        
     end if
 
@@ -434,7 +484,18 @@ contains
             w%Xnew,w%d,w%normd, & 
             options,inform,& 
             w%calculate_step_ws)
-       if (inform%status .ne. 0) goto 4000
+       if (inform%status .ne. 0) then
+          if ( (w%use_second_derivatives) .and. &
+               (options%model == 3) ) then
+             ! don't trust this model -- switch to GN
+             ! (See Dennis, Gay and Walsh (1981), Section 5)
+             call switch_to_gauss_newton(w,n,options)
+             w%hf_temp(:) = zero
+             cycle
+          else 
+             goto 4000
+          end if
+       end if
 
        !++++++++++++++++++!
        ! Accept the step? !
@@ -484,9 +545,68 @@ contains
              end if
           end if
        else
-          ! success!!
-          num_successful_steps = num_successful_steps + 1
-          success = .true.
+          ! rho seems to be good -- calculate the Jacobian
+          if (.not. options%exact_second_derivatives) then 
+             ! save the value of g_mixed, which is needed for
+             ! call to rank_one_update
+             ! g_mixed = -J_k^T r_{k+1}
+             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+             w%g_mixed = -w%g_mixed
+          end if
+
+          ! evaluate J and hf at the new point
+          call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+          inform%g_eval = inform%g_eval + 1
+          if (inform%external_return .ne. 0) goto 4010
+          if ( present(weights) ) then
+             ! set J -> WJ
+             call scale_J_by_weights(w%J,n,m,weights,options)
+          end if
+       
+          if ( options%calculate_svd_J ) then
+             call get_svd_J(n,m,w%J,&
+                  w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
+                  options,inform,svdstatus,w%get_svd_J_ws)
+             if ((svdstatus .ne. 0).and.(options%print_level >= 3)) then 
+                write( options%out, 3140 ) svdstatus
+             end if
+          end if
+          
+          ! g = -J^Tf
+          call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+          w%g = -w%g
+          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
+
+          normJFnew = norm2(w%g)
+
+          if ( (log(normJFnew) >100.0) .or. (normJFnew .ne. normJFnew) ) then
+             write(options%out,3120) normJFnew
+             rho = -two
+             ! reset J
+             call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
+             inform%g_eval = inform%g_eval + 1
+             if (inform%external_return .ne. 0) goto 4010
+             if ( present(weights) ) then
+                ! set J -> WJ
+                call scale_J_by_weights(w%J,n,m,weights,options)
+             end if
+             ! reset g
+             if (.not. options%exact_second_derivatives) then
+                ! this is already saved...
+                w%g = w%g_old
+             else
+                call mult_Jt(w%J,n,m,w%f,w%g,options)
+                w%g = -w%g
+             end if
+          else
+             ! success!!
+             w%normJFold = w%normJF
+             w%normF = normFnew
+             w%normJF = normJFnew
+
+             num_successful_steps = num_successful_steps + 1
+             success = .true.
+          end if
        end if
        
        !++++++++++++++++++++++!
@@ -496,57 +616,24 @@ contains
        if (inform%status .ne. 0) goto 4000
        
        if (.not. success) then
-          ! finally, check d makes progress
           if ( options%print_level >= 1 ) then
              write(options%out,1020) w%iter, second, w%Delta, rho
           end if
-          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) goto 4060
+          ! finally, check d makes progress
+!          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) then
+!             write(*,*) 'rhs = ', epsmch * norm2(w%Xnew)
+!             inform%obj = 0.5*(w%normF**2)
+!             goto 4060
+!          end if
        end if
+
     end do
     ! if we reach here, a successful step has been found
     
     ! update X and f
     X(1:n) = w%Xnew(1:n)
     w%f(1:m) = w%fnew(1:m)
-    
-    if (.not. options%exact_second_derivatives) then 
-       ! first, let's save some old values...
-       ! g_old = -J_k^T r_k
-       w%g_old = w%g
-       ! g_mixed = -J_k^T r_{k+1}
-       call mult_Jt(w%J,n,m,w%fnew,w%g_mixed)
-       w%g_mixed = -w%g_mixed
-    end if
-
-    ! evaluate J and hf at the new point
-    call eval_J(inform%external_return, n, m, X, w%J, params)
-    inform%g_eval = inform%g_eval + 1
-    if (inform%external_return .ne. 0) goto 4010
-    if ( present(weights) ) then
-       ! set J -> WJ
-       do i = 1, n
-          w%J( (i-1)*m + 1 : i*m) = weights(1:m)*w%J( (i-1)*m + 1 : i*m)
-       end do
-    end if
-    
-    if ( options%calculate_svd_J ) then
-       call get_svd_J(n,m,w%J,&
-            w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
-            options,inform,svdstatus,w%get_svd_J_ws)
-       if ((svdstatus .ne. 0).and.(options%print_level >= 3)) then 
-          write( options%out, 3140 ) svdstatus
-       end if
-    end if
-    
-    ! g = -J^Tf
-    call mult_Jt(w%J,n,m,w%f,w%g)
-    w%g = -w%g
-    if ( options%regularization > 0 ) call update_regularized_gradient(w%g,X,normX,options)
-    
-    w%normJFold = w%normJF
-    w%normF = normFnew
-    w%normJF = norm2(w%g)
-    
+        
     if (options%model == 3) then
        ! hybrid method -- check if we need second derivatives
        
@@ -572,7 +659,7 @@ contains
           ! call apply_second_order_info anyway, so that we update the
           ! second order approximation
           if (.not. options%exact_second_derivatives) then
-             call rank_one_update(w%hf_temp,w,n)
+             call rank_one_update(w%hf_temp,w,n,options)
           end if
        end if
 
@@ -591,6 +678,12 @@ contains
                params,options,inform)
        end if
        if (inform%external_return .ne. 0) goto 4030
+    end if
+
+    if (.not. options%exact_second_derivatives) then
+       ! now let's update g_old, which is needed for
+       ! call to rank_one_update
+       w%g_old = w%g
     end if
 
     ! update the stats 
@@ -613,6 +706,7 @@ contains
     call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,w%normd,options,inform)
     if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
     if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
+    if (inform%convergence_norms == 1) goto 5010 ! <----converged!!
 
 
 ! Non-executable statements
@@ -630,6 +724,7 @@ contains
 
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
+3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.') 
 3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
 
 
@@ -737,6 +832,14 @@ contains
     end if
     goto 4000
 
+5020 continue
+    if (options%print_level >= 2) then
+       write(options%out,'(a,i0)') 'RAL_NLLS converged (on step length test) at iteration ', &
+            w%iter
+    end if
+    goto 4000
+    
+    
   end subroutine nlls_iterate
   
 
@@ -859,7 +962,9 @@ contains
     
     d(1:n) = zero
     w%scale = one
-    
+
+    normd = zero ! set normd so that it can't be undefined later
+
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
        
@@ -877,7 +982,7 @@ contains
        w%extra_scale = zero
 
        ! Set A = J^T J
-       call matmult_inner(J,n,m,w%A)
+       call matmult_inner(J,n,m,w%A,options)
        ! add any second order information...
        ! so A = J^T J + HF
        call add_matrices(w%A,hf,n**2,w%A)
@@ -1051,8 +1156,12 @@ return
            what_scale: if (options%scale == 1) then
               ! use the scaling present in gsl:
               ! scale by W, W_ii = ||J(i,:)||_2^2
-!              temp = temp + norm2(J( (ii-1)*m + 1 : ii*m) )**2
-              temp = temp + dot_product(J( (ii-1)*m + 1 : ii*m), J( (ii-1)*m + 1 : ii*m) )
+              !              temp = temp + norm2(J( (ii-1)*m + 1 : ii*m) )**2
+              if (options%Fortran_Jacobian) then
+                 temp = temp + dot_product(J( (ii-1)*m + 1 : ii*m), J( (ii-1)*m + 1 : ii*m) )
+              else
+                 temp = temp + dot_product(J(ii:n*m:n),J(ii:n*m:n))
+              end if
            elseif ( options%scale == 2) then 
               ! scale using the (approximate) hessian
               do jj = 1,n
@@ -1170,7 +1279,7 @@ return
      if (.not. w%allocated ) goto 1010
 
      !     Jg = J * g
-     call mult_J(J,n,m,g,w%Jg)
+     call mult_J(J,n,m,g,w%Jg,options)
 
      alpha = norm2(g)**2 / norm2( w%Jg )**2
        
@@ -1505,9 +1614,8 @@ return
 
         nq = norm2(w%q)
         if (options%print_level >= 3) write(options%out,6080) nq
-
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
-        if (abs(sigma_shift) < options%more_sorensen_tiny * abs(sigma) ) then
+        if (abs(sigma_shift) < max(options%more_sorensen_tiny,epsmch) * abs(sigma) ) then
            if (no_restarts < 1) then 
               ! find a shift that makes (A + sigma I) positive definite
               call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
@@ -1518,7 +1626,7 @@ return
               inform%status = ERROR%MS_NO_PROGRESS
               goto 4000
            end if
-        else 
+        else
            sigma = sigma + sigma_shift
            call shift_matrix(A,sigma,w%AplusSigma,n)
            call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
@@ -2282,7 +2390,7 @@ return
        md_gn = zero
 
        !Jd = J*d
-       call mult_J(J,n,m,d,w%Jd)
+       call mult_J(J,n,m,d,w%Jd,options)
        
        md_gn = 0.5 * norm2(f(1:m) + w%Jd(1:m))**2
        
@@ -2395,7 +2503,7 @@ return
           inform%h_eval = inform%h_eval + 1
        else
           ! use the rank-one approximation...
-          call rank_one_update(w%hf,w,n)                      
+          call rank_one_update(w%hf,w,n,options)                      
        end if
        
        ! update the hessian here if we're solving a regularized problem
@@ -2465,11 +2573,12 @@ return
       
      end subroutine update_regularized_hessian
 
-     subroutine rank_one_update(hf,w,n)
+     subroutine rank_one_update(hf,w,n,options)
 
        real(wp), intent(inout) :: hf(:)
        type( NLLS_workspace ), intent(inout) :: w
        integer, intent(in) :: n
+       type( NLLS_options ), intent(in) :: options
       
        real(wp) :: yts, alpha, dSks
 
@@ -2619,36 +2728,73 @@ return
 
      end subroutine test_convergence
 
-     subroutine mult_J(J,n,m,x,Jx)
+     subroutine mult_J(J,n,m,x,Jx,options)
        real(wp), intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        real(wp), intent(out) :: Jx(*)
+       type(nlls_options), optional :: options
 
+       integer i
+       
        real(wp) :: alpha, beta
 
        Jx(1:m) = 1.0
        alpha = 1.0
        beta  = 0.0
 
-       call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
-
+       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+          ! Jacobian held in row major format...
+          call dgemv('T',n,m,alpha,J,n,x,1,beta,Jx,1)
+          
+       else
+          call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
+       end if
+       
      end subroutine mult_J
 
-     subroutine mult_Jt(J,n,m,x,Jtx)
+     subroutine mult_Jt(J,n,m,x,Jtx,options)
        double precision, intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        double precision, intent(out) :: Jtx(*)
+       type( nlls_options), optional :: options
 
        double precision :: alpha, beta
-
+       integer :: i
+       
        Jtx(1:n) = one
        alpha = one
        beta  = zero
 
-       call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
-
+       if (present(options).and. (.not. options%Fortran_Jacobian)) then
+          ! Jacobian held in row major format...
+          call dgemv('N',n,m,alpha,J,n,x,1,beta,Jtx,1)
+       else
+          call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
+       end if
+       
      end subroutine mult_Jt
 
+     subroutine scale_J_by_weights(J,n,m,weights,options)
+
+       real(wp), intent(inout) :: J(*)
+       real(wp), intent(in) :: weights(*)
+       integer, intent(in) :: n,m 
+       type( nlls_options ) :: options
+
+       integer :: i
+       ! set J -> WJ
+       if (options%Fortran_Jacobian) then 
+          do i = 1, n
+             J( (i-1)*m + 1 : i*m) = weights(1:m)*J( (i-1)*m + 1 : i*m)
+          end do
+       else
+          do i = 1, m
+             J( (i-1)*n + 1 : i*n) = weights(i)*J( (i-1)*n + 1 : i*n)
+          end do
+       end if
+          
+     end subroutine scale_J_by_weights
+     
      subroutine add_matrices(A,B,n,C)
 
        real(wp), intent(in) :: A(*), B(*)
@@ -2772,20 +2918,28 @@ return
 
      end subroutine matrix_norm
 
-     subroutine matmult_inner(J,n,m,A)
+     subroutine matmult_inner(J,n,m,A,options)
 
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(n,n)
+       type( nlls_options ), intent(in), optional :: options
 
+       integer :: i
        ! Takes an m x n matrix J and forms the 
        ! n x n matrix A given by
        ! A = J' * J
+       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+          ! c format
+          call dgemm('N','T',n, n, m, one,&
+               J, n, J, n, & 
+               zero, A, n)
+       else
+          call dgemm('T','N',n, n, m, one,&
+               J, m, J, m, & 
 
-       call dgemm('T','N',n, n, m, one,&
-            J, m, J, m, & 
-            zero, A, n)
-
+               zero, A, n)
+       end if
 
      end subroutine matmult_inner
 
@@ -3111,7 +3265,7 @@ return
        real(wp), intent(out) :: d(:)
        real(wp), intent(out) :: md
        procedure( eval_hf_type ) :: eval_HF
-       class( params_base_type ) :: params              
+       class( params_base_type ), target :: params              
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        type( solve_newton_tensor_work ) :: w
@@ -3139,11 +3293,24 @@ return
        ! save the Jacobian to params
        w%tparams%J(1:n*m) = J(1:n*m)
 
-       ! now, let's get all the Hi's...
-       do i = 1,m
-          call get_Hi(n, m, X, params, i, w%tparams%Hi(:,:,i), eval_HF, inform)
-       end do
+       ! save the current X to params
+       w%tparams%X(1:n) = X(1:n)
+       
+       ! save eval_HF to params
+       w%tparams%eval_HF => eval_HF
 
+       ! and save parms to tparams
+       w%tparams%parent_params => params
+
+       if (.not. w%tparams%eval_hp_provided) then 
+          ! let's get all the Hi's...
+          do i = 1,m
+             call get_Hi(n, m, X, params, i, w%tparams%Hi(:,:,i), eval_HF, inform)
+          end do
+          
+       end if
+
+       
        d(1:n) = zero
 
        ! send to ral_nlls to solve the subproblem recursively
@@ -3178,7 +3345,8 @@ return
              ! there's an error : exit
              exit
           elseif ( (tensor_inform%convergence_normf == 1) & 
-               .or.(tensor_inform%convergence_normg == 1)) then
+               .or.(tensor_inform%convergence_normg == 1) & 
+               .or.(tensor_inform%convergence_norms == 1)) then
              ! we've converged!
              exit
           end if
@@ -3216,7 +3384,7 @@ return
        integer, intent(in)  :: m
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: f
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
        
@@ -3234,6 +3402,7 @@ return
 
           ! First, calculate Js
           call mult_J(params%J(1:n*params%m),n,params%m,s,tenJ%Js)
+          ! TODO: add options to allow calling from C
 
           ! Now, calculate s'Hs
           call calculate_sHs(n,m, s, params)
@@ -3256,16 +3425,21 @@ return
      subroutine calculate_sHs( n, m, s, params)
        integer, intent(in) :: n, m
        real(wp), dimension(*), intent(in) :: s
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
-       integer :: ii
+       integer :: ii, status
        select type(params)
        type is(tensor_params_type)
-          do ii = 1,params%m
-             tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
-             tenJ%Hs(1:n,ii) = zero
-             call dgemv('N',n,n,1.0_wp,tenJ%H(1,1),n,s,1,0.0_wp,tenJ%Hs(1,ii),1)
-          end do
+          if (params%eval_hp_provided) then 
+!          if (associated(params%eval_HP)) then
+             call params%eval_HP(status,n,params%m,params%x,s(1:n),tenJ%Hs,params%parent_params)
+          else
+             do ii = 1,params%m
+                tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
+                tenJ%Hs(1:n,ii) = zero
+                call dgemv('N',n,n,1.0_wp,tenJ%H(1,1),n,s,1,0.0_wp,tenJ%Hs(1,ii),1)
+             end do
+          end if
           call dgemv('T',n,params%m,1.0_wp,tenJ%Hs(1,1),n,s,1,0.0_wp, tenJ%stHs(1),1)
        end select
        
@@ -3277,7 +3451,7 @@ return
        integer, intent(in)  :: m
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: J
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
 
@@ -3320,7 +3494,7 @@ return
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(in)   :: f
        real(wp), dimension(*), intent(out) :: HF
-       class( params_base_type ), intent(in) :: params
+       class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
        real(wp) :: normx, hf_local
@@ -3328,15 +3502,15 @@ return
        tenJ%H(1:n,1:n) = zero
        select type(params)
        type is (tensor_params_type)
-          do ii = 1,params%m
-             tenJ%H(1:n,1:n) = tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
-          end do
-
-          HF(1:n**2) = reshape(tenJ%H(1:n,1:n), (/n**2/))
+          call params%eval_HF(status,n,params%m,params%x,f(1:m),HF(1:n**2),params%parent_params)
+!!$          do ii = 1,params%m
+!!$             tenJ%H(1:n,1:n) = tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
+!!$          end do
+!!$
+!!$          HF(1:n**2) = reshape(tenJ%H(1:n,1:n), (/n**2/))
           
           if (params%extra == 2) then 
              normx = norm2(s(1:n))
- !            write(*,*) 'f(m) = ', f(m)
              do jj = 1,n
                 do kk = 1,n
                    hf_local = s(jj)*s(kk)

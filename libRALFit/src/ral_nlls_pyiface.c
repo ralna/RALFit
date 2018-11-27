@@ -31,7 +31,7 @@ PyObject* build_arglist(Py_ssize_t sz, PyObject* extra) {
 
 
 static
-int eval_f(int n, int m, const void *params, const double *x, double *f) {
+int eval_f(int n, int m, void *params, const double *x, double *f) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
 
@@ -79,7 +79,7 @@ int eval_f(int n, int m, const void *params, const double *x, double *f) {
 ///
 
 static
-int eval_J(int n, int m, const void *params, const double *x, double *J) {
+int eval_J(int n, int m, void *params, const double *x, double *J) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
 
@@ -126,7 +126,7 @@ int eval_J(int n, int m, const void *params, const double *x, double *J) {
 ///
 
 static
-int eval_Hr(int n, int m, const void *params, const double *x, const double *r, double *Hr) {
+int eval_Hr(int n, int m, void *params, const double *x, const double *r, double *Hr) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
 

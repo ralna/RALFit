@@ -13,7 +13,7 @@ Calling sequences
 
 Access to the package requires a ``USE`` statement
 
-.. code-block:: Fortran
+.. code-block:: fortran
 
    use ral_nlls_double
 
@@ -36,14 +36,14 @@ defined by the module to declare scalars of the types |nlls_inform| and |nlls_op
 If |nlls_iterate| is to be used, then a scalar of the type :f:type:`nlls_workspace` must also be defined. 
 The following pseudocode illustrates this.
 
-.. code-block:: Fortran
+.. code-block:: fortran
 
    use nlls_module
-   ...
+   !...
    type (NLLS_inform) :: inform
    type (NLLS_options) :: options
    type (NLLS_workspace) :: work ! needed if nlls_iterate to be called
-   ...
+   !...
 
 
 The components of |nlls_options| and |nlls_inform| are explained below in :ref:`data_types`.
@@ -67,7 +67,7 @@ To solve the non-linear least squares problem
 
 .. include:: ../common/subroutines.rst
 
-.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights])
+.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP])
 
    Solves the non-linear least squares problem.
    
@@ -90,6 +90,8 @@ To solve the non-linear least squares problem
    :p nlls_inform inform [out]:  |inform|
 
    :o real weights(n): |weights|
+
+   :o procedure eval_HP: |eval_HP_desc|
 
 To iterate once
 ^^^^^^^^^^^^^^^
@@ -121,7 +123,7 @@ at a point.  **RALFit** will call these routines internally.
 
 In order to pass user-defined data into the evaluation calls, :f:type:`params_base_type` is extended to a :f:type:`user_type`, as follows:
 
-.. code-block:: Fortran
+.. code-block:: fortran
 
        type, extends( params_base_type ) :: user_type
           ! code declaring components of user_type
@@ -133,7 +135,7 @@ routines for evaluating the function, Jacobian, and Hessian.
 The components of the extended type are accessed through a
 ``select type`` construct:
 
-.. code-block:: Fortran
+.. code-block:: fortran
 
        select type(params)
        type is(user_type)
@@ -147,7 +149,7 @@ A subroutine must be supplied to calculate :math:`{\bm r} ( {\bm x} )`
 for a given vector :math:`{\bm x}`. It must implement the following
 interface:
 
-.. code-block:: Fortran
+.. code-block:: fortran
 
     abstract interface
        subroutine eval_r(status, n, m, x, r, params)
@@ -182,7 +184,7 @@ A subroutine must be supplied to calculate
 :math:`{\bm J} = \nabla  {\bm r} ( {\bm x} )` for a given vector
 :math:`{\bm x}`. It must implement the following interface:
 
-.. code-block:: Fortran
+.. code-block:: fortran
 
     abstract interface
        subroutine eval_J(status, n, m, x, J, params)
@@ -220,7 +222,7 @@ given vectors :math:`{\bm x} \in \mathbb{R}^n` and
 the :math:`i`\ th component of the vector :math:`{\bm r}`. The
 subroutine must implement the following interface:
 
-.. code-block:: Fortran
+.. code-block:: fortran
 
     abstract interface
        subroutine eval_Hf_type(status, n, m, x, r, Hf, params)
@@ -233,7 +235,7 @@ subroutine must implement the following interface:
 	   class(params_base_type), intent(in) :: params
          end subroutine eval_Hf_type
     end interface
-    :language: Fortran
+    :language: fortran
 
 .. f:subroutine:: eval_Hf(status,n,m,x,r,Hf,params)
    
@@ -251,6 +253,45 @@ subroutine must implement the following interface:
 
    :p params_base_type params [in]: |eval_Hf_params|
 
+For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A subroutine may be supplied to calculate
+:math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})` for
+given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^n`. The
+subroutine must implement the following interface:
+
+.. code-block:: fortran
+
+    abstract interface
+       subroutine eval_HP_type(status, n, m, x, y, HP, params)
+           integer, intent(inout) :: status
+           integer, intent(in) :: n
+           integer, intent(in) :: m
+           double precision, dimension(n), intent(in)  :: x
+           double precision, dimension(n), intent(in)  :: y
+           double precision, dimension(n*m), intent(out) :: HP
+           class(params_base_type), intent(in) :: params
+         end subroutine eval_HP_type
+    end interface
+    :language: fortran
+
+.. f:subroutine:: eval_HP(status,n,m,x,y,HP,params)
+
+   :p integer status [inout]: |eval_HP_status|
+			   
+   :p integer n [in]: |eval_HP_n|
+
+   :p integer m [in]: |eval_HP_m|
+		      
+   :p real x(n) [in]: |eval_HP_x|
+
+   :p real y(n) [in]: |eval_HP_y|
+
+   :p real HP(n*m) [out]: |eval_HP_HP|
+			   
+   :p params_base_type params [in]: |eval_HP_params|
+				 
 .. _data_types:
 
 Data types

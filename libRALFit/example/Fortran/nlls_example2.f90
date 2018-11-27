@@ -21,7 +21,7 @@ contains
       integer, intent(in) :: m
       real(wp), dimension(*), intent(in) :: x
       real(wp), dimension(*), intent(out) :: r
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
 
       real(wp) :: x1, x2
 
@@ -43,7 +43,7 @@ contains
       integer, intent(in) :: m
       real(wp), dimension(*), intent(in) :: x
       real(wp), dimension(*), intent(out) :: J
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
 
       real(wp) :: x1, x2
 
@@ -68,7 +68,7 @@ contains
       real(wp), dimension(*), intent(in) :: x
       real(wp), dimension(*), intent(in) :: r
       real(wp), dimension(*), intent(out) :: HF
-      class(params_base_type), intent(in) :: params
+      class(params_base_type), intent(inout) :: params
 
       real(wp) :: x1, x2
 
@@ -83,7 +83,34 @@ contains
       end select
 
       status = 0 ! Success
-   end subroutine eval_HF
+    end subroutine eval_HF
+    
+    subroutine eval_HP(status, n, m, x, y, HP, params)
+      integer, intent(out) :: status
+      integer, intent(in) :: n
+      integer, intent(in) :: m
+      real(wp), dimension(*), intent(in) :: x
+      real(wp), dimension(*), intent(in) :: y
+      real(wp), dimension(*), intent(out) :: HP
+      class(params_base_type), intent(inout) :: params
+
+      real(wp) :: x1, x2
+      integer :: i 
+
+      x1 = x(1)
+      x2 = x(2)
+      select type(params)
+      type is(params_type)
+         do i = 1, m
+            HP(n*(i-1) + 1) = 0.0*y(1) + params%t(i)*exp(x2*params%t(i))*y(2)
+            HP(n*(i-1) + 2) = params%t(i) * exp( x2*params%t(i) ) * y(1) + &
+                              (params%t(i)**2) * x1 * exp(x2*params%t(i))*y(2)
+         end do
+      end select
+
+      status = 0 ! Success
+    end subroutine eval_HP
+    
 end module fndef_example
 
 program nlls_example2
@@ -134,6 +161,22 @@ program nlls_example2
       print *, "     ", inform%f_eval, " function evaluations"
       print *, "     ", inform%g_eval, " gradient evaluations"
       print *, "     ", inform%h_eval, " hessian evaluations"
+!!$
+!!$      print *, "===== passing eval_HP ====="
+!!$      
+!!$      x = (/ 2.5, 0.25 /) ! Initial guess
+!!$      call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform,eval_HP=eval_HP)
+!!$      if(inform%status.ne.0) then
+!!$         print *, "ral_nlls() returned with error flag ", inform%status
+!!$         stop
+!!$      endif
+!!$
+!!$      ! Print result
+!!$      print *, "Found a local optimum at x = ", x
+!!$      print *, "Took ", inform%iter, " iterations"
+!!$      print *, "     ", inform%f_eval, " function evaluations"
+!!$      print *, "     ", inform%g_eval, " gradient evaluations"
+!!$      print *, "     ", inform%h_eval, " hessian evaluations"
 
    end do
    
