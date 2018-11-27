@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cd ./libRALFit/
+SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+cd $SCRIPTPATH/libRALFit/
 mkdir build
 cd build
 cmake ..
