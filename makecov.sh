@@ -10,7 +10,7 @@ RESULT=$?
 test/nlls_f90_test
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 2
-./nlls_c_test
+test/nlls_c_test
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
 cd ../src
