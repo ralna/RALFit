@@ -1329,8 +1329,9 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      allocate(a(n),b(n))!,z(n))
      
      a = 1e8_wp
-     b = 1.0_wp
-     Delta = 1e-6
+     b(1) = 1.0_wp
+     b(2) = 2.0_wp
+     Delta = 0.0
      beta = 0.0_wp
 
      call findbeta(a,b,Delta,beta,status)
