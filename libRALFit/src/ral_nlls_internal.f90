@@ -3132,10 +3132,9 @@ return
        ! now find the rightmost real eigenvalue
        w%vecisreal = .true.
        where ( abs(w%alphaI) > 1e-8 ) w%vecisreal = .false.
-
+       if (.not. any(w%vecisreal)) goto 1000
        w%ew_array(:) = w%alphaR(:)/w%beta(:)
-       maxindex = maxloc(w%ew_array,w%vecisreal)
-       if (maxindex(1) == 0) goto 1000
+       maxindex = maxloc(w%ew_array,mask=w%vecisreal)
 
        tau = 1e-4 ! todo -- pass this through from above...
        ! note n/2 always even -- validated by test on entry
