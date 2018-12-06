@@ -74,10 +74,15 @@ if(TestCoverage)
    SETUP_TARGET_FOR_COVERAGE(test_coverage test/test coverage)
 endif(TestCoverage)
 
-# Main libral_nlls library
-include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
-add_library (ral_nlls SHARED ${SRC_FILES} ) 
-target_link_libraries(ral_nlls lapack -lm -ldl)
+# BLAS and LAPACK
+
+find_package(BLAS REQUIRED)
+if ( NOT BLAS_FOUND )
+  message( FATAL_ERROR "BLAS required, but not found!")
+endif ( NOT BLAS_FOUND ) 	    
+message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )	 
+include_directories(${BLAS_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${BLAS_LIBRARIES})
 
 if(NOT CompileMiniLAPACK)
   # try to find lapack..
@@ -85,6 +90,10 @@ if(NOT CompileMiniLAPACK)
   if(NOT LAPACK_FOUND)
     # couldn't find lapack...compile locally
     set(CompileMiniLAPACK On)
+  else()
+    message( STATUS "The LAPACK library was found at" ${LAPACK_LIBRARIES} )
+    include_directories(${LAPACK_INCLUDE_DIRS})
+    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
   endif()
 endif()
 
@@ -120,10 +129,14 @@ if(CompileMiniLAPACK)
          lapack/ieeeck.f lapack/iladlc.f lapack/iladlr.f lapack/ilaenv.f
          lapack/iparmq.f lapack/dlamch.f)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
-   find_package(BLAS REQUIRED)
+   set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 endif()
 
-message( STATUS BLAS found: ${BLAS_LIBRARIES} )
+# Main libral_nlls library
+include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
+add_library (ral_nlls SHARED ${SRC_FILES} ) 
+target_link_libraries(ral_nlls ${LIBS} -lm -ldl)
+
 
 # Tests and examples
 add_subdirectory (test)
