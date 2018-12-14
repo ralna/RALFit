@@ -93,7 +93,7 @@ module ral_nlls_ciface
   end type nlls_inform
 
   abstract interface
-     integer(c_int) function c_eval_r_type(n, m, params, x, r)
+     integer(c_int) function c_eval_r_type(n, m, params, x, r) bind(c)
        use, intrinsic :: iso_c_binding
        implicit none
        integer(c_int), value :: n, m
@@ -104,7 +104,7 @@ module ral_nlls_ciface
   end interface
 
   abstract interface
-     integer(c_int) function c_eval_j_type(n, m, params, x, j)
+     integer(c_int) function c_eval_j_type(n, m, params, x, j) bind(c)
        use, intrinsic :: iso_c_binding
        implicit none
        integer(c_int), value :: n,m
@@ -115,7 +115,7 @@ module ral_nlls_ciface
   end interface
 
   abstract interface
-     integer(c_int) function c_eval_hf_type(n, m, params, x, f, hf)
+     integer(c_int) function c_eval_hf_type(n, m, params, x, f, hf) bind(c)
        use, intrinsic :: iso_c_binding
        implicit none
        integer(c_int), value :: n,m
