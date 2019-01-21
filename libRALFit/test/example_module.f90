@@ -521,7 +521,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      subroutine solve_basic(X,params,options,inform)
       
        real(wp), intent(out) :: X(:)
-       type( user_type ), intent(in) :: params
+       type( user_type ), intent(inout) :: params
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
 

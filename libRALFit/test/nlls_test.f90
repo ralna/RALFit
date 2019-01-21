@@ -395,7 +395,11 @@ program nlls_test
      options%print_level = 3
 
      ! test n > m
+     If (allocated(x)) Then
+       deallocate(x)
+     End if
      n = 100
+     allocate(x(n))
      m = 3
      call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
@@ -404,7 +408,9 @@ program nlls_test
         write(*,*) 'Error: wrong error return, n > m'
         no_errors_main = no_errors_main + 1
      end if
+     deallocate(x)
      n = 2
+     allocate(x(n))
      m = 67
      
     ! test for unsupported method

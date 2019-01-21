@@ -3168,13 +3168,21 @@ return
                 w%nullindex(no_null) = i
              end if
           end do
-!          allocate(nullevs(halfn,no_null))
-          if (no_null > size(nullevs,2)) then
-             ! increase the size of the allocated array only if we need to
-             if(allocated(nullevs)) deallocate( nullevs )
-             allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
-             if (inform%alloc_status > 0) goto 2000
-          end if 
+
+!         allocate(nullevs(halfn,no_null))
+          If (allocated(nullevs)) Then
+            ! increase the size of the allocated array only if we need to
+            if (no_null > size(nullevs,2)) then
+              deallocate( nullevs )
+              allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 2000
+            end if
+          Else ! size(nullevs,2) is considered 0
+            ! Allocate space
+            allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
+            if (inform%alloc_status > 0) goto 2000
+          End If 
+
           nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
        end if
 
