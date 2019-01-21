@@ -1134,7 +1134,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         end if
 
         
-        Delta = -100_wp
+        Delta = -100.0_wp
         call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
              d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
@@ -1329,9 +1329,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      allocate(a(n),b(n))!,z(n))
      
      a = 1e8_wp
-     b(1) = 1.0_wp
-     b(2) = 2.0_wp
-     Delta = 0.0
+     b = 1.0_wp
+     Delta = 1e-6
      beta = 0.0_wp
 
      call findbeta(a,b,Delta,beta,status)
@@ -1416,44 +1415,44 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      ! check if rho reduced...
      rho = options%eta_success_but_reduce - 0.5_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta >= 100_wp ) then
+     if ( work%Delta >= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
      
      ! check if rho stays the same...
      rho = (options%eta_success_but_reduce + options%eta_very_successful) / 2
      call update_trust_region_radius(rho,options,status,work)
-     if ( abs(work%Delta - 100_wp) > 1e-12 ) then
+     if ( abs(work%Delta - 100.0_wp) > 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not stay the same: Delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
 
      ! check if rho increases...
      rho = (options%eta_very_successful + options%eta_too_successful) / 2
-     work%normd = 100_wp
+     work%normd = 100.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta <= 100_wp ) then
+     if ( work%Delta <= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not incease: delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
 
      
      ! check if rho stays the same because too successful...
      rho = options%eta_too_successful + 1.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( abs(work%Delta - 100_wp) > 1e-12 ) then
+     if ( abs(work%Delta - 100.0_wp) > 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not stay the same: delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
 
      ! now check for NaNs...HOW to do this in a non-compiler dependent way!?!?
 
@@ -1463,40 +1462,40 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      ! check if rho increases...
      rho = (options%eta_very_successful + options%eta_too_successful) / 2
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta <= 100_wp ) then
+     if ( work%Delta <= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not incease: delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
      
      ! check if rho stays the same because too successful...
      rho = options%eta_too_successful + 1.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( abs(work%Delta - 100_wp) > 1e-12 ) then
+     if ( abs(work%Delta - 100.0_wp) > 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not stay the same: delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
 
      rho = options%eta_success_but_reduce - 0.5_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta >= 100_wp ) then
+     if ( work%Delta >= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
 
      rho = options%eta_successful - 10.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta >= 100_wp ) then
+     if ( work%Delta >= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         fails = fails + 1
      end if
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
      
      ! again...NaN test should go here!!!
 
@@ -1510,7 +1509,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         fails = fails + 1
      end if
      status%status = 0
-     work%Delta = 100_wp
+     work%Delta = 100.0_wp
 
 
      

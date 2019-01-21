@@ -938,7 +938,7 @@ contains
     REAL(wp), intent(in) :: J(:), f(:), hf(:)
     REAL(wp), intent(inout) :: g(:)
     REAL(wp), intent(inout) :: Delta
-    REAL(wp), intent(out) :: X(:)
+    REAL(wp), intent(in) :: X(:)
     procedure( eval_hf_type ) :: eval_HF       
     class( params_base_type ) :: params  
     integer, intent(in) :: num_successful_steps
@@ -2742,10 +2742,15 @@ return
        alpha = 1.0
        beta  = 0.0
 
-       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
-          ! Jacobian held in row major format...
-          call dgemv('T',n,m,alpha,J,n,x,1,beta,Jx,1)
-          
+       ! Avoid short-circuit evaluation
+!      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+       if (present(options)) Then
+         If (.not. options%Fortran_Jacobian) then
+           ! Jacobian held in row major format...
+           call dgemv('T',n,m,alpha,J,n,x,1,beta,Jx,1)
+         Else
+           call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
+         End If
        else
           call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
        end if
@@ -2765,9 +2770,15 @@ return
        alpha = one
        beta  = zero
 
-       if (present(options).and. (.not. options%Fortran_Jacobian)) then
-          ! Jacobian held in row major format...
-          call dgemv('N',n,m,alpha,J,n,x,1,beta,Jtx,1)
+       ! Avoid short-circuit evaluation
+!      if (present(options).and. (.not. options%Fortran_Jacobian)) then
+       if (present(options)) Then
+         If (.not. options%Fortran_Jacobian) then
+           ! Jacobian held in row major format...
+           call dgemv('N',n,m,alpha,J,n,x,1,beta,Jtx,1)
+         Else
+           call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
+         End If
        else
           call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
        end if
@@ -2929,15 +2940,23 @@ return
        ! Takes an m x n matrix J and forms the 
        ! n x n matrix A given by
        ! A = J' * J
-       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
-          ! c format
-          call dgemm('N','T',n, n, m, one,&
-               J, n, J, n, & 
+
+       ! Avoid short-circuit evaluation
+!      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+       if ( present(options) ) Then
+         If (.not. options%Fortran_Jacobian) then
+           ! c format
+           call dgemm('N','T',n, n, m, one,&
+                J, n, J, n, & 
+                zero, A, n)
+         Else
+           call dgemm('T','N',n, n, m, one,&
+                J, m, J, m, & 
                zero, A, n)
+           End If
        else
           call dgemm('T','N',n, n, m, one,&
                J, m, J, m, & 
-
                zero, A, n)
        end if
 
@@ -3386,7 +3405,9 @@ return
        class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
-       
+       ! Add default return value for status
+       status = 0
+
        ! note:: tenJ is a global (but private to this module) derived type 
        !        with components Hs and Js, which are real arrays 
 
@@ -3453,7 +3474,8 @@ return
        class( params_base_type ), intent(inout) :: params
 
        integer :: ii, jj, kk
-
+       ! Add default return value for status
+       status = 0
        ! The function we need to return is 
        !  g_i + H_i s 
        ! where h_i and H_i are the gradient and hessians of the original problem
@@ -3497,6 +3519,8 @@ return
 
        integer :: ii, jj, kk
        real(wp) :: normx, hf_local
+       ! Add default return value for status
+       status = 0
 
        tenJ%H(1:n,1:n) = zero
        select type(params)

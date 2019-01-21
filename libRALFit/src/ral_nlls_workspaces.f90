@@ -1635,7 +1635,7 @@ contains
     type( nlls_inform ), intent(out) :: inform
 
     real(wp), allocatable :: workquery(:)
-    real(wp) :: A,ew
+    real(wp) :: A(1),ew(1)
     integer :: lwork
 
     A = 1.0_wp
