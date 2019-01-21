@@ -403,7 +403,6 @@ module ral_nlls_workspaces
 
   END TYPE NLLS_ERROR
 
-  type(NLLS_ERROR), public :: ERROR
 
 
   type, public :: params_base_type
@@ -600,6 +599,9 @@ module ral_nlls_workspaces
      real(wp), allocatable :: H(:,:)       ! and another....
      real(wp), allocatable :: stHs(:)      ! yet another....
   end type tenJ_type
+
+  ! Thread-unsafe variables
+  type(NLLS_ERROR), public :: ERROR
   type( tenJ_type ), public :: tenJ
   type( nlls_workspace ), public :: inner_workspace ! to be used to solve recursively    
 

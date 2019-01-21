@@ -250,11 +250,10 @@ contains
     integer :: svdstatus = 0
     integer :: i, no_reductions, max_tr_decrease = 100
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
-    real(wp) :: FunctionValue, normX, normXnew
+    real(wp) :: FunctionValue, normX
     logical :: success 
     logical :: bad_allocate = .false.
     character :: second
-    real(wp) :: sum_reg
     integer :: num_successful_steps = 0
     
     ! todo: make max_tr_decrease a control variable
@@ -954,8 +953,6 @@ contains
     real(wp) :: md_bad
     integer :: i, jj
     logical :: scaling_used = .false.
-    real(wp) :: coeff ! coefficient in front of diag(s) if reg. problem being solved
-    real(wp) :: sum_reg
     real(wp) :: normx
 
     if (.not. w%allocated) goto 1010
@@ -1345,7 +1342,7 @@ return
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( AINT_tr_work ) :: w
         
-     integer :: keep_p0, i, size_hard(2)
+     integer :: i, size_hard(2)
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
 
@@ -1354,7 +1351,6 @@ return
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
 
-     keep_p0 = 0
      tau = 1e-4
      obj_p0 = HUGE(wp)
 
@@ -1383,7 +1379,6 @@ return
      call matrix_norm(w%p0,w%B,norm_p0)
      
      if (norm_p0 < Delta) then
-        keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
         if (options%print_level >=3) write(options%out,2000) 'p0'     
         call evaluate_model(f,J,hf,X,X,w%p0,obj_p0,obj_p0_gn,m,n, & 
@@ -1711,9 +1706,9 @@ return
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( more_sorensen_work ) :: w
 
-     real(wp) :: nq, epsilon
-     real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
-     integer :: i, jj, kk,  no_restarts
+     real(wp) :: nq
+     real(wp) :: sigma, alpha, sigma_shift
+     integer :: i, jj, kk
      real(wp) :: sigma_l, sigma_u
      integer :: region ! 1:N, 2:L, 3:G (2-3:F)
      real(wp) :: normF_A, norminf_A
@@ -1764,7 +1759,6 @@ return
      sigma_l = max(zero, -min_Aii, nv/Delta - min(max_lower_sum,normF_A,norminf_A))
      sigma_u = max(zero,nv/Delta + min(max_upper_sum,normF_A,norminf_A))
      
-     local_ms_shift = options%more_sorensen_shift
      sigma = max(zero,sigma_l)
      ! todo: if the model hasn't changed, use the terminating sigma there instead (p192, TR book)...
      if (options%print_level >= 3) write(options%out,6030) sigma_l, sigma, sigma_u
@@ -2246,9 +2240,10 @@ return
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
      real(wp) :: reg_param
-     integer :: i 
      
      reg_param = 1.0_wp/Delta
+     ! TODO: consider removing this unused param
+     normd = 0.0_wp
      
      if ( reg_order == two ) then
 
@@ -2258,7 +2253,7 @@ return
 
      else 
         
-        write(*,*) 'Unsupported at the moment...'
+        write(*,*) 'Warning: Unsupported regularization order.'
 
      end if
      
@@ -2333,7 +2328,7 @@ return
      real(wp), intent(out) :: beta
      type( nlls_inform ), intent(inout) :: inform
      
-     real(wp) :: c, normb2, norma2, discrim, denom
+     real(wp) :: c, normb2, norma2, discrim
      
      c = dot_product(a,b)
 
@@ -2383,7 +2378,7 @@ return
        TYPE( nlls_inform ), INTENT( INOUT ) :: inform
        type( evaluate_model_work ) :: w
 
-       real(wp) :: xtx, xtd, dtd, normx, p, sigma
+       real(wp) :: xtd, normx, p, sigma
        
        if (.not. w%allocated ) goto 2000
        md = zero
@@ -2403,7 +2398,6 @@ return
                0.5 * sigma * norm2(Xnew(1:n))**2
        case (2)
           normx = norm2(X(1:n))
-          xtx = normx**2
           xtd = dot_product(X(1:n),d(1:n))
           md_gn = md_gn + & 
                sigma * ( one/p * (normx**p) + & 
@@ -2430,7 +2424,7 @@ return
 
        return
 
-1000   FORMAT('Model evauated successfully.  m_k(d) = ',ES12.4)
+1000   FORMAT('Model evaluated successfully: m_k(d) = ',ES12.4)
 2000   continue 
        inform%status = ERROR%WORKSPACE_ERROR
        return
@@ -2734,8 +2728,6 @@ return
        real(wp), intent(out) :: Jx(*)
        type(nlls_options), optional :: options
 
-       integer i
-       
        real(wp) :: alpha, beta
 
        Jx(1:m) = 1.0
@@ -2764,7 +2756,6 @@ return
        type( nlls_options), optional :: options
 
        double precision :: alpha, beta
-       integer :: i
        
        Jtx(1:n) = one
        alpha = one
@@ -2859,7 +2850,7 @@ return
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
 
-       integer :: row 
+!!$    integer :: row 
        
        inform%status = 0
 !!$       write(*,*) 'A_in = '
@@ -2936,7 +2927,6 @@ return
        real(wp), intent(out) :: A(n,n)
        type( nlls_options ), intent(in), optional :: options
 
-       integer :: i
        ! Takes an m x n matrix J and forms the 
        ! n x n matrix A given by
        ! A = J' * J
@@ -3297,7 +3287,7 @@ return
        type( solve_newton_tensor_work ) :: w
               
        type( nlls_inform ) :: tensor_inform
-       integer :: i, m_in     
+       integer :: i
     
        ! We need to solve the problem 
        !   min 1/2 \sum_{i=1}^m t_{ik}^2(s) + 1/p \sigma_k ||s||^p_p
@@ -3412,7 +3402,6 @@ return
        real(wp), dimension(*), intent(out)   :: f
        class( params_base_type ), intent(inout) :: params
 
-       integer :: ii, jj, kk
        ! Add default return value for status
        status = 0
 
@@ -3481,7 +3470,7 @@ return
        real(wp), dimension(*), intent(out)   :: J
        class( params_base_type ), intent(inout) :: params
 
-       integer :: ii, jj, kk
+       integer :: ii, jj
        ! Add default return value for status
        status = 0
        ! The function we need to return is 
@@ -3525,7 +3514,8 @@ return
        real(wp), dimension(*), intent(out) :: HF
        class( params_base_type ), intent(inout) :: params
 
-       integer :: ii, jj, kk
+!!$    integer :: ii
+       integer :: jj, kk
        real(wp) :: normx, hf_local
        ! Add default return value for status
        status = 0
@@ -3555,8 +3545,6 @@ return
              end do
           end if
        end select
-
-       
      end subroutine evaltensor_HF
        
 
