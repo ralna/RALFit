@@ -1255,10 +1255,10 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      ! check answer
      call mult_J(J,n,m,d,Jd)
      normerror = norm2(Jd + f)
-     if ( normerror > 1e-12 ) then
+     if ( normerror > 1.0e-12_wp ) then
         ! wrong answer, as data chosen to fit
         write(*,*) 'solve_LLS test failed: wrong solution returned'
-        write(*,*) '||Jd - f|| = ', error
+        write(*,*) '||Jd - f|| = ', normerror
         fails = fails + 1
      end if
      
