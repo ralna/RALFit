@@ -274,7 +274,6 @@ contains
        inform%status = 0
        inform%external_return = 0
        ! allocate space for vectors that will be used throughout the algorithm
-       
        if (options%setup_workspaces) then 
           call setup_workspaces(w,n,m,options,inform)
           if ( inform%alloc_status > 0) goto 4000
@@ -481,7 +480,7 @@ contains
             num_successful_steps, &
             w%Xnew,w%d,w%normd, & 
             options,inform,& 
-            w%calculate_step_ws)
+            w%calculate_step_ws, w%tenJ)
        if (inform%status .ne. 0) then
           if ( (w%use_second_derivatives) .and. &
                (options%model == 3) ) then
@@ -927,7 +926,7 @@ contains
 
   RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, & 
                             Delta,eval_HF,params,num_successful_steps,& 
-                            Xnew,d,normd,options,inform,w)
+                            Xnew,d,normd,options,inform,w,tenJ)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -948,6 +947,7 @@ contains
     TYPE( nlls_options ), INTENT( IN ) :: options
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( calculate_step_work ) :: w
+    Type( tenJ_type ), Intent(InOut) :: tenJ
         
     real(wp) :: md_bad
     integer :: i, jj
@@ -966,7 +966,7 @@ contains
        
        call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,& 
             d, md, params, options, inform, & 
-            w%solve_newton_tensor_ws)
+            w%solve_newton_tensor_ws, tenJ)
        normd = norm2(d(1:n)) ! ||d||_D
 
        Xnew = X + d
@@ -3271,7 +3271,7 @@ return
      subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
                                     num_successful_steps, & 
                                     d, md, params, options, inform, & 
-                                    w)
+                                    w, tenJ)
        
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
@@ -3284,6 +3284,7 @@ return
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        type( solve_newton_tensor_work ) :: w
+       type( tenJ_type ), intent(InOut), target :: tenJ
               
        type( nlls_inform ) :: tensor_inform
        integer :: i
@@ -3317,6 +3318,9 @@ return
        ! and save parms to tparams
        w%tparams%parent_params => params
 
+       ! and add pointer to tenJ type
+       w%tparams%tenJ => tenJ
+
        if (.not. w%tparams%eval_hp_provided) then 
           ! let's get all the Hi's...
           do i = 1,m
@@ -3349,7 +3353,6 @@ return
           w%tparams%p = 2.0
           w%tparams%extra = 1
        end select
-       
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, & 
                inner_workspace, & 
@@ -3412,19 +3415,21 @@ return
 
        select type(params)
        type is(tensor_params_type)
+
+          ! Note: params%tenJ (tensor_params_type) points to NLLS_workspace%tenJ
           ! note: params%m contains 'm' from the original problem
           ! if we're passing in the reg. factor via the function/Jacobian, then 
           ! 'm' here is m+n from the original problem
 
           ! First, calculate Js
-          call mult_J(params%J(1:n*params%m),n,params%m,s,tenJ%Js)
+          call mult_J(params%J(1:n*params%m),n,params%m,s,params%tenJ%Js)
           ! TODO: add options to allow calling from C
 
           ! Now, calculate s'Hs
           call calculate_sHs(n,m, s, params)
           
           ! put them all together for the first 1:m terms of f
-          f(1:params%m) = params%f(1:params%m) + tenJ%Js(1:params%m) + 0.5*tenJ%stHs(1:params%m)
+          f(1:params%m) = params%f(1:params%m) + params%tenJ%Js(1:params%m) + 0.5*params%tenJ%stHs(1:params%m)
 
           if (params%extra == 1) then 
              ! we're passing in the regularization via the function/Jacobian
@@ -3448,15 +3453,15 @@ return
        type is(tensor_params_type)
           if (params%eval_hp_provided) then 
 !          if (associated(params%eval_HP)) then
-             call params%eval_HP(status,n,params%m,params%x,s(1:n),tenJ%Hs,params%parent_params)
+             call params%eval_HP(status,n,params%m,params%x,s(1:n),params%tenJ%Hs,params%parent_params)
           else
              do ii = 1,params%m
-                tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
-                tenJ%Hs(1:n,ii) = zero
-                call dgemv('N',n,n,1.0_wp,tenJ%H(1,1),n,s,1,0.0_wp,tenJ%Hs(1,ii),1)
+                params%tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
+                params%tenJ%Hs(1:n,ii) = zero
+                call dgemv('N',n,n,1.0_wp,params%tenJ%H(1,1),n,s,1,0.0_wp,params%tenJ%Hs(1,ii),1)
              end do
           end if
-          call dgemv('T',n,params%m,1.0_wp,tenJ%Hs(1,1),n,s,1,0.0_wp, tenJ%stHs(1),1)
+          call dgemv('T',n,params%m,1.0_wp,params%tenJ%Hs(1,1),n,s,1,0.0_wp, params%tenJ%stHs(1),1)
        end select
        
      end subroutine calculate_sHs
@@ -3485,7 +3490,7 @@ return
           do jj = 1,n ! columns
              ! tenJ%Hs has been set by evaltensor_f, which is called first
              J( (jj-1)*m + 1 : (jj-1)*m + params%m) &
-                  = params%J((jj-1)*params%m + 1 : jj*params%m) + tenJ%Hs(jj,1:params%m)
+                  = params%J((jj-1)*params%m + 1 : jj*params%m) + params%tenJ%Hs(jj,1:params%m)
           end do
           if (params%extra == 1) then
              ! we're passing in the regularization via the function/Jacobian
@@ -3519,15 +3524,16 @@ return
        ! Add default return value for status
        status = 0
 
-       tenJ%H(1:n,1:n) = zero
+!      tenJ%H(1:n,1:n) = zero ! AndrewS TODO: moved to +3L can be problematic !
        select type(params)
        type is (tensor_params_type)
+          params%tenJ%H(1:n,1:n) = zero 
           call params%eval_HF(status,n,params%m,params%x,f(1:m),HF(1:n**2),params%parent_params)
 !!$          do ii = 1,params%m
-!!$             tenJ%H(1:n,1:n) = tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
+!!$             params%tenJ%H(1:n,1:n) = params%tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
 !!$          end do
 !!$
-!!$          HF(1:n**2) = reshape(tenJ%H(1:n,1:n), (/n**2/))
+!!$          HF(1:n**2) = reshape(params%tenJ%H(1:n,1:n), (/n**2/))
           
           if (params%extra == 2) then 
              normx = norm2(s(1:n))

@@ -765,9 +765,6 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      TYPE( nlls_inform ) :: inform
      type( nlls_workspace ) :: w
      
-     real(wp) :: one = 1.0_wp
-     
-
      fails = 0
      options%nlls_method = 2
      
@@ -1164,10 +1161,13 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      type( params_base_type ) :: params
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( tenJ_type ), Target :: tenJ
+     type( tenJ_type ), Pointer :: tenJ_pointer
      
      real(wp) :: one = 1.0_wp
      
      fails = 0
+     tenJ_pointer => tenJ
      
      n = 3 
      m = 5
@@ -1180,7 +1180,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      
      call solve_newton_tensor(J, f, eval_H, X, n, m, Delta, num_successful_steps, & 
                                     d, md, params, options, status, & 
-                                    work%calculate_step_ws%solve_newton_tensor_ws)
+                                    work%calculate_step_ws%solve_newton_tensor_ws,&
+                                    tenJ_pointer)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
