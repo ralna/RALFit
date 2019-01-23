@@ -572,7 +572,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        f = 1.0_wp
        g = 1.0_wp
        call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%calculate_step_ws%dogleg_ws)
-       if (inform%status .ne. ERROR%DOGLEG_MODEL) then
+       if (inform%status .ne. NLLS_ERROR_DOGLEG_MODEL) then
           write(*,*) 'Error: unsupported model allowed in dogleg'
           fails = fails + 1
        end if
@@ -611,7 +611,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        call nlls_finalize(w,options)
      
        call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%calculate_step_ws%dogleg_ws)
-       if (inform%status .ne. ERROR%WORKSPACE_ERROR) then 
+       if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
           write(*,*) 'Error: workspace error not flagged when workspaces not setup'
           fails = fails + 1
        end if
@@ -690,7 +690,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call generate_scaling(J,A,n,m,scale,scale_extra,& 
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
-     if (inform%status .ne. ERROR%BAD_SCALING ) then
+     if (inform%status .ne. NLLS_ERROR_BAD_SCALING ) then
         write(*,*) 'Error: expected error in generate_scaling when passing undefined scaling'
         write(*,*) 'status = ', inform%status,' returned.'
         fails = fails + 1
@@ -744,7 +744,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call generate_scaling(J,A,n,m,scale,scale_extra,& 
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
-     if (inform%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         write(*,*) '(generate_scaling)'
         fails = fails + 1
@@ -795,7 +795,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      
      call aint_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,& 
           w%calculate_step_ws%aint_tr_ws)
-     if (inform%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         write(*,*) '(aint_tr)'
         fails = fails + 1
@@ -846,7 +846,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      ! now, get ||d_gn|| <= Delta
      call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
-     if (status%status .ne. ERROR%MS_TOO_MANY_SHIFTS) then
+     if (status%status .ne. NLLS_ERROR_MS_TOO_MANY_SHIFTS) then
         write(*,*) 'Error: MS too many shifts test passed, when fail expected'
         fails = fails + 1
      end if
@@ -904,7 +904,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      ! now, get ||d_gn|| <= Delta
      call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
-     if (status%status .ne. ERROR%MS_MAXITS) then
+     if (status%status .ne. NLLS_ERROR_MS_MAXITS) then
         write(*,*) 'Error: Expected maximum iterations error in more_sorensen'
         fails = fails + 1
      end if
@@ -914,7 +914,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call nlls_finalize(work,options)
      call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
@@ -1067,7 +1067,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
           
      call evaluate_model(f,J,hf,X,Xnew,d,md,md_gn,m,n,options,status,& 
           work%calculate_step_ws%evaluate_model_ws)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
@@ -1138,8 +1138,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
              d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
-        if ( status%status .ne. ERROR%FROM_EXTERNAL ) then
-           write(*,*) testname,'test failed, expected status = ', ERROR%FROM_EXTERNAL
+        if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then
+           write(*,*) testname,'test failed, expected status = ', NLLS_ERROR_FROM_EXTERNAL
            write(*,*) ' but got status = ', status%status
            fails = fails + 1
         end if
@@ -1181,7 +1181,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call solve_newton_tensor(J, f, eval_H, X, n, m, Delta, num_successful_steps, & 
                                     d, md, params, options, status, & 
                                     work%calculate_step_ws%solve_newton_tensor_ws)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
@@ -1211,7 +1211,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      call all_eig_symm(A,n,ew,ev, & 
              work%calculate_step_ws%solve_galahad_ws%all_eig_symm_ws, status)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
@@ -1249,7 +1249,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
      if ( status%status .ne. 0 ) then 
         write(*,*) 'solve_LLS test failed: wrong error message returned'
-        write(*,*) 'status = ', status%status, " (expected ",ERROR%FROM_EXTERNAL,")"
+        write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
      end if
      ! check answer
@@ -1273,9 +1273,9 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      f = 1.0_wp
      call solve_LLS(J,f,n,m,d,status, & 
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
-     if ( status%status .ne. ERROR%FROM_EXTERNAL ) then 
+     if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then 
         write(*,*) 'solve_LLS test failed: wrong error message returned'
-        write(*,*) 'status = ', status%status, " (expected ",ERROR%FROM_EXTERNAL,")"
+        write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
      end if
      status%status = 0
@@ -1284,7 +1284,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      
      call solve_LLS(J,f,n,m,d,status, & 
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
@@ -1335,7 +1335,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      call findbeta(a,b,Delta,beta,status)
 
-     if (status%status .ne. ERROR%FIND_BETA) then
+     if (status%status .ne. NLLS_ERROR_FIND_BETA) then
         write(*,*) 'Expected an error from findbeta: info =', status%status
         write(*,*) 'beta returned = ', beta
         write(*,*) '|| x + beta y|| = ', norm2( (a + beta * b) )
@@ -1503,9 +1503,9 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      
      options%tr_update_strategy = 18
      call update_trust_region_radius(rho,options,status,work)
-     if ( status%status .ne. ERROR%BAD_TR_STRATEGY ) then
+     if ( status%status .ne. NLLS_ERROR_BAD_TR_STRATEGY ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
-        write(*,*) 'Error returned is = ', status%status, ', expected ',ERROR%BAD_TR_STRATEGY
+        write(*,*) 'Error returned is = ', status%status, ', expected ',NLLS_ERROR_BAD_TR_STRATEGY
         fails = fails + 1
      end if
      status%status = 0
@@ -1696,7 +1696,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      call solve_general(A,b,x_calc,n,status,& 
           work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
-     if (status%status .ne. ERROR%FROM_EXTERNAL) then
+     if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
         write(*,*) 'Error: expected error return from solve_general, got info = ', status%status
         fails = fails + 1
      end if
@@ -1863,7 +1863,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
         call min_eig_symm(A,n,ew,ev,options,status, & 
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
-        if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+        if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
            write(*,*) 'Error: workspace error not flagged when workspaces not setup'
            fails = fails + 1
         end if
@@ -1976,7 +1976,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      call max_eig(A,B,2*n,ew,ev,nullevs,options,status, & 
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     if (status%status .ne. ERROR%AINT_EIG_IMAG) then
+     if (status%status .ne. NLLS_ERROR_AINT_EIG_IMAG) then
         write(*,*) 'error :: all complex part of max_eig test failed'
         fails = fails + 1
      end if
@@ -1984,7 +1984,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      call max_eig(A,B,2*n+1,ew,ev,nullevs, options,status, &
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     if ( status%status .ne. ERROR%AINT_EIG_ODD ) then
+     if ( status%status .ne. NLLS_ERROR_AINT_EIG_ODD ) then
         write(*,*) 'error :: even part of max_eig test failed'
         fails = fails + 1
      end if
@@ -1995,7 +1995,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      ! now let's check for workspace error
      call max_eig(A,B,2*n+1,ew,ev,nullevs, options,status, &
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1 
      end if
@@ -2058,7 +2058,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      J = 1.0_wp
      
      call get_svd_J(n,m,J,s1,sn,options,status,info,work%get_svd_J_ws)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
@@ -2098,7 +2098,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call nlls_solve(n, m, X,                   &
                     eval_F, eval_J, eval_H, params, &
                     options, status)
-     if (status%status .ne. ERROR%WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         write(*,*) 'status = ', status%status
         fails = fails + 1
@@ -2106,7 +2106,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      
      ! nlls_strerror
-     status%status = ERROR%MAXITS
+     status%status = NLLS_ERROR_MAXITS
      call nlls_strerror(status)
      expected_string = 'Maximum number of iterations reached'
      if (status%error_message .ne. expected_string) then 
@@ -2115,7 +2115,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%EVALUATION
+     status%status = NLLS_ERROR_EVALUATION
      status%external_name = 'nlls_test'
      status%external_return = -1
      write(expected_string,'(a,a,a,i0)') & 
@@ -2128,7 +2128,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%UNSUPPORTED_MODEL
+     status%status = NLLS_ERROR_UNSUPPORTED_MODEL
      call nlls_strerror(status)
      expected_string = 'Unsupported model passed in options'
      if (status%error_message .ne. expected_string) then 
@@ -2137,7 +2137,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%FROM_EXTERNAL
+     status%status = NLLS_ERROR_FROM_EXTERNAL
      call nlls_strerror(status)
      write(expected_string,'(a,a,a,i0)') & 
                 'The external subroutine ',trim(status%external_name), & 
@@ -2148,7 +2148,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%MAXITS
+     status%status = NLLS_ERROR_MAXITS
      call nlls_strerror(status)
      expected_string = 'Maximum number of iterations reached'
      if (status%error_message .ne. 'Maximum number of iterations reached') then 
@@ -2157,7 +2157,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
      
-     status%status = ERROR%UNSUPPORTED_METHOD
+     status%status = NLLS_ERROR_UNSUPPORTED_METHOD
      call nlls_strerror(status)
      expected_string = 'Unsupported nlls_method passed in options'
      if (status%error_message .ne. expected_string) then 
@@ -2166,7 +2166,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%ALLOCATION
+     status%status = NLLS_ERROR_ALLOCATION
      status%bad_alloc = "nlls_test"
      call nlls_strerror(status)
      write(expected_string,'(a,a)') &
@@ -2177,7 +2177,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%MAX_TR_REDUCTIONS
+     status%status = NLLS_ERROR_MAX_TR_REDUCTIONS
      call nlls_strerror(status)
      expected_string = 'The trust region was reduced the maximum number of times'
      if (status%error_message .ne. expected_string) then 
@@ -2186,7 +2186,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
      
-     status%status = ERROR%MAX_TR_REDUCTIONS
+     status%status = NLLS_ERROR_MAX_TR_REDUCTIONS
      call nlls_strerror(status)
      expected_string = 'The trust region was reduced the maximum number of times'
      if (status%error_message .ne. expected_string) then 
@@ -2196,7 +2196,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%X_NO_PROGRESS
+     status%status = NLLS_ERROR_X_NO_PROGRESS
      call nlls_strerror(status)
      expected_string = 'No progress made in X'
      if (status%error_message .ne. expected_string) then 
@@ -2206,7 +2206,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%N_GT_M
+     status%status = NLLS_ERROR_N_GT_M
      call nlls_strerror(status)
      expected_string = 'The problem is overdetermined'
      if (status%error_message .ne. expected_string) then 
@@ -2216,7 +2216,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%BAD_TR_STRATEGY
+     status%status = NLLS_ERROR_BAD_TR_STRATEGY
      call nlls_strerror(status)
      expected_string = 'Unsupported tr_update_stategy passed in options'
      if (status%error_message .ne. expected_string) then 
@@ -2226,7 +2226,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%FIND_BETA
+     status%status = NLLS_ERROR_FIND_BETA
      call nlls_strerror(status)
      expected_string = 'Unable to find suitable scalar in findbeta subroutine'
      if (status%error_message .ne. expected_string) then 
@@ -2236,7 +2236,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%BAD_SCALING
+     status%status = NLLS_ERROR_BAD_SCALING
      call nlls_strerror(status)
      expected_string = 'Unsupported value of scale passed in options'
      if (status%error_message .ne. expected_string) then 
@@ -2246,7 +2246,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%WORKSPACE_ERROR
+     status%status = NLLS_ERROR_WORKSPACE_ERROR
      call nlls_strerror(status)
      expected_string =  'Error accessing pre-allocated workspace'
      if (status%error_message .ne. expected_string) then 
@@ -2255,7 +2255,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
         fails = fails + 1
      end if
 
-     status%status = ERROR%UNSUPPORTED_TYPE_METHOD
+     status%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
      call nlls_strerror(status)
      expected_string =  'Unsupported value of type_of_method passed in options'
      if (status%error_message .ne. expected_string) then 
@@ -2264,7 +2264,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%DOGLEG_MODEL
+     status%status = NLLS_ERROR_DOGLEG_MODEL
      call nlls_strerror(status)
      expected_string = 'Model not supported in dogleg (nlls_method=1)'
      if (status%error_message .ne. expected_string) then 
@@ -2274,7 +2274,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%AINT_EIG_IMAG
+     status%status = NLLS_ERROR_AINT_EIG_IMAG
      call nlls_strerror(status)
      expected_string = 'All eigenvalues are imaginary (nlls_method=2)'
      if (status%error_message .ne. expected_string) then 
@@ -2284,7 +2284,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%AINT_EIG_ODD
+     status%status = NLLS_ERROR_AINT_EIG_ODD
      call nlls_strerror(status)
      expected_string = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
      if (status%error_message .ne. expected_string) then 
@@ -2294,7 +2294,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%MS_MAXITS
+     status%status = NLLS_ERROR_MS_MAXITS
      call nlls_strerror(status)
      expected_string = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
      if (status%error_message .ne. expected_string) then 
@@ -2304,7 +2304,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%MS_TOO_MANY_SHIFTS
+     status%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
      call nlls_strerror(status)
      expected_string = 'Too many shifts taken in more_sorensen (nlls_method=3)'
      if (status%error_message .ne. expected_string) then 
@@ -2314,7 +2314,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      end if
 
 
-     status%status = ERROR%MS_NO_PROGRESS
+     status%status = NLLS_ERROR_MS_NO_PROGRESS
      call nlls_strerror(status)
      expected_string = 'No progress being made in more_sorensen (nlls_method=3)'
      if (status%error_message .ne. expected_string) then 
@@ -2323,7 +2323,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
          fails = fails + 1
      end if
 
-     status%status = ERROR%NO_SECOND_DERIVATIVES
+     status%status = NLLS_ERROR_NO_SECOND_DERIVATIVES
      call nlls_strerror(status)
      expected_string = 'Exact second derivatives needed for tensor model'
      if (status%error_message .ne. expected_string) then 

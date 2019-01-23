@@ -87,7 +87,6 @@ module ral_nlls_internal
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton
-    public :: ERROR
     
 contains
 
@@ -207,7 +206,7 @@ contains
     
      ! If we reach here, then we're over maxits     
      if (options%print_level > 0 ) write(options%error,1040) 
-     inform%status = ERROR%MAXITS
+     inform%status = NLLS_ERROR_MAXITS
      goto 1000
     
 1000 continue
@@ -756,7 +755,7 @@ contains
     end if
 
     if (bad_allocate) then 
-       inform%status = ERROR%ALLOCATION
+       inform%status = NLLS_ERROR_ALLOCATION
        inform%bad_alloc = 'nlls_iterate'
     end if
 
@@ -765,54 +764,54 @@ contains
 4010 continue
     ! Error in eval_J
     inform%external_name = 'eval_J'
-    inform%status = ERROR%EVALUATION
+    inform%status = NLLS_ERROR_EVALUATION
     goto 4000
 
 4020 continue
     ! Error in eval_F
     inform%external_name = 'eval_F'
-    inform%status = ERROR%EVALUATION
+    inform%status = NLLS_ERROR_EVALUATION
     goto 4000
 
 4030 continue
     ! Error in eval_HF
     inform%external_name = 'eval_HF'
-    inform%status = ERROR%EVALUATION
+    inform%status = NLLS_ERROR_EVALUATION
     goto 4000
 
 4040 continue 
-    inform%status = ERROR%UNSUPPORTED_MODEL
+    inform%status = NLLS_ERROR_UNSUPPORTED_MODEL
     goto 4000
 
 4050 continue 
     ! max tr reductions exceeded
-    inform%status = ERROR%MAX_TR_REDUCTIONS
+    inform%status = NLLS_ERROR_MAX_TR_REDUCTIONS
     goto 4000
 
 4060 continue 
     ! x makes no progress
-    inform%status = ERROR%X_NO_PROGRESS
+    inform%status = NLLS_ERROR_X_NO_PROGRESS
     goto 4000
 
 4070 continue
     ! n > m on entry
-    inform%status = ERROR%N_GT_M
+    inform%status = NLLS_ERROR_N_GT_M
     goto 4000
 
 4080 continue
     ! bad allocation
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = 'nlls_iterate'
     goto 4000
 
 4090 continue
     ! no second derivatives in tensor model
-    inform%status = ERROR%NO_SECOND_DERIVATIVES
+    inform%status = NLLS_ERROR_NO_SECOND_DERIVATIVES
     goto 4000
 
 4100 continue 
     ! workspace error
-    inform%status = ERROR%WORKSPACE_ERROR
+    inform%status = NLLS_ERROR_WORKSPACE_ERROR
     goto 4000
     
 ! convergence 
@@ -870,52 +869,52 @@ contains
   subroutine nlls_strerror(inform)!,error_string)
     type( nlls_inform ), intent(inout) :: inform
     
-    if ( inform%status == ERROR%MAXITS ) then
+    if ( inform%status == NLLS_ERROR_MAXITS ) then
        inform%error_message = 'Maximum number of iterations reached'
-    elseif ( inform%status == ERROR%EVALUATION ) then
+    elseif ( inform%status == NLLS_ERROR_EVALUATION ) then
        write(inform%error_message,'(a,a,a,i0)') & 
             'Error code from user-supplied subroutine ',trim(inform%external_name), & 
             ' passed error = ', inform%external_return
-    elseif ( inform%status == ERROR%UNSUPPORTED_MODEL ) then
+    elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_MODEL ) then
        inform%error_message = 'Unsupported model passed in options'
-    elseif ( inform%status == ERROR%FROM_EXTERNAL ) then
+    elseif ( inform%status == NLLS_ERROR_FROM_EXTERNAL ) then
        write(inform%error_message,'(a,a,a,i0)') & 
             'The external subroutine ',trim(inform%external_name), & 
             ' passed error = ', inform%external_return
-    elseif ( inform%status == ERROR%UNSUPPORTED_METHOD ) then
+    elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_METHOD ) then
        inform%error_message = 'Unsupported nlls_method passed in options'
-    elseif ( inform%status == ERROR%ALLOCATION ) then
+    elseif ( inform%status == NLLS_ERROR_ALLOCATION ) then
        write(inform%error_message,'(a,a)') &
             'Bad allocation of memory in ', trim(inform%bad_alloc)
-    elseif ( inform%status == ERROR%MAX_TR_REDUCTIONS ) then
+    elseif ( inform%status == NLLS_ERROR_MAX_TR_REDUCTIONS ) then
        inform%error_message = 'The trust region was reduced the maximum number of times'
-    elseif ( inform%status == ERROR%X_NO_PROGRESS ) then
+    elseif ( inform%status == NLLS_ERROR_X_NO_PROGRESS ) then
        inform%error_message = 'No progress made in X'
-    elseif ( inform%status == ERROR%N_GT_M ) then
+    elseif ( inform%status == NLLS_ERROR_N_GT_M ) then
        inform%error_message = 'The problem is overdetermined'
-    elseif ( inform%status == ERROR%BAD_TR_STRATEGY ) then
+    elseif ( inform%status == NLLS_ERROR_BAD_TR_STRATEGY ) then
        inform%error_message = 'Unsupported tr_update_stategy passed in options'
-    elseif ( inform%status == ERROR%FIND_BETA ) then
+    elseif ( inform%status == NLLS_ERROR_FIND_BETA ) then
        inform%error_message = 'Unable to find suitable scalar in findbeta subroutine'
-    elseif ( inform%status == ERROR%BAD_SCALING ) then
+    elseif ( inform%status == NLLS_ERROR_BAD_SCALING ) then
        inform%error_message = 'Unsupported value of scale passed in options'
-    elseif ( inform%status == ERROR%WORKSPACE_ERROR ) then
+    elseif ( inform%status == NLLS_ERROR_WORKSPACE_ERROR ) then
        inform%error_message = 'Error accessing pre-allocated workspace'
-    elseif ( inform%status == ERROR%UNSUPPORTED_TYPE_METHOD ) then
+    elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_TYPE_METHOD ) then
        inform%error_message = 'Unsupported value of type_of_method passed in options'
-    elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
+    elseif ( inform%status == NLLS_ERROR_DOGLEG_MODEL ) then
        inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
-    elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
+    elseif ( inform%status == NLLS_ERROR_AINT_EIG_IMAG ) then
        inform%error_message = 'All eigenvalues are imaginary (nlls_method=2)'
-    elseif ( inform%status == ERROR%AINT_EIG_ODD ) then
+    elseif ( inform%status == NLLS_ERROR_AINT_EIG_ODD ) then
        inform%error_message = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
-    elseif ( inform%status == ERROR%MS_MAXITS ) then
+    elseif ( inform%status == NLLS_ERROR_MS_MAXITS ) then
        inform%error_message = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
-    elseif ( inform%status == ERROR%MS_TOO_MANY_SHIFTS ) then
+    elseif ( inform%status == NLLS_ERROR_MS_TOO_MANY_SHIFTS ) then
        inform%error_message = 'Too many shifts taken in more_sorensen (nlls_method=3)'
-    elseif ( inform%status == ERROR%MS_NO_PROGRESS ) then
+    elseif ( inform%status == NLLS_ERROR_MS_NO_PROGRESS ) then
        inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
-    elseif ( inform%status == ERROR%NO_SECOND_DERIVATIVES ) then
+    elseif ( inform%status == NLLS_ERROR_NO_SECOND_DERIVATIVES ) then
        inform%error_message = 'Exact second derivatives needed for tensor model'
     else 
        inform%error_message = 'Unknown error number'           
@@ -1062,7 +1061,7 @@ contains
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
           case default
-             inform%status = ERROR%UNSUPPORTED_METHOD
+             inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
              goto 1000
           end select ! nlls_method
        elseif (options%type_of_method == 2) then
@@ -1076,11 +1075,11 @@ contains
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
           case default
-             inform%status = ERROR%UNSUPPORTED_METHOD
+             inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
              goto 1000
           end select ! nlls_method
        else
-          inform%status = ERROR%UNSUPPORTED_TYPE_METHOD
+          inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
           goto 1000
        end if ! type_of_method
         
@@ -1114,7 +1113,7 @@ contains
 return
      
 1010 continue 
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
 
 3000 FORMAT('*** Solving the trust region subproblem using ',A,' ***')
@@ -1204,7 +1203,7 @@ return
 !!$        end do
 !!$        ! todo : require_increase, test for trimming
      case default
-        inform%status = ERROR%BAD_SCALING
+        inform%status = NLLS_ERROR_BAD_SCALING
         return
      end select
           
@@ -1215,7 +1214,7 @@ return
      return
 
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
      
    end subroutine generate_scaling
@@ -1289,7 +1288,7 @@ return
         call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws)
         if ( inform%status .ne. 0 ) goto 1000
      case default
-        inform%status = ERROR%DOGLEG_MODEL
+        inform%status = NLLS_ERROR_DOGLEG_MODEL
         return
      end select
      
@@ -1317,7 +1316,7 @@ return
      return
 
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
 
 ! Printing commands
@@ -1464,7 +1463,7 @@ return
      return
 
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return    
 
 ! print statements   
@@ -1618,7 +1617,7 @@ return
               no_restarts = no_restarts + 1
            else
               ! we're not going to make progress...jump out 
-              inform%status = ERROR%MS_NO_PROGRESS
+              inform%status = NLLS_ERROR_MS_NO_PROGRESS
               goto 4000
            end if
         else
@@ -1641,7 +1640,7 @@ return
      goto 4000
      
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      goto 4000
 
 1020 continue
@@ -1653,12 +1652,12 @@ return
 1040 continue
      ! maxits reached, not converged
      if (options%print_level >=2) write(options%out,5020)
-     inform%status = ERROR%MS_MAXITS
+     inform%status = NLLS_ERROR_MS_MAXITS
      goto 4000
 
 3000 continue
      ! too many shifts
-     inform%status = ERROR%MS_TOO_MANY_SHIFTS
+     inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
      goto 4000
      
 4000 continue
@@ -1923,13 +1922,13 @@ return
      goto 4000
      
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      goto 4000
 
 1040 continue
      ! maxits reached, not converged
      if (options%print_level >=2) write(options%out,5020)
-     inform%status = ERROR%MS_MAXITS
+     inform%status = NLLS_ERROR_MS_MAXITS
      goto 4000
 
           
@@ -2069,7 +2068,7 @@ return
 
 3000 continue
      ! too many shifts
-     inform%status = ERROR%MS_TOO_MANY_SHIFTS
+     inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
      return     
 
 6010 FORMAT('Trying a shift of sigma = ',ES12.4)
@@ -2165,7 +2164,7 @@ return
         if ( dtrs_inform%status .ne. 0) then
            inform%external_return = dtrs_inform%status
            inform%external_name = 'galahad_dtrs'
-           inform%status = ERROR%FROM_EXTERNAL
+           inform%status = NLLS_ERROR_FROM_EXTERNAL
            goto 1000
         end if
      case(2)
@@ -2192,7 +2191,7 @@ return
            elseif ( drqs_inform%status .ne. 0) then
               inform%external_return = drqs_inform%status
               inform%external_name = 'galahad_drqs'
-              inform%status = ERROR%FROM_EXTERNAL
+              inform%status = NLLS_ERROR_FROM_EXTERNAL
               goto 1000
            else
               proceed = .true.
@@ -2211,7 +2210,7 @@ return
      return
 
 1010 continue 
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
      
 2000 FORMAT('Regularization order used = ',ES12.4)
@@ -2297,7 +2296,7 @@ return
        call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
             inform%external_return)
        if (inform%external_return .ne. 0 ) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgels'
           return
        end if
@@ -2307,7 +2306,7 @@ return
        return
        
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
               
      END SUBROUTINE solve_LLS
@@ -2337,7 +2336,7 @@ return
 
      discrim = c**2 + (normb2)*(Delta**2 - norma2);
      if ( discrim < zero ) then
-        inform%status = ERROR%FIND_BETA
+        inform%status = NLLS_ERROR_FIND_BETA
         inform%external_name = 'findbeta'
         return
      end if
@@ -2426,7 +2425,7 @@ return
 
 1000   FORMAT('Model evaluated successfully: m_k(d) = ',ES12.4)
 2000   continue 
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
 
@@ -2679,7 +2678,7 @@ return
              rho = -one ! set to be negative, so that the logic works....
           end if
        case default
-          inform%status = ERROR%BAD_TR_STRATEGY
+          inform%status = NLLS_ERROR_BAD_TR_STRATEGY
           return          
        end select
 
@@ -2836,7 +2835,7 @@ return
        x(1:n) = b(1:n)
        call dposv('L', n, 1, LtL, n, x, n, inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dposv'
           return
        end if
@@ -2863,7 +2862,7 @@ return
        
        call dposv('L', n, 1, A, n, x, n, inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dposv'
           
 !!$          write(*,*) 'A_out = '
@@ -2896,7 +2895,7 @@ return
        x(1:n) = b(1:n)
        call dgesv( n, 1, w%A, n, w%ipiv, x, n, inform%external_return)
        if (inform%external_return .ne. 0 ) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgesv'
           return
        end if
@@ -2904,7 +2903,7 @@ return
        return
 
        1000   continue ! workspace error
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
 
@@ -3011,7 +3010,7 @@ return
             ew, w%work, lwork, & 
             inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dsyev'
           return
        end if
@@ -3028,7 +3027,7 @@ return
        return
 
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
        
      end subroutine all_eig_symm
@@ -3064,7 +3063,7 @@ return
                w%ew, w%work, lwork, & 
                inform%external_return)
           if (inform%external_return .ne. 0) then
-             inform%status = ERROR%FROM_EXTERNAL
+             inform%status = NLLS_ERROR_FROM_EXTERNAL
              inform%external_name = 'lapack_dsyev'
           end if
           minindex = minloc(w%ew)
@@ -3086,7 +3085,7 @@ return
                w%ifail, & ! array containing indicies of non-converging ews
                inform%external_return)
           if (inform%external_return .ne. 0) then
-             inform%status = ERROR%FROM_EXTERNAL
+             inform%status = NLLS_ERROR_FROM_EXTERNAL
              inform%external_name = 'lapack_dsyevx'
           end if
        end if
@@ -3094,7 +3093,7 @@ return
        return
 
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
      end subroutine min_eig_symm
@@ -3133,7 +3132,7 @@ return
             w%vr, n, & ! right eigenvectors
             w%work, lwork, inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dggev'
           return
        end if
@@ -3182,20 +3181,20 @@ return
        return 
 
 1000   continue 
-       inform%status = ERROR%AINT_EIG_IMAG ! Eigs imaginary error
+       inform%status = NLLS_ERROR_AINT_EIG_IMAG ! Eigs imaginary error
        return
 
 1010   continue
-       inform%status = ERROR%AINT_EIG_ODD
+       inform%status = NLLS_ERROR_AINT_EIG_ODD
        return
        
 2000   continue
-       inform%status = ERROR%ALLOCATION
+       inform%status = NLLS_ERROR_ALLOCATION
        inform%bad_alloc = "max_eig"
        return
 
 2010   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
      end subroutine max_eig
@@ -3261,7 +3260,7 @@ return
        return
        
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
      end subroutine get_svd_J
@@ -3388,7 +3387,7 @@ return
        return
        
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
        
      end subroutine solve_newton_tensor

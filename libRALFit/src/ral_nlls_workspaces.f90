@@ -373,37 +373,33 @@ module ral_nlls_workspaces
 
   END TYPE nlls_inform
 
-  TYPE, public :: NLLS_ERROR
-     INTEGER :: MAXITS = -1
-     INTEGER :: EVALUATION = -2
-     INTEGER :: UNSUPPORTED_MODEL = -3
-     INTEGER :: FROM_EXTERNAL = -4
-     INTEGER :: UNSUPPORTED_METHOD = -5
-     INTEGER :: ALLOCATION = -6
-     INTEGER :: MAX_TR_REDUCTIONS = -7
-     INTEGER :: X_NO_PROGRESS = -8
-     INTEGER :: N_GT_M = -9  
-     INTEGER :: BAD_TR_STRATEGY = -10 
-     INTEGER :: FIND_BETA = -11 
-     INTEGER :: BAD_SCALING = -12 
-     INTEGER :: WORKSPACE_ERROR = -13
-     INTEGER :: UNSUPPORTED_TYPE_METHOD = -14
-     ! dogleg errors
-     INTEGER :: DOGLEG_MODEL = -101
-     ! AINT errors
-     INTEGER :: AINT_EIG_IMAG = -201
-     INTEGER :: AINT_EIG_ODD = -202
-     ! More-Sorensen errors
-     INTEGER :: MS_MAXITS = -301
-     INTEGER :: MS_TOO_MANY_SHIFTS = -302
-     INTEGER :: MS_NO_PROGRESS = -303
-     ! DTRS errors
-     ! Tensor model errors
-     INTEGER :: NO_SECOND_DERIVATIVES = -401
-
-  END TYPE NLLS_ERROR
-
-
+! Error constants    
+  Integer, Parameter, Public :: NLLS_ERROR_MAXITS                  =   -1
+  Integer, Parameter, Public :: NLLS_ERROR_EVALUATION              =   -2
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_MODEL       =   -3
+  Integer, Parameter, Public :: NLLS_ERROR_FROM_EXTERNAL           =   -4
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_METHOD      =   -5
+  Integer, Parameter, Public :: NLLS_ERROR_ALLOCATION              =   -6
+  Integer, Parameter, Public :: NLLS_ERROR_MAX_TR_REDUCTIONS       =   -7
+  Integer, Parameter, Public :: NLLS_ERROR_X_NO_PROGRESS           =   -8
+  Integer, Parameter, Public :: NLLS_ERROR_N_GT_M                  =   -9  
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_TR_STRATEGY         =  -10 
+  Integer, Parameter, Public :: NLLS_ERROR_FIND_BETA               =  -11 
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_SCALING             =  -12 
+  Integer, Parameter, Public :: NLLS_ERROR_WORKSPACE_ERROR         =  -13
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_TYPE_METHOD =  -14
+  ! dogleg errors
+  Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL            = -101
+  ! AINT errors
+  Integer, Parameter, Public :: NLLS_ERROR_AINT_EIG_IMAG           = -201
+  Integer, Parameter, Public :: NLLS_ERROR_AINT_EIG_ODD            = -202
+  ! More-Sorensen errors
+  Integer, Parameter, Public :: NLLS_ERROR_MS_MAXITS               = -301
+  Integer, Parameter, Public :: NLLS_ERROR_MS_TOO_MANY_SHIFTS      = -302
+  Integer, Parameter, Public :: NLLS_ERROR_MS_NO_PROGRESS          = -303
+  ! DTRS errors
+  ! Tensor model errors
+  Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES   = -401
 
   type, public :: params_base_type
      ! deliberately empty
@@ -601,7 +597,6 @@ module ral_nlls_workspaces
   end type tenJ_type
 
   ! Thread-unsafe variables
-  type(NLLS_ERROR), public :: ERROR
   type( tenJ_type ), public :: tenJ
   type( nlls_workspace ), public :: inner_workspace ! to be used to solve recursively    
 
@@ -726,7 +721,7 @@ contains
     ! Error statements
 1000 continue ! bad allocation from this subroutine
     inform%bad_alloc = 'setup_workspaces'
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     return
 
 1010 continue ! bad allocation from called subroutine
@@ -818,7 +813,7 @@ contains
     ! Error statements
 9000 continue  ! bad allocations in this subroutine
     inform%bad_alloc = 'setup_workspace_get_svd_J'
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     return
 
   end subroutine setup_workspace_get_svd_J
@@ -931,7 +926,7 @@ contains
     ! Error statements
 9000 continue  ! bad allocations in this subroutine
     inform%bad_alloc = 'setup_workspace_dogleg'
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     return
 
   end subroutine setup_workspace_solve_newton_tensor
@@ -1044,7 +1039,7 @@ contains
     ! Error statements
 9000 continue  ! bad allocations in this subroutine
     inform%bad_alloc = 'setup_workspace_calculate_step'
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     return
 
 9010 continue  ! bad allocations from dependent subroutine
@@ -1145,7 +1140,7 @@ contains
     ! Error statements
 9000 continue  ! bad allocations in this subroutine
     inform%bad_alloc = 'setup_workspace_dogleg'
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     return
 
 9010 continue  ! bad allocations from dependent subroutine
@@ -1196,7 +1191,7 @@ contains
     return
 
 9000 continue  ! local allocation error
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "solve_LLS"
     return
 
@@ -1236,7 +1231,7 @@ contains
     return
 
 9000 continue
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = 'evaluate_model'
     return
   end subroutine setup_workspace_evaluate_model
@@ -1301,7 +1296,7 @@ contains
     return
 
 9000 continue ! local allocation error
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "AINT_tr"
     !call allocation_error(options,'AINT_tr')
     return
@@ -1398,16 +1393,16 @@ contains
     return
 
 9000 continue      
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "min_eig_symm"
     return
 
 9010 continue
-    inform%status = ERROR%FROM_EXTERNAL
+    inform%status = NLLS_ERROR_FROM_EXTERNAL
     inform%external_name = "lapack_dsyev"
 
 9020 continue
-    inform%status = ERROR%FROM_EXTERNAL
+    inform%status = NLLS_ERROR_FROM_EXTERNAL
     inform%external_name = "lapack_dsyevx"
     return
 
@@ -1480,12 +1475,12 @@ contains
     return
 
 9000 continue
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "max_eig"
     return
 
 9020 continue
-    inform%status = ERROR%FROM_EXTERNAL
+    inform%status = NLLS_ERROR_FROM_EXTERNAL
     inform%external_name = "lapack_dggev"
     return
 
@@ -1526,7 +1521,7 @@ contains
     return
 
 9000 continue ! allocation error
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "solve_general"
     return
 
@@ -1568,7 +1563,7 @@ contains
     return
 
 9000 continue ! allocation error here
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "solve_galahad"
     return
 
@@ -1610,7 +1605,7 @@ contains
     return
     
     9000 continue ! allocation error here
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "regularization_solver"
     return
     
@@ -1662,12 +1657,12 @@ contains
     return
 
 8000 continue  ! allocation error
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "all_eig_sym"
     return
 
 9000 continue ! error from lapack
-    inform%status = ERROR%FROM_EXTERNAL
+    inform%status = NLLS_ERROR_FROM_EXTERNAL
     inform%external_name = "lapack_dsyev"
     return
 
@@ -1709,7 +1704,7 @@ contains
     return
 
 9000 continue ! allocation error here
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "more_sorenesen"
     return
 
@@ -1762,7 +1757,7 @@ contains
     return
 
 1000 continue ! allocation error here
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = "generate_scaling"
     return
 
