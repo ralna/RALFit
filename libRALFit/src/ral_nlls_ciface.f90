@@ -390,16 +390,23 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights
   
 end subroutine nlls_solve_d
 
-subroutine ral_nlls_init_workspace_d(cw) bind(C)
+subroutine ral_nlls_init_workspace_d(cw, ciw) bind(C)
    use ral_nlls_ciface
    implicit none
 
-   type(c_ptr) :: cw
+   type(c_ptr) :: cw, ciw
 
-   type(f_nlls_workspace), pointer :: fw
+   type(f_nlls_workspace), pointer :: fw, fiw
 
    allocate(fw)
+   allocate(fiw)
+!  Link workspace with inner_workspace
+   fw%iw_ptr => fiw
+!  Self reference inner workspace so not to break recursiveness
+   fiw%iw_ptr => fiw
+
    cw = c_loc(fw)
+   ciw = c_loc(fiw)
 end subroutine ral_nlls_init_workspace_d
 
 subroutine ral_nlls_free_workspace_d(cw) bind(C)

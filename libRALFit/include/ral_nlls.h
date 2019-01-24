@@ -144,7 +144,7 @@ typedef int (*ral_nlls_eval_hf_type) (
 		     ral_nllspkgtype_d_ weights[]
 		     );
 /* Initialise a workspace for use with ral_nlls_iterate_d() */
-  void ral_nlls_init_workspace_d(void **w);
+  void ral_nlls_init_workspace_d(void **w, void **iw);
   /* Perform a single iteration */
   void ral_nlls_iterate_d(
 			int n,

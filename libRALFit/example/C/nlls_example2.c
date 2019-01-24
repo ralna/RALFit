@@ -73,11 +73,15 @@ int main(void) {
    // Initialize options values
    struct ral_nlls_options options;
    ral_nlls_default_options(&options);
+   // options.model = 4;
+   // options.exact_second_derivatives = true;
 
    // initialize the workspace
    void * workspace;
+   void * inner_workspace;
 
-   ral_nlls_init_workspace(&workspace);
+   // init workspace allocates and links together workspace with inner_workspace
+   ral_nlls_init_workspace(&workspace, &inner_workspace);
    
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
@@ -101,6 +105,7 @@ int main(void) {
    
    free(weights);
    ral_nlls_free_workspace(&workspace);
+   ral_nlls_free_workspace(&inner_workspace);
    
    // Print result
    printf ("Found a local optimum at x = %e %e\n", x[0], x[1]);

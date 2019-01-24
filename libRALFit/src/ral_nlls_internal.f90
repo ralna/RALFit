@@ -126,6 +126,11 @@ contains
     integer  :: i
     
     type ( NLLS_workspace ) :: w
+    Type ( NLLS_workspace ), target :: inner_workspace
+!   Link the inner_workspace to the main workspace
+    w%iw_ptr => inner_workspace
+!   Self reference inner workspace so recursive call does not fail
+    inner_workspace%iw_ptr => inner_workspace
     
 !!$    write(*,*) 'Controls in:'
 !!$    write(*,*) 'error = ',options%error
@@ -156,7 +161,6 @@ contains
 !!$    write(*,*) 'output_progress_vectors = ',options%output_progress_vectors
 
     main_loop: do i = 1,options%maxit
-       
        if ( present(weights) ) then
           if ( present(eval_HP) ) then 
              call nlls_iterate(n, m, X,      & 
@@ -246,14 +250,20 @@ contains
     procedure( eval_hp_type ), optional :: eval_HP
     
       
-    integer :: svdstatus = 0
-    integer :: i, no_reductions, max_tr_decrease = 100
+    integer :: svdstatus
+    integer :: i, no_reductions, max_tr_decrease
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue, normX
     logical :: success 
-    logical :: bad_allocate = .false.
+    logical :: bad_allocate
     character :: second
-    integer :: num_successful_steps = 0
+    integer :: num_successful_steps
+
+!   thread-safe inits
+    svdstatus = 0
+    max_tr_decrease = 100
+    bad_allocate = .false.
+    num_successful_steps = 0
     
     ! todo: make max_tr_decrease a control variable
 
@@ -480,7 +490,7 @@ contains
             num_successful_steps, &
             w%Xnew,w%d,w%normd, & 
             options,inform,& 
-            w%calculate_step_ws, w%tenJ)
+            w%calculate_step_ws, w%tenJ, w%iw_ptr)
        if (inform%status .ne. 0) then
           if ( (w%use_second_derivatives) .and. &
                (options%model == 3) ) then
@@ -850,7 +860,6 @@ contains
     
     type( nlls_workspace ) :: w
     type( nlls_options ) :: options
-    
     ! reset all the scalars
     w%first_call = 1
     w%iter = 0
@@ -926,7 +935,7 @@ contains
 
   RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, & 
                             Delta,eval_HF,params,num_successful_steps,& 
-                            Xnew,d,normd,options,inform,w,tenJ)
+                            Xnew,d,normd,options,inform,w,tenJ, inner_workspace)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -948,14 +957,17 @@ contains
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( calculate_step_work ) :: w
     Type( tenJ_type ), Intent(InOut) :: tenJ
+    Type( NLLS_workspace ), Intent(InOut) :: inner_workspace
         
     real(wp) :: md_bad
     integer :: i, jj
-    logical :: scaling_used = .false.
+    logical :: scaling_used
     real(wp) :: normx
+
 
     if (.not. w%allocated) goto 1010
     
+    scaling_used = .false.
     d(1:n) = zero
     w%scale = one
 
@@ -966,7 +978,7 @@ contains
        
        call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,& 
             d, md, params, options, inform, & 
-            w%solve_newton_tensor_ws, tenJ)
+            w%solve_newton_tensor_ws, tenJ, inner_workspace)
        normd = norm2(d(1:n)) ! ||d||_D
 
        Xnew = X + d
@@ -3271,7 +3283,7 @@ return
      subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
                                     num_successful_steps, & 
                                     d, md, params, options, inform, & 
-                                    w, tenJ)
+                                    w, tenJ, inner_workspace)
        
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
@@ -3285,6 +3297,7 @@ return
        type( nlls_inform ), intent(inout) :: inform
        type( solve_newton_tensor_work ) :: w
        type( tenJ_type ), intent(InOut), target :: tenJ
+       type( NLLS_workspace ), Intent(InOut) :: inner_workspace
               
        type( nlls_inform ) :: tensor_inform
        integer :: i
@@ -3353,9 +3366,10 @@ return
           w%tparams%p = 2.0
           w%tparams%extra = 1
        end select
+
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, & 
-               inner_workspace, & 
+               inner_workspace, &
                evaltensor_f, evaltensor_J, evaltensor_HF, &
                w%tparams, & 
                tensor_inform, w%tensor_options )

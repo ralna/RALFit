@@ -595,10 +595,8 @@ module ral_nlls_workspaces
      real(wp) :: tr_nu = 2.0
      integer :: tr_p = 3
      type (tenJ_type ) :: tenJ
+     type (NLLS_workspace), Pointer :: iw_ptr => NULL()
   end type NLLS_workspace
-
-  ! Thread-unsafe variables
-  type( nlls_workspace ), public :: inner_workspace ! to be used to solve recursively    
 
   public :: setup_workspaces, remove_workspaces
 
@@ -616,7 +614,6 @@ contains
     type( nlls_options ), intent(in) :: options
     integer, intent(in) :: n,m
     type( nlls_inform ), intent(out) :: inform
-
     if (.not. allocated(workspace%y)) then
        allocate(workspace%y(n), stat = inform%alloc_status)
        if (inform%alloc_status .ne. 0) goto 1000
@@ -711,7 +708,7 @@ contains
     end if
 
     call setup_workspace_calculate_step(n,m,workspace%calculate_step_ws, & 
-         options, inform, workspace%tenJ)
+         options, inform, workspace%tenJ, workspace%iw_ptr)
     if (inform%alloc_status > 0) goto 1010
 
     workspace%allocated = .true.
@@ -767,7 +764,7 @@ contains
     if(allocated(workspace%Xnew)) deallocate(workspace%Xnew ) 
 
     call remove_workspace_calculate_step(workspace%calculate_step_ws,&
-         options,workspace%tenJ)
+         options,workspace%tenJ, workspace%iw_ptr)
 
     !       ! evaluate model in the main routine...       
     !       call remove_workspace_evaluate_model(workspace%evaluate_model_ws,options)
@@ -832,13 +829,14 @@ contains
 
   end subroutine remove_workspace_get_svd_J
 
-  subroutine setup_workspace_solve_newton_tensor(n,m,w,options,inform,tenJ)
+  subroutine setup_workspace_solve_newton_tensor(n,m,w,options,inform,tenJ,inner_workspace)
     integer, intent(in) :: n, m 
     type( solve_newton_tensor_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(out) :: inform
     type( tenJ_type ), intent(InOut) :: tenJ
-    integer :: ierr
+    type( NLLS_workspace ), intent(InOut) :: inner_workspace
+    integer :: ierr_dummy
 
     allocate(w%model_tensor(m), stat=inform%alloc_status)
     if (inform%alloc_status > 0) goto 9000
@@ -869,13 +867,13 @@ contains
     if (inform%alloc_status > 0) goto 9000
     allocate(tenJ%H(n,n), stat=inform%alloc_status)
     if (inform%alloc_status > 0) then
-      Deallocate(tenJ%Hs, stat=ierr)
+      Deallocate(tenJ%Hs, stat=ierr_dummy)
       goto 9000
     end if
     allocate(tenJ%stHs(m), stat=inform%alloc_status)
     if (inform%alloc_status > 0) then
-      Deallocate(tenJ%Hs, stat=ierr)
-      Deallocate(tenJ%H, stat=ierr)
+      Deallocate(tenJ%Hs, stat=ierr_dummy)
+      Deallocate(tenJ%H, stat=ierr_dummy)
       goto 9000
     End If
 
@@ -926,8 +924,10 @@ contains
 
     ! setup/remove workspaces manually....
     w%tensor_options%remove_workspaces = .false.
+
     w%tensor_options%setup_workspaces = .false.
     call setup_workspaces(inner_workspace, n, w%m_in, w%tensor_options, inform)
+
     if (inform%alloc_status > 0) goto 9000       
 
     w%allocated = .true.
@@ -942,20 +942,21 @@ contains
 
   end subroutine setup_workspace_solve_newton_tensor
 
-  subroutine remove_workspace_solve_newton_tensor(w,options,tenJ)
+  subroutine remove_workspace_solve_newton_tensor(w,options,tenJ,inner_workspace)
     type( solve_newton_tensor_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
     type( tenJ_type ), Intent(InOut) :: tenJ
-    Integer :: ierr
+    type( NLLS_workspace ), Intent(InOut) :: inner_workspace
+    Integer :: ierr_dummy
 
-    if(allocated(w%model_tensor)) deallocate(w%model_tensor,stat=ierr)
-    if(allocated(w%tparams%f)) deallocate(w%tparams%f,stat=ierr)
-    if(allocated(w%tparams%J)) deallocate(w%tparams%J,stat=ierr)
-    if(allocated(w%tparams%Hi)) deallocate(w%tparams%Hi,stat=ierr)
-    if(allocated(tenJ%Hs)) deallocate(tenJ%Hs,stat=ierr)
-    if(allocated(tenJ%Js)) deallocate(tenJ%Js,stat=ierr)
-    if(allocated(tenJ%H)) deallocate(tenJ%H,stat=ierr)
-    if(allocated(tenJ%stHs)) deallocate(tenJ%stHs,stat=ierr)
+    if(allocated(w%model_tensor)) deallocate(w%model_tensor,stat=ierr_dummy)
+    if(allocated(w%tparams%f)) deallocate(w%tparams%f,stat=ierr_dummy)
+    if(allocated(w%tparams%J)) deallocate(w%tparams%J,stat=ierr_dummy)
+    if(allocated(w%tparams%Hi)) deallocate(w%tparams%Hi,stat=ierr_dummy)
+    if(allocated(tenJ%Hs)) deallocate(tenJ%Hs,stat=ierr_dummy)
+    if(allocated(tenJ%Js)) deallocate(tenJ%Js,stat=ierr_dummy)
+    if(allocated(tenJ%H)) deallocate(tenJ%H,stat=ierr_dummy)
+    if(allocated(tenJ%stHs)) deallocate(tenJ%stHs,stat=ierr_dummy)
     call remove_workspaces(inner_workspace, w%tensor_options)
 
     w%allocated = .false.
@@ -964,12 +965,13 @@ contains
 
   end subroutine remove_workspace_solve_newton_tensor
 
-  recursive subroutine setup_workspace_calculate_step(n,m,w,options,inform,tenJ)
+  recursive subroutine setup_workspace_calculate_step(n,m,w,options,inform,tenJ,inner_workspace)
     integer, intent(in) :: n, m 
     type( calculate_step_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(out) :: inform
     type( tenJ_type ), intent(InOut) :: tenJ
+    type( NLLS_workspace ), intent(InOut) :: inner_workspace
 
     allocate(w%A(n,n), stat = inform%alloc_status)
     if (inform%alloc_status > 0) goto 9000
@@ -993,7 +995,7 @@ contains
 
        call setup_workspace_solve_newton_tensor(n,m,&
             w%solve_newton_tensor_ws,&
-            options, inform, tenJ)
+            options, inform, tenJ, inner_workspace)
 
     else
 
@@ -1059,10 +1061,11 @@ contains
     return
   end subroutine setup_workspace_calculate_step
 
-  recursive subroutine remove_workspace_calculate_step(w,options,tenJ)
+  recursive subroutine remove_workspace_calculate_step(w,options,tenJ, inner_workspace)
     type( calculate_step_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
     type( tenJ_type), Intent(inout) :: tenJ
+    Type( NLLS_workspace), Intent(InOut) :: inner_workspace
 
     if (allocated(w%A)) deallocate(w%A)
     if (allocated(w%v)) deallocate(w%v)
@@ -1077,7 +1080,7 @@ contains
 
        call remove_workspace_solve_newton_tensor(& 
             w%solve_newton_tensor_ws, &
-            options, tenJ)
+            options, tenJ, inner_workspace)
     else
 
        if (options%type_of_method == 1) then 

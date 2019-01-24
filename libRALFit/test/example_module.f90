@@ -549,9 +549,15 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        real(wp) :: Delta, normd
        type( nlls_inform ) :: inform
        type( nlls_workspace ) :: w
+       type( nlls_workspace ), Target :: iw
+
        integer :: n,m
 
        fails = 0
+!      Link the inner_workspace to the main workspace
+       w%iw_ptr => iw
+!      Self reference for inner workspace so recursive call does not fail
+       iw%iw_ptr => iw
 
        options%scale = 0 
        options%print_level = 3
@@ -627,9 +633,12 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        real(wp), allocatable :: J(:), A(:,:), scale_extra(:), scale(:)
        integer :: n,m
        type( nlls_workspace) :: w
+       type( nlls_workspace), Target :: iw
        type( nlls_inform ) :: inform
        
        fails = 0
+       w%iw_ptr => iw
+       iw%iw_ptr => iw
 
        options%scale = 4
        options%nlls_method = 3
@@ -764,8 +773,11 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      integer  :: n, m
      TYPE( nlls_inform ) :: inform
      type( nlls_workspace ) :: w
-     
+     type( nlls_workspace), Target :: iw
+      
      fails = 0
+     w%iw_ptr => iw
+     iw%iw_ptr => iw
      options%nlls_method = 2
      
      n = 2
@@ -811,8 +823,11 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      integer :: n,m
-     
+     type( nlls_workspace ), Target :: iw
+      
      fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
      
      options%nlls_method = 3
      
@@ -929,6 +944,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      real(wp) :: Delta, normd
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      integer :: n,m
      integer :: problem, method
      character (len=40) :: problem_name
@@ -936,6 +952,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      integer :: num_successful_steps
      
      fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
 
      options%out = 6
      options%print_level = 0
@@ -1048,10 +1066,13 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      integer :: m, n
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      
      real(wp) :: one = 1.0_wp
 
      fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
      n = 2
      m = 4
      
@@ -1083,10 +1104,13 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      real(wp) :: Delta, normd
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      integer :: n,m, i, num_successful_steps
      character (len=5) :: testname
      
      fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
 
      options%nlls_method = 4
      
@@ -1163,11 +1187,13 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      type( nlls_workspace ) :: work
      type( tenJ_type ), Target :: tenJ
      type( tenJ_type ), Pointer :: tenJ_pointer
-     
+     type( NLLS_workspace ), Target :: inner_workspace
      real(wp) :: one = 1.0_wp
      
      fails = 0
      tenJ_pointer => tenJ
+     work%iw_ptr => inner_workspace
+     inner_workspace%iw_ptr => inner_workspace
      
      n = 3 
      m = 5
@@ -1181,7 +1207,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      call solve_newton_tensor(J, f, eval_H, X, n, m, Delta, num_successful_steps, & 
                                     d, md, params, options, status, & 
                                     work%calculate_step_ws%solve_newton_tensor_ws,&
-                                    tenJ_pointer)
+                                    tenJ_pointer, inner_workspace)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
@@ -1230,9 +1256,12 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      real(wp) :: normerror
      integer :: n,m 
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      type( nlls_inform ) :: status
 
      fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
 
      options%nlls_method = 1 ! dogleg
 
@@ -1397,8 +1426,11 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      real(wp) :: rho
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      
      fails = 0 
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
 
      call setup_workspaces(work,2,2,options,status) 
      work%Delta = 100.0_wp ! Delta
@@ -1610,8 +1642,11 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      integer  :: n, m
      TYPE( nlls_inform ) :: inform
      type( nlls_workspace ) :: w
+     type( nlls_workspace ), Target :: iw
 
      fails = 0
+     w%iw_ptr => iw
+     iw%iw_ptr => iw
 
      n = 2
      m = 4
@@ -1665,8 +1700,11 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      integer :: n,m
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      
      fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
      
      n = 2
      m = 3
@@ -1814,9 +1852,12 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      real(wp) :: ew
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      integer :: n, m, i 
      
      fails = 0 
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
      
      n = 4
      m = 4
@@ -1884,9 +1925,12 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      real(wp) :: ew
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      integer :: n, m, i 
      
      fails = 0 
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
      
      n = 2
      m = 2
@@ -2048,10 +2092,13 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      real(wp) :: s1, sn
      integer :: n,m, info
      type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
      type( nlls_inform ) :: status
 
      
      fails = 0 
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
           
      n = 2
      m = 3
