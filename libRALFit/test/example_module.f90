@@ -32,15 +32,16 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 ! Let's switch to an actual fitting example...
 ! min 0.5 || f(m,c)||**2, where
 ! f_i(m,c) = y_i - exp( m * x_i + c )
-
+       Real (Kind=wp) :: ex
        integer :: i
-
 ! then, let's work this into the format we need
 ! X(1) = m, X(2) = c
        select type(params)
        type is(user_type)
           do i = 1,m
-             f(i) = params%y_values(i) - exp( X(1) * params%x_values(i) + X(2) )
+            ! Avoid overflow
+            ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+            f(i) = params%y_values(i) - exp( ex )
           end do
        end select
 

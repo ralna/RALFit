@@ -1033,6 +1033,7 @@ contains
 !                  w%apply_scaling_ws,options,inform)
              call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
                   w%generate_scaling_ws,options,inform)
+             if (inform%status /= 0) Go To 1000
              scaling_used = .true.
           end if
        end if
@@ -1062,16 +1063,20 @@ contains
           case (1) ! Powell's dogleg
              if (options%print_level >= 2) write(options%out,3000) 'dogleg'
              call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
+             if (inform%status /= 0) Go To 1000
           case (2) ! The AINT method
              if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
              call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+             if (inform%status /= 0) Go To 1000
           case (3) ! More-Sorensen
              if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
              call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
+             if (inform%status /= 0) Go To 1000
           case (4) ! Galahad
              if (options%print_level >= 2) write(options%out,3000) 'DTRS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+             if (inform%status /= 0) Go To 1000
           case default
              inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
              goto 1000
@@ -1082,10 +1087,12 @@ contains
              if (options%print_level >= 2) write(options%out,3020) 'RALFit solver'
              call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
                   d,normd,w%reg_order,options,inform,w%regularization_solver_ws)
+             if (inform%status /= 0) Go To 1000
           case(4) ! Galahad
              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+             if (inform%status /= 0) Go To 1000
           case default
              inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
              goto 1000
@@ -1094,7 +1101,6 @@ contains
           inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
           goto 1000
        end if ! type_of_method
-        
         
         ! reverse the scaling on the step
         if ( (scaling_used) ) then 
@@ -1116,13 +1122,11 @@ contains
 
      end if
 
-
-
      if (options%print_level >= 2) write(options%out,3010)
          
-1000 return
+1000 Continue 
      
-return
+     return
      
 1010 continue 
      inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -1284,7 +1288,10 @@ return
      
      real(wp) :: alpha, beta
 
-     if (.not. w%allocated ) goto 1010
+     if (.not. w%allocated ) then
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
+       goto 1000
+     End If
 
      !     Jg = J * g
      call mult_J(J,n,m,g,w%Jg,options)
@@ -1301,7 +1308,7 @@ return
         if ( inform%status .ne. 0 ) goto 1000
      case default
         inform%status = NLLS_ERROR_DOGLEG_MODEL
-        return
+        goto 1000
      end select
      
      if (norm2(w%d_gn) <= Delta) then
@@ -1321,14 +1328,7 @@ return
 
      normd = norm2(d)
      
-     return
-     
 1000 continue 
-     ! bad error return from solve_LLS
-     return
-
-1010 continue
-     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
 
 ! Printing commands
