@@ -1716,11 +1716,14 @@ contains
      !
      ! set A and v for the model being considered here...
 
-     if (.not. w%allocated) goto 1010
+     If (.not. w%allocated) Then
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
+       Go To 100
+     End If
 
-     theta = 0.5
-     kappa_easy = 0.001
-     kappa_hard = 0.002
+     theta = 0.5_wp
+     kappa_easy = 0.001_wp
+     kappa_hard = 0.002_wp
      
      ! Set up the initial variables....
      normF_A = dlange('F',n,n,A,n,w%norm_work)
@@ -1779,7 +1782,7 @@ contains
               ! check for interior convergence....
               if ( abs(sigma) < 1.0e-16_wp) then
                  if (options%print_level >= 3) write(options%out,5060)
-                 goto 4000
+                 goto 100
               end if
            else
               region = 2
@@ -1816,12 +1819,12 @@ contains
               if (options%print_level >= 3) write(options%out,6020) sigma_l
               dHd = dot_product(d, matmul(w%AplusSigma,d))
               call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
-              if (inform%status /= 0 ) goto 1000  
+              if (inform%status /= 0 ) goto 100  
               d = d + alpha * w%y1
               ! check for termination
               if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
                  if (options%print_level >= 2) write(options%out,5050)
-                 goto 4000
+                 goto 100
               end if
               if (options%print_level >= 3) write(options%out,6060)
            end if
@@ -1858,18 +1861,18 @@ contains
         if ( (region == 2) .or. (region == 3) ) then ! region F
            if (abs(nd - Delta) .le. kappa_easy * Delta) then
               if (options%print_level >= 2) write(options%out,5030)
-              goto 4000
+              goto 100
            end if
            if ( region == 3 ) then ! region G
               if (sigma == 0) then
                  if (options%print_level >= 2) write(options%out,5040)
-                 goto 4000
+                 goto 100
               else
 !!$                 dHd = dot_product(d, matmul(w%AplusSigma,d))
 !!$                 if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
 !!$                    if (options%print_level >= 2) write(options%out,5050)
 !!$                    d = d + alpha * w%y1
-!!$                    goto 4000
+!!$                    goto 100
 !!$                 end if
 !!$                 ! update d (as this wasn't done earlier)
 !!$                 d = d + alpha * w%y1
@@ -1906,32 +1909,19 @@ contains
         
      end do
      
-     
-     goto 1040
-     
-1000 continue 
-     ! bad error return from external package
-     return
-     
-1010 continue
-     inform%status = NLLS_ERROR_WORKSPACE_ERROR
-     return
-
-1040 continue
      ! maxits reached, not converged
      if (options%print_level >=2) write(options%out,5020)
      inform%status = NLLS_ERROR_MS_MAXITS
-     return
-
+     
+     
+100 continue 
           
-4000 continue
-     ! exit the routine
-     nd = norm2(d)
-     if (options%print_level >= 2) write(options%out,5010) i, region_char, nd, sigma_l, sigma, sigma_u
-     return 
+  If (inform%status==0) Then
+    nd = norm2(d)
+    if (options%print_level >= 2) write(options%out,5010) i, region_char, nd, sigma_l, sigma, sigma_u
+  End If 
 
-     ! Printing statements
-     ! print_level >= 2 
+! print_level >= 2 
 5000 FORMAT('iter',2x,'region',2x,'||d||',9x,'sigma_l',9x,'sigma',9x,'sigma_u')
 5010 FORMAT(i4,2x,A,5x,ES12.4,2x,ES12.4,4x,ES12.4,2x,ES12.4)
 5020 FORMAT('More-Sorensen failed to converge within max number of iterations')
@@ -1939,9 +1929,7 @@ contains
 5040 FORMAT('Converged! sigma = 0 in region G')
 5050 FORMAT('Converged! MINPACK test')    
 5060 FORMAT('Converged!')    
-    
-     
-     ! print_level >= 3
+! print_level >= 3
 6000 FORMAT('A + sigma I is symmetric positive definite')
 6010 FORMAT('Replacing sigma_u by ',ES12.4)     
 6020 FORMAT('Replacing sigma_l by ',ES12.4)
