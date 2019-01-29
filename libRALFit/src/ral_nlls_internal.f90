@@ -174,7 +174,6 @@ contains
                   eval_F, eval_J, eval_HF,   & 
                   params,                    &
                   inform, options, weights=weights)
-
           end if
        else
           if ( present(eval_HP) ) then
@@ -193,35 +192,33 @@ contains
        end if
        
        ! test the returns to see if we've converged
-
-       if (inform%status < 0) then 
+       if (inform%status /= 0) then 
           call nlls_strerror(inform)
           if ( options%print_level > 0 ) then
-             write(options%error,'(a,a)') 'ERROR: ', trim(inform%error_message)
+             write(options%error,Fmt=5001) trim(inform%error_message)
           end if
-          goto 1000 ! error -- exit
+          goto 100 ! error -- exit
        elseif ((inform%convergence_normf == 1).or.&
                (inform%convergence_normg == 1).or.&
                (inform%convergence_norms == 1)) then
-          goto 1000 ! converged -- exit
+          goto 100 ! converged -- exit
        end if
        
      end do main_loop
     
      ! If we reach here, then we're over maxits     
-     if (options%print_level > 0 ) write(options%error,1040) 
+     if (options%print_level > 0 ) write(options%error,Fmt=5000) 
      inform%status = NLLS_ERROR_MAXITS
-     goto 1000
     
-1000 continue
+100 continue
      call nlls_finalize(w,options)
      return
 ! Non-executable statements
 
 ! print level > 0
 
-1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
-
+5000 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
+5001 FORMAT('ERROR:',1X,A)
    END SUBROUTINE NLLS_SOLVE
   
 
@@ -258,6 +255,7 @@ contains
     logical :: bad_allocate
     character :: second
     integer :: num_successful_steps
+    integer :: ierr_dummy
 
 !   thread-safe inits
     svdstatus = 0
@@ -286,7 +284,7 @@ contains
        ! allocate space for vectors that will be used throughout the algorithm
        if (options%setup_workspaces) then 
           call setup_workspaces(w,n,m,options,inform)
-          if ( inform%alloc_status > 0) goto 4000
+          if ( inform%status/=0) goto 4000
        elseif (.not. w%allocated) then 
           goto 4100
        end if
@@ -491,7 +489,7 @@ contains
             w%Xnew,w%d,w%normd, & 
             options,inform,& 
             w%calculate_step_ws, w%tenJ, w%iw_ptr)
-       if (inform%status .ne. 0) then
+       if (inform%status /= 0) then
           if ( (w%use_second_derivatives) .and. &
                (options%model == 3) ) then
              ! don't trust this model -- switch to GN
@@ -620,7 +618,7 @@ contains
        ! Update the TR radius !
        !++++++++++++++++++++++!
        call update_trust_region_radius(rho,options,inform,w)
-       if (inform%status .ne. 0) goto 4000
+       if (inform%status /= 0) goto 4000
        
        if (.not. success) then
           if ( options%print_level >= 1 ) then
@@ -633,7 +631,6 @@ contains
 !             goto 4060
 !          end if
        end if
-
     end do
     ! if we reach here, a successful step has been found
     
@@ -743,27 +740,37 @@ contains
     inform%iter = w%iter
 !    if (options%output_progress_vectors) then
     if (allocated(w%resvec)) then
-       if( allocated(inform%resvec)) deallocate(inform%resvec)
+       if( allocated(inform%resvec)) deallocate(inform%resvec, stat=ierr_dummy)
        allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
-       if (inform%alloc_status > 0) bad_allocate = .true.
-       inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
+       if (inform%alloc_status == 0) Then
+         inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
+       else
+         bad_allocate = .true.
+       end if
     end if
-    if (allocated(w%gradvec)) then
-       if (allocated(inform%gradvec)) deallocate(inform%gradvec)
+    if ( (.not.bad_allocate) .And. allocated(w%gradvec)) then
+       if (allocated(inform%gradvec)) deallocate(inform%gradvec, stat=ierr_dummy)
        allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
-       if (inform%alloc_status > 0) bad_allocate = .true.
-       inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
+       if (inform%alloc_status == 0) then
+         inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
+       else
+         bad_allocate = .true.
+       end if
     end if
-    if (options%calculate_svd_J) then
-       if (allocated(inform%smallest_sv) ) deallocate(inform%smallest_sv)
-       allocate(inform%smallest_sv(w%iter + 1))
-       if (inform%alloc_status > 0) bad_allocate = .true.
+    if ((.not.bad_allocate) .And. options%calculate_svd_J) then
+       if (allocated(inform%smallest_sv) ) deallocate(inform%smallest_sv, stat=ierr_dummy)
+       allocate(inform%smallest_sv(w%iter + 1), stat=inform%alloc_status)
+       if (inform%alloc_status /= 0) bad_allocate = .true.
        if (allocated(inform%largest_sv) ) deallocate(inform%largest_sv)
-       allocate(inform%largest_sv(w%iter + 1))
-       if (inform%alloc_status > 0) bad_allocate = .true.
+       allocate(inform%largest_sv(w%iter + 1), stat=inform%alloc_status)
+       if (inform%alloc_status /= 0) bad_allocate = .true.
     end if
 
     if (bad_allocate) then 
+       if (allocated(inform%resvec)) deallocate(inform%resvec ,stat=ierr_dummy)
+       if (allocated(inform%gradvec)) deallocate(inform%gradvec ,stat=ierr_dummy)
+       if (allocated(inform%smallest_sv)) deallocate(inform%smallest_sv ,stat=ierr_dummy)
+       if (allocated(inform%largest_sv)) deallocate(inform%largest_sv ,stat=ierr_dummy)
        inform%status = NLLS_ERROR_ALLOCATION
        inform%bad_alloc = 'nlls_iterate'
     end if
@@ -876,24 +883,24 @@ contains
 
   subroutine nlls_strerror(inform)!,error_string)
     type( nlls_inform ), intent(inout) :: inform
-    
+
     if ( inform%status == NLLS_ERROR_MAXITS ) then
        inform%error_message = 'Maximum number of iterations reached'
     elseif ( inform%status == NLLS_ERROR_EVALUATION ) then
-       write(inform%error_message,'(a,a,a,i0)') & 
-            'Error code from user-supplied subroutine ',trim(inform%external_name), & 
-            ' passed error = ', inform%external_return
+       write(inform%error_message,Fmt=5004) & 
+            'Error code from user-supplied subroutine',trim(inform%external_name), & 
+            'passed error =', inform%external_return
     elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_MODEL ) then
        inform%error_message = 'Unsupported model passed in options'
     elseif ( inform%status == NLLS_ERROR_FROM_EXTERNAL ) then
-       write(inform%error_message,'(a,a,a,i0)') & 
-            'The external subroutine ',trim(inform%external_name), & 
-            ' passed error = ', inform%external_return
+       write(inform%error_message,Fmt=5004) & 
+            'The external subroutine',trim(inform%external_name), & 
+            'passed error =', inform%external_return
     elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_METHOD ) then
        inform%error_message = 'Unsupported nlls_method passed in options'
     elseif ( inform%status == NLLS_ERROR_ALLOCATION ) then
-       write(inform%error_message,'(a,a)') &
-            'Bad allocation of memory in ', trim(inform%bad_alloc)
+       write(inform%error_message,Fmt=5002) &
+            'Bad allocation of memory in', trim(inform%bad_alloc)
     elseif ( inform%status == NLLS_ERROR_MAX_TR_REDUCTIONS ) then
        inform%error_message = 'The trust region was reduced the maximum number of times'
     elseif ( inform%status == NLLS_ERROR_X_NO_PROGRESS ) then
@@ -924,10 +931,13 @@ contains
        inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
     elseif ( inform%status == NLLS_ERROR_NO_SECOND_DERIVATIVES ) then
        inform%error_message = 'Exact second derivatives needed for tensor model'
+    elseif ( inform%status == NLLS_ERROR_WRONG_INNER_METHOD ) then
+       inform%error_message = 'Unsupported value of inner_method passed in options'
     else 
        inform%error_message = 'Unknown error number'           
     end if
-    
+5002  Format (A,1X,A)
+5004  Format (A,1X,A,1X,A,1X,I0)   
   end subroutine nlls_strerror
 
 
@@ -965,7 +975,10 @@ contains
     real(wp) :: normx
 
 
-    if (.not. w%allocated) goto 1010
+    if (.not. w%allocated) then
+      inform%status = NLLS_ERROR_WORKSPACE_ERROR
+      goto 100
+    end if
     
     scaling_used = .false.
     d(1:n) = zero
@@ -983,6 +996,9 @@ contains
 
        Xnew = X + d
        call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
+       If (inform%status/=0) Then
+         Go To 100
+       End If
     else 
        ! compute the hessian used in the model 
 
@@ -1003,7 +1019,14 @@ contains
           end do
           w%extra_scale = options%regularization_term
        case (2)
-          if ( .not. allocated(w%xxt) ) allocate (w%xxt(n,n))
+          if ( .not. allocated(w%xxt) ) then
+            allocate (w%xxt(n,n), stat=inform%alloc_status)
+            if (inform%alloc_status/=0) then
+              inform%status = NLLS_ERROR_ALLOCATION
+              inform%bad_alloc = 'calculate_step'
+              GoTo 100 
+            end if
+          end if
           call outer_product(X,n,w%xxt)
           normx = norm2(X(1:n))
           if (normx > epsmch) then
@@ -1033,7 +1056,7 @@ contains
 !                  w%apply_scaling_ws,options,inform)
              call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
                   w%generate_scaling_ws,options,inform)
-             if (inform%status /= 0) Go To 1000
+             if (inform%status /= 0) Go To 100
              scaling_used = .true.
           end if
        end if
@@ -1063,23 +1086,23 @@ contains
           case (1) ! Powell's dogleg
              if (options%print_level >= 2) write(options%out,3000) 'dogleg'
              call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
-             if (inform%status /= 0) Go To 1000
+             if (inform%status /= 0) Go To 100
           case (2) ! The AINT method
              if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
              call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
-             if (inform%status /= 0) Go To 1000
+             if (inform%status /= 0) Go To 100
           case (3) ! More-Sorensen
              if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
              call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
-             if (inform%status /= 0) Go To 1000
+             if (inform%status /= 0) Go To 100
           case (4) ! Galahad
              if (options%print_level >= 2) write(options%out,3000) 'DTRS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
-             if (inform%status /= 0) Go To 1000
+             if (inform%status /= 0) Go To 100
           case default
              inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
-             goto 1000
+             goto 100
           end select ! nlls_method
        elseif (options%type_of_method == 2) then
           select case (options%nlls_method)
@@ -1087,19 +1110,19 @@ contains
              if (options%print_level >= 2) write(options%out,3020) 'RALFit solver'
              call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
                   d,normd,w%reg_order,options,inform,w%regularization_solver_ws)
-             if (inform%status /= 0) Go To 1000
+             if (inform%status /= 0) Go To 100
           case(4) ! Galahad
              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
-             if (inform%status /= 0) Go To 1000
+             if (inform%status /= 0) Go To 100
           case default
              inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
-             goto 1000
+             goto 100
           end select ! nlls_method
        else
           inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
-          goto 1000
+          goto 100
        end if ! type_of_method
         
         ! reverse the scaling on the step
@@ -1119,24 +1142,19 @@ contains
         !++++++++++++++++++++++++++++!        
         Xnew = X + d
         call evaluate_model(f,J,hf,X,Xnew,d,md,md_gn,m,n,options,inform,w%evaluate_model_ws)
+        If (inform%status/=0) Then
+          Go To 100
+        End If
 
      end if
 
      if (options%print_level >= 2) write(options%out,3010)
          
-1000 Continue 
+100 Continue 
      
-     return
-     
-1010 continue 
-     inform%status = NLLS_ERROR_WORKSPACE_ERROR
-     return
-
 3000 FORMAT('*** Solving the trust region subproblem using ',A,' ***')
 3010 FORMAT('*** Subproblem solution found ***')
 3020 FORMAT('*** Solving the regularized subproblem using ',A,' ***')
-     
-
    END SUBROUTINE calculate_step
 
    subroutine generate_scaling(J,A,n,m,scale,extra_scale,w,options,inform)
@@ -1159,7 +1177,10 @@ contains
      integer :: ii, jj
      real(wp) :: Jij, temp
 
-     if (.not. w%allocated) goto 1010
+     If (.not. w%allocated) Then
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
+       goto 100
+     End If
 
      select case (options%scale)
      case (1,2,3)
@@ -1212,7 +1233,7 @@ contains
 !!$        write(*,*) '*    not robust      *'
 !!$        write(*,*) '**********************'
 !!$        call all_eig_symm(A,n,w%tempvec,w%ev,w%all_eig_symm_ws,inform)
-!!$        if (inform%status .ne. 0) goto 1000
+!!$        if (inform%status .ne. 0) goto 100
 !!$        do ii = 1,n
 !!$           ! plain version...
 !!$           w%diag(n + 1 - ii) = w%tempvec(ii)
@@ -1223,16 +1244,7 @@ contains
         return
      end select
           
-     return
-     
-1000 continue
-     ! error in external package
-     return
-
-1010 continue
-     inform%status = NLLS_ERROR_WORKSPACE_ERROR
-     return
-     
+100 continue
    end subroutine generate_scaling
 
    subroutine switch_to_gauss_newton(w, n, options)
@@ -1290,7 +1302,7 @@ contains
 
      if (.not. w%allocated ) then
        inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       goto 1000
+       goto 100
      End If
 
      !     Jg = J * g
@@ -1305,10 +1317,10 @@ contains
      case (1)
         ! linear model...
         call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws)
-        if ( inform%status .ne. 0 ) goto 1000
+        if ( inform%status /= 0 ) goto 100
      case default
         inform%status = NLLS_ERROR_DOGLEG_MODEL
-        goto 1000
+        goto 100
      end select
      
      if (norm2(w%d_gn) <= Delta) then
@@ -1321,21 +1333,17 @@ contains
         w%d_sd = alpha * w%d_sd
         w%ghat = w%d_gn - w%d_sd
         call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
-        if ( inform%status .ne. 0 ) goto 1000
+        if ( inform%status /= 0 ) goto 100
         d = w%d_sd + beta * w%ghat
         if (options%print_level >=2) write(options%out,2020)
      end if
 
      normd = norm2(d)
      
-1000 continue 
-     return
-
-! Printing commands
+100 continue 
 2000 FORMAT('Gauss Newton step taken')
 2010 FORMAT('Steepest descent step taken')
 2020 FORMAT('Dogleg step taken')
-
    END SUBROUTINE dogleg
      
    SUBROUTINE AINT_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,w)
@@ -1357,12 +1365,15 @@ contains
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
 
-     if ( .not. w%allocated ) goto 1010
+     If ( .not. w%allocated ) Then
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
+       goto 100
+     End If
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
 
-     tau = 1e-4
+     tau = 1.0e-4_wp
      obj_p0 = HUGE(wp)
 
      ! The code finds 
@@ -1381,10 +1392,10 @@ contains
      select case (options%model)
      case (1)
         call solve_spd(A,-v,w%LtL,w%p0,n,inform)
-        if (inform%status .ne. 0) goto 1000
+        if (inform%status /= 0) goto 100
      case default
         call solve_general(A,-v,w%p0,n,inform,w%solve_general_ws)
-        if (inform%status .ne. 0) goto 1000
+        if (inform%status /= 0) goto 100
      end select
           
      call matrix_norm(w%p0,w%B,norm_p0)
@@ -1394,6 +1405,7 @@ contains
         if (options%print_level >=3) write(options%out,2000) 'p0'     
         call evaluate_model(f,J,hf,X,X,w%p0,obj_p0,obj_p0_gn,m,n, & 
              options, inform, w%evaluate_model_ws)
+           ! TODO AndrewS Check return value in infom%status
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -1407,7 +1419,7 @@ contains
      w%M1(1:n,n+1:2*n) = -w%B
      
      call max_eig(w%M0,w%M1,2*n,lam, w%y, w%y_hardcase, options, inform, w%max_eig_ws)
-     if ( inform%status > 0 ) goto 1000
+     if ( inform%status /= 0 ) goto 100
 
      if (norm2(w%y(1:n)) < tau) then
         ! Hard case
@@ -1420,10 +1432,10 @@ contains
         select case (options%model) 
         case (1)
            call solve_spd(w%M0_small,-v,w%LtL,w%q,n,inform)
-           if (inform%status .ne. 0) goto 1000
+           if (inform%status /= 0) goto 100
         case default
           call solve_general(w%M0_small,-v,w%q,n,inform,w%solve_general_ws)
-          if (inform%status .ne. 0) goto 1000
+          if (inform%status /= 0) goto 100
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
         ! (I think..) and inside...fix
@@ -1431,7 +1443,7 @@ contains
         
         ! find max eta st ||q + eta v(:,1)||_B = Delta
         call findbeta(w%q,w%y_hardcase(:,1),Delta,eta,inform)
-        if ( inform%status .ne. 0 ) goto 1000
+        if ( inform%status /= 0 ) goto 100
 
         !!!!!      ^^TODO^^    !!!!!
         ! currently assumes B = I !!
@@ -1443,10 +1455,10 @@ contains
         select case (options%model)
         case (1)
            call solve_spd(A + lam*w%B,-v,w%LtL,w%p1,n,inform)
-           if (inform%status .ne. 0) goto 1000
+           if (inform%status /= 0) goto 100
         case default
            call solve_general(A + lam*w%B,-v,w%p1,n,inform,w%solve_general_ws)
-           if (inform%status .ne. 0) goto 1000
+           if (inform%status /= 0) goto 100
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
         ! and inside...fix
@@ -1456,7 +1468,7 @@ contains
      if (options%print_level >=3) write(options%out,2000) 'p1'     
      call evaluate_model(f,J,hf,X,X,w%p1,obj_p1,obj_p1_gn,m,n, & 
           options,inform,w%evaluate_model_ws)
-
+! TODO AndrewS add inform%status if
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
         d = w%p0
@@ -1468,22 +1480,10 @@ contains
 
      normd = norm2(d)
 
-     return
-         
-1000 continue 
-     ! bad error return from external package
-     return
-
-1010 continue
-     inform%status = NLLS_ERROR_WORKSPACE_ERROR
-     return    
-
-! print statements   
+100 continue 
 2000 FORMAT('Evaluating the model at ',A2,':')
 2010 FORMAT('Hard case identified')
 2030 FORMAT(A2,' chosen as d')
- 
-
    END SUBROUTINE AINT_tr
 
    subroutine more_sorensen(A,v,n,m,Delta,d,nd,options,inform,w)
@@ -1505,10 +1505,11 @@ contains
 
      if (options%use_ews_subproblem) then
         call more_sorensen_ew(A,v,n,m,Delta,d,nd,options,inform,w)
+        ! inform%status is passed along
      else
         call more_sorensen_noew(A,v,n,m,Delta,d,nd,options,inform,w)
+        ! inform%status is passed along
      end if
-
    end subroutine more_sorensen
 
    subroutine more_sorensen_ew(A,v,n,m,Delta,d,nd,options,inform,w)
@@ -1542,7 +1543,10 @@ contains
      !
      ! set A and v for the model being considered here...
 
-     if (.not. w%allocated) goto 1010
+     If (.not. w%allocated) Then
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
+       goto 100
+     End If
          
      local_ms_shift = options%more_sorensen_shift
 
@@ -1550,8 +1554,7 @@ contains
      ! in this case, A = AplusSigma
      w%AplusSigma(1:n,1:n) = A(1:n,1:n)
      call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
-     
-     if (inform%status .eq. 0) then
+     if (inform%status == 0) then
         ! A is symmetric positive definite....
         sigma = zero
         if (options%print_level >=3) write(options%out,6000)
@@ -1561,13 +1564,13 @@ contains
         inform%external_return = 0
         inform%external_name = REPEAT( ' ', 80 )
         call min_eig_symm(A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws) 
-        if (inform%status .ne. 0) goto 1000
+        if (inform%status /= 0) goto 100
         sigma = -(sigma - local_ms_shift)
         if (options%print_level >= 3) write(options%out,6010) sigma
         ! find a shift that makes (A + sigma I) positive definite,
         ! and solve (A + sigma I) (-v) = d 
         call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
-        if (inform%status .ne. 0) goto 4000
+        if (inform%status /= 0) goto 100
         if (options%print_level >=3) write(options%out,6020)
      end if
      
@@ -1588,21 +1591,27 @@ contains
            ! we're good....exit
            if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
            if (options%print_level >= 3) write(options%out,6040)
-           goto 1020
+             ! initial point was successful
+             if (options%print_level==2) write(options%out,5040)
+             Go To 100
         else if ( abs( nd - Delta ) < epsilon ) then
            ! also good...exit
-                      if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
+           if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
            if (options%print_level >= 3) write(options%out,6050)
-           goto 1020              
+           ! initial point was successful
+           if (options%print_level==2) write(options%out,5040)
+           Go To 100
         end if
         call findbeta(d,w%y1,Delta,alpha,inform)
-        if (inform%status .ne. 0 ) goto 1000  
+        if (inform%status /= 0 ) goto 100  
         d = d + alpha * w%y1
         nd = norm2(d)
         if (options%print_level>2) write(options%out,5010) 0, nd, sigma, 0.0
         if (options%print_level >= 3) write(options%out,6060)
         ! also good....exit
-        goto 1020
+        ! initial point was successful
+        if (options%print_level==2) write(options%out,5040)
+        goto 100
      end if
      
      do i = 1, options%more_sorensen_maxits
@@ -1611,7 +1620,9 @@ contains
         if ( abs(nd  - Delta) .le. epsilon) then
            ! we're within the tr radius -- exit
            if (options%print_level >= 3) write(options%out,6035)
-           goto 1020
+           ! initial point was successful
+           if (options%print_level==2) write(options%out,5040)
+           goto 100
         end if
 
         w%q = d ! w%q = R'\d
@@ -1625,65 +1636,34 @@ contains
            if (no_restarts < 1) then 
               ! find a shift that makes (A + sigma I) positive definite
               call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
-              if (inform%status .ne. 0) goto 4000
+              if (inform%status /= 0) goto 100
               no_restarts = no_restarts + 1
            else
               ! we're not going to make progress...jump out 
               inform%status = NLLS_ERROR_MS_NO_PROGRESS
-              goto 4000
+              goto 100
            end if
         else
            sigma = sigma + sigma_shift
            call shift_matrix(A,sigma,w%AplusSigma,n)
            call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
         end if
-        
-        if (inform%status .ne. 0) goto 1000
+        if (inform%status /= 0) goto 100
         
         nd = norm2(d)
-
      end do
      if (options%print_level >= 2) write(options%out,5010)
-
-     goto 1040
-     
-1000 continue 
-     ! bad error return from external package
-     goto 4000
-     
-1010 continue
-     inform%status = NLLS_ERROR_WORKSPACE_ERROR
-     goto 4000
-
-1020 continue
-     ! initial point was successful
-     nd = norm2(d)
-     if (options%print_level==2) write(options%out,5040)
-     goto 4000
-
-1040 continue
      ! maxits reached, not converged
      if (options%print_level >=2) write(options%out,5020)
      inform%status = NLLS_ERROR_MS_MAXITS
-     goto 4000
-
-3000 continue
-     ! too many shifts
-     inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
-     goto 4000
      
-4000 continue
-     ! exit the routine
-     return 
-
-! Printing statements
+100  Continue
 ! print_level >= 2 
 5000 FORMAT('iter',4x,'nd',12x,'sigma',9x,'sigma_shift')
 5010 FORMAT(i4,2x,ES12.4,2x,ES12.4,2x,ES12.4)
 5020 FORMAT('More-Sorensen failed to converge within max number of iterations')   
 5030 FORMAT('More-Sorensen converged at iteration ',i4)
 5040 FORMAT('Leaving More-Sorensen')
-  
 ! print_level >= 3 
 6000 FORMAT('A is symmetric positive definite')     
 6010 FORMAT('Trying a shift of sigma = ',ES12.4)     
@@ -1787,22 +1767,22 @@ contains
         else 
            factorization_done = .false.
         end if
-        if (inform%status .eq. 0) then
+        if (inform%status == 0) then
            ! A is symmetric positive definite....
            if (options%print_level >= 3) write(options%out,6000)
            nd = norm2(d)
            if (nd < Delta) then
-              region = 3 ! G
+              region = 3
               region_char = 'G'
               sigma_u = sigma
               if (options%print_level >= 3) write(options%out,6010) sigma_u
               ! check for interior convergence....
-              if ( abs(sigma) < 1e-16) then
+              if ( abs(sigma) < 1.0e-16_wp) then
                  if (options%print_level >= 3) write(options%out,5060)
                  goto 4000
               end if
            else
-              region = 2 ! L
+              region = 2
               region_char = 'L'
               sigma_l = sigma
               if (options%print_level >= 3) write(options%out,6020) sigma_l
@@ -1836,13 +1816,13 @@ contains
               if (options%print_level >= 3) write(options%out,6020) sigma_l
               dHd = dot_product(d, matmul(w%AplusSigma,d))
               call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
+              if (inform%status /= 0 ) goto 1000  
               d = d + alpha * w%y1
               ! check for termination
               if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
                  if (options%print_level >= 2) write(options%out,5050)
                  goto 4000
               end if
-              if (inform%status .ne. 0 ) goto 1000  
               if (options%print_level >= 3) write(options%out,6060)
            end if
         else  ! not in F
@@ -1931,17 +1911,17 @@ contains
      
 1000 continue 
      ! bad error return from external package
-     goto 4000
+     return
      
 1010 continue
      inform%status = NLLS_ERROR_WORKSPACE_ERROR
-     goto 4000
+     return
 
 1040 continue
      ! maxits reached, not converged
      if (options%print_level >=2) write(options%out,5020)
      inform%status = NLLS_ERROR_MS_MAXITS
-     goto 4000
+     return
 
           
 4000 continue
@@ -1972,9 +1952,6 @@ contains
 6070 FORMAT('sigma_shift = ',ES12.4)
 6080 FORMAT('nq = ',ES12.4)
 6090 FORMAT('Replacing sigma by max(gm,av) = ', ES12.4)
-
-
-
    end subroutine more_sorensen_noew
 
    
@@ -2062,13 +2039,16 @@ contains
      do while( .not. successful_shift )
         call shift_matrix(A,sigma,w%AplusSigma,n)
         call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
-        if ( inform%status .ne. 0 ) then
+        if ( inform%status /= 0 ) then
            ! reset the error calls -- handled in the code....
            inform%status = 0
            inform%external_return = 0
            inform%external_name = REPEAT( ' ', 80 )
            no_shifts = no_shifts + 1
-           if ( no_shifts == 10 ) goto 3000 ! too many shifts -- exit
+           If ( no_shifts >= 10 ) Then
+             inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
+             goto 100 ! too many shifts -- exit
+           End If
            sigma =  sigma + (10**no_shifts) * options%more_sorensen_shift
            if (options%print_level >=3) write(options%out,6010) sigma
         else
@@ -2076,16 +2056,9 @@ contains
         end if
      end do
 
-     return
-
-3000 continue
-     ! too many shifts
-     inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
-     return     
+100 continue
 
 6010 FORMAT('Trying a shift of sigma = ',ES12.4)
-     
-
    end subroutine check_shift_and_solve
       
    
@@ -2135,13 +2108,16 @@ contains
      !       s.t. ||p|| \leq Delta
      !
 
-     if (.not. w%allocated ) goto 1010
+     If (.not. w%allocated ) Then
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
+       goto 100
+     End If
      
      ! We have the unprocessed matrices, we need to get an 
      ! eigendecomposition to make A diagonal
      !
      call all_eig_symm(A,n,w%ew,w%ev,w%all_eig_symm_ws,inform)
-     if (inform%status .ne. 0) goto 1000
+     if (inform%status /= 0) goto 100
 
      ! We can now change variables, setting y = Vp, getting
      ! Vd = arg min_(Vx) v^T p + 0.5 * (Vp)^T D (Vp)
@@ -2167,20 +2143,22 @@ contains
  
     select case (options%type_of_method)
      case (1)
-        call dtrs_initialize( dtrs_options, dtrs_inform ) 
+        call dtrs_initialize( dtrs_options, dtrs_inform )
+        ! Does not fail. 
         dtrs_options%error = options%error
         dtrs_options%out = options%out
         dtrs_options%print_level = options%print_level - 1
         call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, & 
                         dtrs_options, dtrs_inform )
-        if ( dtrs_inform%status .ne. 0) then
+        if ( dtrs_inform%status /= 0) then
            inform%external_return = dtrs_inform%status
            inform%external_name = 'galahad_dtrs'
            inform%status = NLLS_ERROR_FROM_EXTERNAL
-           goto 1000
+           goto 100
         end if
      case(2)
         call drqs_initialize( drqs_options, drqs_inform ) 
+        ! Does not fail. 
         drqs_options%error = options%error
         drqs_options%out = options%out
         drqs_options%print_level = options%print_level - 1
@@ -2200,11 +2178,11 @@ contains
               ! call drqs_solve(n,3.0_wp,1.0_wp/Delta, zero, w%v_trans,&
               !                 w%ew, w%d_trans,drqs_options, drqs_inform)
               continue
-           elseif ( drqs_inform%status .ne. 0) then
+           elseif ( drqs_inform%status /= 0) then
               inform%external_return = drqs_inform%status
               inform%external_name = 'galahad_drqs'
               inform%status = NLLS_ERROR_FROM_EXTERNAL
-              goto 1000
+              goto 100
            else
               proceed = .true.
            end if
@@ -2215,28 +2193,20 @@ contains
 
      normd = norm2(d) ! ||d||_D
      
-     return
+100 continue 
 
-1000 continue 
-     ! bad error return from external package
-     return
-
-1010 continue 
-     inform%status = NLLS_ERROR_WORKSPACE_ERROR
-     return
-     
 2000 FORMAT('Regularization order used = ',ES12.4)
 
    end subroutine solve_galahad
-
 
    subroutine regularization_solver(A,v,n,m,Delta,num_successful_steps,&
         d,normd,reg_order,options,inform,w)
 
      !---------------------------------------------
-     ! regularization_sovler
+     ! regularization_solver
      ! Solve the regularized subproblem using 
      ! a home-rolled algorithm
+     ! Note: inform%status is set by solve_spd
      !--------------------------------------------
 
      REAL(wp), intent(in) :: A(:,:), v(:)
@@ -2253,31 +2223,17 @@ contains
      real(wp) :: reg_param
      
      reg_param = 1.0_wp/Delta
-     ! TODO: consider removing this unused param
+     ! TODO: consider removing this unused param AndrewS
      normd = 0.0_wp
      
      if ( reg_order == two ) then
-
         call shift_matrix(A,reg_param,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
-        if ( inform%status .ne. 0 ) goto 1000
-
+        ! informa%status is passed along, this routine exits here
      else 
-        
-        write(*,*) 'Warning: Unsupported regularization order.'
-
+!      TODO ADDRESS this warning! AndrewS, 0 <= reg_order  !!!
+        write(*,*) 'Warning: Unsupported regularization order. Use 2.0'
      end if
-     
-     return
-
-1000 continue
-     ! bad error return from external package
-     goto 4000
-     
-4000 continue
-     ! exit the routine
-     return 
-
    end subroutine regularization_solver
 
    SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
@@ -2296,7 +2252,10 @@ contains
        integer :: nrhs = 1, lwork, lda, ldb
        type( solve_LLS_work ) :: w
        
-       if (.not. w%allocated) goto 1000
+       If (.not. w%allocated) Then
+         inform%status = NLLS_ERROR_WORKSPACE_ERROR
+         goto 100
+       End If
        
        lda = m
        ldb = max(m,n)
@@ -2310,17 +2269,12 @@ contains
        if (inform%external_return .ne. 0 ) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgels'
-          return
+          Go To 100
        end if
 
        d_gn = -w%temp(1:n)
 
-       return
-       
-1000   continue
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-              
+100   continue
      END SUBROUTINE solve_LLS
      
      SUBROUTINE findbeta(a, b, Delta, beta, inform)
@@ -2350,16 +2304,16 @@ contains
      if ( discrim < zero ) then
         inform%status = NLLS_ERROR_FIND_BETA
         inform%external_name = 'findbeta'
-        return
+        Go To 100
      end if
 
-     if (c .le. 0) then
+     if (c .le. 0.0_wp) then
         beta = (-c + sqrt(discrim) ) / normb2
      else
         beta = (Delta**2 - norma2) / ( c + sqrt(discrim) )
      end if
         
-
+100  Continue
      END SUBROUTINE findbeta
      
      subroutine evaluate_model(f,J,hf,X,Xnew,d,md,md_gn,m,n,options,inform,w)
@@ -2391,56 +2345,50 @@ contains
 
        real(wp) :: xtd, normx, p, sigma
        
-       if (.not. w%allocated ) goto 2000
        md = zero
        md_gn = zero
+
+       If (.not. w%allocated ) Then
+         inform%status = NLLS_ERROR_WORKSPACE_ERROR
+         goto 100
+       End If
 
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd,options)
        
-       md_gn = 0.5 * norm2(f(1:m) + w%Jd(1:m))**2
+       md_gn = 0.5_wp * norm2(f(1:m) + w%Jd(1:m))**2
        
        ! if we are solving a regularized problem, update terms
        p = options%regularization_power
        sigma = options%regularization_term
        select case (options%regularization) 
        case (1)
-          md_gn = md_gn + & 
-               0.5 * sigma * norm2(Xnew(1:n))**2
+          md_gn = md_gn + 0.5_wp * sigma * norm2(Xnew(1:n))**2
        case (2)
           normx = norm2(X(1:n))
           xtd = dot_product(X(1:n),d(1:n))
           md_gn = md_gn + & 
                sigma * ( one/p * (normx**p) + & 
-               (normx**(p-2)) * xtd + & 
-               (p/4.0_wp) * (normx**(p-4)) * (xtd**2) ) 
+               (normx**(p-2.0_wp)) * xtd + & 
+               (p/4.0_wp) * (normx**(p-4.0_wp)) * (xtd**2) ) 
        end select
-       
        
        select case (options%model)
        case (1) ! first-order (no Hessian)
           md = md_gn
-          continue
        case (4) ! tensor model 
           ! nothing to do here...
-          continue
        case default
           ! these have a dynamic H -- recalculate
           ! H = J^T J + HF, HF is (an approx?) to the Hessian
           call mult_J(hf,n,n,d,w%Hd)
-          md = md_gn + 0.5 * dot_product(d(1:n),w%Hd(1:n))
+          md = md_gn + 0.5_wp * dot_product(d(1:n),w%Hd(1:n))
           ! regularized newton terms taken care of already in apply_second_order_info
        end select
-       if (options%print_level >= 3) write(options%out,1000) md
+       if (options%print_level >= 3) write(options%out,5000) md
 
-       return
-
-1000   FORMAT('Model evaluated successfully: m_k(d) = ',ES12.4)
-2000   continue 
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-
-
+100   continue 
+5000   FORMAT('Model evaluated successfully: m_k(d) = ',ES12.4)
      end subroutine evaluate_model
 
      subroutine calculate_rho(normf,normfnew,md,rho,options)
@@ -2462,10 +2410,10 @@ contains
        real(wp) :: actual_reduction, predicted_reduction
        real(wp) :: tol
        
-       actual_reduction = ( 0.5 * (normf**2) ) - ( 0.5 * (normfnew**2) )
-       predicted_reduction = ( ( 0.5 * (normf**2) ) - md )
+       actual_reduction = ( 0.5_wp * (normf**2) ) - ( 0.5_wp * (normfnew**2) )
+       predicted_reduction = ( ( 0.5_wp * (normf**2) ) - md )
 
-       tol = 10 * epsmch
+       tol = 10.0_wp * epsmch
        
        if ( abs(actual_reduction) < tol ) then 
           rho = one
@@ -2485,11 +2433,8 @@ contains
 
      end subroutine calculate_rho
 
-     subroutine apply_second_order_info(n,m,&
-          X,w, & !f,hf,
-          eval_Hf,&
-          !          d, y, y_sharp, & 
-          params,options,inform,weights)
+     subroutine apply_second_order_info(n,m,X,w,eval_Hf,params,options,inform, &
+         weights)
        integer, intent(in)  :: n, m 
        real(wp), intent(in) :: X(:)
        type( NLLS_workspace ), intent(inout) :: w
@@ -2515,7 +2460,6 @@ contains
        if (options%regularization > 0) then
           call update_regularized_hessian(w%hf,X,n,options)
        end if
-       
      end subroutine apply_second_order_info
 
      subroutine update_regularized_normF(normF,normX,options)
@@ -2526,14 +2470,14 @@ contains
        select case(options%regularization)
        case (1)
           normF = sqrt(normF**2 + & 
-               options%regularization_term *  & 
-               normX**2 )
+               options%regularization_term * normX**2 )
        case (2)
           normF = sqrt(normF**2 + & 
                ( 2 * options%regularization_term / options%regularization_power )  *  & 
                normX**options%regularization_power )
+       Case Default
+         ! No regularization applied
        end select
-       
      end subroutine update_regularized_normF
 
      subroutine update_regularized_gradient(g,X,normX,options)
@@ -2548,7 +2492,6 @@ contains
           g = g - options%regularization_term *  & 
                (normX**(options%regularization_power - 2.0_wp)) * X 
        end select
-
      end subroutine update_regularized_gradient
 
      subroutine update_regularized_hessian(hf,X,n,options)
@@ -2570,16 +2513,13 @@ contains
                 hf_local = x(ii)*x(jj)
                 if (ii == jj) hf_local = hf_local + normx**2
                 hf_local = sigma * normx**(p - 4.0) * hf_local                
-                hf( (ii-1)*n + jj) = hf( (ii-1)*n + jj) + & 
-                     hf_local
+                hf( (ii-1)*n + jj) = hf( (ii-1)*n + jj) + hf_local
              end do
           end do
        end if
-      
      end subroutine update_regularized_hessian
 
      subroutine rank_one_update(hf,w,n,options)
-
        real(wp), intent(inout) :: hf(:)
        type( NLLS_workspace ), intent(inout) :: w
        integer, intent(in) :: n
@@ -2591,9 +2531,9 @@ contains
        w%y_sharp = w%g_mixed - w%g
 
        yts = dot_product(w%d,w%y)
-       if ( abs(yts) < 10 * epsmch ) then
+       if ( abs(yts) < 10.0_wp * epsmch ) then
           ! safeguard: skip this update
-          return
+          Go To 100
        end if
 
        call mult_J(hf,n,n,w%d,w%Sks) ! hfs = S_k * d
@@ -2602,7 +2542,7 @@ contains
 
        ! now, let's scale hd (Nocedal and Wright, Section 10.2)
        dSks = abs(dot_product(w%d,w%Sks))
-       if ( abs(dSks) < 10.0 * epsmch ) then
+       if ( abs(dSks) < 10.0_wp * epsmch ) then
           ! check this first to avoid possible overflow
           alpha = one
        else
@@ -2614,19 +2554,18 @@ contains
        ! update S_k (again, as in N&W, Section 10.2)
 
        ! hf = hf + (1/yts) (y# - Sk d)^T y:
-       alpha = 1/yts
+       alpha = 1.0_wp/yts
        call dGER(n,n,alpha,w%ysharpSks,1,w%y,1,hf,n)
        ! hf = hf + (1/yts) y^T (y# - Sk d):
        call dGER(n,n,alpha,w%y,1,w%ysharpSks,1,hf,n)
        ! hf = hf - ((y# - Sk d)^T d)/((yts)**2)) * y y^T
        alpha = -dot_product(w%ysharpSks,w%d)/(yts**2)
        call dGER(n,n,alpha,w%y,1,w%y,1,hf,n)
-
+100    Continue
      end subroutine rank_one_update
 
 
      subroutine update_trust_region_radius(rho,options,inform,w)
-
        real(wp), intent(inout) :: rho ! ratio of actual to predicted reduction
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
@@ -2656,6 +2595,13 @@ contains
                      options%radius_increase * w%Delta )
                 ! increase based on Delta to ensure the 
                 ! regularized case works too
+              Case Default
+                ! TODO AndrewS THIS CASE breaks Fortran/nlls_example2
+                ! issue, example has invalid options%type_of_methos = 3 and is
+                ! not caught at the beggining to run. Need to add options checker?
+Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options%type_of_method
+!                inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
+!                Go To 100
              end select
              if (options%print_level > 2) write(options%out,3030) w%Delta
           else if (rho < HUGE(wp)) then
@@ -2691,21 +2637,16 @@ contains
           end if
        case default
           inform%status = NLLS_ERROR_BAD_TR_STRATEGY
-          return          
+          Go To 100
        end select
 
-       return
-
-       ! print statements
-
+100    Continue
 3010   FORMAT('Unsuccessful step -- decreasing Delta to', ES12.4)      
 3020   FORMAT('Successful step -- Delta staying at', ES12.4)     
 3030   FORMAT('Very successful step -- increasing Delta to', ES12.4)
 3040   FORMAT('Step too successful -- Delta staying at', ES12.4) 
 3050   FORMAT('NaN encountered -- reduced Delta to', ES12.4)   
 3060   FORMAT('Changing Delta to ', ES12.4)
-
-
      end subroutine update_trust_region_radius
 
      subroutine test_convergence(normF,normJF,normF0,normJF0,normd,options,inform)
@@ -2741,9 +2682,9 @@ contains
 
        real(wp) :: alpha, beta
 
-       Jx(1:m) = 1.0
-       alpha = 1.0
-       beta  = 0.0
+       Jx(1:m) = 1.0_wp
+       alpha = 1.0_wp
+       beta  = 0.0_wp
 
        ! Avoid short-circuit evaluation
 !      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
@@ -2757,7 +2698,6 @@ contains
        else
           call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
        end if
-       
      end subroutine mult_J
 
      subroutine mult_Jt(J,n,m,x,Jtx,options)
@@ -2784,11 +2724,9 @@ contains
        else
           call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
        end if
-       
      end subroutine mult_Jt
 
      subroutine scale_J_by_weights(J,n,m,weights,options)
-
        real(wp), intent(inout) :: J(*)
        real(wp), intent(in) :: weights(*)
        integer, intent(in) :: n,m 
@@ -2805,17 +2743,14 @@ contains
              J( (i-1)*n + 1 : i*n) = weights(i)*J( (i-1)*n + 1 : i*n)
           end do
        end if
-          
      end subroutine scale_J_by_weights
      
      subroutine add_matrices(A,B,n,C)
-
        real(wp), intent(in) :: A(*), B(*)
        integer, intent(in) :: n
        real(wp), intent(out) :: C(*)
 
        C(1:n) = A(1:n) + B(1:n)
-       
      end subroutine add_matrices
      
      subroutine get_element_of_matrix(J,m,ii,jj,Jij)
@@ -2828,7 +2763,6 @@ contains
 
        ! J held by columns....
        Jij = J(ii + (jj-1)*m)
-
      end subroutine get_element_of_matrix
 
      subroutine solve_spd(A,b,LtL,x,n,inform)
@@ -2838,20 +2772,15 @@ contains
        REAL(wp), intent(out) :: x(:)
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
-
        inform%status = 0
-       
-       ! A wrapper for the lapack subroutine dposv.f
-       ! get workspace for the factors....
+       ! wrapper for the lapack subroutine dposv
        LtL(1:n,1:n) = A(1:n,1:n)
        x(1:n) = b(1:n)
        call dposv('L', n, 1, LtL, n, x, n, inform%external_return)
        if (inform%external_return .ne. 0) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dposv'
-          return
        end if
-
      end subroutine solve_spd
 
      subroutine solve_spd_nocopy(A,b,x,n,inform)
@@ -2860,35 +2789,15 @@ contains
        REAL(wp), intent(out) :: x(:)
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
-
-!!$    integer :: row 
-       
        inform%status = 0
-!!$       write(*,*) 'A_in = '
-!!$       do row = 1, n
-!!$          write(*,*) A(row,:)
-!!$       end do
-       ! A wrapper for the lapack subroutine dposv.f
-       ! get workspace for the factors....
+       ! wrapper for the lapack subroutine dposv
        x(1:n) = b(1:n)
-       
        call dposv('L', n, 1, A, n, x, n, inform%external_return)
        if (inform%external_return .ne. 0) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dposv'
-          
-!!$          write(*,*) 'A_out = '
-!!$          do row = 1, n
-!!$             write(*,*) A(row,:)
-!!$          end do
-          
-          return
        end if
-       
-       inform%status = 0
-
      end subroutine solve_spd_nocopy
-
 
      subroutine solve_general(A,b,x,n,inform,w)
        REAL(wp), intent(in) :: A(:,:)
@@ -2897,11 +2806,13 @@ contains
        integer, intent(in) :: n
        type( nlls_inform ), intent(inout) :: inform
        type( solve_general_work ) :: w
-
-       ! A wrapper for the lapack subroutine dposv.f
+       ! wrapper for the lapack subroutine dposv
        ! NOTE: A would be destroyed
        
-       if (.not. w%allocated) goto 1000
+       If (.not. w%allocated) Then 
+         inform%status = NLLS_ERROR_WORKSPACE_ERROR
+         goto 100
+       End If
        
        w%A(1:n,1:n) = A(1:n,1:n)
        x(1:n) = b(1:n)
@@ -2909,30 +2820,19 @@ contains
        if (inform%external_return .ne. 0 ) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgesv'
-          return
        end if
 
-       return
-
-       1000   continue ! workspace error
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-
-
+100    continue
      end subroutine solve_general
 
      subroutine matrix_norm(x,A,norm_A_x)
        REAL(wp), intent(in) :: A(:,:), x(:)
        REAL(wp), intent(out) :: norm_A_x
-
        ! Calculates norm_A_x = ||x||_A = sqrt(x'*A*x)
-
        norm_A_x = sqrt(dot_product(x,matmul(A,x)))
-
      end subroutine matrix_norm
 
      subroutine matmult_inner(J,n,m,A,options)
-
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(n,n)
@@ -2947,24 +2847,15 @@ contains
        if ( present(options) ) Then
          If (.not. options%Fortran_Jacobian) then
            ! c format
-           call dgemm('N','T',n, n, m, one,&
-                J, n, J, n, & 
-                zero, A, n)
+           call dgemm('N','T',n, n, m, one, J, n, J, n, zero, A, n)
          Else
-           call dgemm('T','N',n, n, m, one,&
-                J, m, J, m, & 
-               zero, A, n)
-           End If
-       else
-          call dgemm('T','N',n, n, m, one,&
-               J, m, J, m, & 
-               zero, A, n)
-       end if
-
+           call dgemm('T','N',n, n, m, one, J, m, J, m, zero, A, n)
+         End If
+       Else
+          call dgemm('T','N',n, n, m, one, J, m, J, m, zero, A, n)
+       End If
      end subroutine matmult_inner
-
      subroutine matmult_outer(J,n,m,A)
-
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(m,m)
@@ -2973,15 +2864,10 @@ contains
        ! m x m matrix A given by
        ! A = J * J'
 
-       call dgemm('N','T',m, m, n, one,&
-            J, m, J, m, & 
-            zero, A, m)
-
-
+       call dgemm('N','T',m, m, n, one, J, m, J, m, zero, A, m)
      end subroutine matmult_outer
 
      subroutine outer_product(x,n,xxt)
-
        real(wp), intent(in) :: x(:)
        integer, intent(in) :: n
        real(wp), intent(out) :: xxt(:,:)
@@ -2992,30 +2878,27 @@ contains
 
        xxt(1:n,1:n) = zero
        call dger(n, n, one, x, 1, x, 1, xxt, n)
-
      end subroutine outer_product
 
      subroutine all_eig_symm(A,n,ew,ev,w,inform)
        ! calculate all the eigenvalues of A (symmetric)
-
        real(wp), intent(in) :: A(:,:)
        integer, intent(in) :: n
        real(wp), intent(out) :: ew(:), ev(:,:)
        type( all_eig_symm_work ) :: w
        type( nlls_inform ), intent(inout) :: inform
-
        integer :: lwork
-
-!       real(wp), allocatable :: A_copy(:,:)
        
-       if (.not. w%allocated) goto 1000
+       If (.not. w%allocated) Then
+          inform%status = NLLS_ERROR_WORKSPACE_ERROR
+          Go To 100
+        End If
 
        ! copy the matrix A into the eigenvector array
        ev(1:n,1:n) = A(1:n,1:n)
 
        lwork = size(w%work)
        ! call dsyev --> all eigs of a symmetric matrix
-
        call dsyev('V', & ! both ew's and ev's 
             'U', & ! upper triangle of A
             n, ev, n, & ! data about A
@@ -3024,29 +2907,12 @@ contains
        if (inform%external_return .ne. 0) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dsyev'
-          return
        end if
-
-       ! Uncomment this to use 
-       !      allocate(A_copy(n,n))
-       !     A_copy(1:n,1:n) = A(1:n,1:n)
-       !       if (lwork < 5*n) then
-       !         deallocate(w%work)
-       !        allocate(w%work(5*n))
-       !     end if
-       ! call ea06cd(A_copy,ew,ev,n,n,n,w%work)
-
-       return
-
-1000   continue
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-       
+100   continue
      end subroutine all_eig_symm
 
      subroutine min_eig_symm(A,n,ew,ev,options,inform,w)
        ! calculate the leftmost eigenvalue of A
-
        real(wp), intent(in) :: A(:,:)
        integer, intent(in) :: n
        real(wp), intent(out) :: ew, ev(:)
@@ -3057,9 +2923,12 @@ contains
        real(wp) :: tol, dlamch
        integer :: lwork, eigsout, minindex(1)
 
-       if ( .not. w%allocated ) goto 1000
+       If ( .not. w%allocated ) Then
+         inform%status = NLLS_ERROR_WORKSPACE_ERROR
+         goto 100
+       End If
 
-       tol = 2*dlamch('S')!1e-15
+       tol = 2.0_wp*dlamch('S') !1e-15 ! TODO Replace AndrewS
 
        w%A(1:n,1:n) = A(1:n,1:n) ! copy A, as workspace for dsyev(x)
        ! note that dsyevx (but not dsyev) only destroys the lower (or upper) part of A
@@ -3077,6 +2946,7 @@ contains
           if (inform%external_return .ne. 0) then
              inform%status = NLLS_ERROR_FROM_EXTERNAL
              inform%external_name = 'lapack_dsyev'
+             Go To 100
           end if
           minindex = minloc(w%ew)
           ew = w%ew(minindex(1))
@@ -3099,19 +2969,14 @@ contains
           if (inform%external_return .ne. 0) then
              inform%status = NLLS_ERROR_FROM_EXTERNAL
              inform%external_name = 'lapack_dsyevx'
+             Go To 100
           end if
        end if
 
-       return
-
-1000   continue
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-
+100   continue
      end subroutine min_eig_symm
 
      subroutine max_eig(A,B,n,ew,ev,nullevs,options,inform,w)
-
        real(wp), intent(inout) :: A(:,:), B(:,:)
        integer, intent(in) :: n 
        real(wp), intent(out) :: ew, ev(:)
@@ -3122,9 +2987,12 @@ contains
 
        integer :: lwork, maxindex(1), no_null, halfn
        real(wp):: tau
-       integer :: i 
+       integer :: i, ierr_dummy 
 
-       if (.not. w%allocated) goto 2010
+       if (.not. w%allocated) then
+         inform%status = NLLS_ERROR_WORKSPACE_ERROR
+         goto 100
+       end if
 
        ! Find the max eigenvalue/vector of the generalized eigenproblem
        !     A * y = lam * B * y
@@ -3132,7 +3000,10 @@ contains
        ! eigenvectors y(n/2+1:n) associated with this
 
        ! check that n is even (important for hard case -- see below)
-       if (modulo(n,2).ne.0) goto 1010
+       if (modulo(n,2).ne.0) then
+         inform%status = NLLS_ERROR_AINT_EIG_ODD
+         Go To 100
+       End If
 
        halfn = n/2
        lwork = size(w%work)
@@ -3146,17 +3017,20 @@ contains
        if (inform%external_return .ne. 0) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dggev'
-          return
+          Go To 100
        end if
 
        ! now find the rightmost real eigenvalue
        w%vecisreal = .true.
-       where ( abs(w%alphaI) > 1e-8 ) w%vecisreal = .false.
-       if (.not. any(w%vecisreal)) goto 1000
+       where ( abs(w%alphaI) > 1.0e-8_wp ) w%vecisreal = .false.
+       if (.not. any(w%vecisreal)) then
+         inform%status = NLLS_ERROR_AINT_EIG_IMAG ! Eigs imaginary error
+         goto 100
+       end if
        w%ew_array(:) = w%alphaR(:)/w%beta(:)
        maxindex = maxloc(w%ew_array,mask=w%vecisreal)
 
-       tau = 1e-4 ! todo -- pass this through from above...
+       tau = 1.0e-4_wp ! todo -- pass this through from above...
        ! note n/2 always even -- validated by test on entry
        if (norm2( w%vr(1:halfn,maxindex(1)) ) < tau) then 
           ! hard case
@@ -3164,7 +3038,7 @@ contains
           w%nullindex = 0
           no_null = 0
           do i = 1,n
-             if (norm2( w%vr(1:halfn,i)) < 1e-4 ) then
+             if (norm2( w%vr(1:halfn,i)) < 1.0e-4_wp ) then
                 no_null = no_null + 1 
                 w%nullindex(no_null) = i
              end if
@@ -3174,57 +3048,43 @@ contains
           If (allocated(nullevs)) Then
             ! increase the size of the allocated array only if we need to
             if (no_null > size(nullevs,2)) then
-              deallocate( nullevs )
+              deallocate( nullevs, stat=ierr_dummy )
               allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
-              if (inform%alloc_status > 0) goto 2000
+              if (inform%alloc_status /= 0) then
+                inform%status = NLLS_ERROR_ALLOCATION
+                inform%bad_alloc = "max_eig"
+                goto 100
+              End if
             end if
           Else ! size(nullevs,2) is considered 0
             ! Allocate space
             allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
-            if (inform%alloc_status > 0) goto 2000
+            if (inform%alloc_status /= 0) then 
+              inform%status = NLLS_ERROR_ALLOCATION
+              inform%bad_alloc = "max_eig"
+              goto 100
+            end if
           End If 
-
           nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
        end if
 
        ew = w%alphaR(maxindex(1))/w%beta(maxindex(1))
        ev(:) = w%vr(:,maxindex(1))
 
-       return 
-
-1000   continue 
-       inform%status = NLLS_ERROR_AINT_EIG_IMAG ! Eigs imaginary error
-       return
-
-1010   continue
-       inform%status = NLLS_ERROR_AINT_EIG_ODD
-       return
-       
-2000   continue
-       inform%status = NLLS_ERROR_ALLOCATION
-       inform%bad_alloc = "max_eig"
-       return
-
-2010   continue
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-
+100   continue
      end subroutine max_eig
 
      subroutine shift_matrix(A,sigma,AplusSigma,n)
-
        real(wp), intent(in)  :: A(:,:), sigma
        real(wp), intent(out) :: AplusSigma(:,:)
        integer, intent(in) :: n 
 
        integer :: i 
        ! calculate AplusSigma = A + sigma * I
-
        AplusSigma(:,:) = A(:,:)
        do i = 1,n
           AplusSigma(i,i) = AplusSigma(i,i) + sigma
        end do
-
      end subroutine shift_matrix
 
      subroutine get_svd_J(n,m,J,s1,sn,options,inform,status,w)
@@ -3240,51 +3100,51 @@ contains
        !  this routine returns the largest and smallest singular values
        !  of J.
 
-       character :: jobu(1), jobvt(1)
+       character(Len=1) :: jobu, jobvt
        integer :: lwork
 
-       if (.not. w%allocated) goto 1000
+       If (.not. w%allocated) Then
+         status = NLLS_ERROR_WORKSPACE_ERROR
+         inform%status = NLLS_ERROR_WORKSPACE_ERROR
+         goto 100
+       End If
 
        w%Jcopy(:) = J(:)
-
        jobu  = 'N' ! calculate no left singular vectors
        jobvt = 'N' ! calculate no right singular vectors
-
        lwork = size(w%work)
-
-       call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1, & 
+! TODO AndrewS: Lanczos.f90 causes Warning: Floating divide by zero occurred
+! ieee=stop will break example. This needs to be addressed
+! commit e33f752da78837b1506f29fa5d0ff4c8a1ab3dbd
+      call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1,        & 
             w%work, lwork, status )
-       if ( (status .ne. 0) .and. (options%print_level > 3) ) then 
-          write(options%error,'(a,i0)') 'Error when calculating svd, dgesvd returned', &
-               status
-          s1 = -1.0
-          sn = -1.0
+       if (status .ne. 0) Then
           ! allow to continue, but warn user and return zero singular values
+         If (options%print_level > 3) Then
+           write(options%error, Fmt=5000)                                      &
+           'Error calculating svd, dgesvd returned: ', status
+         End If
+          s1 = 0.0_wp
+          sn = 0.0_wp
        else
           s1 = w%S(1)
           sn = w%S(n)
           if (options%print_level > 2) then 
-             write(options%out,'(a,es12.4,a,es12.4)') 's1 = ', s1, '    sn = ', sn
-             write(options%out,'(a,es12.4)') 'k(J) = ', s1/sn
+             write(options%out,Fmt=5001) 's1',s1,'sn',sn,'k(J)',s1/sn
           end if
        end if
 
-       return
-       
-1000   continue
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-
+100   continue
+5000  Format (A,1X,I0)
+5001  Format (3(A,1X,'=',1X,Es12.4e2,4X))
      end subroutine get_svd_J
 
 
      ! routines needed for the Newton tensor model
-     
      subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
                                     num_successful_steps, & 
                                     d, md, params, options, inform, & 
                                     w, tenJ, inner_workspace)
-       
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
        real(wp) , intent(in) :: X(:), Delta
@@ -3307,45 +3167,36 @@ contains
        ! where 
        !   t_{ik}(s) := r_i(x_k) + s' g_i(x_k) + 1/2 s' B_ik s 
        ! and where B_ik is a symmetric approx to Hi(x), the Hessian of r_i(x).
-       ! 
        ! To do this, we call ral_nlls recursively.
-
        ! First, we need to set up the eval_r/J/Hf functions needed here.
        
-       if (.not. w%allocated) goto 1000
+       If (.not. w%allocated) Then
+         inform%status = NLLS_ERROR_WORKSPACE_ERROR
+         goto 100
+       End If
 
-       ! save the residual to params
+       ! save to params
        w%tparams%f(1:m) = f(1:m)
-
        w%tparams%Delta = Delta
-
-       ! save the Jacobian to params
        w%tparams%J(1:n*m) = J(1:n*m)
-
-       ! save the current X to params
        w%tparams%X(1:n) = X(1:n)
-       
-       ! save eval_HF to params
        w%tparams%eval_HF => eval_HF
-
-       ! and save parms to tparams
        w%tparams%parent_params => params
-
-       ! and add pointer to tenJ type
        w%tparams%tenJ => tenJ
 
        if (.not. w%tparams%eval_hp_provided) then 
           ! let's get all the Hi's...
           do i = 1,m
              call get_Hi(n, m, X, params, i, w%tparams%Hi(:,:,i), eval_HF, inform)
+             If (inform%status/=0) Then
+               Go To 100
+             End If
           end do
-          
        end if
-
        
        d(1:n) = zero
 
-       ! send to ral_nlls to solve the subproblem recursively
+       ! send to ral_nlls_iterate to solve the subproblem recursively
        if (options%print_level > 0) write(options%out,"(80('*'))")
        select case (options%inner_method)
        case (1) ! send in a base regularization parameter
@@ -3373,7 +3224,7 @@ contains
                evaltensor_f, evaltensor_J, evaltensor_HF, &
                w%tparams, & 
                tensor_inform, w%tensor_options )
-          if (tensor_inform%status < 0) then
+          if (tensor_inform%status /= 0) then
              ! there's an error : exit
              exit
           elseif ( (tensor_inform%convergence_normf == 1) & 
@@ -3395,22 +3246,16 @@ contains
         
         ! now we need to evaluate the model at the new point
         w%tparams%extra = 0
+        ! Does not fail
         call evaltensor_f(inform%external_return, n, m, d, &
              w%model_tensor, w%tparams)
         md = 0.5 * norm2( w%model_tensor(1:m) )**2
         ! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
-
-       return
-       
-1000   continue
-       inform%status = NLLS_ERROR_WORKSPACE_ERROR
-       return
-       
+100   continue
      end subroutine solve_newton_tensor
 
      subroutine evaltensor_f(status, n, m, s, f, params)
-       
        integer, intent(out) :: status
        integer, intent(in)  :: n
        integer, intent(in)  :: m
@@ -3423,13 +3268,11 @@ contains
 
        ! note:: tenJ is a global (but private to this module) derived type 
        !        with components Hs and Js, which are real arrays 
-
        ! The function we need to minimize is 
        !  \sum_{i=1}^m t_ik(s) = 1/2 \sum_{i=1}^m (r_i(x_l) + s' g_i(x_k) + 1/2 s' B_ik s)^2
 
        select type(params)
        type is(tensor_params_type)
-
           ! Note: params%tenJ (tensor_params_type) points to NLLS_workspace%tenJ
           ! note: params%m contains 'm' from the original problem
           ! if we're passing in the reg. factor via the function/Jacobian, then 
@@ -3443,30 +3286,27 @@ contains
           call calculate_sHs(n,m, s, params)
           
           ! put them all together for the first 1:m terms of f
-          f(1:params%m) = params%f(1:params%m) + params%tenJ%Js(1:params%m) + 0.5*params%tenJ%stHs(1:params%m)
+          f(1:params%m) = params%f(1:params%m) + params%tenJ%Js(1:params%m) +  &
+            0.5_wp*params%tenJ%stHs(1:params%m)
 
           if (params%extra == 1) then 
              ! we're passing in the regularization via the function/Jacobian
-             f(params%m + 1: params%m + n) = (1.0/sqrt(params%Delta)) * s(1:n)
+             f(params%m + 1: params%m + n) = (1.0_wp/sqrt(params%Delta)) * s(1:n)
           elseif (params%extra == 2) then 
-             f(params%m + 1) = sqrt(2.0/(params%Delta * params%p)) * & 
-                               (norm2(s(1:n))**(params%p/2.0))
+             f(params%m + 1) = sqrt(2.0_wp/(params%Delta * params%p)) * & 
+                               (norm2(s(1:n))**(params%p/2.0_wp))
           end if
-
        end select
-
      end subroutine evaltensor_f
 
      subroutine calculate_sHs( n, m, s, params)
        integer, intent(in) :: n, m
        real(wp), dimension(*), intent(in) :: s
        class( params_base_type ), intent(inout) :: params
-
        integer :: ii, status
        select type(params)
        type is(tensor_params_type)
           if (params%eval_hp_provided) then 
-!          if (associated(params%eval_HP)) then
              call params%eval_HP(status,n,params%m,params%x,s(1:n),params%tenJ%Hs,params%parent_params)
           else
              do ii = 1,params%m
@@ -3477,7 +3317,6 @@ contains
           end if
           call dgemv('T',n,params%m,1.0_wp,params%tenJ%Hs(1,1),n,s,1,0.0_wp, params%tenJ%stHs(1),1)
        end select
-       
      end subroutine calculate_sHs
 
      subroutine evaltensor_J(status, n, m, s, J, params)
@@ -3487,7 +3326,6 @@ contains
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: J
        class( params_base_type ), intent(inout) :: params
-
        integer :: ii, jj
        ! Add default return value for status
        status = 0
@@ -3519,8 +3357,6 @@ contains
              end do
           end if
        end select
-
-
      end subroutine evaltensor_J
 
      subroutine evaltensor_HF(status, n, m, s, f, HF, params)
@@ -3531,7 +3367,6 @@ contains
        real(wp), dimension(*), intent(in)   :: f
        real(wp), dimension(*), intent(out) :: HF
        class( params_base_type ), intent(inout) :: params
-
 !!$    integer :: ii
        integer :: jj, kk
        real(wp) :: normx, hf_local
@@ -3548,7 +3383,6 @@ contains
 !!$          end do
 !!$
 !!$          HF(1:n**2) = reshape(params%tenJ%H(1:n,1:n), (/n**2/))
-          
           if (params%extra == 2) then 
              normx = norm2(s(1:n))
              do jj = 1,n
@@ -3566,7 +3400,6 @@ contains
        end select
      end subroutine evaltensor_HF
        
-
      subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
        integer, intent(in) :: n, m 
        real(wp), intent(in) :: X(:)
@@ -3576,7 +3409,6 @@ contains
        procedure( eval_hf_type ) :: eval_HF
        type( nlls_inform ), intent( inout ) :: inform
        real( wp ), dimension( m ), intent( in ), optional :: weights
-
        real( wp ) :: ei( m )
 
        ei = zero
@@ -3587,10 +3419,11 @@ contains
        else
           call eval_HF(inform%external_return, n, m, X, ei, Hi, params)
        end if
-       
-       
+       If (inform%external_return/=0) Then
+         inform%status = NLLS_ERROR_FROM_EXTERNAL
+         inform%external_name = "eval_HF"
+       End iF
      end subroutine get_Hi
-
 
    end module ral_nlls_internal
 
