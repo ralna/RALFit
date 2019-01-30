@@ -274,19 +274,24 @@ contains
        if ( options%print_level >= 2 ) write( options%out, 2000 ) 
        if ( options%print_level >= 1 ) write( options%out, 1000 )
        ! first, check if n < m
-       if (n > m) goto 4070
+       If (n > m) Then
+         inform%status = NLLS_ERROR_N_GT_M
+         goto 100
+       End If
        ! set scalars...
        w%first_call = 0
        w%tr_nu = options%radius_increase
        w%tr_p = 7
        inform%status = 0
+       inform%iter = 0
        inform%external_return = 0
        ! allocate space for vectors that will be used throughout the algorithm
        if (options%setup_workspaces) then 
           call setup_workspaces(w,n,m,options,inform)
-          if ( inform%status/=0) goto 4000
-       elseif (.not. w%allocated) then 
-          goto 4100
+          if ( inform%status/=0) goto 100
+       elseif (.not. w%allocated) then
+          inform%status = NLLS_ERROR_WORKSPACE_ERROR
+          goto 100
        end if
 
        ! if needed, setup assign eval_Hp
@@ -300,7 +305,11 @@ contains
        ! evaluate the residual
        call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
-       if (inform%external_return .ne. 0) goto 4020
+       If (inform%external_return /= 0) Then
+         inform%external_name = 'eval_F'
+         inform%status = NLLS_ERROR_EVALUATION
+         goto 100
+       End If
        if ( present(weights)) then
           ! set f -> Wf
           w%f(1:m) = weights(1:m)*w%f(1:m)
@@ -309,14 +318,18 @@ contains
        ! and evaluate the jacobian
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
-       if (inform%external_return .ne. 0) goto 4010
+       If (inform%external_return /= 0) Then
+         inform%external_name = 'eval_J'
+         inform%status = NLLS_ERROR_EVALUATION
+         goto 100
+       End If
        if ( present(weights) ) then
           call scale_J_by_weights(w%J,n,m,weights,options)
        end if
        
        if (options%relative_tr_radius == 1) then 
           ! first, let's get diag(J^TJ)
-          Jmax = 0.0
+          Jmax = 0.0_wp
           do i = 1, n
              if (options%Fortran_Jacobian) then 
                 JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
@@ -335,9 +348,8 @@ contains
           call get_svd_J(n,m,w%J,&
                w%smallest_sv(1), w%largest_sv(1), &
                options,inform,svdstatus,w%get_svd_J_ws)
-          if ((svdstatus .ne. 0).and.(options%print_level .ge. 3)) then 
-             write(options%out,'(a,i0)') 'warning! svdstatus = ', svdstatus
-             write( options%out, 3140 ) svdstatus
+          if (svdstatus /= 0 .and. options%print_level > 2) then 
+             write( options%out, Fmt=3140 ) svdstatus
           end if
        end if
 
@@ -389,7 +401,11 @@ contains
                 call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
              end if
              inform%h_eval = inform%h_eval + 1
-             if (inform%external_return > 0) goto 4030
+             If (inform%external_return /= 0) Then 
+               inform%external_name = 'eval_HF'
+               inform%status = NLLS_ERROR_EVALUATION
+               goto 100
+             End If
              
              if (options%regularization > 0) then 
                 call update_regularized_hessian(w%hf,X,n,options)
@@ -430,12 +446,19 @@ contains
                 call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
              end if
              inform%h_eval = inform%h_eval + 1
-             if (inform%external_return > 0) goto 4030
+             If (inform%external_return /= 0) Then 
+               inform%external_name = 'eval_HF'
+               inform%status = NLLS_ERROR_EVALUATION
+               goto 100
+             End If
           else
-             goto 4090 ! return an error
+             ! no second derivatives in tensor model
+             inform%status = NLLS_ERROR_NO_SECOND_DERIVATIVES
+             Go To 100
           end if
        case default
-          goto 4040 ! unsupported model -- return to user
+          inform%status = NLLS_ERROR_UNSUPPORTED_MODEL
+          goto 100
        end select
        
        rho  = -one ! intialize rho as a negative value
@@ -455,14 +478,16 @@ contains
 
     w%iter = w%iter + 1
     inform%iter = w%iter
-    
-
     success = .false.
     no_reductions = 0
 
-    do while (.not. success) ! loop until successful
+    do while (.not. success)
        no_reductions = no_reductions + 1
-       if (no_reductions > max_tr_decrease+1) goto 4050
+       If (no_reductions > max_tr_decrease+1) Then
+          ! max tr reductions exceeded
+          inform%status = NLLS_ERROR_MAX_TR_REDUCTIONS
+          goto 100
+       End If
 
        if (options%print_level >=1) then
           if (options%model == 4) then
@@ -475,7 +500,6 @@ contains
              second = 'A';
           end if
        end if
-
 
        !+++++++++++++++++++++++++++++++++++++++++++!
        ! Calculate the step                        !
@@ -498,7 +522,7 @@ contains
              w%hf_temp(:) = zero
              cycle
           else 
-             goto 4000
+             goto 100
           end if
        end if
 
@@ -508,8 +532,11 @@ contains
        call eval_F(inform%external_return, n, m, w%Xnew, w%fnew, params)
        inform%f_eval = inform%f_eval + 1
 
-       
-       if (inform%external_return .ne. 0) goto 4020
+       If (inform%external_return .ne. 0) Then
+          inform%external_name = 'eval_F'
+          inform%status = NLLS_ERROR_EVALUATION
+          goto 100
+       End If
        if ( present(weights) ) then
           ! set f -> Wf
           w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
@@ -562,7 +589,11 @@ contains
           ! evaluate J and hf at the new point
           call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
           inform%g_eval = inform%g_eval + 1
-          if (inform%external_return .ne. 0) goto 4010
+          If (inform%external_return /= 0) Then
+            inform%external_name = 'eval_J'
+            inform%status = NLLS_ERROR_EVALUATION
+            goto 100
+          End If
           if ( present(weights) ) then
              ! set J -> WJ
              call scale_J_by_weights(w%J,n,m,weights,options)
@@ -584,13 +615,17 @@ contains
 
           normJFnew = norm2(w%g)
 
-          if ( (log(normJFnew) >100.0) .or. (normJFnew .ne. normJFnew) ) then
+          if ( (log(normJFnew) >100.0) .or. (normJFnew /= normJFnew) ) then
              write(options%out,3120) normJFnew
              rho = -two
              ! reset J
              call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
              inform%g_eval = inform%g_eval + 1
-             if (inform%external_return .ne. 0) goto 4010
+             If (inform%external_return /= 0) Then
+               inform%external_name = 'eval_J'
+               inform%status = NLLS_ERROR_EVALUATION
+               goto 100
+             End If             
              if ( present(weights) ) then
                 ! set J -> WJ
                 call scale_J_by_weights(w%J,n,m,weights,options)
@@ -618,22 +653,24 @@ contains
        ! Update the TR radius !
        !++++++++++++++++++++++!
        call update_trust_region_radius(rho,options,inform,w)
-       if (inform%status /= 0) goto 4000
+       if (inform%status /= 0) goto 100
        
        if (.not. success) then
           if ( options%print_level >= 1 ) then
              write(options%out,1020) w%iter, second, w%Delta, rho
           end if
-          ! finally, check d makes progress
-!          if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) then
-!             write(*,*) 'rhs = ', epsmch * norm2(w%Xnew)
-!             inform%obj = 0.5*(w%normF**2)
-!             goto 4060
-!          end if
+!         ! finally, check d makes progress
+!         if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) then
+!            write(*,*) 'rhs = ', epsmch * norm2(w%Xnew)
+!            inform%obj = 0.5*(w%normF**2)
+!            ! x makes no progress
+!            inform%status = NLLS_ERROR_X_NO_PROGRESS
+!            goto 100
+!         end if
        end if
     end do
+
     ! if we reach here, a successful step has been found
-    
     ! update X and f
     X(1:n) = w%Xnew(1:n)
     w%f(1:m) = w%fnew(1:m)
@@ -681,7 +718,11 @@ contains
                eval_Hf, &
                params,options,inform)
        end if
-       if (inform%external_return .ne. 0) goto 4030
+       If (inform%external_return /= 0) Then 
+         inform%external_name = 'eval_HF'
+         inform%status = NLLS_ERROR_EVALUATION
+         goto 100
+       End If
     end if
 
     if (.not. options%exact_second_derivatives) then
@@ -691,7 +732,7 @@ contains
     end if
 
     ! update the stats 
-    inform%obj = 0.5*(w%normF**2)
+    inform%obj = 0.5_wp*(w%normF**2)
     inform%norm_g = w%normJF
     inform%scaled_g = w%normJF/w%normF
     if (options%output_progress_vectors) then
@@ -707,38 +748,17 @@ contains
     !++++++++++++++++++!
     ! Test convergence !
     !++++++++++++++++++!
+    ! Note: pretty printing was pushed into test_convergence
     call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,w%normd,options,inform)
-    if (inform%convergence_normf == 1) goto 5000 ! <----converged!!
-    if (inform%convergence_normg == 1) goto 5010 ! <----converged!!
-    if (inform%convergence_norms == 1) goto 5010 ! <----converged!!
+    if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1       &
+          .Or. inform%convergence_norms == 1) Then
+!      Converged!
+       Go To 100
+    End If
 
-
-! Non-executable statements
-
-! print level > 0
-
-!1040 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
-
-1000 FORMAT('iter',4x,'2nd order?',2x,'Delta',9x,'rho',11x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
-1010 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,ES12.4      ,2x,ES12.4,    2x,ES12.4)
-1020 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,'unsuccessful step')
-! print level > 1
-2000 FORMAT(/,'* Running RAL_NLLS *')
-
-
-! print level > 2
-3110 FORMAT('Initial trust region radius taken as ', ES12.4)
-3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.') 
-3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
-
-
-
-! error returns
-4000 continue
-    ! generic end of algorithm
-        ! all (final) exits should pass through here...
-    inform%iter = w%iter
-!    if (options%output_progress_vectors) then
+100  Continue
+!   generic end of algorithm
+!   all (final) exits should pass through here...
     if (allocated(w%resvec)) then
        if( allocated(inform%resvec)) deallocate(inform%resvec, stat=ierr_dummy)
        allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
@@ -775,85 +795,16 @@ contains
        inform%bad_alloc = 'nlls_iterate'
     end if
 
-    return
-
-4010 continue
-    ! Error in eval_J
-    inform%external_name = 'eval_J'
-    inform%status = NLLS_ERROR_EVALUATION
-    goto 4000
-
-4020 continue
-    ! Error in eval_F
-    inform%external_name = 'eval_F'
-    inform%status = NLLS_ERROR_EVALUATION
-    goto 4000
-
-4030 continue
-    ! Error in eval_HF
-    inform%external_name = 'eval_HF'
-    inform%status = NLLS_ERROR_EVALUATION
-    goto 4000
-
-4040 continue 
-    inform%status = NLLS_ERROR_UNSUPPORTED_MODEL
-    goto 4000
-
-4050 continue 
-    ! max tr reductions exceeded
-    inform%status = NLLS_ERROR_MAX_TR_REDUCTIONS
-    goto 4000
-
-4060 continue 
-    ! x makes no progress
-    inform%status = NLLS_ERROR_X_NO_PROGRESS
-    goto 4000
-
-4070 continue
-    ! n > m on entry
-    inform%status = NLLS_ERROR_N_GT_M
-    goto 4000
-
-4080 continue
-    ! bad allocation
-    inform%status = NLLS_ERROR_ALLOCATION
-    inform%bad_alloc = 'nlls_iterate'
-    goto 4000
-
-4090 continue
-    ! no second derivatives in tensor model
-    inform%status = NLLS_ERROR_NO_SECOND_DERIVATIVES
-    goto 4000
-
-4100 continue 
-    ! workspace error
-    inform%status = NLLS_ERROR_WORKSPACE_ERROR
-    goto 4000
-    
-! convergence 
-5000 continue
-    ! convegence test satisfied
-    if (options%print_level >= 2) then
-       write(options%out,'(a,i0)') 'RAL_NLLS converged (on ||f|| test) at iteration ', &
-            w%iter
-    end if
-    goto 4000
-
-5010 continue
-    if (options%print_level >= 2) then
-       write(options%out,'(a,i0)') 'RAL_NLLS converged (on gradient test) at iteration ', &
-            w%iter
-    end if
-    goto 4000
-
-5020 continue
-    if (options%print_level >= 2) then
-       write(options%out,'(a,i0)') 'RAL_NLLS converged (on step length test) at iteration ', &
-            w%iter
-    end if
-    goto 4000
-    
-    
+! print level > 0
+1000 FORMAT('iter',4x,'2nd order?',2x,'Delta',9x,'rho',11x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
+1010 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,ES12.4      ,2x,ES12.4,    2x,ES12.4)
+1020 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,'unsuccessful step')
+! print level > 1
+2000 FORMAT(/,'* Running RAL_NLLS *')
+! print level > 2
+3110 FORMAT('Initial trust region radius taken as ', ES12.4)
+3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.') 
+3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
   end subroutine nlls_iterate
   
 
@@ -2642,24 +2593,35 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
        real(wp), intent(in) :: normF, normJf, normF0, normJF0, normd
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
+       Character(Len=8), Parameter :: labels(3) = (/'||f||   ', 'gradient', 'step    '/)
+       Integer :: nlabel
 
        if ( normF <= max(options%stop_f_absolute, &
             options%stop_f_relative * normF0) ) then
           inform%convergence_normf = 1
-          return
+          nlabel = 1
+          Go To 100
        end if
 
        if ( (normJF/normF) <= max(options%stop_g_absolute, &
             options%stop_g_relative * (normJF0/normF0)) ) then
           inform%convergence_normg = 1
+          nlabel = 2
+          Go To 100
        end if
 
        if ( normd < options%stop_s ) then
           inform%convergence_norms = 1
+          nlabel = 3
        end if
 
-       return
-
+100   Continue
+!     Pretty print results
+      if ((inform%convergence_normf == 1 .Or. inform%convergence_normg == 1   &
+         .Or. inform%convergence_norms == 1).And.options%print_level >= 2) Then
+        write(options%out,'(3A,1X,I0)') 'Converged (',Trim(labels(nlabel)),   &
+          ' test) at iteration', inform%iter
+      End If
      end subroutine test_convergence
 
      subroutine mult_J(J,n,m,x,Jx,options)
@@ -3188,21 +3150,21 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
        if (options%print_level > 0) write(options%out,"(80('*'))")
        select case (options%inner_method)
        case (1) ! send in a base regularization parameter
-          w%tensor_options%base_regularization = 1.0_wp/Delta
+          w%tensor_options%base_regularization = 1.0_wp / Delta
        case (2)  ! this uses p = 3, and solves a nlls problem in more unknowns explicitly
-          w%tparams%p = 3.0
+          w%tparams%p = 3.0_wp
           w%tparams%extra = 2
-          d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'          
+          d(1:n) = 1.0e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'          
        case (3)  ! this uses p = 2, and solves implicitly
           w%tensor_options%regularization_term = 1.0_wp / Delta
 !          write(*,*) 'regularization_term = ', w%tensor_options%regularization_term
           w%m_in = m
        case (4) ! this uses p = 3, and solves implicitly 
-          d(1:n) = 1e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'
+          d(1:n) = 1.0e-12_wp ! Hessian not defined at 0 if p /= 2, so set 'small'
           w%tensor_options%regularization_term = 1.0_wp / Delta
           w%m_in = m
        case (5) ! this uses p = 2, and solves a nlls problem in more unknowns explicitly
-          w%tparams%p = 2.0
+          w%tparams%p = 2.0_wp
           w%tparams%extra = 1
        end select
 
@@ -3237,7 +3199,7 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
         ! Does not fail
         call evaltensor_f(inform%external_return, n, m, d, &
              w%model_tensor, w%tparams)
-        md = 0.5 * norm2( w%model_tensor(1:m) )**2
+        md = 0.5_wp * norm2( w%model_tensor(1:m) )**2
         ! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
 100   continue

@@ -297,7 +297,7 @@ module ral_nlls_workspaces
 
 !  the total number of iterations performed
      
-     INTEGER :: iter
+     INTEGER :: iter = 0
 
 !  the number of inner iterations performed
      
