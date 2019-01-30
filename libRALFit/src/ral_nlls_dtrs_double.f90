@@ -22,7 +22,11 @@
 !     |                                                                  |
 !     --------------------------------------------------------------------
 
-      USE RAL_NLLS_SYMBOLS
+      USE RAL_NLLS_SYMBOLS, Only: RAL_NLLS_ok, RAL_NLLS_error_restrictions,    &
+                                  RAL_NLLS_error_ill_conditioned,              &
+                                  RAL_NLLS_error_unbounded,                    &
+                                  RAL_NLLS_error_max_iterations
+
 
       IMPLICIT NONE
 
@@ -737,7 +741,10 @@
 !      |                                               |
 !       -----------------------------------------------
 
-      USE RAL_NLLS_SYMBOLS
+      USE RAL_NLLS_SYMBOLS, Only: RAL_NLLS_ok, RAL_NLLS_error_restrictions,    &
+                                  RAL_NLLS_error_ill_conditioned,              &
+                                  RAL_NLLS_error_unbounded,                    &
+                                  RAL_NLLS_error_max_iterations
       USE RAL_NLLS_ROOTS_double, ONLY: ROOTS_cubic
 
       IMPLICIT NONE
