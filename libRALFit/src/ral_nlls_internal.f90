@@ -5,6 +5,7 @@ module ral_nlls_internal
   use RAL_NLLS_DTRS_double
   use RAL_NLLS_DRQS_double
   use ral_nlls_workspaces
+  Use ral_nlls_printing
   
   implicit none
 
@@ -123,7 +124,8 @@ contains
     real( wp ), dimension( m ), intent(in), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
       
-    integer  :: i
+    integer  :: i, nrec
+    Character(Len=80) :: rec(3)
     
     type ( NLLS_workspace ) :: w
     Type ( NLLS_workspace ), target :: inner_workspace
@@ -131,34 +133,18 @@ contains
     w%iw_ptr => inner_workspace
 !   Self reference inner workspace so recursive call does not fail
     inner_workspace%iw_ptr => inner_workspace
-    
-!!$    write(*,*) 'Controls in:'
-!!$    write(*,*) 'error = ',options%error
-!!$    write(*,*) 'out = ', options%out
-!!$    write(*,*) 'print_level = ', options%print_level
-!!$    write(*,*) 'maxit = ', options%maxit
-!!$    write(*,*) 'model = ', options%model
-!!$    write(*,*) 'nlls_method = ', options%nlls_method
-!!$    write(*,*) 'lls_solver = ', options%lls_solver
-!!$    write(*,*) 'stop_g_absolute = ', options%stop_g_absolute
-!!$    write(*,*) 'stop_g_relative = ', options%stop_g_relative     
-!!$    write(*,*) 'initial_radius = ', options%initial_radius
-!!$    write(*,*) 'maximum_radius = ', options%maximum_radius
-!!$    write(*,*) 'eta_successful = ', options%eta_successful
-!!$    write(*,*) 'eta_very_successful = ',options%eta_very_successful
-!!$    write(*,*) 'eta_too_successful = ',options%eta_too_successful
-!!$    write(*,*) 'radius_increase = ',options%radius_increase
-!!$    write(*,*) 'radius_reduce = ',options%radius_reduce
-!!$    write(*,*) 'radius_reduce_max = ',options%radius_reduce_max
-!!$    write(*,*) 'hybrid_switch = ',options%hybrid_switch
-!!$    write(*,*) 'subproblem_eig_fact = ',options%subproblem_eig_fact
-!!$    write(*,*) 'more_sorensen_maxits = ',options%more_sorensen_maxits
-!!$    write(*,*) 'more_sorensen_shift = ',options%more_sorensen_shift
-!!$    write(*,*) 'more_sorensen_tiny = ',options%more_sorensen_tiny
-!!$    write(*,*) 'more_sorensen_tol = ',options%more_sorensen_tol
-!!$    write(*,*) 'hybrid_tol = ', options%hybrid_tol
-!!$    write(*,*) 'hybrid_switch_its = ', options%hybrid_switch_its
-!!$    write(*,*) 'output_progress_vectors = ',options%output_progress_vectors
+
+    If (buildmsg(1, .False., options)) Then
+      Write(rec(1),Fmt=6000)
+      Write(rec(2),Fmt=6001)
+      Write(rec(3),Fmt=6000)
+      nrec = 3
+      Call printmsg(1, .False., options, nrec, rec)
+    End If
+
+    If (buildmsg(4, .False., options)) Then
+      Call print_options(options)
+    End If
 
     main_loop: do i = 1,options%maxit
        if ( present(weights) ) then
@@ -193,32 +179,46 @@ contains
        
        ! test the returns to see if we've converged
        if (inform%status /= 0) then 
-          call nlls_strerror(inform)
-          if ( options%print_level > 0 ) then
-             write(options%error,Fmt=5001) trim(inform%error_message)
-          end if
-          goto 100 ! error -- exit
+          ! error -- exit
+          goto 100 
        elseif ((inform%convergence_normf == 1).or.&
                (inform%convergence_normg == 1).or.&
                (inform%convergence_norms == 1)) then
-          goto 100 ! converged -- exit
+          ! converged -- exit
+          goto 100 
        end if
-       
      end do main_loop
     
      ! If we reach here, then we're over maxits     
-     if (options%print_level > 0 ) write(options%error,Fmt=5000) 
      inform%status = NLLS_ERROR_MAXITS
     
 100 continue
+
      call nlls_finalize(w,options)
-     return
-! Non-executable statements
-
-! print level > 0
-
-5000 FORMAT(/,'RAL_NLLS failed to converge in the allowed number of iterations')
-5001 FORMAT('ERROR:',1X,A)
+     If (buildmsg(1,.False.,options)) then
+       Write(rec(1),Fmt=6002)
+       nrec = 1
+       Call printmsg(1,.False.,options,nrec,rec)
+     End If
+!    Good bye banner
+     If (inform%status /= 0) then
+!      @RALNAG ERR_ORACLE
+       call nlls_strerror(inform)
+!      @RALNAG EXITBANNER
+       If (buildmsg(1,.False.,options)) then
+         Write(rec(1), Fmt=5000) trim(inform%error_message)
+         Write(rec(2), Fmt=5001) inform%status
+         nrec = 2
+         ! TODO FIXME for now printmsg ignores opt%error record number FID
+         ! and prints ONLY to opt%out
+         Call printmsg(1, .False., options, nrec, rec)
+       End If
+     End If
+5000 Format(1X,'**',1X,A)
+5001 Format(1X,'** ABNORMAL EXIT from RALFit routine nlls_solve: ERROR =',I5)
+6000 Format(1X,78('-'))
+6001 Format(2X,'RALFit, unconstrained nonlinear least square solver')
+6002 Format(80('-'))
    END SUBROUTINE NLLS_SOLVE
   
 
@@ -245,7 +245,6 @@ contains
     class( params_base_type ) :: params
     REAL( wp ), DIMENSION( m ), INTENT( IN ), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
-    
       
     integer :: svdstatus
     integer :: i, no_reductions, max_tr_decrease
@@ -255,14 +254,25 @@ contains
     logical :: bad_allocate
     character :: second
     integer :: num_successful_steps
-    integer :: ierr_dummy
+    integer :: nrec, ierr_dummy
+    Character(Len=100) :: rec(3)
+    Character(Len=1) :: it_type, inn_flag
+
 
 !   thread-safe inits
     svdstatus = 0
     max_tr_decrease = 100
     bad_allocate = .false.
     num_successful_steps = 0
-    
+    ! it_type: Iteration type: R = regular, I = inner
+    it_type = 'R'
+    Select Type(params)
+    Type Is (tensor_params_type)
+      it_type = 'I'
+    End Select
+    ! inn_flag: status flag for the success of inner it convergence
+    ! Three-state '-' Not in inner iteration, 'C' Converged, 'E' not convErged
+    inn_flag = '-'
     ! todo: make max_tr_decrease a control variable
 
     ! Perform a single iteration of the RAL_NLLS loop
@@ -271,8 +281,14 @@ contains
        !! This is the first call...allocate arrays, and get initial !!
        !! function evaluations                                      !!
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
-       if ( options%print_level >= 2 ) write( options%out, 2000 ) 
-       if ( options%print_level >= 1 ) write( options%out, 1000 )
+!      @RALNAG WELCOMEBNR
+       If (buildmsg(1, .False., options)) Then
+         Write(rec(1), Fmt=8000)
+         Write(rec(2), Fmt=9000)
+         Write(rec(3), Fmt=8000)
+         nrec = 3
+         Call printmsg(1, .False., options, nrec, rec)
+       End If
        ! first, check if n < m
        If (n > m) Then
          inform%status = NLLS_ERROR_N_GT_M
@@ -463,10 +479,18 @@ contains
        
        rho  = -one ! intialize rho as a negative value
 
-       if (options%print_level > 0 ) then 
-          write(options%out,1010) w%iter, ' ', w%Delta, rho, inform%obj, &
-            inform%norm_g, inform%scaled_g
-       end if
+       If (buildmsg(1, .False., options)) Then
+         If (it_type == 'R') Then
+           Write(rec(1),Fmt=9010) inform%iter, inform%obj, inform%norm_g,      &
+             inform%scaled_g, w%Delta, rho, '--'//it_type//inn_flag,           &
+             inform%inner_iter
+         Else
+           Write(rec(1),Fmt=9010) inform%iter, inform%obj, inform%norm_g,      &
+             inform%scaled_g, w%Delta, rho, '--'//it_type//inn_flag
+         End If
+         nrec = 1
+         Call printmsg(1, .False., options, nrec, rec)
+       End If
 
        if (.not. options%exact_second_derivatives) then
           ! let's update g_old, which is needed for call to
@@ -525,6 +549,10 @@ contains
              goto 100
           end if
        end if
+       ! Update inn_flag
+       If (it_type == 'R') Then
+         inn_flag = merge('C', 'E', inform%inner_iter_success)
+       End If
 
        !++++++++++++++++++!
        ! Accept the step? !
@@ -656,9 +684,17 @@ contains
        if (inform%status /= 0) goto 100
        
        if (.not. success) then
-          if ( options%print_level >= 1 ) then
-             write(options%out,1020) w%iter, second, w%Delta, rho
-          end if
+          If (buildmsg(1, .False., options)) Then
+            If (it_type=='R') Then
+              Write(rec(1),Fmt=9020) inform%iter, w%Delta, rho,                &
+                'U'//second//it_type//inn_flag,inform%inner_iter
+            Else
+              Write(rec(1),Fmt=9020) inform%iter, w%Delta, rho,                &
+                'U'//second//it_type//inn_flag
+            End If
+            nrec = 1
+            Call printmsg(1, .False., options, nrec, rec)
+          End If
 !         ! finally, check d makes progress
 !         if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) then
 !            write(*,*) 'rhs = ', epsmch * norm2(w%Xnew)
@@ -740,10 +776,18 @@ contains
        w%gradvec(w%iter + 1) = inform%norm_g
     end if
     
-    if (options%print_level >=1) then
-       write(options%out,1010) w%iter, second, w%Delta, rho, inform%obj, &
-            inform%norm_g, inform%scaled_g
-    end if
+    If (buildmsg(1, .False., options)) Then
+      If (it_type=='R') Then
+        Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
+          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
+          inform%inner_iter
+      Else
+        Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
+          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag
+      End If
+      nrec = 1
+      Call printmsg(1, .False., options, nrec, rec)
+    End If
 
     !++++++++++++++++++!
     ! Test convergence !
@@ -795,12 +839,10 @@ contains
        inform%bad_alloc = 'nlls_iterate'
     end if
 
-! print level > 0
-1000 FORMAT('iter',4x,'2nd order?',2x,'Delta',9x,'rho',11x,'0.5||f||^2',4x,'||J''f||',7x,'||J''f||/||f||')
-1010 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,ES12.4      ,2x,ES12.4,    2x,ES12.4)
-1020 FORMAT(   i4, 4x,      A,9x,     ES12.4, 2x,ES12.4,2x,'unsuccessful step')
-! print level > 1
-2000 FORMAT(/,'* Running RAL_NLLS *')
+8000 Format(80('-'))
+9000 Format(1X,' Iter |   error    |    grad    |  rel grad  |  Delta  |   rho   |S2IF| inn it')
+9010 Format(I7,3(1X,Es12.4e2),1X,2(Es9.2e2,1X),A4,1X,I7)
+9020 Format(I7,3(13X),1X,2(Es9.2e2,1X),A4,1X,I7)
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
 3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.') 
@@ -832,7 +874,7 @@ contains
 
   end subroutine nlls_finalize
 
-  subroutine nlls_strerror(inform)!,error_string)
+  subroutine nlls_strerror(inform)
     type( nlls_inform ), intent(inout) :: inform
 
     if ( inform%status == NLLS_ERROR_MAXITS ) then
@@ -939,7 +981,7 @@ contains
 
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
-       
+       inform%inner_iter_success = .False.
        call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,& 
             d, md, params, options, inform, & 
             w%solve_newton_tensor_ws, tenJ, inner_workspace)
@@ -3147,14 +3189,13 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
        d(1:n) = zero
 
        ! send to ral_nlls_iterate to solve the subproblem recursively
-       if (options%print_level > 0) write(options%out,"(80('*'))")
        select case (options%inner_method)
        case (1) ! send in a base regularization parameter
           w%tensor_options%base_regularization = 1.0_wp / Delta
        case (2)  ! this uses p = 3, and solves a nlls problem in more unknowns explicitly
           w%tparams%p = 3.0_wp
           w%tparams%extra = 2
-          d(1:n) = 1.0e-12 ! Hessian not defined at 0 if p /= 2, so set 'small'          
+          d(1:n) = 1.0e-12_wp ! Hessian not defined at 0 if p /= 2, so set 'small'
        case (3)  ! this uses p = 2, and solves implicitly
           w%tensor_options%regularization_term = 1.0_wp / Delta
 !          write(*,*) 'regularization_term = ', w%tensor_options%regularization_term
@@ -3181,18 +3222,12 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
                .or.(tensor_inform%convergence_normg == 1) & 
                .or.(tensor_inform%convergence_norms == 1)) then
              ! we've converged!
+             inform%inner_iter_success = .True.
              exit
           end if
        end do
        call nlls_finalize(inner_workspace,w%tensor_options)
-       if (tensor_inform%status .ne. 0) then
-          write(options%out,'(A)') '**** inner iteration did not converge ****'
-       end if
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
-       if (options%print_level > 0) then
-          write(options%out,'(a,i0)') 'Total inner iterations = ', inform%inner_iter
-          write(options%out,"(80('*'))")
-       end if
         
         ! now we need to evaluate the model at the new point
         w%tparams%extra = 0

@@ -302,6 +302,10 @@ module ral_nlls_workspaces
 !  the number of inner iterations performed
      
      INTEGER :: inner_iter = 0
+
+!  exit status of last inner iteration process
+
+     LOGICAL :: inner_iter_success = .False.
        
 !  the total number of CG iterations performed
 
