@@ -1,3 +1,5 @@
+# Launch the cmake with NAG:
+# export FC=nagfor && cmake .. from build directory
 # CMake project file for libral_nlls
 cmake_minimum_required (VERSION 2.6)
 enable_language (C Fortran)
@@ -21,6 +23,7 @@ set ( SRC_FILES
 	src/ral_nlls_symbols.f90
 	src/ral_nlls_ciface.f90
 	src/ral_nlls_workspaces.f90
+  src/ral_nlls_printing.f90
 	)	
 #	external/ea06d.f
 #	external/ea08d.f
@@ -49,20 +52,28 @@ if(CMAKE_BUILD_TYPE_LOWER MATCHES debug)
   set(TestCoverage On)
 elseif(CMAKE_BUILD_TYPE_LOWER MATCHES profile)
       message("WARNING: Debug version - not to be used in production code.")	
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O3")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg -g -O3")
-  set(CMAKE_LDFLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O3")		    
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O0 -gline")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg -g -O0")
+  set(CMAKE_LDFLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O0")
 else()
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+  #  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O0")
+  # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
 endif()
 
 
 # Set flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
 #set(CMAKE_Fortran_COMPILER nagfor)
+set(CMAKE_Fortran_COMPILER_ID NAG)
+set(CMAKE_Fortran_COMPILER "nagfor")
 get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC")
+# Thread Safe
+# set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -PIC -g -W0,-gline -nan -C=all -u -ieee=stop -kind=unique -Wc,-m64,-msse,-msse2,-mfpmath=sse -Wl,-m64 -f2008 -colour -fpp")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -thread_safe -PIC -g -W0,-gline -nan -C=all -u -ieee=full -kind=unique -Wc,-m64,-msse,-msse2,-mfpmath=sse -Wl,-m64 -f2008 -colour -fpp")
+# Thread unsafe
+# set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -PIC -g -W0,-gline -nan -C=all -u -ieee=full -kind=unique -Wc,-m64,-msse,-msse2,-mfpmath=sse -Wl,-m64 -f2008 -colour -fpp")
 
 set( CMAKE_VERBOSE_MAKEFILE on )		
 if(TestCoverage)
@@ -74,15 +85,10 @@ if(TestCoverage)
    SETUP_TARGET_FOR_COVERAGE(test_coverage test/test coverage)
 endif(TestCoverage)
 
-# BLAS and LAPACK
-
-find_package(BLAS REQUIRED)
-if ( NOT BLAS_FOUND )
-  message( FATAL_ERROR "BLAS required, but not found!")
-endif ( NOT BLAS_FOUND ) 	    
-message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )	 
-include_directories(${BLAS_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${BLAS_LIBRARIES})
+# Main libral_nlls library
+include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
+add_library (ral_nlls SHARED ${SRC_FILES} ) 
+target_link_libraries(ral_nlls lapack -lm -ldl)
 
 if(NOT CompileMiniLAPACK)
   # try to find lapack..
@@ -90,10 +96,6 @@ if(NOT CompileMiniLAPACK)
   if(NOT LAPACK_FOUND)
     # couldn't find lapack...compile locally
     set(CompileMiniLAPACK On)
-  else()
-    message( STATUS "The LAPACK library was found at" ${LAPACK_LIBRARIES} )
-    include_directories(${LAPACK_INCLUDE_DIRS})
-    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
   endif()
 endif()
 
@@ -129,14 +131,10 @@ if(CompileMiniLAPACK)
          lapack/ieeeck.f lapack/iladlc.f lapack/iladlr.f lapack/ilaenv.f
          lapack/iparmq.f lapack/dlamch.f)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
-   set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
+   find_package(BLAS REQUIRED)
 endif()
 
-# Main libral_nlls library
-include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
-add_library (ral_nlls SHARED ${SRC_FILES} ) 
-target_link_libraries(ral_nlls ${LIBS} -lm -ldl)
-
+message( STATUS BLAS found: ${BLAS_LIBRARIES} )
 
 # Tests and examples
 add_subdirectory (test)
