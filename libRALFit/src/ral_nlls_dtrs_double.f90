@@ -22,12 +22,6 @@
 !     |                                                                  |
 !     --------------------------------------------------------------------
 
-      USE RAL_NLLS_SYMBOLS, Only: RAL_NLLS_ok, RAL_NLLS_error_restrictions,    &
-                                  RAL_NLLS_error_ill_conditioned,              &
-                                  RAL_NLLS_error_unbounded,                    &
-                                  RAL_NLLS_error_max_iterations
-
-
       IMPLICIT NONE
 
       PRIVATE
@@ -43,7 +37,6 @@
 !   P a r a m e t e r s
 !----------------------
 
-      INTEGER, PARAMETER :: out = 6
       REAL ( KIND = wp ), PARAMETER :: zero = 0.0_wp
       REAL ( KIND = wp ), PARAMETER :: one = 1.0_wp
       REAL ( KIND = wp ), PARAMETER :: two = 2.0_wp
@@ -56,9 +49,7 @@
       REAL ( KIND = wp ), PARAMETER :: onethird = one / three
       REAL ( KIND = wp ), PARAMETER :: half = 0.5_wp
       REAL ( KIND = wp ), PARAMETER :: twothirds = two / three
-!     REAL ( KIND = wp ), PARAMETER :: pi = four * ATAN( 1.0_wp )
       REAL ( KIND = wp ), PARAMETER :: pi = 3.1415926535897931_wp
-!     REAL ( KIND = wp ), PARAMETER :: magic = twothirds * pi
       REAL ( KIND = wp ), PARAMETER :: magic = 2.0943951023931953_wp  !! 2 pi/3
       REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
       REAL ( KIND = wp ), PARAMETER :: infinity = HUGE( one )
@@ -89,8 +80,10 @@
 
 !-*-*-*-*-*-   R O O T S _ q u a d r a t i c  S U B R O U T I N E   -*-*-*-*-*-
 
-      SUBROUTINE ROOTS_quadratic( a0, a1, a2, tol, nroots, root1, root2, debug )
-
+      SUBROUTINE ROOTS_quadratic( a0, a1, a2, tol, nroots, root1, root2, debug, options )
+        Use ral_nlls_workspaces, Only: NLLS_options
+        Use ral_nlls_printing, Only: printmsg
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Find the number and values of real roots of the quadratic equation
@@ -107,9 +100,10 @@
       REAL ( KIND = wp ), INTENT( IN ) :: a2, a1, a0, tol
       REAL ( KIND = wp ), INTENT( OUT ) :: root1, root2
       LOGICAL, INTENT( IN ) :: debug
+      Type( NLLS_options ), Intent (In) :: options
 
 !  Local variables
-
+      Character (Len=80) :: rec(1)
       REAL ( KIND = wp ) :: rhs, d, p, pprime
 
       rhs = tol * a1 * a1
@@ -151,22 +145,35 @@
         p = ( a2 * root1 + a1 ) * root1 + a0
         pprime = two * a2 * root1 + a1
         IF ( pprime /= zero ) THEN
-          IF ( debug ) WRITE( out, 2000 ) 1, root1, p, - p / pprime
+          If (debug) Then
+            Write(rec(1), Fmt=2000)       1, root1, p, - p / pprime
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
           root1 = root1 - p / pprime
           p = ( a2 * root1 + a1 ) * root1 + a0
         END IF
-        IF ( debug ) WRITE( out, 2010 ) 1, root1, p
+        If (debug) Then
+          Write(rec(1), Fmt=2010)       1, root1, p
+          Call Printmsg(5,.False.,options,1,rec)
+        End if
         IF ( nroots == 2 ) THEN
           p = ( a2 * root2 + a1 ) * root2 + a0
           pprime = two * a2 * root2 + a1
           IF ( pprime /= zero ) THEN
-            IF ( debug ) WRITE( out, 2000 ) 2, root2, p, - p / pprime
+            If (debug) Then
+              Write(rec(1), Fmt=2000)       2, root2, p, - p / pprime
+              Call Printmsg(5,.False.,options,1,rec)
+            End If
             root2 = root2 - p / pprime
             p = ( a2 * root2 + a1 ) * root2 + a0
           END IF
-          IF ( debug ) WRITE( out, 2010 ) 2, root2, p
+          If (debug) Then
+            Write(rec(1), Fmt=2010)       2, root2, p
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
         END IF
       END IF
+
 
       RETURN
 
@@ -184,8 +191,10 @@
 !-*-*-*-*-*-*-*-   R O O T S _ c u b i c  S U B R O U T I N E   -*-*-*-*-*-*-*-
 
       SUBROUTINE ROOTS_cubic( a0, a1, a2, a3, tol, nroots, root1, root2,       &
-                              root3, debug )
-
+                              root3, debug, options )
+        Use ral_nlls_workspaces, Only: NLLS_options
+        Use ral_nlls_printing, Only: printmsg
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Find the number and values of real roots of the cubicc equation
@@ -202,6 +211,7 @@
       REAL ( KIND = wp ), INTENT( IN ) :: a3, a2, a1, a0, tol
       REAL ( KIND = wp ), INTENT( OUT ) :: root1, root2, root3
       LOGICAL, INTENT( IN ) :: debug
+      Type( NLLS_options ), Intent (In) :: options
 
 !  Local variables
 
@@ -209,6 +219,7 @@
       REAL ( KIND = wp ) :: a, b, c, d, e, f, p, q, s, t, w, x, y, z
       REAL ( KIND = wp ) :: c0, c1, c2, b0, b1, pprime, u1, u2
       REAL ( KIND = wp ) :: H( 3, 3 ), ER( 3 ), EI( 3 ), ZZ( 1, 3 ), WORK( 33 )
+      Character(Len=80) :: rec(1)
 
 !  define method used:
 !    1 = Nonweiler, 2 = Littlewood, 3 = Viete, other = companion matrix
@@ -218,7 +229,7 @@
 !  Check to see if the quartic is actually a cubic
 
       IF ( a3 == zero ) THEN
-        CALL ROOTS_quadratic( a0, a1, a2, tol, nroots, root1, root2, debug )
+        CALL ROOTS_quadratic( a0, a1, a2, tol, nroots, root1, root2, debug, options )
         root3 = infinity
         RETURN
       END IF
@@ -227,7 +238,7 @@
 
       IF ( a0 == zero ) THEN
         root1 = zero
-        CALL ROOTS_quadratic( a1, a2, a3, tol, nroots, root2, root3, debug )
+        CALL ROOTS_quadratic( a1, a2, a3, tol, nroots, root2, root3, debug, options )
         nroots = nroots + 1
         RETURN
       END IF
@@ -354,7 +365,7 @@
           b1 = ( b0 - three * c1 ) / root1
         END IF
         CALL ROOTS_quadratic( b0, b1, one, epsmch, nroots_q,                   &
-                              root2, root3, debug )
+                              root2, root3, debug, options )
         nroots = nroots + nroots_q
 
 
@@ -393,11 +404,14 @@
         H( 1, 3 ) = - a0 / a3 ; H( 2, 3 ) = - a1 / a3 ; H( 3, 3 ) = - a2 / a3
         CALL HSEQR( 'E', 'N', 3, 1, 3, H, 3, ER, EI, ZZ, 1, WORK, 33, info )
         IF ( info /= 0 ) THEN
-          IF ( debug ) WRITE( out,                                             &
-         &   "( ' ** error return ', I0, ' from HSEQR in ROOTS_cubic' )" ) info
           nroots = 0
+          If (debug) Then
+            Write(rec(1), Fmt=90000) info
+            Call Printmsg(5,.false.,options,1,rec)
+          End If
           RETURN
         END IF
+90000 Format ( ' ** error return ', I12, ' from HSEQR in ROOTS_cubic' )
 
 !  count and record the roots
 
@@ -429,42 +443,70 @@
           END IF
           root3 = root2 ; root2 = a
         END IF
-        IF ( debug ) WRITE( out, "( ' 3 real roots ' )" )
+        If (debug) Then
+          Write(rec(1), Fmt=99993)
+        End If
       ELSE IF ( nroots == 2 ) THEN
-        IF ( debug ) WRITE( out, "( ' 2 real roots ' )" )
+        If (debug) Then
+          Write(rec(1), Fmt=99992)
+        End If
       ELSE
-        IF ( debug ) WRITE( out, "( ' 1 real root ' )" )
+        If (debug) Then
+          Write(rec(1), Fmt=99991)
+        End If
       END IF
+      Call Printmsg(5,.False.,options,1,rec)
+99993 Format ( ' 3 real roots ' )
+99992 Format ( ' 2 real roots ' )
+99991 Format ( ' 1 real root ' )
 
 !  perfom a Newton iteration to ensure that the roots are accurate
 
       p = ( ( a3 * root1 + a2 ) * root1 + a1 ) * root1 + a0
       pprime = ( three * a3 * root1 + two * a2 ) * root1 + a1
       IF ( pprime /= zero ) THEN
-        IF ( debug ) WRITE( out, 2000 ) 1, root1, p, - p / pprime
+        If (debug) Then
+          Write(rec(1), Fmt=2000) 1, root1, p, - p / pprime
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
         root1 = root1 - p / pprime
         p = ( ( a3 * root1 + a2 ) * root1 + a1 ) * root1 + a0
       END IF
-      IF ( debug ) WRITE( out, 2010 ) 1, root1, p
+      If (debug) Then
+        Write(rec(1), Fmt=2010) 1, root1, p
+        Call Printmsg(5,.False.,options,1,rec)
+      End If
 
       IF ( nroots == 3 ) THEN
         p = ( ( a3 * root2 + a2 ) * root2 + a1 ) * root2 + a0
         pprime = ( three * a3 * root2 + two * a2 ) * root2 + a1
         IF ( pprime /= zero ) THEN
-          IF ( debug ) WRITE( out, 2000 ) 2, root2, p, - p / pprime
+          If (debug) Then
+            Write(rec(1), Fmt=2000)       2, root2, p, - p / pprime
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
           root2 = root2 - p / pprime
           p = ( ( a3 * root2 + a2 ) * root2 + a1 ) * root2 + a0
         END IF
-        IF ( debug ) WRITE( out, 2010 ) 2, root2, p
+        If (debug) Then
+          Write(rec(1), Fmt=2010)       2, root2, p
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
 
         p = ( ( a3 * root3 + a2 ) * root3 + a1 ) * root3 + a0
         pprime = ( three * a3 * root3 + two * a2 ) * root3 + a1
         IF ( pprime /= zero ) THEN
-          IF ( debug ) WRITE( out, 2000 ) 3, root3, p, - p / pprime
+          If (debug) Then
+            Write(rec(1), Fmt=2000)       3, root3, p, - p / pprime
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
           root3 = root3 - p / pprime
           p = ( ( a3 * root3 + a2 ) * root3 + a1 ) * root3 + a0
         END IF
-        IF ( debug ) WRITE( out, 2010 ) 3, root3, p
+        If (debug) Then
+          Write(rec(1), Fmt=2010)       3, root3, p
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
       END IF
 
       RETURN
@@ -483,8 +525,10 @@
 !-*-*-*-*-*-*-   R O O T S _ q u a r t i c   S U B R O U T I N E   -*-*-*-*-*-*-
 
       SUBROUTINE ROOTS_quartic( a0, a1, a2, a3, a4, tol, nroots, root1, root2, &
-                                root3, root4, debug )
-
+                                root3, root4, debug, options)
+        Use ral_nlls_workspaces, Only: NLLS_options
+        Use ral_nlls_printing, Only: printmsg
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Find the number and values of real roots of the quartic equation
@@ -501,6 +545,7 @@
       REAL ( KIND = wp ), INTENT( IN ) :: a4, a3, a2, a1, a0, tol
       REAL ( KIND = wp ), INTENT( OUT ) :: root1, root2, root3, root4
       LOGICAL, INTENT( IN ) :: debug
+      Type (NLLS_options), Intent(In) :: options
 
 !  Local variables
 
@@ -509,12 +554,13 @@
       REAL ( KIND = wp ) :: x1, xm, xmd, xn, xnd
       REAL ( KIND = wp ) :: d3, d2, d1, d0, b4, b3, b2, b1
       REAL ( KIND = wp ) :: rootc1, rootc2, rootc3, p, pprime
+      Character(Len=80) :: rec(1)
 
 !  Check to see if the quartic is actually a cubic
 
       IF ( a4 == zero ) THEN
         CALL ROOTS_cubic( a0, a1, a2, a3, tol, nroots, root1, root2, root3,    &
-                          debug )
+                          debug, options )
         root4 = infinity
         RETURN
       END IF
@@ -536,7 +582,7 @@
 !  Compute the roots of the auxiliary cubic
 
       CALL ROOTS_cubic( d0, d1, d2, d3, tol, nrootsc, rootc1, rootc2, rootc3, &
-                        debug )
+                        debug, options )
       IF ( nrootsc > 1 ) rootc1 = rootc3
       x1 = b1 * b1 * quarter - b2 + rootc1
       IF ( x1 < zero ) THEN
@@ -650,55 +696,84 @@
 
       IF ( debug ) THEN
         IF ( nroots == 0 ) THEN
-          WRITE( out, "( ' no real roots ' )" )
+          Write( rec(1), Fmt=99990 )
         ELSE IF ( nroots == 2 ) THEN
-          WRITE( out, "( ' 2 real roots ' )" )
+          Write( rec(1), Fmt=99992 )
         ELSE IF ( nroots == 4 ) THEN
-          WRITE( out, "( ' 4 real roots ' )" )
+          Write( rec(1), Fmt=99994 )
         END IF
+        Call Printmsg(5,.False.,options,1,rec)
       END IF
+99990 Format ( ' no real roots ' )
+99992 Format ( ' 2 real roots ' )
+99994 Format ( ' 4 real roots ' )
+
       IF ( nroots == 0 ) RETURN
 
       p = ( ( ( a4 * root1 + a3 ) * root1 + a2 ) * root1 + a1 ) * root1 + a0
       pprime = ( ( four * a4 * root1 + three * a3 ) * root1 + two * a2 )       &
                  * root1 + a1
       IF ( pprime /= zero ) THEN
-        IF ( debug ) WRITE( out, 2000 ) 1, root1, p, - p / pprime
+        If (debug) Then
+          Write(rec(1), Fmt=2000)       1, root1, p, - p / pprime
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
         root1 = root1 - p / pprime
         p = ( ( ( a4 * root1 + a3 ) * root1 + a2 ) * root1 + a1 ) * root1 + a0
       END IF
-      IF ( debug ) WRITE( out, 2010 ) 1, root1, p
+      If (debug) Then
+        Write(rec(1), Fmt=2010)       1, root1, p
+        Call Printmsg(5,.False.,options,1,rec)
+      End If
 
       p = ( ( ( a4 * root2 + a3 ) * root2 + a2 ) * root2 + a1 ) * root2 + a0
       pprime = ( ( four * a4 * root2 + three * a3 ) * root2 + two * a2 )       &
                  * root2 + a1
       IF ( pprime /= zero ) THEN
-        IF ( debug ) WRITE( out, 2000 ) 2, root2, p, - p / pprime
+        If (debug) Then
+          Write(rec(1), Fmt=2000)       2, root2, p, - p / pprime
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
         root2 = root2 - p / pprime
         p = ( ( ( a4 * root2 + a3 ) * root2 + a2 ) * root2 + a1 ) * root2 + a0
       END IF
-      IF ( debug ) WRITE( out, 2010 ) 2, root2, p
+      If (debug) Then
+        Write(rec(1), Fmt=2010)       2, root2, p
+        Call Printmsg(5,.False.,options,1,rec)
+      End If
 
       IF ( nroots == 4 ) THEN
         p = ( ( ( a4 * root3 + a3 ) * root3 + a2 ) * root3 + a1 ) * root3 + a0
         pprime = ( ( four * a4 * root3 + three * a3 ) * root3 + two * a2 )     &
                    * root3 + a1
         IF ( pprime /= zero ) THEN
-          IF ( debug ) WRITE( out, 2000 ) 3, root3, p, - p / pprime
+          If (debug) Then
+            Write(rec(1), Fmt=2000)       3, root3, p, - p / pprime
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
           root3 = root3 - p / pprime
           p = ( ( ( a4 * root3 + a3 ) * root3 + a2 ) * root3 + a1 ) * root3 + a0
         END IF
-        IF ( debug ) WRITE( out, 2010 ) 3, root3, p
+        If (debug) Then
+          Write(rec(1), Fmt=2010)       3, root3, p
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
 
         p = ( ( ( a4 * root4 + a3 ) * root4 + a2 ) * root4 + a1 ) * root4 + a0
         pprime = ( ( four * a4 * root4 + three * a3 ) * root4 + two * a2 )     &
                    * root4 + a1
         IF ( pprime /= zero ) THEN
-          IF ( debug ) WRITE( out, 2000 ) 4, root4, p, - p / pprime
+          If (debug) Then
+            Write(rec(1), Fmt=2000)       4, root4, p, - p / pprime
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
           root4 = root4 - p / pprime
           p = ( ( ( a4 * root4 + a3 ) * root4 + a2 ) * root4 + a1 ) * root4 + a0
         END IF
-        IF ( debug ) WRITE( out, 2010 ) 4, root4, p
+        If (debug) Then
+          Write(rec(1), Fmt=2010)       4, root4, p
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
       END IF
 
       RETURN
@@ -742,10 +817,10 @@
 !       -----------------------------------------------
 
       USE RAL_NLLS_SYMBOLS, Only: RAL_NLLS_ok, RAL_NLLS_error_restrictions,    &
-                                  RAL_NLLS_error_ill_conditioned,              &
-                                  RAL_NLLS_error_unbounded,                    &
-                                  RAL_NLLS_error_max_iterations
+                                   RAL_NLLS_error_ill_conditioned
       USE RAL_NLLS_ROOTS_double, ONLY: ROOTS_cubic
+      USE RAL_NLLS_Workspaces, Only: NLLS_options
+      USE RAL_NLLS_printing
 
       IMPLICIT NONE
 
@@ -780,7 +855,7 @@
       REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
       REAL ( KIND = wp ), PARAMETER :: teneps = ten * epsmch
       REAL ( KIND = wp ), PARAMETER :: roots_tol = teneps
-      LOGICAL :: roots_debug = .FALSE.
+      LOGICAL, parameter :: roots_debug = .FALSE.
 
 !--------------------------
 !  Derived type definitions
@@ -794,11 +869,11 @@
 
 !  unit for error messages
 
-        INTEGER :: error = 6
+!         INTEGER :: error = 6
 
 !  unit for monitor output
 
-        INTEGER :: out = 6
+!         INTEGER :: out = 6
 
 !  unit to write problem data into file problem_file
 
@@ -806,7 +881,7 @@
 
 !  controls level of diagnostic output
 
-        INTEGER :: print_level = 0
+!         INTEGER :: print_level = 0
 
 !  maximum degree of Taylor approximant allowed
 
@@ -955,8 +1030,8 @@
 
 !  Set initial control parameter values
 
-      control%stop_normal = epsmch ** 0.75
-      control%stop_absolute_normal = epsmch ** 0.75
+      control%stop_normal = epsmch ** 0.75_wp
+      control%stop_absolute_normal = epsmch ** 0.75_wp
 
       RETURN
 
@@ -966,7 +1041,7 @@
 
 !-*-*-*-*-*-*-*-*-  D T R S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-
 
-      SUBROUTINE DTRS_solve( n, radius, f, C, H, X, control, inform )
+      SUBROUTINE DTRS_solve( n, radius, f, C, H, X, control, inform, options )
 
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
@@ -1011,6 +1086,7 @@
       REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
       TYPE ( DTRS_control_type ), INTENT( IN ) :: control
       TYPE ( DTRS_inform_type ), INTENT( INOUT ) :: inform
+      TYPE ( NLLS_options ), Intent( In ) :: options
 
 !  local variables
 
@@ -1081,7 +1157,7 @@
 !  solve the scaled problem
 
       CALL DTRS_solve_main( n, radius_scale, f_scale, C_scale, H_scale, X,     &
-                            control_scale, inform )
+                            control_scale, inform, options )
 
 !  unscale the solution, function value, multiplier and related values
 
@@ -1101,7 +1177,7 @@
 
 !-*-*-*-*-*-*-*-*-  D T R S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-
 
-      SUBROUTINE DTRS_solve_main( n, radius, f, C, H, X, control, inform )
+      SUBROUTINE DTRS_solve_main( n, radius, f, C, H, X, control, inform, options )
 
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
@@ -1146,12 +1222,13 @@
       REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
       TYPE ( DTRS_control_type ), INTENT( IN ) :: control
       TYPE ( DTRS_inform_type ), INTENT( INOUT ) :: inform
+      TYPE ( NLLS_options ), Intent( In ) :: options
 
 !-----------------------------------------------
 !   L o c a l   V a r i a b l e s
 !-----------------------------------------------
 
-      INTEGER :: i, it, out, nroots, print_level
+      INTEGER :: i, it, nroots
       INTEGER :: max_order, n_lambda, i_hard, n_sing
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda
       REAL ( KIND = wp ) :: alpha, utx, distx, x_big
@@ -1165,8 +1242,11 @@
       CHARACTER ( LEN = 1 ) :: region
 
 !  prefix for all output
-
+!     @RALNAG OVERFLW prefix can overflow buffer rec(80) Add safeguard
       CHARACTER ( LEN = LEN( TRIM( control%prefix ) ) - 2 ) :: prefix
+      Character (Len=80) :: rec(5)
+      Integer :: nrec
+
       IF ( LEN( TRIM( control%prefix ) ) > 2 )                                 &
         prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
 
@@ -1175,7 +1255,7 @@
 !write(6,"( A, ES13.4E3 )" ) 'radius', radius
 
 !  output problem data
-
+!     @RALNAG FILEIO comment out output data
       IF ( control%problem > 0 ) THEN
         INQUIRE( FILE = control%problem_file, EXIST = problem_file_exists )
         IF ( problem_file_exists ) THEN
@@ -1206,11 +1286,14 @@
 
 !  record desired output level
 
-      out = control%out
-      print_level = control%print_level
-      printi = out > 0 .AND. print_level > 0
-      printt = out > 0 .AND. print_level > 1
-      printd = out > 0 .AND. print_level > 2
+!     out = control%out
+!     print_level = control%print_level
+!     printi = out > 0 .AND. print_level > 0
+!     printt = out > 0 .AND. print_level > 1
+!     printd = out > 0 .AND. print_level > 2
+      printi = buildmsg(2,.false.,options)
+      printt = buildmsg(3,.false.,options)
+      printd = buildmsg(4,.false.,options)
 
 !  check for n < 0 or Delta < 0
 
@@ -1224,15 +1307,21 @@
       c_norm = TWO_NORM( C )
       lambda_min = MINVAL( H( : n ) )
       lambda_max = MAXVAL( H( : n ) )
-
-      IF ( printt ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
-     &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
-          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
-
       region = 'L'
-      IF ( printt )                                                            &
-        WRITE( out, "( A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )" ) prefix
-      IF ( printi ) WRITE( out, 2030 ) prefix
+
+      If (printt) Then
+        Write(rec(1), Fmt=99999) prefix, c_norm, MAXVAL(ABS(H(:n))),lambda_min
+        Write(rec(2), Fmt=99998) prefix
+        Call Printmsg(3,.false.,options,2,rec)
+      End If
+      If ( printi ) Then
+        WRITE(rec(1), 2030 ) prefix
+        Call Printmsg(2,.False.,options,1,rec)
+      End IF
+99999 Format(A,' ||c|| = ',ES10.4,', ||H|| = ',ES10.4,', lambda_min = ',ES11.4) 
+99998 Format(A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )
+2030  FORMAT(A, '    it     ||x||-radius             lambda ',                &
+                 '              d_lambda' )
 
 !  check for the trivial case
 
@@ -1252,10 +1341,12 @@
           lambda = zero
         END IF
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,             &
+          WRITE( rec(1), Fmt=99997) prefix, region,             &
           0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
-          WRITE( out, "( A,                                                    &
-       &    ' Normal stopping criteria satisfied' )" ) prefix
+          WRITE( rec(2), Fmt=99996) prefix
+          Call Printmsg(2,.False.,options,2,rec)
+99997 Format( A, A2, I4, 3ES22.13 )
+99996 Format( A, ' Normal stopping criteria satisfied' )
         END IF
         inform%status = RAL_NLLS_ok
         GO TO 900
@@ -1330,10 +1421,11 @@
             inform%obj =                                                       &
                 f + half * ( DOT_PRODUCT( C, X ) - lambda * radius ** 2 )
             IF ( printi ) THEN
-              WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,         &
+              WRITE( rec(1), Fmt=99997 )  prefix, region,         &
               0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
-              WRITE( out, "( A,                                                &
-           &    ' Hard-case stopping criteria satisfied' )" ) prefix
+              WRITE( rec(2), Fmt=99994 ) prefix
+              Call Printmsg(2,.False.,options,2,rec)
+99994 Format( A, ' Hard-case stopping criteria satisfied' )
             END IF
             inform%status = RAL_NLLS_ok
             GO TO 900
@@ -1410,9 +1502,11 @@
           inform%status = RAL_NLLS_ok
           region = 'L'
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 2ES22.13 )" ) prefix,                    &
+            WRITE( rec(1), Fmt=99997) prefix,                    &
               region, it, inform%x_norm - radius, lambda
-            WRITE( out, "( A, ' Interior stopping criteria satisfied')" ) prefix
+            WRITE( rec(2), Fmt=99993) prefix
+            Call Printmsg(2,.False.,options,2,rec)
+99993 Format ( A, ' Interior stopping criteria satisfied')
           END IF
           GO TO 900
         END IF
@@ -1428,12 +1522,15 @@
             region = 'G'
             lambda_u = MIN( lambda_u, lambda )
           END IF
-          IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
+          IF ( printt .AND. it > 1 ) Then
+            WRITE( rec(1), Fmt=2030 ) prefix
+            Call Printmsg(3,.False.,options,1,rec)
+          End If
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,           &
+            WRITE( rec(1), Fmt=99997) prefix, region,           &
             it, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
-            WRITE( out, "( A,                                                  &
-         &    ' Normal stopping criteria satisfied' )" ) prefix
+            WRITE( rec(2), Fmt=99996) prefix
+            Call Printmsg(2,.false.,options,2,rec)
           END IF
           inform%status = RAL_NLLS_ok
           EXIT
@@ -1444,14 +1541,21 @@
 !  debug printing
 
         IF ( printd ) THEN
-          WRITE( out, "( A, 8X, 'lambda', 13X, 'x_norm', 15X, 'radius' )" )    &
-            prefix
-          WRITE( out, "( A, 3ES20.12 )") prefix, lambda, inform%x_norm, radius
-        ELSE IF ( printi ) THEN
-          IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
-          WRITE( out, "( A, A2, I4, 3ES22.13 )" ) prefix, region, it,          &
+          WRITE( rec(1), Fmt=99992) prefix
+          WRITE( rec(2), Fmt=99991) prefix, lambda, inform%x_norm, radius
+          Call Printmsg(4,.False.,options,2,rec)
+        End If 
+        IF ( printt .AND. it > 1 ) Then
+          WRITE( rec(1), 2030 ) prefix
+          Call Printmsg(3,.False.,options,1,rec)
+        End If
+        IF ( printi ) THEN
+          WRITE( rec(1), Fmt=99997 ) prefix, region, it,          &
             ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
+          Call Printmsg(2,.False.,options,1,rec)
         END IF
+99992 Format( A, 8X, 'lambda', 13X, 'x_norm', 15X, 'radius' )
+99991 Format( A, 3ES20.12 )
 
 !  record, for the future, values of lambda which give small ||x||
 
@@ -1532,7 +1636,7 @@
             a_2 = a_2 / a_max ; a_3 = a_3 / a_max
           END IF
           CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,             &
-                            root1, root2, root3, roots_debug )
+                            root1, root2, root3, roots_debug, options )
           n_lambda = n_lambda + 1
           IF ( nroots == 3 ) THEN
             lambda_new( n_lambda ) = lambda + root3
@@ -1558,7 +1662,7 @@
             a_2 = a_2 / a_max ; a_3 = a_3 / a_max
           END IF
           CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,             &
-                            root1, root2, root3, roots_debug )
+                            root1, root2, root3, roots_debug, options )
           n_lambda = n_lambda + 1
           IF ( nroots == 3 ) THEN
             lambda_new( n_lambda ) = lambda + root3
@@ -1570,13 +1674,18 @@
 !  record all of the estimates of the optimal lambda
 
         IF ( printd ) THEN
-          WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
-            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
+          nrec = 1
+          Write(rec(1), Fmt=99990) prefix, MAXLOC( lambda_new( : n_lambda ) ), &
             lambda_new( : MIN( 3, n_lambda ) )
-          IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
-            prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+          IF ( n_lambda > 3 ) Then
+            Write(rec(2), Fmt=99989)prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+            nrec = 2
+          End If
+          Call Printmsg(4,.false.,options,nrec,rec)
         END IF
 
+99990 Format ( A, ' lambda_t (', I1, ')', 3ES20.13 )
+99989 Format ( A, 13X, 3ES20.13 )
 !  compute the best Taylor improvement
 
         lambda_plus = MAXVAL( lambda_new( : n_lambda ) )
@@ -1590,11 +1699,15 @@
 !  check that the best Taylor improvement is significant
 
         IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
-          IF ( printi ) WRITE( out, "( A, ' normal exit with no ',             &
-         &                     'significant Taylor improvement' )" ) prefix
+          IF ( printi ) Then
+            WRITE( rec(1), Fmt=99988 ) prefix
+            Call Printmsg(2,.False.,options,1,rec)
+          End If
           inform%status = RAL_NLLS_ok
           EXIT
         END IF
+
+  99988 Format ( A, ' normal exit with no significant Taylor improvement' )
 
 !  End of main iteration loop
 
@@ -1615,8 +1728,6 @@
 
 ! Non-executable statements
 
- 2030 FORMAT( A, '    it     ||x||-radius             lambda ',                &
-                 '              d_lambda' )
 
 !  End of subroutine DTRS_solve_main
 
@@ -1793,7 +1904,10 @@
 !      |                                            |
 !       --------------------------------------------
 
-      USE RAL_NLLS_SYMBOLS
+      USE RAL_NLLS_SYMBOLS, Only: RAL_NLLS_ok, RAL_NLLS_error_restrictions,    &
+                                  RAL_NLLS_error_ill_conditioned,              &
+                                  RAL_NLLS_error_unbounded,                    &
+                                  RAL_NLLS_error_max_iterations
       USE RAL_NLLS_ROOTS_double
 
       IMPLICIT NONE
@@ -1829,7 +1943,7 @@
       REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
       REAL ( KIND = wp ), PARAMETER :: teneps = ten * epsmch
       REAL ( KIND = wp ), PARAMETER :: roots_tol = teneps
-      LOGICAL :: roots_debug = .FALSE.
+      LOGICAL, Parameter :: roots_debug = .FALSE.
 
 !--------------------------
 !  Derived type definitions
@@ -1843,11 +1957,11 @@
 
 !  unit for error messages
 
-        INTEGER :: error = 6
+ !        INTEGER :: error = 6
 
 !  unit for monitor output
 
-        INTEGER :: out = 6
+ !        INTEGER :: out = 6
 
 !  unit to write problem data into file problem_file
 
@@ -1855,7 +1969,7 @@
 
 !  controls level of diagnostic output
 
-        INTEGER :: print_level = 0
+ !        INTEGER :: print_level = 0
 
 !   at most maxit inner iterations are allowed
 
@@ -2012,8 +2126,8 @@
 
 !  Set initial control parameter values
 
-      control%stop_normal = epsmch ** 0.75
-      control%stop_absolute_normal = epsmch ** 0.75
+      control%stop_normal = epsmch ** 0.75_wp
+      control%stop_absolute_normal = epsmch ** 0.75_wp
 
       RETURN
 
@@ -2023,8 +2137,9 @@
 
 !-*-*-*-*-*-*-*-*-  D R Q S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-*-
 
-      SUBROUTINE DRQS_solve( n, p, sigma, f, C, H, X, control, inform )
-
+      SUBROUTINE DRQS_solve( n, p, sigma, f, C, H, X, control, inform, options )
+        Use ral_nlls_workspaces, only: NLLS_options
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Solve the reguarized quadratic subproblem
@@ -2068,6 +2183,7 @@
       REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
       TYPE ( DRQS_control_type ), INTENT( IN ) :: control
       TYPE ( DRQS_inform_type ), INTENT( INOUT ) :: inform
+      Type ( NLLS_options ), Intent( In ) :: options
 
 !  local variables
 
@@ -2138,7 +2254,7 @@
         control_scale%upper = control_scale%upper / scale_h
 
       CALL DRQS_solve_main( n, p, sigma_scale, f_scale, C_scale, H_scale, X,   &
-                            control_scale, inform )
+                            control_scale, inform, options )
 
 !  unscale the solution, function value, multiplier and related values
 
@@ -2162,8 +2278,10 @@
 
 !-*-*-*-*-*-*-  D R Q S _ S O L V E _ M A I N   S U B R O U T I N E  -*-*-*-*-*-
 
-      SUBROUTINE DRQS_solve_main( n, p, sigma, f, C, H, X, control, inform )
-
+      SUBROUTINE DRQS_solve_main( n, p, sigma, f, C, H, X, control, inform, options)
+        Use RAL_NLLS_workspaces, Only: NLLS_options
+        Use RAL_NLLS_PRINTING
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Solve the reguarized quadratic subproblem
@@ -2207,12 +2325,13 @@
       REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
       TYPE ( DRQS_control_type ), INTENT( IN ) :: control
       TYPE ( DRQS_inform_type ), INTENT( INOUT ) :: inform
+      Type ( NLLS_options ), Intent( In ) :: options
 
 !-----------------------------------------------
 !   L o c a l   V a r i a b l e s
 !-----------------------------------------------
 
-      INTEGER :: i, it, out, nroots, print_level, max_order, n_lambda, i_hard
+      INTEGER :: i, it, nroots, max_order, n_lambda, i_hard
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda, target
       REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2
       REAL ( KIND = wp ) :: beta, z_norm2, pm2, oopm2, oos, oos2
@@ -2227,10 +2346,13 @@
 
       INTEGER :: ii( 1 ), j
       REAL ( KIND = wp ) :: a_4
+      Character(Len=80) :: rec(5)
+      Integer :: nrec
 
 !  prefix for all output
 
       CHARACTER ( LEN = LEN( TRIM( control%prefix ) ) - 2 ) :: prefix
+      it = 0
       IF ( LEN( TRIM( control%prefix ) ) > 2 )                                 &
         prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
 
@@ -2272,11 +2394,14 @@
 
 !  record desired output level
 
-      out = control%out
-      print_level = control%print_level
-      printi = out > 0 .AND. print_level > 0
-      printt = out > 0 .AND. print_level > 1
-      printd = out > 0 .AND. print_level > 2
+!     out = control%out
+!     print_level = control%print_level
+!     printi = out > 0 .AND. print_level > 0
+!     printt = out > 0 .AND. print_level > 1
+!     printd = out > 0 .AND. print_level > 2
+      printi = buildmsg(2,.false.,options)
+      printt = buildmsg(3,.false.,options)
+      printd = buildmsg(4,.false.,options)
 
 !  check for n < 0 or sigma < 0
 
@@ -2290,35 +2415,41 @@
       c_norm = TWO_NORM( C )
       lambda_min = MINVAL( H( : n ) )
       lambda_max = MAXVAL( H( : n ) )
-
-      IF ( printi ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
-     &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
-          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
-
       region = 'L'
-      IF ( printt )                                                            &
-        WRITE( out, "( A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )" ) prefix
-      IF ( printi ) WRITE( out, 2030 ) prefix
+
+      IF ( printt ) Then
+        WRITE( rec(1), Fmt=99999 ) prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
+        WRITE( rec(2), Fmt=99998 ) prefix
+        Call Printmsg(3,.False.,options,2,rec)
+      End If
+      IF ( printi ) Then
+        WRITE( rec(1), 2030 ) prefix
+        Call Printmsg(2,.False.,options,1,rec)
+      End If
+
+99999 Format ( A, ' ||c|| = ', ES10.4, ', ||H|| = ', ES10.4, ', lambda_min = ', ES11.4 )
+99998 Format ( A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )
+2030  FORMAT( A, '    it     ||x||-target              lambda ','              d_lambda' )
 
 !  check for the trivial cases: ||c|| = 0 & H positive semi-definite
 
       IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
         lambda = zero ; target = zero
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,          &
-            it, inform%x_norm - target, lambda, ABS( delta_lambda )
-          WRITE( out, "( A,                                                    &
-      &    ' Normal stopping criteria satisfied' )" ) prefix
+          WRITE(rec(1),Fmt=99997) prefix,region,it,inform%x_norm-target,lambda,ABS( delta_lambda )
+          WRITE(rec(2), Fmt=99996) prefix
+          Call Printmsg(2,.false.,options,2,rec)
         END IF
         inform%status = RAL_NLLS_ok
         GO TO 900
       END IF
+99997 Format ( A, A2, I4, 1X, 3ES22.13 )
+99996 Format ( A, ' Normal stopping criteria satisfied' )
 
 !  p = 2
-
       IF ( p == two ) THEN
         IF ( lambda_min + sigma > zero ) THEN
-          X = - C / ( H + sigma )
+          X(1:n) = - C(1:n) / ( H(1:n) + sigma )
         ELSE IF ( lambda_min + sigma < zero ) THEN
           inform%status = RAL_NLLS_error_unbounded
           lambda = zero
@@ -2339,8 +2470,14 @@
         inform%obj_regularized = f + half * DOT_PRODUCT( C, X )
         inform%obj = inform%obj_regularized - half * sigma * inform%x_norm ** 2
         inform%status = RAL_NLLS_ok
+        if (printi) Then
+          Write(rec(1), Fmt=99997) prefix, region,it,inform%x_norm-target,lambda
+          Write(rec(2), Fmt=99994) prefix
+          Call Printmsg(2,.false.,options,2,rec)
+        end If
         GO TO 900
       END IF
+99994 Format ( A, ' p=2 Normal stopping criteria satisfied' )
 
 !  reccord useful constants
 
@@ -2353,10 +2490,10 @@
 
       lambda_l =                                                               &
         MAX( control%lower, zero, - lambda_min,                                &
-             DRQS_lambda_root( lambda_max, c_norm * sigma ** oopm2, oopm2 ) )
+             DRQS_lambda_root( lambda_max, c_norm * sigma ** oopm2, oopm2, options ) )
       lambda_u =                                                               &
         MIN( control%upper, MAX( zero,                                         &
-             DRQS_lambda_root( lambda_min, c_norm * sigma ** oopm2, oopm2 ) ) )
+             DRQS_lambda_root( lambda_min, c_norm * sigma ** oopm2, oopm2, options ) ) )
       lambda = lambda_l
 !     write( 6,*) ' initial lambda ', lambda
 
@@ -2372,13 +2509,13 @@
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
           END IF
           CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
-                                roots( 1 ), roots( 2 ), roots_debug )
+                                roots( 1 ), roots( 2 ), roots_debug, options )
           lambda = MAX( lambda, roots( 2 ) )
         END DO
 !       write( 6,*) ' improved lambda ', lambda
       END IF
 
-!write(6,*) ' lambda_l, lambda_u ', lambda_l, lambda_u
+! write(*,*) 'INFO: lambda_l, lambda_u ', lambda_l, lambda_u
 
 !lambda = SQRT( ABS( C( 1 ) * sigma ) )
 !lambda = 1.0D-22
@@ -2439,10 +2576,10 @@
             inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
 
             IF ( printi ) THEN
-              WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,      &
+              WRITE( rec(1), Fmt=99997 ) prefix, region,      &
                 it, inform%x_norm - target, lambda, ABS( delta_lambda )
-              WRITE( out, "( A,                                                &
-          &    ' Normal stopping criteria satisfied' )" ) prefix
+              WRITE( rec(2), Fmt=99996 ) prefix
+              Call Printmsg(2,.False.,options,2,rec)
             END IF
             inform%status = RAL_NLLS_ok
             GO TO 900
@@ -2482,7 +2619,7 @@
 
         ELSE
           lambda = MAX( lambda * ( one + epsmch ),                             &
-            DRQS_lambda_root( lambda_min, SQRT( c2 ) * sigma ** oopm2, oopm2 ) )
+            DRQS_lambda_root( lambda_min, SQRT( c2 ) * sigma ** oopm2, oopm2, options ) )
           lambda_l = MAX( lambda_l, lambda )
         END IF
 
@@ -2505,7 +2642,11 @@
 
           ii = MINLOC( H )
           j = ii( 1)
-          WRITE( out , * ) ' upper lambda = ', sigma * w_norm2, lambda_u
+          If (printd) Then
+            WRITE( rec(1) , Fmt=5000 ) prefix, ' upper lambda = ', sigma * w_norm2, lambda_u
+5000 Format (2A,2(1X,ES22.13))
+            Call Printmsg(4,.False.,options,1,rec)
+          End If
           lambda_u = MIN( sigma * w_norm2, lambda_u )
 
 !  the function ||x(lambda)|| is no smaller than h(lambda)
@@ -2533,8 +2674,12 @@
           END IF
           CALL ROOTS_quartic( a_0, a_1, a_2, a_3, a_4, roots_tol, nroots,      &
                             roots( 1 ), roots( 2 ), roots( 3 ), roots( 4 ),    &
-                            roots_debug )
-          WRITE( out, * ) ' starting lambda = ', roots( : nroots )
+                            roots_debug, options )
+          If (printd) Then
+              WRITE( rec(1), Fmt=5001 ) prefix, ' starting lambda = ', roots( : nroots )
+              Call Printmsg(4,.False.,options,1,rec)
+5001 Format (2A,4Es16.4e2)
+          End If
 !         lambda = MAX( roots( nroots ), lambda + epsmch )
           lambda = roots( nroots )
         END IF
@@ -2542,7 +2687,6 @@
 
 !  the iterates will all be in the L region. Prepare for the main loop
 
-      it = 0
       max_order = MAX( 1, MIN( max_degree, control%taylor_max_degree ) )
 
 !  start the main loop
@@ -2555,9 +2699,13 @@
         it = it + 1
         IF ( control%maxit > 0 .AND. it > control%maxit ) THEN
           inform%status = RAL_NLLS_error_max_iterations
-          IF ( printi ) WRITE( out, "( ' iteration limit exceeded' )" )
+          IF ( printi ) Then
+            WRITE( rec(1), Fmt=99995 ) prefix
+            Call Printmsg(2,.False.,options,1,rec)
+          End If
           EXIT
         END IF
+99995 Format (A,' iteration limit exceeded' )
 
 !  if H(lambda) is positive definite, solve  H(lambda) x = - c
 
@@ -2586,35 +2734,39 @@
             region = 'G'
             lambda_u = MIN( lambda_u, lambda )
           END IF
-          IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,        &
+            WRITE( rec(1), Fmt=99991 ) prefix, region,        &
               it, inform%x_norm - target, lambda, ABS( delta_lambda )
-            WRITE( out, "( A,                                                  &
-        &    ' Normal stopping criteria satisfied' )" ) prefix
+            WRITE( rec(2), Fmt=99990 ) prefix
+            Call Printmsg(2, .False., options, 2, rec)
           END IF
           inform%status = RAL_NLLS_ok
           EXIT
         END IF
+99991 Format ( A, A2, I4, 1X, 3ES22.13 )
+99990 Format ( A, ' Normal stopping criteria satisfied' )
 
         lambda_l = MAX( lambda_l, lambda )
 
 !  a lambda in L has been found. It is now simply a matter of applying
 !  a variety of Taylor-series-based methods starting from this lambda
 
-        IF ( printi ) WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix,      &
+        IF ( printi ) Then
+          WRITE( rec(1), Fmt=99991 ) prefix,      &
           region, it, inform%x_norm - target, lambda, ABS( delta_lambda )
+          Call PrintMsg(2,.False.,options, 1, rec)
+      End If
 
 !  precaution against rounding producing lambda outside L
 
         IF ( lambda > lambda_u ) THEN
           inform%status = RAL_NLLS_error_ill_conditioned
           IF ( printi ) THEN
-            WRITE( out, 2030 ) prefix
-            WRITE( out, "( A, 2X, I4, 3ES22.13, /, A,                          &
-           &               ' normal exit with lambda outside L' )" )           &
-              prefix, it, inform%x_norm - target, lambda, ABS( delta_lambda ), &
-              prefix
+            Write(rec(1), Fmt=99991) prefix, '', it, inform%x_norm - target,   &
+              lambda, ABS( delta_lambda )
+            Write(rec(2), Fmt=99989) prefix
+            99989 Format (A,' Normal stopping criteria with lambda outside L')
+            Call Printmsg(2,.False.,options,2,rec)
           END IF
           EXIT
         END IF
@@ -2656,7 +2808,7 @@
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
           END IF
           CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
-                                roots( 1 ), roots( 2 ), roots_debug )
+                                roots( 1 ), roots( 2 ), roots_debug, options )
           lambda_plus = lambda + roots( 2 )
           IF (  lambda_plus < lambda ) THEN
             n_lambda = n_lambda + 1
@@ -2692,7 +2844,7 @@
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
           END IF
           CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
-                                roots( 1 ), roots( 2 ), roots_debug )
+                                roots( 1 ), roots( 2 ), roots_debug, options )
           lambda_plus = lambda + roots( 2 )
           IF (  lambda_plus < lambda ) THEN
             n_lambda = n_lambda + 1
@@ -2801,7 +2953,7 @@
             END IF
             CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
                               roots( 1 ), roots( 2 ), roots( 3 ),              &
-                              roots_debug )
+                              roots_debug, options )
             n_lambda = n_lambda + 1
             lambda_new( n_lambda ) = lambda + roots( 1 )
 
@@ -2823,7 +2975,7 @@
             END IF
             CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
                               roots( 1 ), roots( 2 ), roots( 3 ),              &
-                              roots_debug )
+                              roots_debug, options )
             n_lambda = n_lambda + 1
             lambda_new( n_lambda ) = lambda + roots( 1 )
 
@@ -2848,7 +3000,7 @@
             END IF
             CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
                                roots( 1 ), roots( 2 ), roots( 3 ),             &
-                               roots_debug )
+                               roots_debug, options )
             n_lambda = n_lambda + 1
             lambda_new( n_lambda ) = lambda + roots( 1 )
 
@@ -2877,7 +3029,7 @@
             END IF
             CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
                               roots( 1 ), roots( 2 ), roots( 3 ),              &
-                              roots_debug )
+                              roots_debug, options )
             n_lambda = n_lambda + 1
             lambda_new( n_lambda ) = lambda +                                  &
               DRQS_required_root( .TRUE., nroots, roots( : 3 ) )
@@ -2903,7 +3055,7 @@
             END IF
             CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
                               roots( 1 ), roots( 2 ), roots( 3 ),              &
-                              roots_debug )
+                              roots_debug, options )
             n_lambda = n_lambda + 1
             lambda_new( n_lambda ) = lambda +                                  &
               DRQS_required_root( .TRUE., nroots, roots( : 3 ) )
@@ -2929,7 +3081,7 @@
             END IF
             CALL ROOTS_cubic( a_0, a_1, a_2, a_3, roots_tol, nroots,           &
                               roots( 1 ), roots( 2 ), roots( 3 ),              &
-                              roots_debug )
+                              roots_debug, options )
             n_lambda = n_lambda + 1
             lambda_new( n_lambda ) = lambda +                                  &
               DRQS_required_root( .TRUE., nroots, roots( : 3 ) )
@@ -2939,12 +3091,17 @@
 !  record all of the estimates of the optimal lambda
 
         IF ( printd ) THEN
-          WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
-            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
+          Write(rec(1), Fmt=99988) prefix, MAXLOC( lambda_new( : n_lambda ) ), &
             lambda_new( : MIN( 3, n_lambda ) )
-          IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
-            prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+          nrec = 1
+          IF ( n_lambda > 3 ) Then
+            Write(rec(2), Fmt=99987) prefix, lambda_new(4 : MIN(6, n_lambda ))
+            nrec = nrec + 1
+          End If
+          Call Printmsg(4,.False.,options,nrec,rec)
         END IF
+99988 Format ( A, ' lambda_t (', I1, ')', 3ES20.13 )
+99987 Format ( A, 13X, 3ES20.13 )
 
 !  compute the best Taylor improvement
 
@@ -2962,10 +3119,13 @@
 !       IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
         IF ( ABS( delta_lambda ) < epsmch * ABS( lambda ) ) THEN
           inform%status = RAL_NLLS_ok
-          IF ( printi ) WRITE( out, "( A, ' normal exit with no ',             &
-         &                     'significant Taylor improvement' )" ) prefix
+          If (printi) Then
+            Write(rec(1), Fmt=99986) prefix
+            Call Printmsg(2,.False.,options,1,rec)
+          End If
           EXIT
         END IF
+99986 Format (A, ' Normal exit with no significant Taylor improvement')
 
 !  End of main iteration loop
 
@@ -2975,12 +3135,15 @@
 
       inform%obj = f + half * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
       inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
-      IF ( printi ) WRITE( out,                                                &
-        "( A, ' estimated, true objective values =', 2ES21.13 )" ) prefix,     &
-          inform%obj_regularized, f + DOT_PRODUCT( C, X ) +                    &
-            half * DOT_PRODUCT( X, H( : n ) * X ) +                            &
+      If (printi) Then
+        Write(rec(1), Fmt=99984) prefix, inform%obj_regularized
+        Write(rec(2), Fmt=99985) prefix,                                       &
+        f + DOT_PRODUCT( C, X ) + half * DOT_PRODUCT( X, H( : n ) * X ) +      &
           ( sigma / p ) * inform%x_norm ** p
-
+        Call Printmsg(2,.False.,options,2,rec)
+      End If
+99985 Format ( A, ' Estimated, true objective value   =',1X,ES22.13 ) 
+99984 Format ( A, ' Estimated, true regularized value =',1X,Es22.13 )
 !  ----
 !  Exit
 !  ----
@@ -2993,8 +3156,6 @@
 
 ! Non-executable statements
 
- 2030 FORMAT( A, '    it     ||x||-target              lambda ',               &
-                 '              d_lambda' )
 !2050 FORMAT( A, ' time( SLS_solve ) = ', F0.2 )
 
 !  End of subroutine DRQS_solve_main
@@ -3226,8 +3387,9 @@
 
 !-*-*-*-*-*-*-  D R Q S _ L A M B D A  _ R O O T  F U C T I O N   -*-*-*-*-*-*-
 
-      FUNCTION DRQS_lambda_root( a, b, power )
-
+      FUNCTION DRQS_lambda_root( a, b, power, options )
+        Use ral_nlls_workspaces, Only: NLLS_options
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Find the positive root of lambda + a = b/lambda^power
@@ -3248,6 +3410,7 @@
 
       REAL ( KIND = wp ) :: DRQS_lambda_root
       REAL ( KIND = wp ), INTENT( IN ) :: a, b, power
+      Type (NLLS_Options), Intent( In ) :: options
 
 !-----------------------------------------------
 !   L o c a l   V a r i a b l e
@@ -3272,14 +3435,14 @@
 
       IF ( power == one ) THEN
         CALL ROOTS_quadratic( - b , a, one, roots_tol, nroots, other, lambda,  &
-                              roots_debug )
+                              roots_debug, options )
       ELSE
 
 !  when power > 1, 1/lambda <= 1/lambda^p for lambda in (0,1]
 
         IF ( power > one ) THEN
           CALL ROOTS_quadratic( - b , a, one, roots_tol, nroots, other,        &
-                                lambda, roots_debug )
+                                lambda, roots_debug, options )
           lambda = MIN( one, lambda )
         ELSE
           lambda = epsmch

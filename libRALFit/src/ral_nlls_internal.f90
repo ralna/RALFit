@@ -2315,11 +2315,8 @@ contains
      case (1)
         call dtrs_initialize( dtrs_options, dtrs_inform )
         ! Does not fail. 
-        dtrs_options%error = options%error
-        dtrs_options%out = options%out
-        dtrs_options%print_level = options%print_level - 1
         call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, & 
-                        dtrs_options, dtrs_inform )
+                        dtrs_options, dtrs_inform, options )
         if ( dtrs_inform%status /= 0) then
            inform%external_return = dtrs_inform%status
            inform%external_name = 'galahad_dtrs'
@@ -2329,16 +2326,13 @@ contains
      case(2)
         call drqs_initialize( drqs_options, drqs_inform ) 
         ! Does not fail. 
-        drqs_options%error = options%error
-        drqs_options%out = options%out
-        drqs_options%print_level = options%print_level - 1
         
         proceed = .false.
         do while (.not. proceed)          
            reg_param = options%base_regularization + 1.0_wp/Delta
            call drqs_solve & 
                 (n, reg_order, reg_param, zero, w%v_trans, w%ew, w%d_trans, & 
-                drqs_options, drqs_inform)
+                drqs_options, drqs_inform, options)
            if ( drqs_inform%status == -7 ) then
               ! drqs_solve has failed because the matrix
               !     J'J + *1/(2*Delta) * I 
@@ -2401,7 +2395,7 @@ contains
         call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
         ! informa%status is passed along, this routine exits here
      else 
-!      TODO FIXME ADDRESS this warning! AndrewS, 0 <= reg_order  !!!
+!      TODO FIXME ADDRESS this warning! AndrewS, 0 <= reg_order but /= 0 !!!
 write(*,*) 'Warning: Unsupported regularization order. Use 2.0'
      end if
    end subroutine regularization_solver
