@@ -1441,10 +1441,13 @@ contains
      
      if (norm_p0 < Delta) then
         ! get obj_p0 : the value of the model at p0
-        if (options%print_level >=3) write(options%out,2000) 'p0'     
+        If (buildmsg(3,.False.,options)) Then
+          Write(rec(1), Fmt=2000) 'p0'
+          Call Printmsg(3,.False.,options,1,rec)
+        End If
         call evaluate_model(f,J,hf,X,X,w%p0,obj_p0,obj_p0_gn,m,n, & 
              options, inform, w%evaluate_model_ws)
-           ! TODO AndrewS Check return value in infom%status
+        if (inform%status /= 0) goto 100
      end if
 
      w%M0(1:n,1:n) = -w%B
@@ -1513,7 +1516,7 @@ contains
      End If
      call evaluate_model(f,J,hf,X,X,w%p1,obj_p1,obj_p1_gn,m,n, & 
           options,inform,w%evaluate_model_ws)
-! TODO AndrewS add inform%status if
+     if (inform%status /= 0) goto 100
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
         d = w%p0
@@ -2776,7 +2779,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0'
                 ! regularized case works too
               Case Default
                 ! TODO AndrewS THIS CASE breaks Fortran/nlls_example2
-                ! issue, example has invalid options%type_of_methos = 3 and is
+                ! issue, example has invalid options%type_of_method = 3 and is
                 ! not caught at the beggining to run. Need to add options checker?
 Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options%type_of_method
 !                inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
