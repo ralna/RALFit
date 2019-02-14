@@ -210,6 +210,10 @@ module ral_nlls_workspaces
      ! use eigendecomposition in subproblem solve?
      LOGICAL :: use_ews_subproblem = .TRUE.
 
+     ! This forces to call min_eig_symm without previously calling solve_spd_nocopy
+     ! This option is used for code coverage and can be hidden from user.
+     Logical :: force_min_eig_symm = .FALSE.
+
 !   scale the variables?
 !   0 - no scaling
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
@@ -488,6 +492,8 @@ module ral_nlls_workspaces
   type, public :: all_eig_symm_work ! workspace for subroutine all_eig_symm
      logical :: allocated = .false.
      real(wp), allocatable :: work(:)
+     ! This will only be allocated with ew(n) to comply with LAPACK interface
+     real(wp), allocatable :: ew(:)
   end type all_eig_symm_work
 
   type, public :: generate_scaling_work ! workspace for subrouine generate_scaling
@@ -1315,6 +1321,7 @@ contains
 
     real(wp), allocatable :: workquery(:)
     integer :: lwork, eigsout, ierr_dummy
+    Real(Kind=wp) :: w_dummy(1), z_dummy(1,1)
 
     allocate(w%A(n,n),workquery(1),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
@@ -1341,23 +1348,25 @@ contains
           goto 100
        End If
     else
-       allocate( w%iwork(5*n),w%ifail(n),stat=inform%alloc_status )
+      ! Note: w%ew is allocated with size 1 to comply with LAPACK interface
+       allocate( w%iwork(5*n),w%ifail(n),w%ew(1),stat=inform%alloc_status )
        If (inform%alloc_status /= 0) Then
          inform%status = NLLS_ERROR_ALLOCATION
          inform%bad_alloc = "setup_workspace_min_eig_symm"
          GoTo 100
        End If
-
+       w_dummy(1) = 1.0_wp
+       z_dummy(1,1) = 1.0_wp
        ! make a workspace query to dsyevx
        call dsyevx( 'V',& ! get both ew's and ev's
             'I',& ! just the numbered eigenvalues
             'U',& ! upper triangle of A
             n, w%A, n, & 
-            1.0, 1.0, & ! not used for RANGE = 'I'
+            1.0_wp, 1.0_wp, & ! not used for RANGE = 'I'
             1, 1, & ! only find the first eigenpair
-            0.5, & ! abstol for the eigensolver
+            0.5_wp, & ! abstol for the eigensolver
             eigsout, & ! total number of eigs found
-            1.0, 1.0, & ! the eigenvalue and eigenvector
+            w_dummy, z_dummy, & ! the eigenvalue and eigenvector
             n, & ! ldz (the eigenvector array)
             workquery, -1, w%iwork, &  ! workspace
             w%ifail, & ! array containing indicies of non-converging ews
@@ -1397,6 +1406,7 @@ contains
     else
        if(allocated( w%iwork )) deallocate( w%iwork, stat=ierr_dummy )
        if(allocated( w%ifail )) deallocate( w%ifail, stat=ierr_dummy ) 
+       if(allocated( w%ew )) deallocate(w%ew, stat=ierr_dummy)
     end if
     if(allocated( w%work )) deallocate( w%work, stat=ierr_dummy ) 
 
@@ -1410,6 +1420,7 @@ contains
     type( nlls_inform), intent(out) :: inform
     real(wp), allocatable :: workquery(:)
     integer :: lwork, ierr_dummy
+    Real(Kind=wp) :: A_dummy(1,1), B_dummy(1,1), vl_dummy(1,1), vr_dummy(1,1)
 
     allocate( w%alphaR(2*n),w%alphaI(2*n),w%beta(2*n),w%vr(2*n,2*n),           &
       w%ew_array(2*n),workquery(1),w%nullindex(2*n),w%vecisreal(2*n),          &
@@ -1419,17 +1430,17 @@ contains
       inform%bad_alloc = "setup_workspace_max_eig"
       GoTo 100
     End If
-    w%alphaR = zero
-    w%alphaI = zero
-    w%beta = zero
-    w%ew_array = zero
+    A_dummy(1,1) = 1.0_wp
+    B_dummy(1,1) = 1.0_wp
+    vl_dummy(1,1) = 0.1_wp
+    vr_dummy(1,1) = 0.1_wp
     ! make a workspace query to dggev
     call dggev('N', & ! No left eigenvectors
          'V', &! Yes right eigenvectors
-         2*n, 1.0_wp, 2*n, 1.0_wp, 2*n, &
-         1.0_wp, 0.1_wp, 0.1_wp, & ! eigenvalue data
-         0.1_wp, 2*n, & ! not referenced
-         0.1_wp, 2*n, & ! right eigenvectors
+         2*n, A_dummy, 2*n, B_dummy, 2*n, &
+         w%alphaR, W%alphaI, w%beta, & ! eigenvalue data
+         vl_dummy, 2*n, & ! not referenced
+         vr_dummy, 2*n, & ! right eigenvectors
          workquery, -1, inform%external_return)
     If (inform%external_return > 0) Then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
@@ -1437,6 +1448,10 @@ contains
       GoTo 100
     End If
     lwork = int(workquery(1))
+    w%alphaR = zero
+    w%alphaI = zero
+    w%beta = zero
+    w%ew_array = zero
 
     if (allocated(workquery)) deallocate(workquery,stat=ierr_dummy)
     allocate( w%work(lwork), stat = inform%alloc_status)
@@ -1571,21 +1586,24 @@ contains
     type( nlls_inform ), intent(out) :: inform
 
     real(wp), allocatable :: workquery(:)
-    real(wp) :: A(1),ew(1)
-    integer :: lwork
+    real(wp) :: A_dummy(1)
+    integer :: lwork, ierr_dummy
 
-    allocate(workquery(1), stat = inform%alloc_status)
+    If (allocated(w%ew)) Then
+      Deallocate(w%ew, stat=ierr_dummy)
+    End If
+    allocate(workquery(1),w%ew(n), stat = inform%alloc_status)
     If (inform%alloc_status /= 0 ) Then
       inform%status = NLLS_ERROR_ALLOCATION
       inform%bad_alloc = "setup_workspace_all_eig_symm"
       GoTo 100
     End If
-    A = 1.0_wp
-    ew = 1.0_wp
+    A_dummy = 1.0_wp
+    w%ew(:) = 1.0_wp
     call dsyev('V', & ! both ew's and ev's 
          'U', & ! upper triangle of A
-         n, A, n, & ! data about A
-         ew, workquery, -1, & 
+         n, A_dummy, n, & ! data about A
+         w%ew, workquery, -1, &
          inform%external_return)  
     If (inform%external_return .ne. 0) Then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
@@ -1594,7 +1612,7 @@ contains
     End If
 
     lwork = int(workquery(1))
-    if (allocated(workquery)) deallocate(workquery)
+    if (allocated(workquery)) deallocate(workquery, stat=ierr_dummy)
     allocate( w%work(lwork), stat = inform%alloc_status )
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1605,6 +1623,9 @@ contains
     w%allocated = .true.
 
 100 continue
+    If (allocated(w%ew)) Then
+      Deallocate(w%ew, stat=ierr_dummy)
+    End If
     If (inform%status/=0) Then
       Call remove_workspace_all_eig_symm(w,options)
     End If

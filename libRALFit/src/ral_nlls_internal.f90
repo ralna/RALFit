@@ -479,8 +479,7 @@ contains
        If (buildmsg(1, .False., options)) Then
          If (it_type == 'R') Then
            Write(rec(1),Fmt=9010) inform%iter, inform%obj, inform%norm_g,      &
-             inform%scaled_g, w%Delta, rho, '--'//it_type//inn_flag,           &
-             inform%inner_iter
+             inform%scaled_g, w%Delta, rho, '---'//inn_flag
          Else
            Write(rec(1),Fmt=9010) inform%iter, inform%obj, inform%norm_g,      &
              inform%scaled_g, w%Delta, rho, '--'//it_type//inn_flag
@@ -778,10 +777,11 @@ contains
       If (it_type=='R') Then
         Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
           inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
-          inform%inner_iter
+          inform%inner_iter, w%normd
       Else
-        Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
-          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag
+        Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,        &
+          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
+          w%normd
       End If
       nrec = 1
       Call printmsg(1, .False., options, nrec, rec)
@@ -837,9 +837,13 @@ contains
        inform%bad_alloc = 'nlls_iterate'
     end if
 
-8000 Format(80('-'))
-9000 Format(1X,' Iter |   error    |    grad    |  rel grad  |  Delta  |   rho   |S2IF| inn it')
-9010 Format(I7,3(1X,Es12.4e2),1X,2(Es9.2e2,1X),A4,1X,I7)
+8000 Format(87('-'))
+9000 Format(1X,' Iter |   error    |    grad    |  rel grad  |  Delta  |   rho   |S2IF| inn it| step')
+!    Successfull iteration Regular iteration
+9010 Format(I7,3(1X,Es12.4e2),1X,2(Es9.2e2,1X),A4,1X,I7,1X,Es7.1e2)
+!    Successfull iteration Internal iteration
+9011 Format(I7,3(1X,Es12.4e2),1X,2(Es9.2e2,1X),A4,1X,7X,1X,Es7.1e2)
+!    Unsuccessfull iteration partial information
 9020 Format(I7,3(13X),1X,2(Es9.2e2,1X),A4,1X,I7)
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
@@ -976,7 +980,7 @@ contains
     d(1:n) = zero
     w%scale = one
 
-    normd = zero ! set normd so that it can't be undefined later
+    normd = 1.0e10_wp ! set normd so that it can't be undefined later
 
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
@@ -1001,7 +1005,10 @@ contains
        call matmult_inner(J,n,m,w%A,options)
        ! add any second order information...
        ! so A = J^T J + HF
-       call add_matrices(w%A,hf,n**2,w%A)
+       ! C <- A + B (aliasing)
+       ! call add_matrices3(w%A,hf,n**2,w%A)
+       ! A <- A + B
+       call add_matrices(w%A,hf,n**2)
        
        ! and, now, let's add on a reg parameter, if needed
        select case (options%regularization) 
@@ -1590,7 +1597,6 @@ contains
      real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
      integer :: i, no_restarts
      Character(Len=80) :: rec(2)
-
      
      ! The code finds 
      !  d = arg min_p   v^T p + 0.5 * p^T A p
@@ -1608,7 +1614,13 @@ contains
      ! d = -A\v
      ! in this case, A = AplusSigma
      w%AplusSigma(1:n,1:n) = A(1:n,1:n)
-     call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
+
+     If (options%force_min_eig_symm) Then
+       ! Skip solve_spd_nocopy and jump directly to min_eig_symm
+       inform%status = 1
+     Else
+       call solve_spd_nocopy(w%AplusSigma,-v,d,n,inform)
+     End If
      if (inform%status == 0) then
         ! A is symmetric positive definite....
         sigma = zero
@@ -2390,8 +2402,6 @@ contains
      real(wp) :: reg_param
      
      reg_param = 1.0_wp/Delta
-     ! TODO: consider removing this unused param AndrewS
-     normd = 0.0_wp
      
      if ( reg_order == two ) then
         call shift_matrix(A,reg_param,w%AplusSigma,n)
@@ -2399,8 +2409,14 @@ contains
         ! informa%status is passed along, this routine exits here
      else 
 !      TODO FIXME ADDRESS this warning! AndrewS, 0 <= reg_order but /= 0 !!!
-write(*,*) 'Warning: Unsupported regularization order. Use 2.0'
+write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end if
+
+     If (inform%status==0) Then
+       normd = norm2(d)
+     Else
+       normd = 1.0e10_wp
+     End If
    end subroutine regularization_solver
 
    SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
@@ -2865,7 +2881,6 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
           nlabel = 2
           Go To 100
        end if
-
        if ( normd < options%stop_s ) then
           inform%convergence_norms = 1
           nlabel = 3
@@ -2953,12 +2968,19 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
        end if
      end subroutine scale_J_by_weights
      
-     subroutine add_matrices(A,B,n,C)
-       real(wp), intent(in) :: A(*), B(*)
-       integer, intent(in) :: n
-       real(wp), intent(out) :: C(*)
+!     subroutine add_matrices3(A,B,n,C)
+!       real(wp), intent(in) :: A(*), B(*)
+!       integer, intent(in) :: n
+!       real(wp), intent(InOut) :: C(*)
+!
+!       C(1:n) = A(1:n) + B(1:n)
+!     end subroutine add_matrices3
 
-       C(1:n) = A(1:n) + B(1:n)
+     subroutine add_matrices(A,B,n)
+       real(wp), intent(InOut) :: A(*)
+       real(wp), intent(in) :: B(*)
+       integer, intent(in) :: n
+       A(1:n) = A(1:n) + B(1:n)
      end subroutine add_matrices
      
      subroutine get_element_of_matrix(J,m,ii,jj,Jij)
@@ -3160,16 +3182,17 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
           ew = w%ew(minindex(1))
           ev = w%A(1:n,minindex(1))
        else
+          w%ew(:) = 1.0_wp
           ! call dsyevx --> selected eigs of a symmetric matrix
           call dsyevx( 'V',& ! get both ew's and ev's
                'I',& ! just the numbered eigenvalues
                'U',& ! upper triangle of A
                n, w%A, n, & 
-               1.0, 1.0, & ! not used for RANGE = 'I'
+               1.0_wp, 1.0_wp, & ! not used for RANGE = 'I'
                1, 1, & ! only find the first eigenpair
                tol, & ! abstol for the eigensolver
                eigsout, & ! total number of eigs found
-               ew, ev, & ! the eigenvalue and eigenvector
+               w%ew, ev, & ! the eigenvalue and eigenvector
                n, & ! ldz (the eigenvector array)
                w%work, lwork, w%iwork, &  ! workspace
                w%ifail, & ! array containing indicies of non-converging ews
@@ -3179,6 +3202,7 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
              inform%external_name = 'lapack_dsyevx'
              Go To 100
           end if
+          ew = w%ew(1)
        end if
 
 100   continue
