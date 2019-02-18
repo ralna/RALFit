@@ -1348,8 +1348,8 @@ contains
           goto 100
        End If
     else
-      ! Note: w%ew is allocated with size 1 to comply with LAPACK interface
-       allocate( w%iwork(5*n),w%ifail(n),w%ew(1),stat=inform%alloc_status )
+      ! Note: w%ew is allocated with size N to comply with LAPACK interface
+       allocate( w%iwork(5*n),w%ifail(n),w%ew(n),stat=inform%alloc_status )
        If (inform%alloc_status /= 0) Then
          inform%status = NLLS_ERROR_ALLOCATION
          inform%bad_alloc = "setup_workspace_min_eig_symm"
