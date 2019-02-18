@@ -3158,7 +3158,7 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
          goto 100
        End If
 
-       tol = 2.0_wp*dlamch('S') !1e-15 ! TODO Replace AndrewS
+       tol = 2.0_wp*dlamch('S')
 
        w%A(1:n,1:n) = A(1:n,1:n) ! copy A, as workspace for dsyev(x)
        ! note that dsyevx (but not dsyev) only destroys the lower (or upper) part of A
@@ -3182,7 +3182,6 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
           ew = w%ew(minindex(1))
           ev = w%A(1:n,minindex(1))
        else
-          w%ew(:) = 1.0_wp
           ! call dsyevx --> selected eigs of a symmetric matrix
           call dsyevx( 'V',& ! get both ew's and ev's
                'I',& ! just the numbered eigenvalues
