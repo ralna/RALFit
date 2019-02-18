@@ -194,12 +194,12 @@ contains
     
 100 continue
 
-     call nlls_finalize(w,options)
-     If (buildmsg(1,.False.,options)) then
+     If (buildmsg(1,.False.,options).And.w%iter>0) then
        Write(rec(1),Fmt=6002)
        nrec = 1
        Call printmsg(1,.False.,options,nrec,rec)
      End If
+     call nlls_finalize(w,options)
 !    Good bye banner
      If (inform%status /= 0) then
 !      @RALNAG ERR_ORACLE
@@ -279,16 +279,8 @@ contains
     if (w%first_call == 1) then
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
        !! This is the first call...allocate arrays, and get initial !!
-       !! function evaluations                                      !!
+       !! function evaluations and see if problem is already solved !!
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
-!      @RALNAG WELCOMEBNR
-       If (buildmsg(1, .False., options)) Then
-         Write(rec(1), Fmt=8000)
-         Write(rec(2), Fmt=9000)
-         Write(rec(3), Fmt=8000)
-         nrec = 3
-         Call printmsg(1, .False., options, nrec, rec)
-       End If
        ! first, check if n < m
        If (n > m) Then
          inform%status = NLLS_ERROR_N_GT_M
@@ -392,6 +384,17 @@ contains
           w%resvec(1) = inform%obj
           w%gradvec(1) = inform%norm_g
        end if
+
+       !++++++++++++++++++!
+       ! Test convergence !
+       !++++++++++++++++++!
+       ! Note: pretty printing was pushed into test_convergence
+       call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,w%normd,options,inform)
+       if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1       &
+             .Or. inform%convergence_norms == 1) Then
+!        Converged!
+         Go To 100
+       End If
        
        ! set the reg_order to that in the options
        w%calculate_step_ws%reg_order = options%reg_order
@@ -475,6 +478,15 @@ contains
        end select
        
        rho  = -one ! intialize rho as a negative value
+
+!      @RALNAG ITERBNR
+       If (buildmsg(1, .False., options)) Then
+         Write(rec(1), Fmt=8000)
+         Write(rec(2), Fmt=9000)
+         Write(rec(3), Fmt=8000)
+         nrec = 3
+         Call printmsg(1, .False., options, nrec, rec)
+       End If
 
        If (buildmsg(1, .False., options)) Then
          If (it_type == 'R') Then
