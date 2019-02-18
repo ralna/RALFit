@@ -194,31 +194,17 @@ contains
     
 100 continue
 
-     If (buildmsg(1,.False.,options).And.w%iter>0) then
-       Write(rec(1),Fmt=6002)
-       nrec = 1
-       Call printmsg(1,.False.,options,nrec,rec)
-     End If
      call nlls_finalize(w,options)
-!    Good bye banner
      If (inform%status /= 0) then
 !      @RALNAG ERR_ORACLE
        call nlls_strerror(inform)
-!      @RALNAG EXITBANNER
-       If (buildmsg(1,.False.,options)) then
-         Write(rec(1), Fmt=5000) trim(inform%error_message)
-         Write(rec(2), Fmt=5001) inform%status
-         nrec = 2
-         ! TODO FIXME for now printmsg ignores opt%error record number FID
-         ! and prints ONLY to opt%out
-         Call printmsg(1, .False., options, nrec, rec)
-       End If
      End If
-5000 Format(1X,'**',1X,A)
-5001 Format(1X,'** ABNORMAL EXIT from RALFit routine nlls_solve: ERROR =',I5)
+     If (buildmsg(1,.False.,options)) then
+       Call print_bye(1,.False.,options,inform)
+     End If
+
 6000 Format(1X,78('-'))
 6001 Format(2X,'RALFit, unconstrained nonlinear least square solver')
-6002 Format(80('-'))
    END SUBROUTINE NLLS_SOLVE
   
 
@@ -780,6 +766,7 @@ contains
     inform%obj = 0.5_wp*(w%normF**2)
     inform%norm_g = w%normJF
     inform%scaled_g = w%normJF/w%normF
+    inform%step = w%normd
     if (options%output_progress_vectors) then
        w%resvec (w%iter + 1) = inform%obj
        w%gradvec(w%iter + 1) = inform%norm_g
