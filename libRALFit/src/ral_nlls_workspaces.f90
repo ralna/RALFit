@@ -377,6 +377,9 @@ module ral_nlls_workspaces
      
      CHARACTER ( LEN = 80 ) :: external_name = REPEAT( ' ', 80 )
 
+! Step size of last iteration (w%normd)
+     Real(Kind=wp) :: step = 1.0e10_wp
+
   END TYPE nlls_inform
 
 ! Error constants    
