@@ -412,6 +412,10 @@ module ral_nlls_workspaces
   ! Tensor model errors
   Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES    = -401
 
+  ! Misc errors
+  Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900
+
+
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type

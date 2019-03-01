@@ -133,7 +133,11 @@ contains
     w%iw_ptr => inner_workspace
 !   Self reference inner workspace so recursive call does not fail
     inner_workspace%iw_ptr => inner_workspace
-
+    ! Check some user options
+    Call Check_options(options, inform)
+    If (inform%status/=0) Then
+      Go To 100
+    End If
     If (buildmsg(1, .False., options)) Then
       Write(rec(1),Fmt=6000)
       Write(rec(2),Fmt=6001)
@@ -927,6 +931,8 @@ contains
        inform%error_message = 'Exact second derivatives needed for tensor model'
     elseif ( inform%status == NLLS_ERROR_WRONG_INNER_METHOD ) then
        inform%error_message = 'Unsupported value of inner_method passed in options'
+    elseif ( inform%status ==  NLLS_ERROR_PRINT_LEVEL) then
+       inform%error_message = 'Illegal value of print_level in options'
     else 
        inform%error_message = 'Unknown error number'           
     end if
@@ -2793,12 +2799,9 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
                 ! increase based on Delta to ensure the 
                 ! regularized case works too
               Case Default
-                ! TODO AndrewS THIS CASE breaks Fortran/nlls_example2
-                ! issue, example has invalid options%type_of_method = 3 and is
-                ! not caught at the beggining to run. Need to add options checker?
-Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options%type_of_method
-!                inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
-!                Go To 100
+                ! This should never be reached under normal usage
+                inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
+                Go To 100
              end select
              If (prnt3) Write(rec(1), Fmt=3030) w%Delta
              nrec=1
@@ -3658,6 +3661,23 @@ Write(*,*) 'WARNING: UNSUPPORTED_TYPE_METHOD in options%type_of_method', options
          inform%external_name = "eval_HF"
        End iF
      end subroutine get_Hi
+
+     Subroutine check_options(opt, inform)
+       Implicit None
+       Type(NLLS_options), Intent(In) :: opt
+       Type(NLLS_inform), Intent(InOut) :: inform
+       Continue
+       ! Routine to check for option value combinations
+       If (opt%type_of_method < 1 .Or. Opt%type_of_method > 2) Then
+         inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
+       ElseIf (opt%print_level < 0 .Or. Opt%print_level > 5 ) Then
+         inform%status = NLLS_ERROR_PRINT_LEVEL
+!      ElseIf
+!        inform%status =
+!      ...
+       End If
+
+     End Subroutine
 
    end module ral_nlls_internal
 
