@@ -11,22 +11,6 @@ module ral_nlls_internal
 
   private
 
-  integer, parameter :: wp = kind(1.0d0)
-  integer, parameter :: long = selected_int_kind(8)
-  real (kind = wp), parameter :: tenm3 = 1.0e-3
-  real (kind = wp), parameter :: tenm5 = 1.0e-5
-  real (kind = wp), parameter :: tenm8 = 1.0e-8
-  real (kind = wp), parameter :: epsmch = epsilon(1.0_wp)
-  real (kind = wp), parameter :: hundred = 100.0
-  real (kind = wp), parameter :: ten = 10.0
-  real (kind = wp), parameter :: point9 = 0.9
-  real (kind = wp), parameter :: zero = 0.0
-  real (kind = wp), parameter :: one = 1.0
-  real (kind = wp), parameter :: two = 2.0
-  real (kind = wp), parameter :: three = 3.0
-  real (kind = wp), parameter :: half = 0.5
-  real (kind = wp), parameter :: sixteenth = 0.0625
-  
   abstract interface
      subroutine eval_f_type(status, n, m, x, f, params)
        import :: params_base_type
@@ -392,12 +376,12 @@ contains
        !! Select the order of the model to be used..
        select case (options%model)
        case (1) ! first-order
-          w%hf(1:n**2) = zero
+          w%hf(1:n**2) = 0.0_wp
           w%use_second_derivatives = .false.
           if ( ( options%type_of_method == 2) .and. &
-               (options%reg_order .le. zero)) then 
+               (options%reg_order .le. 0.0_wp)) then 
              ! regularization method, use optimal reg
-             w%calculate_step_ws%reg_order = two
+             w%calculate_step_ws%reg_order = 2.0_wp
           end if
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
@@ -418,28 +402,28 @@ contains
              end if
           else
              ! S_0 = 0 (see Dennis, Gay and Welsch)
-             w%hf(1:n**2) = zero
+             w%hf(1:n**2) = 0.0_wp
           end if
           w%use_second_derivatives = .true.
           if ( ( options%type_of_method == 2) .and. & 
-               (options%reg_order .le. zero)) then 
+               (options%reg_order .le. 0.0_wp)) then 
              ! regularization method, use optimal reg
-             w%calculate_step_ws%reg_order = three
+             w%calculate_step_ws%reg_order = 3.0_wp
           end if
        case (3) ! hybrid (MNT)
           ! set the tolerance :: make this relative
           w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5*(w%normF**2)) )                   
           ! use first-order method initially
-          w%hf(1:n**2) = zero
+          w%hf(1:n**2) = 0.0_wp
           w%use_second_derivatives = .false.
           if ( (options%type_of_method == 2) .and. & 
-               (options%reg_order .le. zero)) then 
+               (options%reg_order .le. 0.0_wp)) then 
              ! regularization method, use optimal reg
-             w%calculate_step_ws%reg_order = two
+             w%calculate_step_ws%reg_order = 2.0_wp
           end if
           if (.not. options%exact_second_derivatives) then 
              ! initialize hf_temp too 
-             w%hf_temp(1:n**2) = zero
+             w%hf_temp(1:n**2) = 0.0_wp
           end if
           
        case (4) ! tensor model....
@@ -467,7 +451,7 @@ contains
           goto 100
        end select
        
-       rho  = -one ! intialize rho as a negative value
+       rho  = -1.0_wp ! intialize rho as a negative value
 
 !      @RALNAG ITERBNR
        If (buildmsg(1, .False., options)) Then
@@ -541,7 +525,7 @@ contains
              ! don't trust this model -- switch to GN
              ! (See Dennis, Gay and Walsh (1981), Section 5)
              call switch_to_gauss_newton(w,n,options)
-             w%hf_temp(:) = zero
+             w%hf_temp(:) = 0.0_wp
              cycle
           else 
              goto 100
@@ -598,7 +582,7 @@ contains
                 ! don't trust this model -- switch to GN
                 ! (See Dennis, Gay and Walsh (1981), Section 5)
                 call switch_to_gauss_newton(w,n,options)
-                w%hf_temp(:) = zero
+                w%hf_temp(:) = 0.0_wp
                 cycle
              end if
           end if
@@ -644,7 +628,7 @@ contains
                nrec=1
                Call Printmsg(3,.False.,options,nrec,rec)
              End If
-             rho = -two
+             rho = -2.0_wp
              ! reset J
              call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
              inform%g_eval = inform%g_eval + 1
@@ -982,8 +966,8 @@ contains
     end if
     
     scaling_used = .false.
-    d(1:n) = zero
-    w%scale = one
+    d(1:n) = 0.0_wp
+    w%scale = 1.0_wp
 
     normd = 1.0e10_wp ! set normd so that it can't be undefined later
 
@@ -1003,8 +987,8 @@ contains
     else 
        ! compute the hessian used in the model 
 
-!       w%scale = zero
-       w%extra_scale = zero
+!       w%scale = 0.0_wp
+       w%extra_scale = 0.0_wp
 
        ! Set A = J^T J
        call matmult_inner(J,n,m,w%A,options)
@@ -1241,13 +1225,13 @@ contains
               if (options%scale_trim_min) then 
                  temp = options%scale_min
               else
-                 temp = one
+                 temp = 1.0_wp
               end if
            elseif (temp > options%scale_max) then
               if (options%scale_trim_max) then 
                  temp = options%scale_max
               else
-                 temp = one 
+                 temp = 1.0_wp 
               end if
            end if trim_scale
            temp = sqrt(temp)
@@ -1290,13 +1274,13 @@ contains
      End If
      w%use_second_derivatives = .false.
      if ((options%type_of_method == 2) .and. & 
-          (options%reg_order .le. zero)) then 
+          (options%reg_order .le. 0.0_wp)) then 
         ! switch to optimal regularization
-        w%calculate_step_ws%reg_order = two
+        w%calculate_step_ws%reg_order = 2.0_wp
      end if
      ! save hf as hf_temp
      w%hf_temp(1:n**2) = w%hf(1:n**2)
-     w%hf(1:n**2) = zero
+     w%hf(1:n**2) = 0.0_wp
    end subroutine switch_to_gauss_newton
 
    subroutine switch_to_quasi_newton(w, n, options)
@@ -1313,9 +1297,9 @@ contains
 
      w%use_second_derivatives = .true.
      if ((options%type_of_method == 2).and. & 
-        (options%reg_order .le. zero)) then
+        (options%reg_order .le. 0.0_wp)) then
         ! switch to optimal regularization
-        w%calculate_step_ws%reg_order = three
+        w%calculate_step_ws%reg_order = 3.0_wp
      end if
      w%hybrid_count = 0
      ! copy hf from hf_temp
@@ -1628,7 +1612,7 @@ contains
      End If
      if (inform%status == 0) then
         ! A is symmetric positive definite....
-        sigma = zero
+        sigma = 0.0_wp
         If (buildmsg(3,.False.,options)) Then
           Write(rec(1), Fmt=6000)
           Call Printmsg(3,.False.,options,1,rec)
@@ -1662,7 +1646,7 @@ contains
        Call Printmsg(2,.False.,options,1,rec)
      End If
      ! now, we're not in the trust region initally, so iterate....
-     sigma_shift = zero
+     sigma_shift = 0.0_wp
      no_restarts = 0
      ! set 'small' in the context of the algorithm
      epsilon = max( options%more_sorensen_tol * Delta, options%more_sorensen_tiny )
@@ -1743,7 +1727,7 @@ contains
 
         w%q = d ! w%q = R'\d
         CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
-             1, one, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
+             1, 1.0_wp, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
 
         nq = norm2(w%q)
         If (buildmsg(3,.False.,options)) Then
@@ -1860,7 +1844,7 @@ contains
      do i = 1, n
         Aii = A(i,i)
         abs_Aii_sum = dasum(n,A(:,i),1) ! = sum |A_ij|
-        if (Aii < zero) then
+        if (Aii < 0.0_wp) then
            lower_sum = abs_Aii_sum + 2*Aii ! A_ij + sum_(i ne j) |A_ij|
            upper_sum = abs_Aii_sum
         else
@@ -1879,10 +1863,10 @@ contains
      end do
      nv = norm2(v)
 
-     sigma_l = max(zero, -min_Aii, nv/Delta - min(max_lower_sum,normF_A,norminf_A))
-     sigma_u = max(zero,nv/Delta + min(max_upper_sum,normF_A,norminf_A))
+     sigma_l = max(0.0_wp, -min_Aii, nv/Delta - min(max_lower_sum,normF_A,norminf_A))
+     sigma_u = max(0.0_wp,nv/Delta + min(max_upper_sum,normF_A,norminf_A))
      
-     sigma = max(zero,sigma_l)
+     sigma = max(0.0_wp,sigma_l)
      ! todo: if the model hasn't changed, use the terminating sigma there instead (p192, TR book)...
 
      If (buildmsg(3,.False.,options)) Then
@@ -1965,7 +1949,7 @@ contains
         if (region .ne. 1 ) then ! in F
            w%q = d ! w%q = R'\d
            CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, & 
-                1, one, w%LtL, n, w%q, n )
+                1, 1.0_wp, w%LtL, n, w%q, n )
            nq = norm2(w%q)
            If (buildmsg(3,.False.,options)) Then
              Write(rec(1), Fmt=6080) nq 
@@ -2018,7 +2002,7 @@ contains
               indef_delta = indef_delta + w%LtL(location_of_breakdown,jj)**2
            end do
 
-           w%y1 = zero
+           w%y1 = 0.0_wp
            w%y1(location_of_breakdown) = 1.0_wp
            do jj = location_of_breakdown - 1, 1, -1
               do kk = jj + 1, location_of_breakdown
@@ -2159,7 +2143,7 @@ contains
      real(wp) :: v_minus, v_plus, ltimesw
      integer :: i
 
-     u = zero
+     u = 0.0_wp
 
 !!$     write(*,*) 'LLt = '
 !!$     do i = 1, n
@@ -2186,7 +2170,7 @@ contains
      ! in the above, u is the w in the TR book
      ! now set u = L'\u
      CALL DTRSM( 'Left', 'Lower', 'Transpose', 'Non-unit', n, & 
-          1, one, LLt, n, u, n )
+          1, 1.0_wp, LLt, n, u, n )
      u = u / norm2(u)   ! and normalize   
 
 !!$     write(*,*) 'H = '
@@ -2324,10 +2308,10 @@ contains
       
      do ii = 1,n
         if (abs(w%v_trans(ii)) < epsmch) then
-           w%v_trans(ii) = zero
+           w%v_trans(ii) = 0.0_wp
         end if
         if (abs(w%ew(ii)) < epsmch) then
-           w%ew(ii) = zero
+           w%ew(ii) = 0.0_wp
         end if
      end do
  
@@ -2335,7 +2319,7 @@ contains
      case (1)
         call dtrs_initialize( dtrs_options, dtrs_inform )
         ! Does not fail. 
-        call dtrs_solve(n, Delta, zero, w%v_trans, w%ew, w%d_trans, & 
+        call dtrs_solve(n, Delta, 0.0_wp, w%v_trans, w%ew, w%d_trans, & 
                         dtrs_options, dtrs_inform, options )
         if ( dtrs_inform%status /= 0) then
            inform%external_return = dtrs_inform%status
@@ -2351,15 +2335,15 @@ contains
         do while (.not. proceed)          
            reg_param = options%base_regularization + 1.0_wp/Delta
            call drqs_solve & 
-                (n, reg_order, reg_param, zero, w%v_trans, w%ew, w%d_trans, & 
+                (n, reg_order, reg_param, 0.0_wp, w%v_trans, w%ew, w%d_trans, & 
                 drqs_options, drqs_inform, options)
            if ( drqs_inform%status == -7 ) then
               ! drqs_solve has failed because the matrix
               !     J'J + *1/(2*Delta) * I 
               ! is not spd. Fix this by decreasing Delta until it's big enough
-              Delta =  Delta / ten
+              Delta =  Delta / 10.0_wp
               ! alternatively, we could use a higher order regularization:
-              ! call drqs_solve(n,3.0_wp,1.0_wp/Delta, zero, w%v_trans,&
+              ! call drqs_solve(n,3.0_wp,1.0_wp/Delta, 0.0_wp, w%v_trans,&
               !                 w%ew, w%d_trans,drqs_options, drqs_inform)
               continue
            elseif ( drqs_inform%status /= 0) then
@@ -2408,7 +2392,7 @@ contains
      
      reg_param = 1.0_wp/Delta
      
-     if ( reg_order == two ) then
+     if ( reg_order == 2.0_wp ) then
         call shift_matrix(A,reg_param,w%AplusSigma,n)
         call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
         ! informa%status is passed along, this routine exits here
@@ -2489,7 +2473,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      normb2 = norm2(b)**2
 
      discrim = c**2 + (normb2)*(Delta**2 - norma2);
-     if ( discrim < zero ) then
+     if ( discrim < 0.0_wp ) then
         inform%status = NLLS_ERROR_FIND_BETA
         inform%external_name = 'findbeta'
         Go To 100
@@ -2534,8 +2518,8 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        real(wp) :: xtd, normx, p, sigma
        Character(Len=80) :: rec(1)
        
-       md = zero
-       md_gn = zero
+       md = 0.0_wp
+       md_gn = 0.0_wp
 
        If (.not. w%allocated ) Then
          inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -2557,7 +2541,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           normx = norm2(X(1:n))
           xtd = dot_product(X(1:n),d(1:n))
           md_gn = md_gn + & 
-               sigma * ( one/p * (normx**p) + & 
+               sigma * ( 1.0_wp/p * (normx**p) + & 
                (normx**(p-2.0_wp)) * xtd + & 
                (p/4.0_wp) * (normx**(p-4.0_wp)) * (xtd**2) ) 
        end select
@@ -2609,9 +2593,9 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        tol = 10.0_wp * epsmch
        
        if ( abs(actual_reduction) < tol ) then 
-          rho = one
+          rho = 1.0_wp
        else if (abs( predicted_reduction ) < tol ) then 
-          rho = one
+          rho = 1.0_wp
        else
           rho = actual_reduction / predicted_reduction
        end if
@@ -2648,7 +2632,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           end if
           inform%h_eval = inform%h_eval + 1
        else
-          ! use the rank-one approximation...
+          ! use the rank-1.0_wp approximation...
           call rank_one_update(w%hf,w,n,options)                      
        end if
        
@@ -2740,10 +2724,10 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        dSks = abs(dot_product(w%d,w%Sks))
        if ( abs(dSks) < 10.0_wp * epsmch ) then
           ! check this first to avoid possible overflow
-          alpha = one
+          alpha = 1.0_wp
        else
           alpha = abs(dot_product(w%d,w%y_sharp))/ dSks
-          alpha = min(one,alpha)
+          alpha = min(1.0_wp,alpha)
        end if
        hf(:)  = alpha * hf(:)
 
@@ -2812,7 +2796,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           else
              ! just incase (NaNs, rho too big, and the like...)
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
-             rho = -one ! set to be negative, so that the logic works....
+             rho = -1.0_wp ! set to be negative, so that the logic works....
              If (prnt3) Write(rec(1), Fmt=3050) w%Delta
              nrec=1
           end if
@@ -2838,7 +2822,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           else
              ! just incase (NaNs and the like...)
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta 
-             rho = -one ! set to be negative, so that the logic works....
+             rho = -1.0_wp ! set to be negative, so that the logic works....
              If (prnt3) Write(rec(1), Fmt=3050) w%Delta
              nrec=1
           end if
@@ -2933,9 +2917,9 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 
        double precision :: alpha, beta
        
-       Jtx(1:n) = one
-       alpha = one
-       beta  = zero
+       Jtx(1:n) = 1.0_wp
+       alpha = 1.0_wp
+       beta  = 0.0_wp
 
        ! Avoid short-circuit evaluation
 !      if (present(options).and. (.not. options%Fortran_Jacobian)) then
@@ -3079,12 +3063,12 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        if ( present(options) ) Then
          If (.not. options%Fortran_Jacobian) then
            ! c format
-           call dgemm('N','T',n, n, m, one, J, n, J, n, zero, A, n)
+           call dgemm('N','T',n, n, m, 1.0_wp, J, n, J, n, 0.0_wp, A, n)
          Else
-           call dgemm('T','N',n, n, m, one, J, m, J, m, zero, A, n)
+           call dgemm('T','N',n, n, m, 1.0_wp, J, m, J, m, 0.0_wp, A, n)
          End If
        Else
-          call dgemm('T','N',n, n, m, one, J, m, J, m, zero, A, n)
+          call dgemm('T','N',n, n, m, 1.0_wp, J, m, J, m, 0.0_wp, A, n)
        End If
      end subroutine matmult_inner
      subroutine matmult_outer(J,n,m,A)
@@ -3096,7 +3080,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        ! m x m matrix A given by
        ! A = J * J'
 
-       call dgemm('N','T',m, m, n, one, J, m, J, m, zero, A, m)
+       call dgemm('N','T',m, m, n, 1.0_wp, J, m, J, m, 0.0_wp, A, m)
      end subroutine matmult_outer
 
      subroutine outer_product(x,n,xxt)
@@ -3108,8 +3092,8 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        ! n x n matrix xtx given by
        ! xxt = x * x'
 
-       xxt(1:n,1:n) = zero
-       call dger(n, n, one, x, 1, x, 1, xxt, n)
+       xxt(1:n,1:n) = 0.0_wp
+       call dger(n, n, 1.0_wp, x, 1, x, 1, xxt, n)
      end subroutine outer_product
 
      subroutine all_eig_symm(A,n,ew,ev,w,inform)
@@ -3348,13 +3332,13 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        jobu  = 'N' ! calculate no left singular vectors
        jobvt = 'N' ! calculate no right singular vectors
        lwork = size(w%work)
-! TODO AndrewS: Lanczos.f90 causes Warning: Floating divide by zero occurred
+! TODO AndrewS: Lanczos.f90 causes Warning: Floating divide by 0.0_wp occurred
 ! ieee=stop will break example. This needs to be addressed
 ! commit e33f752da78837b1506f29fa5d0ff4c8a1ab3dbd
       call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1,        & 
             w%work, lwork, status )
        if (status .ne. 0) Then
-          ! allow to continue, but warn user and return zero singular values
+          ! allow to continue, but warn user and return 0.0_wp singular values
           s1 = 0.0_wp
           sn = 0.0_wp
        else
@@ -3438,7 +3422,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           end do
        end if
        
-       d(1:n) = zero
+       d(1:n) = 0.0_wp
 
        ! send to ral_nlls_iterate to solve the subproblem recursively
        select case (options%inner_method)
@@ -3548,7 +3532,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           else
              do ii = 1,params%m
                 params%tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
-                params%tenJ%Hs(1:n,ii) = zero
+                params%tenJ%Hs(1:n,ii) = 0.0_wp
                 call dgemv('N',n,n,1.0_wp,params%tenJ%H(1,1),n,s,1,0.0_wp,params%tenJ%Hs(1,ii),1)
              end do
           end if
@@ -3575,7 +3559,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           ! note: params%m contains 'm' from the original problem
           ! if we're passing in the reg. factor via the function/Jacobian, then 
           ! 'm' here is m+n from the original problem
-          J(1:n*m) = zero        
+          J(1:n*m) = 0.0_wp        
           do jj = 1,n ! columns
              ! tenJ%Hs has been set by evaltensor_f, which is called first
              J( (jj-1)*m + 1 : (jj-1)*m + params%m) &
@@ -3610,10 +3594,10 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        ! Add default return value for status
        status = 0
 
-!      tenJ%H(1:n,1:n) = zero ! AndrewS TODO: moved to +3L can be problematic !
+!      tenJ%H(1:n,1:n) = 0.0_wp ! AndrewS TODO: moved to +3L can be problematic !
        select type(params)
        type is (tensor_params_type)
-          params%tenJ%H(1:n,1:n) = zero 
+          params%tenJ%H(1:n,1:n) = 0.0_wp 
           call params%eval_HF(status,n,params%m,params%x,f(1:m),HF(1:n**2),params%parent_params)
 !!$          do ii = 1,params%m
 !!$             params%tenJ%H(1:n,1:n) = params%tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
@@ -3648,8 +3632,8 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        real( wp ), dimension( m ), intent( in ), optional :: weights
        real( wp ) :: ei( m )
 
-       ei = zero
-       ei(i) = one
+       ei = 0.0_wp
+       ei(i) = 1.0_wp
 
        if ( present(weights) ) then
           call eval_HF(inform%external_return, n, m, X, weights(1:m)*ei, Hi, params)

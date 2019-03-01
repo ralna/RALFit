@@ -8,21 +8,42 @@ module ral_nlls_workspaces
   
   ! define derived types and subroutines for workspace arrays.
   
-  integer, parameter :: wp = kind(1.0d0)
-  integer, parameter :: long = selected_int_kind(8)
-  real (kind = wp), parameter :: tenm3 = 1.0e-3_wp
-  real (kind = wp), parameter :: tenm5 = 1.0e-5_wp
-  real (kind = wp), parameter :: tenm8 = 1.0e-8_wp
-  real (kind = wp), parameter :: epsmch = epsilon(1.0_wp)
-  real (kind = wp), parameter :: hundred = 100.0_wp
-  real (kind = wp), parameter :: ten = 10.0_wp
-  real (kind = wp), parameter :: point9 = 0.9_wp
-  real (kind = wp), parameter :: zero = 0.0_wp
-  real (kind = wp), parameter :: one = 1.0_wp
-  real (kind = wp), parameter :: two = 2.0_wp
-  real (kind = wp), parameter :: three = 3.0_wp
-  real (kind = wp), parameter :: half = 0.5_wp
-  real (kind = wp), parameter :: sixteenth = 0.0625_wp
+  Integer, Parameter, Public          :: wp = kind(1.0d0)
+  Real (Kind = wp), Parameter, Public :: epsmch = epsilon(1.0_wp)
+  Real (Kind = wp), Parameter, Public :: big = HUGE(1.0_wp)
+
+  ! Error constants    
+  Integer, Parameter, Public :: NLLS_ERROR_MAXITS                   =   -1
+  Integer, Parameter, Public :: NLLS_ERROR_EVALUATION               =   -2
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_MODEL        =   -3
+  Integer, Parameter, Public :: NLLS_ERROR_FROM_EXTERNAL            =   -4
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_METHOD       =   -5
+  Integer, Parameter, Public :: NLLS_ERROR_ALLOCATION               =   -6
+  Integer, Parameter, Public :: NLLS_ERROR_MAX_TR_REDUCTIONS        =   -7
+  Integer, Parameter, Public :: NLLS_ERROR_X_NO_PROGRESS            =   -8
+  Integer, Parameter, Public :: NLLS_ERROR_N_GT_M                   =   -9  
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_TR_STRATEGY          =  -10 
+  Integer, Parameter, Public :: NLLS_ERROR_FIND_BETA                =  -11 
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_SCALING              =  -12 
+  Integer, Parameter, Public :: NLLS_ERROR_WORKSPACE_ERROR          =  -13
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_TYPE_METHOD  =  -14
+  Integer, Parameter, Public :: NLLS_ERROR_WRONG_INNER_METHOD       =  -15
+
+  ! dogleg errors
+  Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
+  ! AINT errors
+  Integer, Parameter, Public :: NLLS_ERROR_AINT_EIG_IMAG            = -201
+  Integer, Parameter, Public :: NLLS_ERROR_AINT_EIG_ODD             = -202
+  ! More-Sorensen errors
+  Integer, Parameter, Public :: NLLS_ERROR_MS_MAXITS                = -301
+  Integer, Parameter, Public :: NLLS_ERROR_MS_TOO_MANY_SHIFTS       = -302
+  Integer, Parameter, Public :: NLLS_ERROR_MS_NO_PROGRESS           = -303
+  ! DTRS errors
+  ! Tensor model errors
+  Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES    = -401
+
+  ! Misc errors
+  Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900
   
     TYPE, PUBLIC :: NLLS_options
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -99,10 +120,10 @@ module ral_nlls_workspaces
 !      MAX( %stop%f_absolute, %stop_f_relative * initial norm of the function)
 !     or if the step is less than %stop_s
 
-     REAL ( KIND = wp ) :: stop_g_absolute = tenm5
-     REAL ( KIND = wp ) :: stop_g_relative = tenm8
-     REAL ( KIND = wp ) :: stop_f_absolute = tenm8
-     REAL ( KIND = wp ) :: stop_f_relative = tenm8
+     REAL ( KIND = wp ) :: stop_g_absolute = 1.0e-5_wp
+     REAL ( KIND = wp ) :: stop_g_relative = 1.0e-8_wp
+     REAL ( KIND = wp ) :: stop_f_absolute = 1.0e-8_wp
+     REAL ( KIND = wp ) :: stop_f_relative = 1.0e-8_wp
      REAL ( KIND = wp ) :: stop_s = epsmch
 
      
@@ -119,7 +140,7 @@ module ral_nlls_workspaces
 !   if relative_tr_radius /= 1, then set the 
 !   initial value for the trust-region radius (-ve => ||g_0||)
      
-     REAL ( KIND = wp ) :: initial_radius = hundred
+     REAL ( KIND = wp ) :: initial_radius = 100.0_wp
      
 !   for the newton tensor model, allow a base tr raidius to allow an inherent
 !   regularization in the problem that can't be changed
@@ -127,7 +148,7 @@ module ral_nlls_workspaces
 !   on top of this
 !   (undocumented control variable)
      
-     REAL ( KIND = wp ) :: base_regularization = zero
+     REAL ( KIND = wp ) :: base_regularization = 0.0_wp
 
      ! allow inherently the solution of a problem of the form
      !  min_x 1/2 ||r(x)||^2 + regularization_term * 1/ regularization_power * ||x||^regularization_term
@@ -167,7 +188,7 @@ module ral_nlls_workspaces
 
 !   maximum permitted trust-region radius
 
-     REAL ( KIND = wp ) :: maximum_radius = ten ** 8
+     REAL ( KIND = wp ) :: maximum_radius = 10.0_wp ** 8
 
 !   a potential iterate will only be accepted if the actual decrease
 !    f - f(x_new) is larger than %eta_successful times that predited
@@ -175,19 +196,19 @@ module ral_nlls_workspaces
 !    increased if this relative decrease is greater than %eta_very_successful
 !    but smaller than %eta_too_successful
 
-     REAL ( KIND = wp ) :: eta_successful = ten ** ( - 8 )! ten ** ( - 8 ) 
-     REAL ( KIND = wp ) :: eta_success_but_reduce = ten ** ( - 8 ) !0.25_wp
-     REAL ( KIND = wp ) :: eta_very_successful = point9!0.75_wp!point9 
-     REAL ( KIND = wp ) :: eta_too_successful = two
+     REAL ( KIND = wp ) :: eta_successful = 10.0_wp ** ( - 8 )! 10.0_wp ** ( - 8 ) 
+     REAL ( KIND = wp ) :: eta_success_but_reduce = 10.0_wp ** ( - 8 ) !0.25_wp
+     REAL ( KIND = wp ) :: eta_very_successful = 0.9_wp!0.75_wp!point9 
+     REAL ( KIND = wp ) :: eta_too_successful = 2.0_wp
 
 !   on very successful iterations, the trust-region radius will be increased by
 !    the factor %radius_increase, while if the iteration is unsuccessful, the 
 !    radius will be decreased by a factor %radius_reduce but no more than
 !    %radius_reduce_max
 
-     REAL ( KIND = wp ) :: radius_increase = two
-     REAL ( KIND = wp ) :: radius_reduce = half
-     REAL ( KIND = wp ) :: radius_reduce_max = sixteenth
+     REAL ( KIND = wp ) :: radius_increase = 2.0_wp
+     REAL ( KIND = wp ) :: radius_reduce = 0.5_wp
+     REAL ( KIND = wp ) :: radius_reduce_max = 0.0625_wp
 
 ! Trust region update strategy
 !    1 - usual step function
@@ -217,7 +238,7 @@ module ral_nlls_workspaces
 !   scale the variables?
 !   0 - no scaling
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
-!       tiny values get set to one       
+!       tiny values get set to 1.0_wp       
 !   2 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
      INTEGER :: scale = 1
      REAL(wp) :: scale_max = 1.0e11_wp
@@ -255,7 +276,7 @@ module ral_nlls_workspaces
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! what regularization should we use?
-    real(wp) :: reg_order = -one
+    real(wp) :: reg_order = -1.0_wp
 
 ! which method shall we use to solve the inner problem?
 ! 1 - add in a base regularization parameter
@@ -358,16 +379,16 @@ module ral_nlls_workspaces
 !  the value of the objective function at the best estimate of the solution 
 !   determined by NLLS_solve
 
-     REAL ( KIND = wp ) :: obj = HUGE( one )
+     REAL ( KIND = wp ) :: obj = big
 
 !  the norm of the gradient of the objective function at the best estimate 
 !   of the solution determined by NLLS_solve
 
-     REAL ( KIND = wp ) :: norm_g = HUGE( one )
+     REAL ( KIND = wp ) :: norm_g = big
 
 ! the norm of the gradient, scaled by the norm of the residual
      
-     REAL ( KIND = wp ) :: scaled_g = HUGE( one ) 
+     REAL ( KIND = wp ) :: scaled_g = big 
 
 ! error returns from external subroutines 
      
@@ -381,40 +402,6 @@ module ral_nlls_workspaces
      Real(Kind=wp) :: step = 1.0e10_wp
 
   END TYPE nlls_inform
-
-! Error constants    
-  Integer, Parameter, Public :: NLLS_ERROR_MAXITS                   =   -1
-  Integer, Parameter, Public :: NLLS_ERROR_EVALUATION               =   -2
-  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_MODEL        =   -3
-  Integer, Parameter, Public :: NLLS_ERROR_FROM_EXTERNAL            =   -4
-  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_METHOD       =   -5
-  Integer, Parameter, Public :: NLLS_ERROR_ALLOCATION               =   -6
-  Integer, Parameter, Public :: NLLS_ERROR_MAX_TR_REDUCTIONS        =   -7
-  Integer, Parameter, Public :: NLLS_ERROR_X_NO_PROGRESS            =   -8
-  Integer, Parameter, Public :: NLLS_ERROR_N_GT_M                   =   -9  
-  Integer, Parameter, Public :: NLLS_ERROR_BAD_TR_STRATEGY          =  -10 
-  Integer, Parameter, Public :: NLLS_ERROR_FIND_BETA                =  -11 
-  Integer, Parameter, Public :: NLLS_ERROR_BAD_SCALING              =  -12 
-  Integer, Parameter, Public :: NLLS_ERROR_WORKSPACE_ERROR          =  -13
-  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_TYPE_METHOD  =  -14
-  Integer, Parameter, Public :: NLLS_ERROR_WRONG_INNER_METHOD       =  -15
-
-  ! dogleg errors
-  Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
-  ! AINT errors
-  Integer, Parameter, Public :: NLLS_ERROR_AINT_EIG_IMAG            = -201
-  Integer, Parameter, Public :: NLLS_ERROR_AINT_EIG_ODD             = -202
-  ! More-Sorensen errors
-  Integer, Parameter, Public :: NLLS_ERROR_MS_MAXITS                = -301
-  Integer, Parameter, Public :: NLLS_ERROR_MS_TOO_MANY_SHIFTS       = -302
-  Integer, Parameter, Public :: NLLS_ERROR_MS_NO_PROGRESS           = -303
-  ! DTRS errors
-  ! Tensor model errors
-  Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES    = -401
-
-  ! Misc errors
-  Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900
-
 
   type, public :: params_base_type
      ! deliberately empty
@@ -562,7 +549,7 @@ module ral_nlls_workspaces
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:), xxt(:,:)
      real(wp), allocatable :: v(:), scale(:), extra_scale(:)
-     real(wp) :: reg_order = two ! reg. by + 1/p || \sigma || ** p
+     real(wp) :: reg_order = 2.0_wp ! reg. by + 1/p || \sigma || ** p
      type( AINT_tr_work ) :: AINT_tr_ws
      type( dogleg_work ) :: dogleg_ws
      type( solve_newton_tensor_work ) :: solve_newton_tensor_ws
@@ -635,7 +622,7 @@ contains
          inform%status = NLLS_ERROR_ALLOCATION
          goto 100
        End If
-       workspace%y = zero
+       workspace%y = 0.0_wp
     end if
 
     if (.not. allocated(workspace%y_sharp)) then
@@ -645,7 +632,7 @@ contains
          inform%status = NLLS_ERROR_ALLOCATION
          goto 100
        End If
-       workspace%y_sharp = zero
+       workspace%y_sharp = 0.0_wp
     end if
 
     if (.not. options%exact_second_derivatives) then
@@ -943,7 +930,7 @@ contains
     ! use a hybrid method for the inner loop
     w%tensor_options%model = 3
     w%tensor_options%maxit = 100
-    w%tensor_options%reg_order = -one
+    w%tensor_options%reg_order = -1.0_wp
     w%tensor_options%output_progress_vectors = .false.
 
     select case (options%inner_method)
@@ -1043,7 +1030,7 @@ contains
       goto 100
     End If
 
-    w%scale(n) = zero
+    w%scale(n) = 0.0_wp
 
     call setup_workspace_evaluate_model(n,m,& 
          w%evaluate_model_ws,options,inform)
@@ -1455,10 +1442,10 @@ contains
       GoTo 100
     End If
     lwork = int(workquery(1))
-    w%alphaR = zero
-    w%alphaI = zero
-    w%beta = zero
-    w%ew_array = zero
+    w%alphaR = 0.0_wp
+    w%alphaI = 0.0_wp
+    w%beta = 0.0_wp
+    w%ew_array = 0.0_wp
 
     if (allocated(workquery)) deallocate(workquery,stat=ierr_dummy)
     allocate( w%work(lwork), stat = inform%alloc_status)
@@ -1713,7 +1700,7 @@ contains
        if (inform%status/=0) goto 100
     end if
 
-    w%diag = one
+    w%diag = 1.0_wp
     w%allocated = .true.
 
 100 continue

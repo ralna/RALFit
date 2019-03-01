@@ -5,7 +5,6 @@ module example_module
   use :: ral_nlls_workspaces
   implicit none 
 
-  integer, parameter :: wp = kind(1.0d0)
   type, extends( params_base_type ) :: user_type
      real(wp), allocatable :: x_values(:)
      real(wp), allocatable :: y_values(:)
