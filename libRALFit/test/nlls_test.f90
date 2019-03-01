@@ -74,7 +74,7 @@ program nlls_test
               options%model = model_to_test(model)
               call solve_basic(X,params,options,status)
               if (( nlls_method == 1).and.( options%model > 1)) then
-                 if ( status%status .ne. ERROR%DOGLEG_MODEL ) then
+                 if ( status%status .ne. NLLS_ERROR_DOGLEG_MODEL ) then
                     write(*,*) 'incorrect error return from nlls_solve:'
                     write(*,*) 'NLLS_METHOD = ', nlls_method
                     write(*,*) 'MODEL = ', options%model
@@ -248,8 +248,8 @@ program nlls_test
      options%model = 4
      options%exact_second_derivatives = .false.
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. ERROR%NO_SECOND_DERIVATIVES ) then
-        write(*,*) 'expected error return', ERROR%NO_SECOND_DERIVATIVES,' but'
+     if ( status%status .ne. NLLS_ERROR_NO_SECOND_DERIVATIVES ) then
+        write(*,*) 'expected error return', NLLS_ERROR_NO_SECOND_DERIVATIVES,' but'
         write(*,*) 'got ', status%status
         no_errors_main = no_errors_main + 1
      end if
@@ -261,7 +261,7 @@ program nlls_test
      options%model = 1
      options%nlls_method = 1
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. ERROR%MAXITS) then
+     if ( status%status .ne. NLLS_ERROR_MAXITS) then
         write(*,*) 'Error: incorrect error return when maxits expected to be reached'
         write(*,*) 'status%status = ', status%status
         no_errors_main = no_errors_main + 1
@@ -395,23 +395,29 @@ program nlls_test
      options%print_level = 3
 
      ! test n > m
+     If (allocated(x)) Then
+       deallocate(x)
+     End if
      n = 100
+     allocate(x(n))
      m = 3
      call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status )
-     if (status%status .ne. ERROR%N_GT_M) then
+     if (status%status .ne. NLLS_ERROR_N_GT_M) then
         write(*,*) 'Error: wrong error return, n > m'
         no_errors_main = no_errors_main + 1
      end if
+     deallocate(x)
      n = 2
+     allocate(x(n))
      m = 67
      
     ! test for unsupported method
      call reset_default_options(options)
      options%nlls_method = 3125
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. ERROR%UNSUPPORTED_METHOD ) then 
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_METHOD ) then 
         write(*,*) 'Error: unsupported method passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -422,7 +428,7 @@ program nlls_test
      options%type_of_method = 2
      options%nlls_method = 3125
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. ERROR%UNSUPPORTED_METHOD ) then 
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_METHOD ) then 
         write(*,*) 'Error: unsupported method (nlls_method=2) passed and not caught'
         write(*,*) 'status = ', status%status
         no_errors_main = no_errors_main + 1
@@ -433,7 +439,7 @@ program nlls_test
      call reset_default_options(options)
      options%type_of_method = 2343
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. ERROR%UNSUPPORTED_TYPE_METHOD ) then 
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_TYPE_METHOD ) then 
         write(*,*) 'Error: unsupported type_of_method passed and not caught'
         write(*,*) 'status = ', status%status
         no_errors_main = no_errors_main + 1
@@ -444,7 +450,7 @@ program nlls_test
      call reset_default_options(options)
      options%tr_update_strategy = 323
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. ERROR%BAD_TR_STRATEGY ) then 
+     if ( status%status .ne. NLLS_ERROR_BAD_TR_STRATEGY ) then 
         write(*,*) 'Error: unsupported TR strategy passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -511,7 +517,7 @@ program nlls_test
                 options, status )   
         end select
      end do
-     if ( status%status .ne. ERROR%EVALUATION ) then 
+     if ( status%status .ne. NLLS_ERROR_EVALUATION ) then 
         write(*,*) 'Error: error return from eval_x not caught'
         no_errors_main = no_errors_main + 1
      end if

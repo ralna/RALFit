@@ -87,7 +87,6 @@ module ral_nlls_internal
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton
-    public :: ERROR
     
 contains
 
@@ -127,6 +126,11 @@ contains
     integer  :: i
     
     type ( NLLS_workspace ) :: w
+    Type ( NLLS_workspace ), target :: inner_workspace
+!   Link the inner_workspace to the main workspace
+    w%iw_ptr => inner_workspace
+!   Self reference inner workspace so recursive call does not fail
+    inner_workspace%iw_ptr => inner_workspace
     
 !!$    write(*,*) 'Controls in:'
 !!$    write(*,*) 'error = ',options%error
@@ -157,7 +161,6 @@ contains
 !!$    write(*,*) 'output_progress_vectors = ',options%output_progress_vectors
 
     main_loop: do i = 1,options%maxit
-       
        if ( present(weights) ) then
           if ( present(eval_HP) ) then 
              call nlls_iterate(n, m, X,      & 
@@ -207,7 +210,7 @@ contains
     
      ! If we reach here, then we're over maxits     
      if (options%print_level > 0 ) write(options%error,1040) 
-     inform%status = ERROR%MAXITS
+     inform%status = NLLS_ERROR_MAXITS
      goto 1000
     
 1000 continue
@@ -247,15 +250,20 @@ contains
     procedure( eval_hp_type ), optional :: eval_HP
     
       
-    integer :: svdstatus = 0
-    integer :: i, no_reductions, max_tr_decrease = 100
+    integer :: svdstatus
+    integer :: i, no_reductions, max_tr_decrease
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
-    real(wp) :: FunctionValue, normX, normXnew
+    real(wp) :: FunctionValue, normX
     logical :: success 
-    logical :: bad_allocate = .false.
+    logical :: bad_allocate
     character :: second
-    real(wp) :: sum_reg
-    integer :: num_successful_steps = 0
+    integer :: num_successful_steps
+
+!   thread-safe inits
+    svdstatus = 0
+    max_tr_decrease = 100
+    bad_allocate = .false.
+    num_successful_steps = 0
     
     ! todo: make max_tr_decrease a control variable
 
@@ -276,7 +284,6 @@ contains
        inform%status = 0
        inform%external_return = 0
        ! allocate space for vectors that will be used throughout the algorithm
-       
        if (options%setup_workspaces) then 
           call setup_workspaces(w,n,m,options,inform)
           if ( inform%alloc_status > 0) goto 4000
@@ -483,7 +490,7 @@ contains
             num_successful_steps, &
             w%Xnew,w%d,w%normd, & 
             options,inform,& 
-            w%calculate_step_ws)
+            w%calculate_step_ws, w%tenJ, w%iw_ptr)
        if (inform%status .ne. 0) then
           if ( (w%use_second_derivatives) .and. &
                (options%model == 3) ) then
@@ -757,7 +764,7 @@ contains
     end if
 
     if (bad_allocate) then 
-       inform%status = ERROR%ALLOCATION
+       inform%status = NLLS_ERROR_ALLOCATION
        inform%bad_alloc = 'nlls_iterate'
     end if
 
@@ -766,54 +773,54 @@ contains
 4010 continue
     ! Error in eval_J
     inform%external_name = 'eval_J'
-    inform%status = ERROR%EVALUATION
+    inform%status = NLLS_ERROR_EVALUATION
     goto 4000
 
 4020 continue
     ! Error in eval_F
     inform%external_name = 'eval_F'
-    inform%status = ERROR%EVALUATION
+    inform%status = NLLS_ERROR_EVALUATION
     goto 4000
 
 4030 continue
     ! Error in eval_HF
     inform%external_name = 'eval_HF'
-    inform%status = ERROR%EVALUATION
+    inform%status = NLLS_ERROR_EVALUATION
     goto 4000
 
 4040 continue 
-    inform%status = ERROR%UNSUPPORTED_MODEL
+    inform%status = NLLS_ERROR_UNSUPPORTED_MODEL
     goto 4000
 
 4050 continue 
     ! max tr reductions exceeded
-    inform%status = ERROR%MAX_TR_REDUCTIONS
+    inform%status = NLLS_ERROR_MAX_TR_REDUCTIONS
     goto 4000
 
 4060 continue 
     ! x makes no progress
-    inform%status = ERROR%X_NO_PROGRESS
+    inform%status = NLLS_ERROR_X_NO_PROGRESS
     goto 4000
 
 4070 continue
     ! n > m on entry
-    inform%status = ERROR%N_GT_M
+    inform%status = NLLS_ERROR_N_GT_M
     goto 4000
 
 4080 continue
     ! bad allocation
-    inform%status = ERROR%ALLOCATION
+    inform%status = NLLS_ERROR_ALLOCATION
     inform%bad_alloc = 'nlls_iterate'
     goto 4000
 
 4090 continue
     ! no second derivatives in tensor model
-    inform%status = ERROR%NO_SECOND_DERIVATIVES
+    inform%status = NLLS_ERROR_NO_SECOND_DERIVATIVES
     goto 4000
 
 4100 continue 
     ! workspace error
-    inform%status = ERROR%WORKSPACE_ERROR
+    inform%status = NLLS_ERROR_WORKSPACE_ERROR
     goto 4000
     
 ! convergence 
@@ -853,7 +860,6 @@ contains
     
     type( nlls_workspace ) :: w
     type( nlls_options ) :: options
-    
     ! reset all the scalars
     w%first_call = 1
     w%iter = 0
@@ -871,52 +877,52 @@ contains
   subroutine nlls_strerror(inform)!,error_string)
     type( nlls_inform ), intent(inout) :: inform
     
-    if ( inform%status == ERROR%MAXITS ) then
+    if ( inform%status == NLLS_ERROR_MAXITS ) then
        inform%error_message = 'Maximum number of iterations reached'
-    elseif ( inform%status == ERROR%EVALUATION ) then
+    elseif ( inform%status == NLLS_ERROR_EVALUATION ) then
        write(inform%error_message,'(a,a,a,i0)') & 
             'Error code from user-supplied subroutine ',trim(inform%external_name), & 
             ' passed error = ', inform%external_return
-    elseif ( inform%status == ERROR%UNSUPPORTED_MODEL ) then
+    elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_MODEL ) then
        inform%error_message = 'Unsupported model passed in options'
-    elseif ( inform%status == ERROR%FROM_EXTERNAL ) then
+    elseif ( inform%status == NLLS_ERROR_FROM_EXTERNAL ) then
        write(inform%error_message,'(a,a,a,i0)') & 
             'The external subroutine ',trim(inform%external_name), & 
             ' passed error = ', inform%external_return
-    elseif ( inform%status == ERROR%UNSUPPORTED_METHOD ) then
+    elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_METHOD ) then
        inform%error_message = 'Unsupported nlls_method passed in options'
-    elseif ( inform%status == ERROR%ALLOCATION ) then
+    elseif ( inform%status == NLLS_ERROR_ALLOCATION ) then
        write(inform%error_message,'(a,a)') &
             'Bad allocation of memory in ', trim(inform%bad_alloc)
-    elseif ( inform%status == ERROR%MAX_TR_REDUCTIONS ) then
+    elseif ( inform%status == NLLS_ERROR_MAX_TR_REDUCTIONS ) then
        inform%error_message = 'The trust region was reduced the maximum number of times'
-    elseif ( inform%status == ERROR%X_NO_PROGRESS ) then
+    elseif ( inform%status == NLLS_ERROR_X_NO_PROGRESS ) then
        inform%error_message = 'No progress made in X'
-    elseif ( inform%status == ERROR%N_GT_M ) then
+    elseif ( inform%status == NLLS_ERROR_N_GT_M ) then
        inform%error_message = 'The problem is overdetermined'
-    elseif ( inform%status == ERROR%BAD_TR_STRATEGY ) then
+    elseif ( inform%status == NLLS_ERROR_BAD_TR_STRATEGY ) then
        inform%error_message = 'Unsupported tr_update_stategy passed in options'
-    elseif ( inform%status == ERROR%FIND_BETA ) then
+    elseif ( inform%status == NLLS_ERROR_FIND_BETA ) then
        inform%error_message = 'Unable to find suitable scalar in findbeta subroutine'
-    elseif ( inform%status == ERROR%BAD_SCALING ) then
+    elseif ( inform%status == NLLS_ERROR_BAD_SCALING ) then
        inform%error_message = 'Unsupported value of scale passed in options'
-    elseif ( inform%status == ERROR%WORKSPACE_ERROR ) then
+    elseif ( inform%status == NLLS_ERROR_WORKSPACE_ERROR ) then
        inform%error_message = 'Error accessing pre-allocated workspace'
-    elseif ( inform%status == ERROR%UNSUPPORTED_TYPE_METHOD ) then
+    elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_TYPE_METHOD ) then
        inform%error_message = 'Unsupported value of type_of_method passed in options'
-    elseif ( inform%status == ERROR%DOGLEG_MODEL ) then
+    elseif ( inform%status == NLLS_ERROR_DOGLEG_MODEL ) then
        inform%error_message = 'Model not supported in dogleg (nlls_method=1)'
-    elseif ( inform%status == ERROR%AINT_EIG_IMAG ) then
+    elseif ( inform%status == NLLS_ERROR_AINT_EIG_IMAG ) then
        inform%error_message = 'All eigenvalues are imaginary (nlls_method=2)'
-    elseif ( inform%status == ERROR%AINT_EIG_ODD ) then
+    elseif ( inform%status == NLLS_ERROR_AINT_EIG_ODD ) then
        inform%error_message = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
-    elseif ( inform%status == ERROR%MS_MAXITS ) then
+    elseif ( inform%status == NLLS_ERROR_MS_MAXITS ) then
        inform%error_message = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
-    elseif ( inform%status == ERROR%MS_TOO_MANY_SHIFTS ) then
+    elseif ( inform%status == NLLS_ERROR_MS_TOO_MANY_SHIFTS ) then
        inform%error_message = 'Too many shifts taken in more_sorensen (nlls_method=3)'
-    elseif ( inform%status == ERROR%MS_NO_PROGRESS ) then
+    elseif ( inform%status == NLLS_ERROR_MS_NO_PROGRESS ) then
        inform%error_message = 'No progress being made in more_sorensen (nlls_method=3)'
-    elseif ( inform%status == ERROR%NO_SECOND_DERIVATIVES ) then
+    elseif ( inform%status == NLLS_ERROR_NO_SECOND_DERIVATIVES ) then
        inform%error_message = 'Exact second derivatives needed for tensor model'
     else 
        inform%error_message = 'Unknown error number'           
@@ -929,7 +935,7 @@ contains
 
   RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, & 
                             Delta,eval_HF,params,num_successful_steps,& 
-                            Xnew,d,normd,options,inform,w)
+                            Xnew,d,normd,options,inform,w,tenJ, inner_workspace)
 
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -938,7 +944,7 @@ contains
     REAL(wp), intent(in) :: J(:), f(:), hf(:)
     REAL(wp), intent(inout) :: g(:)
     REAL(wp), intent(inout) :: Delta
-    REAL(wp), intent(out) :: X(:)
+    REAL(wp), intent(in) :: X(:)
     procedure( eval_hf_type ) :: eval_HF       
     class( params_base_type ) :: params  
     integer, intent(in) :: num_successful_steps
@@ -950,16 +956,18 @@ contains
     TYPE( nlls_options ), INTENT( IN ) :: options
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( calculate_step_work ) :: w
+    Type( tenJ_type ), Intent(InOut) :: tenJ
+    Type( NLLS_workspace ), Intent(InOut) :: inner_workspace
         
     real(wp) :: md_bad
     integer :: i, jj
-    logical :: scaling_used = .false.
-    real(wp) :: coeff ! coefficient in front of diag(s) if reg. problem being solved
-    real(wp) :: sum_reg
+    logical :: scaling_used
     real(wp) :: normx
+
 
     if (.not. w%allocated) goto 1010
     
+    scaling_used = .false.
     d(1:n) = zero
     w%scale = one
 
@@ -970,7 +978,7 @@ contains
        
        call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,& 
             d, md, params, options, inform, & 
-            w%solve_newton_tensor_ws)
+            w%solve_newton_tensor_ws, tenJ, inner_workspace)
        normd = norm2(d(1:n)) ! ||d||_D
 
        Xnew = X + d
@@ -1025,6 +1033,7 @@ contains
 !                  w%apply_scaling_ws,options,inform)
              call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,& 
                   w%generate_scaling_ws,options,inform)
+             if (inform%status /= 0) Go To 1000
              scaling_used = .true.
           end if
        end if
@@ -1054,18 +1063,22 @@ contains
           case (1) ! Powell's dogleg
              if (options%print_level >= 2) write(options%out,3000) 'dogleg'
              call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
+             if (inform%status /= 0) Go To 1000
           case (2) ! The AINT method
              if (options%print_level >= 2) write(options%out,3000) 'AINT_TR'
              call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+             if (inform%status /= 0) Go To 1000
           case (3) ! More-Sorensen
              if (options%print_level >= 2) write(options%out,3000) 'More-Sorensen'
              call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
+             if (inform%status /= 0) Go To 1000
           case (4) ! Galahad
              if (options%print_level >= 2) write(options%out,3000) 'DTRS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+             if (inform%status /= 0) Go To 1000
           case default
-             inform%status = ERROR%UNSUPPORTED_METHOD
+             inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
              goto 1000
           end select ! nlls_method
        elseif (options%type_of_method == 2) then
@@ -1074,19 +1087,20 @@ contains
              if (options%print_level >= 2) write(options%out,3020) 'RALFit solver'
              call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
                   d,normd,w%reg_order,options,inform,w%regularization_solver_ws)
+             if (inform%status /= 0) Go To 1000
           case(4) ! Galahad
              if (options%print_level >= 2) write(options%out,3020) 'DRQS'
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, & 
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+             if (inform%status /= 0) Go To 1000
           case default
-             inform%status = ERROR%UNSUPPORTED_METHOD
+             inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
              goto 1000
           end select ! nlls_method
        else
-          inform%status = ERROR%UNSUPPORTED_TYPE_METHOD
+          inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
           goto 1000
        end if ! type_of_method
-        
         
         ! reverse the scaling on the step
         if ( (scaling_used) ) then 
@@ -1108,16 +1122,14 @@ contains
 
      end if
 
-
-
      if (options%print_level >= 2) write(options%out,3010)
          
-1000 return
+1000 Continue 
      
-return
+     return
      
 1010 continue 
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
 
 3000 FORMAT('*** Solving the trust region subproblem using ',A,' ***')
@@ -1207,7 +1219,7 @@ return
 !!$        end do
 !!$        ! todo : require_increase, test for trimming
      case default
-        inform%status = ERROR%BAD_SCALING
+        inform%status = NLLS_ERROR_BAD_SCALING
         return
      end select
           
@@ -1218,7 +1230,7 @@ return
      return
 
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
      
    end subroutine generate_scaling
@@ -1276,7 +1288,10 @@ return
      
      real(wp) :: alpha, beta
 
-     if (.not. w%allocated ) goto 1010
+     if (.not. w%allocated ) then
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
+       goto 1000
+     End If
 
      !     Jg = J * g
      call mult_J(J,n,m,g,w%Jg,options)
@@ -1292,8 +1307,8 @@ return
         call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws)
         if ( inform%status .ne. 0 ) goto 1000
      case default
-        inform%status = ERROR%DOGLEG_MODEL
-        return
+        inform%status = NLLS_ERROR_DOGLEG_MODEL
+        goto 1000
      end select
      
      if (norm2(w%d_gn) <= Delta) then
@@ -1313,14 +1328,7 @@ return
 
      normd = norm2(d)
      
-     return
-     
 1000 continue 
-     ! bad error return from solve_LLS
-     return
-
-1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
      return
 
 ! Printing commands
@@ -1345,7 +1353,7 @@ return
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( AINT_tr_work ) :: w
         
-     integer :: keep_p0, i, size_hard(2)
+     integer :: i, size_hard(2)
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
 
@@ -1354,7 +1362,6 @@ return
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
 
-     keep_p0 = 0
      tau = 1e-4
      obj_p0 = HUGE(wp)
 
@@ -1383,7 +1390,6 @@ return
      call matrix_norm(w%p0,w%B,norm_p0)
      
      if (norm_p0 < Delta) then
-        keep_p0 = 1;
         ! get obj_p0 : the value of the model at p0
         if (options%print_level >=3) write(options%out,2000) 'p0'     
         call evaluate_model(f,J,hf,X,X,w%p0,obj_p0,obj_p0_gn,m,n, & 
@@ -1469,7 +1475,7 @@ return
      return
 
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return    
 
 ! print statements   
@@ -1623,7 +1629,7 @@ return
               no_restarts = no_restarts + 1
            else
               ! we're not going to make progress...jump out 
-              inform%status = ERROR%MS_NO_PROGRESS
+              inform%status = NLLS_ERROR_MS_NO_PROGRESS
               goto 4000
            end if
         else
@@ -1646,7 +1652,7 @@ return
      goto 4000
      
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      goto 4000
 
 1020 continue
@@ -1658,12 +1664,12 @@ return
 1040 continue
      ! maxits reached, not converged
      if (options%print_level >=2) write(options%out,5020)
-     inform%status = ERROR%MS_MAXITS
+     inform%status = NLLS_ERROR_MS_MAXITS
      goto 4000
 
 3000 continue
      ! too many shifts
-     inform%status = ERROR%MS_TOO_MANY_SHIFTS
+     inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
      goto 4000
      
 4000 continue
@@ -1711,9 +1717,9 @@ return
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( more_sorensen_work ) :: w
 
-     real(wp) :: nq, epsilon
-     real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
-     integer :: i, jj, kk,  no_restarts
+     real(wp) :: nq
+     real(wp) :: sigma, alpha, sigma_shift
+     integer :: i, jj, kk
      real(wp) :: sigma_l, sigma_u
      integer :: region ! 1:N, 2:L, 3:G (2-3:F)
      real(wp) :: normF_A, norminf_A
@@ -1764,7 +1770,6 @@ return
      sigma_l = max(zero, -min_Aii, nv/Delta - min(max_lower_sum,normF_A,norminf_A))
      sigma_u = max(zero,nv/Delta + min(max_upper_sum,normF_A,norminf_A))
      
-     local_ms_shift = options%more_sorensen_shift
      sigma = max(zero,sigma_l)
      ! todo: if the model hasn't changed, use the terminating sigma there instead (p192, TR book)...
      if (options%print_level >= 3) write(options%out,6030) sigma_l, sigma, sigma_u
@@ -1929,13 +1934,13 @@ return
      goto 4000
      
 1010 continue
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      goto 4000
 
 1040 continue
      ! maxits reached, not converged
      if (options%print_level >=2) write(options%out,5020)
-     inform%status = ERROR%MS_MAXITS
+     inform%status = NLLS_ERROR_MS_MAXITS
      goto 4000
 
           
@@ -2075,7 +2080,7 @@ return
 
 3000 continue
      ! too many shifts
-     inform%status = ERROR%MS_TOO_MANY_SHIFTS
+     inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
      return     
 
 6010 FORMAT('Trying a shift of sigma = ',ES12.4)
@@ -2171,7 +2176,7 @@ return
         if ( dtrs_inform%status .ne. 0) then
            inform%external_return = dtrs_inform%status
            inform%external_name = 'galahad_dtrs'
-           inform%status = ERROR%FROM_EXTERNAL
+           inform%status = NLLS_ERROR_FROM_EXTERNAL
            goto 1000
         end if
      case(2)
@@ -2198,7 +2203,7 @@ return
            elseif ( drqs_inform%status .ne. 0) then
               inform%external_return = drqs_inform%status
               inform%external_name = 'galahad_drqs'
-              inform%status = ERROR%FROM_EXTERNAL
+              inform%status = NLLS_ERROR_FROM_EXTERNAL
               goto 1000
            else
               proceed = .true.
@@ -2217,7 +2222,7 @@ return
      return
 
 1010 continue 
-     inform%status = ERROR%WORKSPACE_ERROR
+     inform%status = NLLS_ERROR_WORKSPACE_ERROR
      return
      
 2000 FORMAT('Regularization order used = ',ES12.4)
@@ -2246,9 +2251,10 @@ return
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
      real(wp) :: reg_param
-     integer :: i 
      
      reg_param = 1.0_wp/Delta
+     ! TODO: consider removing this unused param
+     normd = 0.0_wp
      
      if ( reg_order == two ) then
 
@@ -2258,7 +2264,7 @@ return
 
      else 
         
-        write(*,*) 'Unsupported at the moment...'
+        write(*,*) 'Warning: Unsupported regularization order.'
 
      end if
      
@@ -2302,7 +2308,7 @@ return
        call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
             inform%external_return)
        if (inform%external_return .ne. 0 ) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgels'
           return
        end if
@@ -2312,7 +2318,7 @@ return
        return
        
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
               
      END SUBROUTINE solve_LLS
@@ -2333,7 +2339,7 @@ return
      real(wp), intent(out) :: beta
      type( nlls_inform ), intent(inout) :: inform
      
-     real(wp) :: c, normb2, norma2, discrim, denom
+     real(wp) :: c, normb2, norma2, discrim
      
      c = dot_product(a,b)
 
@@ -2342,7 +2348,7 @@ return
 
      discrim = c**2 + (normb2)*(Delta**2 - norma2);
      if ( discrim < zero ) then
-        inform%status = ERROR%FIND_BETA
+        inform%status = NLLS_ERROR_FIND_BETA
         inform%external_name = 'findbeta'
         return
      end if
@@ -2383,7 +2389,7 @@ return
        TYPE( nlls_inform ), INTENT( INOUT ) :: inform
        type( evaluate_model_work ) :: w
 
-       real(wp) :: xtx, xtd, dtd, normx, p, sigma
+       real(wp) :: xtd, normx, p, sigma
        
        if (.not. w%allocated ) goto 2000
        md = zero
@@ -2403,7 +2409,6 @@ return
                0.5 * sigma * norm2(Xnew(1:n))**2
        case (2)
           normx = norm2(X(1:n))
-          xtx = normx**2
           xtd = dot_product(X(1:n),d(1:n))
           md_gn = md_gn + & 
                sigma * ( one/p * (normx**p) + & 
@@ -2430,9 +2435,9 @@ return
 
        return
 
-1000   FORMAT('Model evauated successfully.  m_k(d) = ',ES12.4)
+1000   FORMAT('Model evaluated successfully: m_k(d) = ',ES12.4)
 2000   continue 
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
 
@@ -2685,7 +2690,7 @@ return
              rho = -one ! set to be negative, so that the logic works....
           end if
        case default
-          inform%status = ERROR%BAD_TR_STRATEGY
+          inform%status = NLLS_ERROR_BAD_TR_STRATEGY
           return          
        end select
 
@@ -2734,18 +2739,21 @@ return
        real(wp), intent(out) :: Jx(*)
        type(nlls_options), optional :: options
 
-       integer i
-       
        real(wp) :: alpha, beta
 
        Jx(1:m) = 1.0
        alpha = 1.0
        beta  = 0.0
 
-       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
-          ! Jacobian held in row major format...
-          call dgemv('T',n,m,alpha,J,n,x,1,beta,Jx,1)
-          
+       ! Avoid short-circuit evaluation
+!      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+       if (present(options)) Then
+         If (.not. options%Fortran_Jacobian) then
+           ! Jacobian held in row major format...
+           call dgemv('T',n,m,alpha,J,n,x,1,beta,Jx,1)
+         Else
+           call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
+         End If
        else
           call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
        end if
@@ -2759,15 +2767,20 @@ return
        type( nlls_options), optional :: options
 
        double precision :: alpha, beta
-       integer :: i
        
        Jtx(1:n) = one
        alpha = one
        beta  = zero
 
-       if (present(options).and. (.not. options%Fortran_Jacobian)) then
-          ! Jacobian held in row major format...
-          call dgemv('N',n,m,alpha,J,n,x,1,beta,Jtx,1)
+       ! Avoid short-circuit evaluation
+!      if (present(options).and. (.not. options%Fortran_Jacobian)) then
+       if (present(options)) Then
+         If (.not. options%Fortran_Jacobian) then
+           ! Jacobian held in row major format...
+           call dgemv('N',n,m,alpha,J,n,x,1,beta,Jtx,1)
+         Else
+           call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
+         End If
        else
           call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
        end if
@@ -2834,7 +2847,7 @@ return
        x(1:n) = b(1:n)
        call dposv('L', n, 1, LtL, n, x, n, inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dposv'
           return
        end if
@@ -2848,7 +2861,7 @@ return
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
 
-       integer :: row 
+!!$    integer :: row 
        
        inform%status = 0
 !!$       write(*,*) 'A_in = '
@@ -2861,7 +2874,7 @@ return
        
        call dposv('L', n, 1, A, n, x, n, inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dposv'
           
 !!$          write(*,*) 'A_out = '
@@ -2894,7 +2907,7 @@ return
        x(1:n) = b(1:n)
        call dgesv( n, 1, w%A, n, w%ipiv, x, n, inform%external_return)
        if (inform%external_return .ne. 0 ) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgesv'
           return
        end if
@@ -2902,7 +2915,7 @@ return
        return
 
        1000   continue ! workspace error
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
 
@@ -2925,19 +2938,26 @@ return
        real(wp), intent(out) :: A(n,n)
        type( nlls_options ), intent(in), optional :: options
 
-       integer :: i
        ! Takes an m x n matrix J and forms the 
        ! n x n matrix A given by
        ! A = J' * J
-       if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
-          ! c format
-          call dgemm('N','T',n, n, m, one,&
-               J, n, J, n, & 
+
+       ! Avoid short-circuit evaluation
+!      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
+       if ( present(options) ) Then
+         If (.not. options%Fortran_Jacobian) then
+           ! c format
+           call dgemm('N','T',n, n, m, one,&
+                J, n, J, n, & 
+                zero, A, n)
+         Else
+           call dgemm('T','N',n, n, m, one,&
+                J, m, J, m, & 
                zero, A, n)
+           End If
        else
           call dgemm('T','N',n, n, m, one,&
                J, m, J, m, & 
-
                zero, A, n)
        end if
 
@@ -3002,7 +3022,7 @@ return
             ew, w%work, lwork, & 
             inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dsyev'
           return
        end if
@@ -3019,7 +3039,7 @@ return
        return
 
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
        
      end subroutine all_eig_symm
@@ -3055,7 +3075,7 @@ return
                w%ew, w%work, lwork, & 
                inform%external_return)
           if (inform%external_return .ne. 0) then
-             inform%status = ERROR%FROM_EXTERNAL
+             inform%status = NLLS_ERROR_FROM_EXTERNAL
              inform%external_name = 'lapack_dsyev'
           end if
           minindex = minloc(w%ew)
@@ -3077,7 +3097,7 @@ return
                w%ifail, & ! array containing indicies of non-converging ews
                inform%external_return)
           if (inform%external_return .ne. 0) then
-             inform%status = ERROR%FROM_EXTERNAL
+             inform%status = NLLS_ERROR_FROM_EXTERNAL
              inform%external_name = 'lapack_dsyevx'
           end if
        end if
@@ -3085,7 +3105,7 @@ return
        return
 
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
      end subroutine min_eig_symm
@@ -3124,7 +3144,7 @@ return
             w%vr, n, & ! right eigenvectors
             w%work, lwork, inform%external_return)
        if (inform%external_return .ne. 0) then
-          inform%status = ERROR%FROM_EXTERNAL
+          inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dggev'
           return
        end if
@@ -3149,13 +3169,21 @@ return
                 w%nullindex(no_null) = i
              end if
           end do
-!          allocate(nullevs(halfn,no_null))
-          if (no_null > size(nullevs,2)) then
-             ! increase the size of the allocated array only if we need to
-             if(allocated(nullevs)) deallocate( nullevs )
-             allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
-             if (inform%alloc_status > 0) goto 2000
-          end if 
+
+!         allocate(nullevs(halfn,no_null))
+          If (allocated(nullevs)) Then
+            ! increase the size of the allocated array only if we need to
+            if (no_null > size(nullevs,2)) then
+              deallocate( nullevs )
+              allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
+              if (inform%alloc_status > 0) goto 2000
+            end if
+          Else ! size(nullevs,2) is considered 0
+            ! Allocate space
+            allocate( nullevs(halfn,no_null) , stat = inform%alloc_status)
+            if (inform%alloc_status > 0) goto 2000
+          End If 
+
           nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
        end if
 
@@ -3165,20 +3193,20 @@ return
        return 
 
 1000   continue 
-       inform%status = ERROR%AINT_EIG_IMAG ! Eigs imaginary error
+       inform%status = NLLS_ERROR_AINT_EIG_IMAG ! Eigs imaginary error
        return
 
 1010   continue
-       inform%status = ERROR%AINT_EIG_ODD
+       inform%status = NLLS_ERROR_AINT_EIG_ODD
        return
        
 2000   continue
-       inform%status = ERROR%ALLOCATION
+       inform%status = NLLS_ERROR_ALLOCATION
        inform%bad_alloc = "max_eig"
        return
 
 2010   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
      end subroutine max_eig
@@ -3244,7 +3272,7 @@ return
        return
        
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
 
      end subroutine get_svd_J
@@ -3255,7 +3283,7 @@ return
      subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, & 
                                     num_successful_steps, & 
                                     d, md, params, options, inform, & 
-                                    w)
+                                    w, tenJ, inner_workspace)
        
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
@@ -3268,9 +3296,11 @@ return
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        type( solve_newton_tensor_work ) :: w
+       type( tenJ_type ), intent(InOut), target :: tenJ
+       type( NLLS_workspace ), Intent(InOut) :: inner_workspace
               
        type( nlls_inform ) :: tensor_inform
-       integer :: i, m_in     
+       integer :: i
     
        ! We need to solve the problem 
        !   min 1/2 \sum_{i=1}^m t_{ik}^2(s) + 1/p \sigma_k ||s||^p_p
@@ -3300,6 +3330,9 @@ return
 
        ! and save parms to tparams
        w%tparams%parent_params => params
+
+       ! and add pointer to tenJ type
+       w%tparams%tenJ => tenJ
 
        if (.not. w%tparams%eval_hp_provided) then 
           ! let's get all the Hi's...
@@ -3333,10 +3366,10 @@ return
           w%tparams%p = 2.0
           w%tparams%extra = 1
        end select
-       
+
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, & 
-               inner_workspace, & 
+               inner_workspace, &
                evaltensor_f, evaltensor_J, evaltensor_HF, &
                w%tparams, & 
                tensor_inform, w%tensor_options )
@@ -3371,7 +3404,7 @@ return
        return
        
 1000   continue
-       inform%status = ERROR%WORKSPACE_ERROR
+       inform%status = NLLS_ERROR_WORKSPACE_ERROR
        return
        
      end subroutine solve_newton_tensor
@@ -3385,8 +3418,9 @@ return
        real(wp), dimension(*), intent(out)   :: f
        class( params_base_type ), intent(inout) :: params
 
-       integer :: ii, jj, kk
-       
+       ! Add default return value for status
+       status = 0
+
        ! note:: tenJ is a global (but private to this module) derived type 
        !        with components Hs and Js, which are real arrays 
 
@@ -3395,19 +3429,21 @@ return
 
        select type(params)
        type is(tensor_params_type)
+
+          ! Note: params%tenJ (tensor_params_type) points to NLLS_workspace%tenJ
           ! note: params%m contains 'm' from the original problem
           ! if we're passing in the reg. factor via the function/Jacobian, then 
           ! 'm' here is m+n from the original problem
 
           ! First, calculate Js
-          call mult_J(params%J(1:n*params%m),n,params%m,s,tenJ%Js)
+          call mult_J(params%J(1:n*params%m),n,params%m,s,params%tenJ%Js)
           ! TODO: add options to allow calling from C
 
           ! Now, calculate s'Hs
           call calculate_sHs(n,m, s, params)
           
           ! put them all together for the first 1:m terms of f
-          f(1:params%m) = params%f(1:params%m) + tenJ%Js(1:params%m) + 0.5*tenJ%stHs(1:params%m)
+          f(1:params%m) = params%f(1:params%m) + params%tenJ%Js(1:params%m) + 0.5*params%tenJ%stHs(1:params%m)
 
           if (params%extra == 1) then 
              ! we're passing in the regularization via the function/Jacobian
@@ -3431,15 +3467,15 @@ return
        type is(tensor_params_type)
           if (params%eval_hp_provided) then 
 !          if (associated(params%eval_HP)) then
-             call params%eval_HP(status,n,params%m,params%x,s(1:n),tenJ%Hs,params%parent_params)
+             call params%eval_HP(status,n,params%m,params%x,s(1:n),params%tenJ%Hs,params%parent_params)
           else
              do ii = 1,params%m
-                tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
-                tenJ%Hs(1:n,ii) = zero
-                call dgemv('N',n,n,1.0_wp,tenJ%H(1,1),n,s,1,0.0_wp,tenJ%Hs(1,ii),1)
+                params%tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
+                params%tenJ%Hs(1:n,ii) = zero
+                call dgemv('N',n,n,1.0_wp,params%tenJ%H(1,1),n,s,1,0.0_wp,params%tenJ%Hs(1,ii),1)
              end do
           end if
-          call dgemv('T',n,params%m,1.0_wp,tenJ%Hs(1,1),n,s,1,0.0_wp, tenJ%stHs(1),1)
+          call dgemv('T',n,params%m,1.0_wp,params%tenJ%Hs(1,1),n,s,1,0.0_wp, params%tenJ%stHs(1),1)
        end select
        
      end subroutine calculate_sHs
@@ -3452,8 +3488,9 @@ return
        real(wp), dimension(*), intent(out)   :: J
        class( params_base_type ), intent(inout) :: params
 
-       integer :: ii, jj, kk
-
+       integer :: ii, jj
+       ! Add default return value for status
+       status = 0
        ! The function we need to return is 
        !  g_i + H_i s 
        ! where h_i and H_i are the gradient and hessians of the original problem
@@ -3467,7 +3504,7 @@ return
           do jj = 1,n ! columns
              ! tenJ%Hs has been set by evaltensor_f, which is called first
              J( (jj-1)*m + 1 : (jj-1)*m + params%m) &
-                  = params%J((jj-1)*params%m + 1 : jj*params%m) + tenJ%Hs(jj,1:params%m)
+                  = params%J((jj-1)*params%m + 1 : jj*params%m) + params%tenJ%Hs(jj,1:params%m)
           end do
           if (params%extra == 1) then
              ! we're passing in the regularization via the function/Jacobian
@@ -3495,18 +3532,22 @@ return
        real(wp), dimension(*), intent(out) :: HF
        class( params_base_type ), intent(inout) :: params
 
-       integer :: ii, jj, kk
+!!$    integer :: ii
+       integer :: jj, kk
        real(wp) :: normx, hf_local
+       ! Add default return value for status
+       status = 0
 
-       tenJ%H(1:n,1:n) = zero
+!      tenJ%H(1:n,1:n) = zero ! AndrewS TODO: moved to +3L can be problematic !
        select type(params)
        type is (tensor_params_type)
+          params%tenJ%H(1:n,1:n) = zero 
           call params%eval_HF(status,n,params%m,params%x,f(1:m),HF(1:n**2),params%parent_params)
 !!$          do ii = 1,params%m
-!!$             tenJ%H(1:n,1:n) = tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
+!!$             params%tenJ%H(1:n,1:n) = params%tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
 !!$          end do
 !!$
-!!$          HF(1:n**2) = reshape(tenJ%H(1:n,1:n), (/n**2/))
+!!$          HF(1:n**2) = reshape(params%tenJ%H(1:n,1:n), (/n**2/))
           
           if (params%extra == 2) then 
              normx = norm2(s(1:n))
@@ -3523,8 +3564,6 @@ return
              end do
           end if
        end select
-
-       
      end subroutine evaltensor_HF
        
 

@@ -63,13 +63,8 @@ module ral_nlls_double
   end interface
 
   public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
-    
   public :: nlls_options, nlls_inform, nlls_workspace
   public :: params_base_type
     
-contains
-
-  ! blank
-  
 end module ral_nlls_double
 
