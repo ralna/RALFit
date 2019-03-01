@@ -213,8 +213,6 @@
          Write(rec(nrec), Fmt=5000) trim(inform%error_message)
          nrec = nrec + 1
          Write(rec(nrec), Fmt=5001) inform%status
-         ! TODO FIXME for now printmsg ignores opt%error record number FID
-         ! and prints ONLY to opt%out
          Call printmsg(1, .False., options, nrec, rec)
      Else
         nrec = nrec + 1
@@ -235,9 +233,8 @@
         Write(rec(nrec), Fmt=99996) 'Gradient evaluations          ', inform%g_eval
         nrec = nrec + 1
         Write(rec(nrec), Fmt=99996) 'Hessian evaluations           ', inform%h_eval
+        Call printmsg(level,onlythis,options,nrec,rec)
      End If
-
-     Call printmsg(level,onlythis,options,nrec,rec)
 
 99999 Format(A)
 99998 Format(1X,'Status:',1X,A)
