@@ -7,8 +7,6 @@ project (RALFit LANGUAGES Fortran C)
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
 
-#option(UseMKL "Use Intel's MKL library" Off)
-
 # Set the location for cmake module files
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
@@ -29,15 +27,6 @@ set ( SRC_FILES
 #       external/mc04d.f
 #	external/fd05d.f
 
-
-#if (UseMKL)
-#set( ENV{BLA_VENDOR} "Intel" )
-#   find_package(MKL)
-#   if(MKL_FOUND)
-#	message("found mkl!")
-#   endif()
-#   message("sup!")
-#endif()
 
 # see if the build type is debug.  First, convert to lower
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
