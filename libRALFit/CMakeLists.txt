@@ -1,13 +1,12 @@
 # CMake project file for libral_nlls
-cmake_minimum_required (VERSION 2.6)
-enable_language (C Fortran)
 cmake_minimum_required (VERSION 3.0.2)
 
+project (RALFit LANGUAGES Fortran C)
 
-project (RALFit)
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
+
 #option(UseMKL "Use Intel's MKL library" Off)
 
 # Set the location for cmake module files
