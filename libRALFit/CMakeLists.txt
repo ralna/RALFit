@@ -21,12 +21,6 @@ set ( SRC_FILES
 	src/ral_nlls_ciface.f90
 	src/ral_nlls_workspaces.f90
 	)	
-#	external/ea06d.f
-#	external/ea08d.f
-#	external/ea09d.f
-#       external/mc04d.f
-#	external/fd05d.f
-
 
 # see if the build type is debug.  First, convert to lower
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
