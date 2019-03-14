@@ -22,23 +22,18 @@ set ( SRC_FILES
 	src/ral_nlls_workspaces.f90
 	)	
 
-# see if the build type is debug.  First, convert to lower
-STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
-# now do the test
-if(CMAKE_BUILD_TYPE_LOWER MATCHES debug)
+# Support for CMAKE_BUILD_TYPE={Debug,Release,Profile}
+if(CMAKE_BUILD_TYPE MATCHES Debug)
   message("WARNING: Debug version - not to be used in production code.")
   # compile lapack from source...
   set(CompileMiniLAPACK On)
   # set the test coverage switch
   set(TestCoverage On)
-elseif(CMAKE_BUILD_TYPE_LOWER MATCHES profile)
-      message("WARNING: Debug version - not to be used in production code.")	
+elseif(CMAKE_BUILD_TYPE MATCHES Profile)
+  message("WARNING: Debug version - not to be used in production code.")	
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O3")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg -g -O3")
   set(CMAKE_LDFLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O3")		    
-else()
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
 
 
