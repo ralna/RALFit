@@ -1,5 +1,5 @@
 # CMake project file for libral_nlls
-cmake_minimum_required (VERSION 3.0.2)
+cmake_minimum_required (VERSION 3.1)
 
 project (RALFit LANGUAGES Fortran C)
 
@@ -43,12 +43,9 @@ endif()
 
 
 # Set flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
-#set(CMAKE_Fortran_COMPILER nagfor)
-get_filename_component (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON) # SET fPIC
+set(TARGET ral_nlls PROPERTY C_STANDARD 99) # SET -std=c99
 
-set( CMAKE_VERBOSE_MAKEFILE on )		
 if(TestCoverage)
    set( CMAKE_VERBOSE_MAKEFILE on )
    INCLUDE(CodeCoverage)
