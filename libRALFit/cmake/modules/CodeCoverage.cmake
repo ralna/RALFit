@@ -77,14 +77,14 @@ IF(NOT GCOV_PATH)
 	MESSAGE(FATAL_ERROR "gcov not found! Aborting...")
 ENDIF() # NOT GCOV_PATH
 
-IF(NOT CMAKE_COMPILER_IS_GNUCXX)
+IF(NOT CMAKE_COMPILER_IS_GNUCC)
 	# Clang version 3.0.0 and greater now supports gcov as well.
 	MESSAGE(WARNING "Compiler is not GNU gcc! Clang Version 3.0.0 and greater supports gcov as well, but older versions don't.")
 
-	IF(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	IF(NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
 		MESSAGE(FATAL_ERROR "Compiler is not GNU gcc! Aborting...")
 	ENDIF()
-ENDIF() # NOT CMAKE_COMPILER_IS_GNUCXX
+ENDIF() # NOT CMAKE_COMPILER_IS_GNUCC
 
 SET(CMAKE_CXX_FLAGS_COVERAGE
     "-g -O0 --coverage -fprofile-arcs -ftest-coverage"
@@ -93,6 +93,10 @@ SET(CMAKE_CXX_FLAGS_COVERAGE
 SET(CMAKE_C_FLAGS_COVERAGE
     "-g -O0 --coverage -fprofile-arcs -ftest-coverage"
     CACHE STRING "Flags used by the C compiler during coverage builds."
+    FORCE )
+SET(CMAKE_Fortran_FLAGS_COVERAGE
+    "-g -O0 --coverage -fprofile-arcs -ftest-coverage"
+    CACHE STRING "Flags used by the Fortran compiler during coverage builds."
     FORCE )
 SET(CMAKE_EXE_LINKER_FLAGS_COVERAGE
     ""
@@ -104,6 +108,7 @@ SET(CMAKE_SHARED_LINKER_FLAGS_COVERAGE
     FORCE )
 MARK_AS_ADVANCED(
     CMAKE_CXX_FLAGS_COVERAGE
+    CMAKE_Fortran_FLAGS_COVERAGE
     CMAKE_C_FLAGS_COVERAGE
     CMAKE_EXE_LINKER_FLAGS_COVERAGE
     CMAKE_SHARED_LINKER_FLAGS_COVERAGE )
