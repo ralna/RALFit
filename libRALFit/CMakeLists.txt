@@ -67,46 +67,23 @@ endif()
 
 # LAPACK routines
 if(CompileMiniLAPACK)
-   message("WARNING: Compiling our own LAPACK library.")
-   message("WARNING: This should be avoided as it is likely to be less optimised than a")
-   message("WARNING: vendor supplied version, and may also be out of date.")
-   add_library(ral_nlls_lapack
-         lapack/dbdsqr.f lapack/dgebd2.f lapack/dgebrd.f lapack/dgebrd.f
-         lapack/dgebrd.f lapack/dgelq2.f lapack/dgelqf.f lapack/dgels.f
-         lapack/dgeqr2.f lapack/dgeqrf.f lapack/dgesvd.f lapack/dgesv.f
-         lapack/dgetrf2.f lapack/dgetrf.f lapack/dgetrs.f lapack/dggbak.f
-         lapack/dggbal.f lapack/dggev.f lapack/dggev.f lapack/dgghrd.f
-         lapack/dhgeqz.f lapack/disnan.f lapack/dlabad.f lapack/dlabrd.f
-         lapack/dlacpy.f lapack/dladiv.f lapack/dlae2.f lapack/dlaebz.f
-         lapack/dlaev2.f lapack/dlag2.f lapack/dlagtf.f lapack/dlagts.f
-         lapack/dlaisnan.f lapack/dlaln2.f lapack/dlange.f lapack/dlanhs.f
-         lapack/dlanst.f lapack/dlansy.f lapack/dlapy2.f lapack/dlapy3.f
-         lapack/dlarfb.f lapack/dlarf.f lapack/dlarfg.f lapack/dlarft.f
-         lapack/dlarnv.f lapack/dlartg.f lapack/dlaruv.f lapack/dlas2.f
-         lapack/dlascl.f lapack/dlaset.f lapack/dlasq1.f lapack/dlasq2.f
-         lapack/dlasq3.f lapack/dlasq4.f lapack/dlasq5.f lapack/dlasq6.f
-         lapack/dlasr.f lapack/dlasrt.f lapack/dlassq.f lapack/dlasv2.f
-         lapack/dlaswp.f lapack/dlatrd.f lapack/dorg2l.f lapack/dorg2r.f
-         lapack/dorgbr.f lapack/dorgl2.f lapack/dorglq.f lapack/dorgql.f
-         lapack/dorgqr.f lapack/dorgtr.f lapack/dorm2l.f lapack/dorm2r.f
-         lapack/dormbr.f lapack/dorml2.f lapack/dormlq.f lapack/dormql.f 
-         lapack/dormqr.f lapack/dormtr.f lapack/dposv.f lapack/dpotrf2.f
-         lapack/dpotrf.f lapack/dpotrs.f lapack/dstebz.f lapack/dstein.f
-         lapack/dsteqr.f lapack/dsterf.f lapack/dsyev.f lapack/dsyevx.f
-         lapack/dsytd2.f lapack/dsytrd.f lapack/dtgevc.f lapack/dtrtrs.f
-         lapack/ieeeck.f lapack/iladlc.f lapack/iladlr.f lapack/ilaenv.f
-         lapack/iparmq.f lapack/dlamch.f)
-   set(LAPACK_LIBRARIES ral_nlls_lapack)
-   set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
+   message("*****************************WARNING**********************************")
+   message("* Compiling our own LAPACK library.                                  *")
+   message("* This should be avoided as it is likely to be less optimised than a *")
+   message("* vendor supplied version, and may also be out of date.              *")
+   message("**********************************************************************")
    # note that blas is a dependency of lapack, so blas only explicitly needed here,
    # if we've built our own lapack
    find_package(BLAS REQUIRED)
    if ( NOT BLAS_FOUND )
      message( FATAL_ERROR "BLAS required, but not found!")
    endif ( NOT BLAS_FOUND ) 	    
-   message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )	 
+   message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )	
    include_directories(${BLAS_INCLUDE_DIRS})
    set(LIBS ${LIBS} ${BLAS_LIBRARIES})
+   add_subdirectory(lapack)
+   set(LAPACK_LIBRARIES ral_nlls_lapack)		   
+   set(LIBS ${LIBS} ${LAPACK_LIBRARIES})   
 endif()
 
 # Main libral_nlls library
