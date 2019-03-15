@@ -52,14 +52,6 @@ endif(TestCoverage)
 
 # BLAS and LAPACK
 
-find_package(BLAS REQUIRED)
-if ( NOT BLAS_FOUND )
-  message( FATAL_ERROR "BLAS required, but not found!")
-endif ( NOT BLAS_FOUND ) 	    
-message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )	 
-include_directories(${BLAS_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${BLAS_LIBRARIES})
-
 if(NOT CompileMiniLAPACK)
   # try to find lapack..
   find_package(LAPACK)
@@ -106,6 +98,15 @@ if(CompileMiniLAPACK)
          lapack/iparmq.f lapack/dlamch.f)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
+   # note that blas is a dependency of lapack, so blas only explicitly needed here,
+   # if we've built our own lapack
+   find_package(BLAS REQUIRED)
+   if ( NOT BLAS_FOUND )
+     message( FATAL_ERROR "BLAS required, but not found!")
+   endif ( NOT BLAS_FOUND ) 	    
+   message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )	 
+   include_directories(${BLAS_INCLUDE_DIRS})
+   set(LIBS ${LIBS} ${BLAS_LIBRARIES})
 endif()
 
 # Main libral_nlls library
