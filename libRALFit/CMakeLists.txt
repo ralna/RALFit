@@ -39,7 +39,7 @@ endif()
 
 # Set flags
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) # SET fPIC
-set(TARGET ral_nlls PROPERTY C_STANDARD 99) # SET -std=c99
+set(CMAKE_C_STANDARD 99) # SET -std=c99
 
 if(TestCoverage)
    set( CMAKE_VERBOSE_MAKEFILE on )
