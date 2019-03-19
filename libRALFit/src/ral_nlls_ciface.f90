@@ -5,7 +5,7 @@ module ral_nlls_ciface
        f_nlls_options      => nlls_options,        &
        f_nlls_inform       => nlls_inform,         &
        f_nlls_workspace    => nlls_workspace,      &
-       f_nlls_solve        => nlls_solve,          & 
+       f_nlls_solve        => nlls_solve,          &
        f_nlls_iterate      => nlls_iterate,        &
        f_params_base_type  => params_base_type
   implicit none
@@ -69,8 +69,8 @@ module ral_nlls_ciface
      logical(c_bool) :: Fortran_Jacobian
   end type nlls_options
 
-  type, bind(C) :: nlls_inform 
-     integer(C_INT) :: status     
+  type, bind(C) :: nlls_inform
+     integer(C_INT) :: status
      character( kind = c_char), dimension(81) :: error_message
      integer(C_INT) :: alloc_status
      character( kind = c_char), dimension(81) :: bad_alloc
@@ -89,7 +89,7 @@ module ral_nlls_ciface
      real(wp) :: scaled_g
      integer(C_INT) :: external_return
      character( kind = c_char), dimension(81) :: external_name
-     
+
   end type nlls_inform
 
   abstract interface
@@ -135,7 +135,7 @@ module ral_nlls_ciface
 
 contains
 
-  
+
   subroutine copy_options_in(coptions, foptions, f_arrays)
 
     type( nlls_options ), intent(in) :: coptions
@@ -200,9 +200,9 @@ contains
 
     type(f_nlls_inform), intent(in) :: finfo
     type(nlls_inform) , intent(out) :: cinfo
-        
+
     integer :: i
-    
+
     cinfo%status = finfo%status
     do i = 1,len(finfo%error_message)
        cinfo%error_message(i) = finfo%error_message(i:i)
@@ -387,7 +387,7 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights
 
   ! Copy data out
    call copy_info_out(finform, cinform)
-  
+
 end subroutine nlls_solve_d
 
 subroutine ral_nlls_init_workspace_d(cw, ciw) bind(C)
@@ -456,7 +456,7 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   call c_f_procpointer(hf, fparams%hf)
   call c_f_pointer(cw, fw)
   fparams%params = params
-  
+
   if (C_ASSOCIATED(cweights)) then
      call c_f_pointer(cweights, fweights, shape = (/ m /) )
      call f_nlls_iterate( n, m, cx, fw, &

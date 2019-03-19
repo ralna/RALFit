@@ -14,7 +14,7 @@ module ral_nlls_double
        import :: params_base_type
        implicit none
        integer, intent(out) :: status
-       integer, intent(in) :: n,m 
+       integer, intent(in) :: n,m
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: f
        class(params_base_type), intent(in) :: params
@@ -26,7 +26,7 @@ module ral_nlls_double
        import :: params_base_type
        implicit none
        integer, intent(out) :: status
-       integer, intent(in) :: n,m 
+       integer, intent(in) :: n,m
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(out) :: J
        class(params_base_type), intent(in) :: params
@@ -38,7 +38,7 @@ module ral_nlls_double
        import :: params_base_type
        implicit none
        integer, intent(out) :: status
-       integer, intent(in) :: n,m 
+       integer, intent(in) :: n,m
        double precision, dimension(*), intent(in)  :: x
        double precision, dimension(*), intent(in)  :: f
        double precision, dimension(*), intent(out) :: h
@@ -49,6 +49,6 @@ module ral_nlls_double
   public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
   public :: nlls_options, nlls_inform, nlls_workspace
   public :: params_base_type
-    
+
 end module ral_nlls_double
 

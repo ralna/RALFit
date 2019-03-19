@@ -234,7 +234,7 @@
 ! 1 real + 2 equal real or 2 complex roots
 
         IF ( d >= 0.0_wp ) THEN
-          d = ( SQRT( d ) + ABS( b ) ) **  (1.0_wp/3.0_wp) 
+          d = ( SQRT( d ) + ABS( b ) ) **  (1.0_wp/3.0_wp)
           IF ( d /= 0.0_wp ) then
             IF ( b > 0.0_wp ) then
               b = - d
@@ -296,7 +296,7 @@
         IF ( z < 0.0_wp ) THEN
           a = - 2.0_wp* SQRT( - x )
           b = y / ( a * x )
-          y = ATAN2( SQRT( 1.0_wp - b ), SQRT( 1.0_wp + b ) ) *  (2.0_wp/3.0_wp) 
+          y = ATAN2( SQRT( 1.0_wp - b ), SQRT( 1.0_wp + b ) ) *  (2.0_wp/3.0_wp)
           IF ( c2 < 0.0_wp ) y = y + magic
 
 !  calculate root which does not involve cancellation
@@ -306,7 +306,7 @@
 !  there may be only one real root
 
         ELSE
-          a = SQRT( z ) ; b = 0.5_wp * ( ABS( y ) + a ) ; c = b **  (1.0_wp/3.0_wp) 
+          a = SQRT( z ) ; b = 0.5_wp * ( ABS( y ) + a ) ; c = b **  (1.0_wp/3.0_wp)
           IF ( c <= 0.0_wp ) THEN
             nroots = 3 ; root1 = - c2 ; root2 = - c2 ; root3 = - c2
             GO TO 900
@@ -356,7 +356,7 @@
 
         IF ( d < 0.0_wp ) THEN
           s = ACOS( MIN( 1.0_wp, MAX( - 1.0_wp, q / SQRT( - p ) ) ) )
-          p = 2.0_wp* ( - p ) **  (1.0_wp/6.0_wp) 
+          p = 2.0_wp* ( - p ) **  (1.0_wp/6.0_wp)
           nroots = 3
           root1 = p * COS(  (1.0_wp/3.0_wp)  * ( s + 2.0_wp* pi ) ) - w
           root2 = p * COS(  (1.0_wp/3.0_wp)  * ( s + 4.0_wp * pi ) ) - w
@@ -1275,7 +1275,7 @@
         WRITE(rec(1), 2030 ) prefix
         Call Printmsg(2,.False.,options,1,rec)
       End IF
-99999 Format(A,' ||c|| = ',ES10.4,', ||H|| = ',ES10.4,', lambda_min = ',ES11.4) 
+99999 Format(A,' ||c|| = ',ES10.4,', ||H|| = ',ES10.4,', lambda_min = ',ES11.4)
 99998 Format(A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )
 2030  FORMAT(A, '    it     ||x||-radius             lambda ',                &
                  '              d_lambda' )
@@ -1501,7 +1501,7 @@
           WRITE( rec(1), Fmt=99992) prefix
           WRITE( rec(2), Fmt=99991) prefix, lambda, inform%x_norm, radius
           Call Printmsg(4,.False.,options,2,rec)
-        End If 
+        End If
         IF ( printt .AND. it > 1 ) Then
           WRITE( rec(1), 2030 ) prefix
           Call Printmsg(3,.False.,options,1,rec)
@@ -3079,7 +3079,7 @@
           ( sigma / p ) * inform%x_norm ** p
         Call Printmsg(2,.False.,options,2,rec)
       End If
-99985 Format ( A, ' Estimated, true objective value   =',1X,ES22.13 ) 
+99985 Format ( A, ' Estimated, true objective value   =',1X,ES22.13 )
 99984 Format ( A, ' Estimated, true regularized value =',1X,Es22.13 )
 !  ----
 !  Exit
