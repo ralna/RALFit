@@ -96,6 +96,7 @@ contains
 !  -----------------------------------------------------------------------------
 
 !   Dummy arguments
+    implicit none 
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
@@ -207,7 +208,7 @@ contains
                           eval_F, eval_J, eval_HF,   & 
                           params,                    &
                           inform, options, weights, eval_HP)
-
+    implicit none 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -348,7 +349,7 @@ contains
        w%normJFold = w%normJF
        
        ! save some data 
-       inform%obj = 0.5 * ( w%normF**2 )
+       inform%obj = 0.5_wp * ( w%normF**2 )
        inform%norm_g = w%normJF
        inform%scaled_g = w%normJF/w%normF
 
@@ -412,7 +413,7 @@ contains
           end if
        case (3) ! hybrid (MNT)
           ! set the tolerance :: make this relative
-          w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5*(w%normF**2)) )                   
+          w%hybrid_tol = options%hybrid_tol * ( w%normJF/(0.5_wp*(w%normF**2)) )                   
           ! use first-order method initially
           w%hf(1:n**2) = 0.0_wp
           w%use_second_derivatives = .false.
@@ -703,7 +704,7 @@ contains
              call switch_to_gauss_newton(w,n,options)
           end if
        else
-          FunctionValue = 0.5 * (w%normF**2)
+          FunctionValue = 0.5_wp * (w%normF**2)
           if ( w%normJF/FunctionValue < w%hybrid_tol ) then 
              w%hybrid_count = w%hybrid_count + 1
              if (w%hybrid_count == options%hybrid_switch_its) then
@@ -846,7 +847,7 @@ contains
   !!******************************************************!!
 
   subroutine nlls_finalize(w,options)
-    
+    implicit none 
     type( nlls_workspace ) :: w
     type( nlls_options ) :: options
     ! reset all the scalars
@@ -864,6 +865,7 @@ contains
   end subroutine nlls_finalize
 
   subroutine nlls_strerror(inform)
+    implicit none 
     type( nlls_inform ), intent(inout) :: inform
 
     if ( inform%status == NLLS_ERROR_MAXITS ) then
@@ -930,7 +932,7 @@ contains
   RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, & 
                             Delta,eval_HF,params,num_successful_steps,& 
                             Xnew,d,normd,options,inform,w,tenJ, inner_workspace)
-
+    implicit none
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
@@ -1020,14 +1022,14 @@ contains
           if (normx > epsmch) then
              ! add term from J^TJ
              w%A(1:n,1:n) = w%A(1:n,1:n) + &
-                  ( options%regularization_term * options%regularization_power / 2.0 ) * & 
-                  normx**(options%regularization_power - 4.0) * w%xxt 
+                  ( options%regularization_term * options%regularization_power / 2.0_wp ) * & 
+                  normx**(options%regularization_power - 4.0_wp) * w%xxt 
              ! since there's extra terms in the 'real' J, add these to the scaling
              do i = 1, n
                 ! add the square of the entries of last row of the 'real' Jacobian
                 w%extra_scale(i) = & 
-                     (options%regularization_term * options%regularization_power / 2.0 ) * &
-                     (normx**(options%regularization_power-4)) * X(i)**2.0 
+                     (options%regularization_term * options%regularization_power / 2.0_wp ) * &
+                     (normx**(options%regularization_power-4.0_wp)) * X(i)**2.0_wp 
              end do
           end if
        end select
@@ -1172,6 +1174,7 @@ contains
    END SUBROUTINE calculate_step
 
    subroutine generate_scaling(J,A,n,m,scale,extra_scale,w,options,inform)
+    implicit none 
      !-------------------------------
      ! generate_scaling
      ! input :: Jacobian matrix, J
@@ -1262,6 +1265,7 @@ contains
    end subroutine generate_scaling
 
    subroutine switch_to_gauss_newton(w, n, options)
+     Implicit None
      type (nlls_workspace), intent(inout) :: w
      integer, intent(in) :: n
      type (nlls_options), intent(in) :: options
@@ -1284,6 +1288,7 @@ contains
    end subroutine switch_to_gauss_newton
 
    subroutine switch_to_quasi_newton(w, n, options)
+     Implicit None
      type (nlls_workspace), intent(inout) :: w
      integer, intent(in) :: n 
      type (nlls_options), intent(in) :: options
@@ -1312,7 +1317,7 @@ contains
 ! -----------------------------------------
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
-
+     Implicit None
      REAL(wp), intent(in) :: J(:), hf(:), f(:), g(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
@@ -1385,7 +1390,7 @@ contains
      ! Solve the trust-region subproblem using 
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
-
+     Implicit None
      REAL(wp), intent(in) :: J(:), A(:,:), hf(:), f(:), v(:), X(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
@@ -1421,7 +1426,7 @@ contains
      ! todo: make this an option
      w%B = 0
      do i = 1,n
-        w%B(i,i) = 1.0
+        w%B(i,i) = 1.0_wp
      end do
      
      select case (options%model)
@@ -1450,9 +1455,9 @@ contains
      w%M0(n+1:2*n,1:n) = A
      w%M0(1:n,n+1:2*n) = A
      call outer_product(v,n,w%gtg) ! gtg = Jtg * Jtg^T
-     w%M0(n+1:2*n,n+1:2*n) = (-1.0 / Delta**2) * w%gtg
+     w%M0(n+1:2*n,n+1:2*n) = (-1.0_wp / Delta**2) * w%gtg
 
-     w%M1 = 0.0
+     w%M1 = 0.0_wp
      w%M1(n+1:2*n,1:n) = -w%B
      w%M1(1:n,n+1:2*n) = -w%B
      
@@ -1544,7 +1549,7 @@ contains
      !
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
-
+     Implicit None
      REAL(wp), intent(in) :: A(:,:), v(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
@@ -1573,7 +1578,7 @@ contains
      ! 
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
-
+     Implicit None
      REAL(wp), intent(in) :: A(:,:), v(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
@@ -1800,7 +1805,7 @@ contains
      ! 
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
-
+     Implicit None
      REAL(wp), intent(in) :: A(:,:), v(:), Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out) :: d(:)
@@ -2136,6 +2141,7 @@ contains
      ! (page 191) of the Trust Region book
      !-------------------------------------------------
 
+     Implicit None
      integer, intent(in) :: n
      real(wp), intent(in) :: H(:,:), LLt(:,:)
      real(wp), intent(out) :: u(:), uHu
@@ -2192,7 +2198,8 @@ contains
      ! the input shift sigma makes (A + sigma I) is positive
      ! definite, factorizes (A+sigmaI), and solves (A + sigma I)(-v) = d
      !--------------------------------------------------
-     
+
+     Implicit None
      integer, intent(in) :: n 
      real(wp), intent(in) :: A(:,:), v(:)
      real(wp), intent(inout) :: AplusSigma(:,:)
@@ -2249,6 +2256,7 @@ contains
      ! main output :: d, the soln to the TR subproblem
      !--------------------------------------------
 
+     Implicit None
      REAL(wp), intent(in) :: A(:,:), v(:)
      REAL(wp), intent(inout) :: Delta
      integer, intent(in)  :: n, m
@@ -2377,6 +2385,7 @@ contains
      ! Note: inform%status is set by solve_spd
      !--------------------------------------------
 
+     Implicit None
      REAL(wp), intent(in) :: A(:,:), v(:)
      REAL(wp), intent(inout) :: Delta
      integer, intent(in)  :: n, m
@@ -2414,6 +2423,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 !  solve_LLS, a subroutine to solve a linear least squares problem
 !  -----------------------------------------------------------------
 
+       Implicit None
        REAL(wp), DIMENSION(:), INTENT(IN) :: J
        REAL(wp), DIMENSION(:), INTENT(IN) :: f
        INTEGER, INTENT(IN) :: n, m
@@ -2460,6 +2470,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 !    by Madsen, Nielsen and Tingleff      
 !  -----------------------------------------------------------------
 
+     Implicit None
      real(wp), dimension(:), intent(in) :: a, b 
      real(wp), intent(in) ::  Delta
      real(wp), intent(out) :: beta
@@ -2502,6 +2513,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 !       md :=m_k(d)
 ! --------------------------------------------------       
 
+       Implicit None
        real(wp), intent(in) :: f(:) ! f(x_k)
        real(wp), intent(in) :: d(:) ! direction in which we move
        real(wp), intent(in) :: J(:) ! J(x_k) (by columns)
@@ -2577,6 +2589,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        ! if model is good, rho should be close to one             !
        !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+       Implicit None
        real(wp), intent(in)  :: normf    ! ||f(x_k)|| at 
        real(wp), intent(in)  :: normfnew ! ||f(x_k + d)||
        real(wp), intent(in)  :: md       !    m_k(d)
@@ -2615,6 +2628,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 
      subroutine apply_second_order_info(n,m,X,w,eval_Hf,params,options,inform, &
          weights)
+       Implicit None
        integer, intent(in)  :: n, m 
        real(wp), intent(in) :: X(:)
        type( NLLS_workspace ), intent(inout) :: w
@@ -2632,7 +2646,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           end if
           inform%h_eval = inform%h_eval + 1
        else
-          ! use the rank-1.0_wp approximation...
+          ! use the rank-one approximation...
           call rank_one_update(w%hf,w,n,options)                      
        end if
        
@@ -2643,6 +2657,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine apply_second_order_info
 
      subroutine update_regularized_normF(normF,normX,options)
+       Implicit None
        real(wp), intent(inout) :: normF
        real(wp), intent(in) :: normX
        type( nlls_options ), intent(in) :: options
@@ -2653,7 +2668,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
                options%regularization_term * normX**2 )
        case (2)
           normF = sqrt(normF**2 + & 
-               ( 2 * options%regularization_term / options%regularization_power )  *  & 
+               ( 2.0_wp * options%regularization_term / options%regularization_power )  *  & 
                normX**options%regularization_power )
        Case Default
          ! No regularization applied
@@ -2661,6 +2676,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine update_regularized_normF
 
      subroutine update_regularized_gradient(g,X,normX,options)
+       Implicit None
        real(wp), intent(inout) :: g(:)
        real(wp), intent(in) :: X(:), normX
        type( nlls_options ), intent(in) :: options
@@ -2675,6 +2691,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine update_regularized_gradient
 
      subroutine update_regularized_hessian(hf,X,n,options)
+       Implicit None
        real(wp), intent(inout) :: hf(:)
        real(wp), intent(in) :: X(:)
        integer, intent(in) :: n
@@ -2692,7 +2709,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
              do jj = 1,n
                 hf_local = x(ii)*x(jj)
                 if (ii == jj) hf_local = hf_local + normx**2
-                hf_local = sigma * normx**(p - 4.0) * hf_local                
+                hf_local = sigma * normx**(p - 4.0_wp) * hf_local                
                 hf( (ii-1)*n + jj) = hf( (ii-1)*n + jj) + hf_local
              end do
           end do
@@ -2700,6 +2717,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine update_regularized_hessian
 
      subroutine rank_one_update(hf,w,n,options)
+       Implicit None
        real(wp), intent(inout) :: hf(:)
        type( NLLS_workspace ), intent(inout) :: w
        integer, intent(in) :: n
@@ -2746,6 +2764,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 
 
      subroutine update_trust_region_radius(rho,options,inform,w)
+       Implicit None
        real(wp), intent(inout) :: rho ! ratio of actual to predicted reduction
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
@@ -2846,7 +2865,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine update_trust_region_radius
 
      subroutine test_convergence(normF,normJF,normF0,normJF0,normd,options,inform)
-
+       Implicit None
        real(wp), intent(in) :: normF, normJf, normF0, normJF0, normd
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
@@ -2884,6 +2903,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine test_convergence
 
      subroutine mult_J(J,n,m,x,Jx,options)
+       Implicit None
        real(wp), intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        real(wp), intent(out) :: Jx(*)
@@ -2910,6 +2930,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine mult_J
 
      subroutine mult_Jt(J,n,m,x,Jtx,options)
+       Implicit None
        double precision, intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        double precision, intent(out) :: Jtx(*)
@@ -2936,6 +2957,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine mult_Jt
 
      subroutine scale_J_by_weights(J,n,m,weights,options)
+       Implicit None
        real(wp), intent(inout) :: J(*)
        real(wp), intent(in) :: weights(*)
        integer, intent(in) :: n,m 
@@ -2955,6 +2977,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine scale_J_by_weights
      
 !     subroutine add_matrices3(A,B,n,C)
+!       Implicit None
 !       real(wp), intent(in) :: A(*), B(*)
 !       integer, intent(in) :: n
 !       real(wp), intent(InOut) :: C(*)
@@ -2963,6 +2986,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 !     end subroutine add_matrices3
 
      subroutine add_matrices(A,B,n)
+       Implicit None
        real(wp), intent(InOut) :: A(*)
        real(wp), intent(in) :: B(*)
        integer, intent(in) :: n
@@ -2970,6 +2994,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine add_matrices
      
      subroutine get_element_of_matrix(J,m,ii,jj,Jij)
+       Implicit None
        real(wp), intent(in) :: J(*)
        integer, intent(in) :: m
        integer, intent(in) :: ii,jj
@@ -2982,6 +3007,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine get_element_of_matrix
 
      subroutine solve_spd(A,b,LtL,x,n,inform)
+       Implicit None
        REAL(wp), intent(in) :: A(:,:)
        REAL(wp), intent(in) :: b(:)
        REAL(wp), intent(out) :: LtL(:,:)
@@ -3000,6 +3026,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine solve_spd
 
      subroutine solve_spd_nocopy(A,b,x,n,inform)
+       Implicit None
        REAL(wp), intent(inout) :: A(:,:)
        REAL(wp), intent(in) :: b(:)
        REAL(wp), intent(out) :: x(:)
@@ -3016,6 +3043,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine solve_spd_nocopy
 
      subroutine solve_general(A,b,x,n,inform,w)
+       Implicit None
        REAL(wp), intent(in) :: A(:,:)
        REAL(wp), intent(in) :: b(:)
        REAL(wp), intent(out) :: x(:)
@@ -3042,6 +3070,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine solve_general
 
      subroutine matrix_norm(x,A,norm_A_x)
+       Implicit None
        REAL(wp), intent(in) :: A(:,:), x(:)
        REAL(wp), intent(out) :: norm_A_x
        ! Calculates norm_A_x = ||x||_A = sqrt(x'*A*x)
@@ -3049,6 +3078,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine matrix_norm
 
      subroutine matmult_inner(J,n,m,A,options)
+       Implicit None
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(n,n)
@@ -3072,6 +3102,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
        End If
      end subroutine matmult_inner
      subroutine matmult_outer(J,n,m,A)
+       Implicit None
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(*)
        real(wp), intent(out) :: A(m,m)
@@ -3084,6 +3115,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine matmult_outer
 
      subroutine outer_product(x,n,xxt)
+       Implicit None
        real(wp), intent(in) :: x(:)
        integer, intent(in) :: n
        real(wp), intent(out) :: xxt(:,:)
@@ -3097,6 +3129,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine outer_product
 
      subroutine all_eig_symm(A,n,ew,ev,w,inform)
+       Implicit None
        ! calculate all the eigenvalues of A (symmetric)
        real(wp), intent(in) :: A(:,:)
        integer, intent(in) :: n
@@ -3128,6 +3161,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine all_eig_symm
 
      subroutine min_eig_symm(A,n,ew,ev,options,inform,w)
+       Implicit None
        ! calculate the leftmost eigenvalue of A
        real(wp), intent(in) :: A(:,:)
        integer, intent(in) :: n
@@ -3194,6 +3228,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine min_eig_symm
 
      subroutine max_eig(A,B,n,ew,ev,nullevs,options,inform,w)
+       Implicit None
        real(wp), intent(inout) :: A(:,:), B(:,:)
        integer, intent(in) :: n 
        real(wp), intent(out) :: ew, ev(:)
@@ -3292,6 +3327,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine max_eig
 
      subroutine shift_matrix(A,sigma,AplusSigma,n)
+       Implicit None
        real(wp), intent(in)  :: A(:,:), sigma
        real(wp), intent(out) :: AplusSigma(:,:)
        integer, intent(in) :: n 
@@ -3305,6 +3341,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine shift_matrix
 
      subroutine get_svd_J(n,m,J,s1,sn,options,inform,status,w)
+       Implicit None
        integer, intent(in) :: n,m 
        real(wp), intent(in) :: J(:)
        real(wp), intent(out) :: s1, sn
@@ -3373,6 +3410,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
                                     num_successful_steps, & 
                                     d, md, params, options, inform, & 
                                     w, tenJ, inner_workspace)
+       Implicit None
        integer, intent(in)   :: n,m 
        real(wp), intent(in)  :: f(:), J(:)
        real(wp) , intent(in) :: X(:), Delta
@@ -3477,6 +3515,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine solve_newton_tensor
 
      subroutine evaltensor_f(status, n, m, s, f, params)
+       Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n
        integer, intent(in)  :: m
@@ -3521,6 +3560,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine evaltensor_f
 
      subroutine calculate_sHs( n, m, s, params)
+       Implicit None
        integer, intent(in) :: n, m
        real(wp), dimension(*), intent(in) :: s
        class( params_base_type ), intent(inout) :: params
@@ -3541,6 +3581,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine calculate_sHs
 
      subroutine evaltensor_J(status, n, m, s, J, params)
+       Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n
        integer, intent(in)  :: m
@@ -3568,12 +3609,12 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
           if (params%extra == 1) then
              ! we're passing in the regularization via the function/Jacobian
              do ii = 1,n ! loop over the columns...
-                J(m*(ii-1) + params%m + ii) = sqrt(1.0/params%Delta)
+                J(m*(ii-1) + params%m + ii) = sqrt(1.0_wp/params%Delta)
              end do
           elseif (params%extra == 2) then 
              do ii = 1, n ! loop over the columns....
-                J(m*ii) = sqrt( (params%p)/(2.0 * params%Delta) ) * & 
-                                      (norm2(s(1:n))**( (params%p/2.0) - 2.0)) * & 
+                J(m*ii) = sqrt( (params%p)/(2.0_wp * params%Delta) ) * & 
+                                      (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp)) * & 
                                       s(ii)
              end do
           end if
@@ -3581,6 +3622,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine evaltensor_J
 
      subroutine evaltensor_HF(status, n, m, s, f, HF, params)
+       Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n
        integer, intent(in)  :: m
@@ -3622,6 +3664,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine evaltensor_HF
        
      subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
+       Implicit None
        integer, intent(in) :: n, m 
        real(wp), intent(in) :: X(:)
        class( params_base_type ) :: params

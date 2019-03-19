@@ -10,7 +10,8 @@ module ral_nlls_workspaces
   
   Integer, Parameter, Public          :: wp = kind(1.0d0)
   Real (Kind = wp), Parameter, Public :: epsmch = epsilon(1.0_wp)
-  Real (Kind = wp), Parameter, Public :: big = HUGE(1.0_wp)
+  Real (Kind = wp), Parameter, Public :: infinity = HUGE(1.0_wp)
+  INTEGER, PARAMETER, public          :: history_max = 100
 
   ! Error constants    
   Integer, Parameter, Public :: NLLS_ERROR_MAXITS                   =   -1
@@ -379,16 +380,16 @@ module ral_nlls_workspaces
 !  the value of the objective function at the best estimate of the solution 
 !   determined by NLLS_solve
 
-     REAL ( KIND = wp ) :: obj = big
+     REAL ( KIND = wp ) :: obj = infinity
 
 !  the norm of the gradient of the objective function at the best estimate 
 !   of the solution determined by NLLS_solve
 
-     REAL ( KIND = wp ) :: norm_g = big
+     REAL ( KIND = wp ) :: norm_g = infinity
 
 ! the norm of the gradient, scaled by the norm of the residual
      
-     REAL ( KIND = wp ) :: scaled_g = big 
+     REAL ( KIND = wp ) :: scaled_g = infinity
 
 ! error returns from external subroutines 
      
@@ -582,7 +583,7 @@ module ral_nlls_workspaces
      real(wp) :: normd = 1.0e10_wp
      logical :: use_second_derivatives = .false.
      integer :: hybrid_count = 0
-     real(wp) :: hybrid_tol = 1.0
+     real(wp) :: hybrid_tol = 1.0_wp
      real(wp), allocatable :: fNewton(:), JNewton(:), XNewton(:)
      real(wp), allocatable :: J(:)
      real(wp), allocatable :: f(:), fnew(:)
@@ -594,7 +595,7 @@ module ral_nlls_workspaces
      real(wp), allocatable :: largest_sv(:), smallest_sv(:)
      type ( calculate_step_work ) :: calculate_step_ws
      type ( get_svd_J_work ) :: get_svd_J_ws
-     real(wp) :: tr_nu = 2.0
+     real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
      type (tenJ_type ) :: tenJ
      type (NLLS_workspace), Pointer :: iw_ptr => NULL()
@@ -610,6 +611,7 @@ contains
   !!                                                       !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   recursive subroutine setup_workspaces(workspace,n,m,options,inform)
+  implicit none 
     type( NLLS_workspace ), intent(inout) :: workspace
     type( nlls_options ), intent(in) :: options
     integer, intent(in) :: n,m
@@ -803,7 +805,7 @@ contains
   end subroutine setup_workspaces
 
   recursive subroutine remove_workspaces(workspace,options)
-
+    implicit none 
     type( NLLS_workspace ), intent(inout) :: workspace
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -848,6 +850,7 @@ contains
   end subroutine remove_workspaces
 
   subroutine setup_workspace_get_svd_J(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n, m 
     type( get_svd_J_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
@@ -895,6 +898,7 @@ contains
   end subroutine setup_workspace_get_svd_J
 
   subroutine remove_workspace_get_svd_J(w,options)
+    implicit none 
     type( get_svd_J_work ), Intent(InOut) :: w
     type( nlls_options ), Intent(In) :: options
 
@@ -906,6 +910,7 @@ contains
   end subroutine remove_workspace_get_svd_J
 
   subroutine setup_workspace_solve_newton_tensor(n,m,w,options,inform,tenJ,inner_workspace)
+    implicit none 
     integer, intent(in) :: n, m 
     type( solve_newton_tensor_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
@@ -996,6 +1001,7 @@ contains
   end subroutine setup_workspace_solve_newton_tensor
 
   subroutine remove_workspace_solve_newton_tensor(w,options,tenJ,inner_workspace)
+    implicit none 
     type( solve_newton_tensor_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
     type( tenJ_type ), Intent(InOut) :: tenJ
@@ -1016,6 +1022,7 @@ contains
   end subroutine remove_workspace_solve_newton_tensor
 
   recursive subroutine setup_workspace_calculate_step(n,m,w,options,inform,tenJ,inner_workspace)
+    implicit none 
     integer, intent(in) :: n, m 
     type( calculate_step_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
@@ -1091,6 +1098,7 @@ contains
   end subroutine setup_workspace_calculate_step
 
   recursive subroutine remove_workspace_calculate_step(w,options,tenJ, inner_workspace)
+    implicit none 
     type( calculate_step_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
     type( tenJ_type), Intent(inout) :: tenJ
@@ -1143,6 +1151,7 @@ contains
   end subroutine remove_workspace_calculate_step
 
   subroutine setup_workspace_dogleg(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n, m 
     type( dogleg_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
@@ -1170,6 +1179,7 @@ contains
   end subroutine setup_workspace_dogleg
 
   subroutine remove_workspace_dogleg(w,options)
+    implicit none 
     type( dogleg_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1188,6 +1198,7 @@ contains
   end subroutine remove_workspace_dogleg
 
   subroutine setup_workspace_solve_LLS(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n, m 
     type( solve_LLS_work ) :: w 
     type( nlls_options ), intent(in) :: options
@@ -1206,6 +1217,7 @@ contains
   end subroutine setup_workspace_solve_LLS
 
   subroutine remove_workspace_solve_LLS(w,options)
+    implicit none 
     type( solve_LLS_work ) :: w 
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1218,6 +1230,7 @@ contains
   end subroutine remove_workspace_solve_LLS
 
   subroutine setup_workspace_evaluate_model(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n, m        
     type( evaluate_model_work ) :: w
     type( nlls_options ), intent(in) :: options
@@ -1234,6 +1247,7 @@ contains
   end subroutine setup_workspace_evaluate_model
 
   subroutine remove_workspace_evaluate_model(w,options)
+    implicit none 
     type( evaluate_model_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1246,6 +1260,7 @@ contains
   end subroutine remove_workspace_evaluate_model
 
   subroutine setup_workspace_AINT_tr(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n, m 
     type( AINT_tr_work ) :: w
     type( nlls_options ), intent(in) :: options
@@ -1280,6 +1295,7 @@ contains
   end subroutine setup_workspace_AINT_tr
 
   subroutine remove_workspace_AINT_tr(w,options)
+    implicit none 
     type( AINT_tr_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1308,6 +1324,7 @@ contains
   end subroutine remove_workspace_AINT_tr
 
   subroutine setup_workspace_min_eig_symm(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n, m 
     type( min_eig_symm_work) :: w
     type( nlls_options ), intent(in) :: options
@@ -1389,6 +1406,7 @@ contains
   end subroutine setup_workspace_min_eig_symm
 
   subroutine remove_workspace_min_eig_symm(w,options)
+    implicit none 
     type( min_eig_symm_work) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1408,6 +1426,7 @@ contains
   end subroutine remove_workspace_min_eig_symm
 
   subroutine setup_workspace_max_eig(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n, m 
     type( max_eig_work) :: w
     type( nlls_options ), intent(in) :: options
@@ -1463,6 +1482,7 @@ contains
   end subroutine setup_workspace_max_eig
 
   subroutine remove_workspace_max_eig(w,options)
+    implicit none 
     type( max_eig_work) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1480,6 +1500,7 @@ contains
   end subroutine remove_workspace_max_eig
 
   subroutine setup_workspace_solve_general(n, m, w, options, inform)
+    implicit none 
     integer, intent(in) :: n, m 
     type( solve_general_work ) :: w
     type( nlls_options ), intent(in) :: options
@@ -1496,6 +1517,7 @@ contains
   end subroutine setup_workspace_solve_general
 
   subroutine remove_workspace_solve_general(w, options)
+    implicit none 
     type( solve_general_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1507,6 +1529,7 @@ contains
   end subroutine remove_workspace_solve_general
 
   subroutine setup_workspace_solve_galahad(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n,m
     type( solve_galahad_work ) :: w
     type( nlls_options ), intent(in) :: options
@@ -1532,6 +1555,7 @@ contains
   end subroutine setup_workspace_solve_galahad
 
   subroutine remove_workspace_solve_galahad(w,options)
+    implicit none 
     type( solve_galahad_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1547,6 +1571,7 @@ contains
   end subroutine remove_workspace_solve_galahad
 
   subroutine setup_workspace_regularization_solver(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n,m
     type ( regularization_solver_work ) :: w
     type ( nlls_options ), intent(in) :: options
@@ -1563,6 +1588,7 @@ contains
   end subroutine setup_workspace_regularization_solver
   
   subroutine remove_workspace_regularization_solver(w,options)
+    implicit none 
     type( regularization_solver_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1574,6 +1600,7 @@ contains
   end subroutine remove_workspace_regularization_solver
 
   subroutine setup_workspace_all_eig_symm(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n,m
     type( all_eig_symm_work ) :: w
     type( nlls_options ), intent(in) :: options
@@ -1626,6 +1653,7 @@ contains
   end subroutine setup_workspace_all_eig_symm
 
   subroutine remove_workspace_all_eig_symm(w,options)
+    implicit none 
     type( all_eig_symm_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1635,6 +1663,7 @@ contains
   end subroutine remove_workspace_all_eig_symm
 
   subroutine setup_workspace_more_sorensen(n,m,w,options,inform)
+    implicit none 
     integer, intent(in) :: n,m
     type( more_sorensen_work ) :: w
     type( nlls_options ), intent(in) :: options
@@ -1662,6 +1691,7 @@ contains
   end subroutine setup_workspace_more_sorensen
 
   subroutine remove_workspace_more_sorensen(w,options)
+    implicit none 
     type( more_sorensen_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
@@ -1678,7 +1708,7 @@ contains
 
 
   subroutine setup_workspace_generate_scaling(n,m,w,options,inform)
-
+    implicit none 
     integer, intent(in) :: n,m
     type( generate_scaling_work ) :: w
     type( nlls_options ), intent(in) :: options
@@ -1710,6 +1740,7 @@ contains
   end subroutine setup_workspace_generate_scaling
 
   subroutine remove_workspace_generate_scaling(w,options)
+    implicit none 
     type( generate_scaling_work ) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy

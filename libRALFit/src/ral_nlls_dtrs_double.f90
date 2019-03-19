@@ -15,7 +15,7 @@
 !   http://galahad.rl.ac.uk/galahad-www/specs.html
 
    MODULE RAL_NLLS_ROOTS_double
-
+    Use ral_nlls_workspaces
 !     --------------------------------------------------------------------
 !     |                                                                  |
 !     |  Find (all the) real roots of polynomials with real coefficients |
@@ -26,33 +26,6 @@
 
       PRIVATE
       PUBLIC :: ROOTS_quadratic, ROOTS_cubic, ROOTS_quartic
-
-!--------------------
-!   P r e c i s i o n
-!--------------------
-
-      INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-
-!----------------------
-!   P a r a m e t e r s
-!----------------------
-
-      REAL ( KIND = wp ), PARAMETER :: zero = 0.0_wp
-      REAL ( KIND = wp ), PARAMETER :: one = 1.0_wp
-      REAL ( KIND = wp ), PARAMETER :: two = 2.0_wp
-      REAL ( KIND = wp ), PARAMETER :: three = 3.0_wp
-      REAL ( KIND = wp ), PARAMETER :: four = 4.0_wp
-      REAL ( KIND = wp ), PARAMETER :: six = 6.0_wp
-      REAL ( KIND = wp ), PARAMETER :: quarter = 0.25_wp
-      REAL ( KIND = wp ), PARAMETER :: threequarters = 0.75_wp
-      REAL ( KIND = wp ), PARAMETER :: onesixth = one / six
-      REAL ( KIND = wp ), PARAMETER :: onethird = one / three
-      REAL ( KIND = wp ), PARAMETER :: half = 0.5_wp
-      REAL ( KIND = wp ), PARAMETER :: twothirds = two / three
-      REAL ( KIND = wp ), PARAMETER :: pi = 3.1415926535897931_wp
-      REAL ( KIND = wp ), PARAMETER :: magic = 2.0943951023931953_wp  !! 2 pi/3
-      REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
-      REAL ( KIND = wp ), PARAMETER :: infinity = HUGE( one )
 
 !  interface to LAPACK: eigenvalues of a Hessenberg matrix
 
@@ -108,34 +81,34 @@
 
       rhs = tol * a1 * a1
       IF ( ABS( a0 * a2 ) > rhs ) THEN  !  really is quadratic
-        root2 = a1 * a1 - four * a2 * a0
+        root2 = a1 * a1 - 4.0_wp * a2 * a0
         IF ( ABS( root2 ) <= ( epsmch * a1 ) ** 2 ) THEN ! numerical double root
-          nroots = 2 ; root1 = -  half * a1 / a2 ; root2 = root1
-        ELSE IF ( root2 < zero ) THEN    ! complex not real roots
-          nroots = 0 ; root1 = zero ; root2 = zero
+          nroots = 2 ; root1 = -  0.5_wp * a1 / a2 ; root2 = root1
+        ELSE IF ( root2 < 0.0_wp ) THEN    ! complex not real roots
+          nroots = 0 ; root1 = 0.0_wp ; root2 = 0.0_wp
         ELSE                             ! distint real roots
-          d = - half * ( a1 + SIGN( SQRT( root2 ), a1 ) )
+          d = - 0.5_wp * ( a1 + SIGN( SQRT( root2 ), a1 ) )
           nroots = 2 ; root1 = d / a2 ; root2 = a0 / d
           IF ( root1 > root2 ) THEN
             d = root1 ; root1 = root2 ; root2 = d
           END IF
         END IF
-      ELSE IF ( a2 == zero ) THEN
-        IF ( a1 == zero ) THEN
-          IF ( a0 == zero ) THEN         ! the function is zero
-            nroots = 1 ; root1 = zero ; root2 = zero
+      ELSE IF ( a2 == 0.0_wp ) THEN
+        IF ( a1 == 0.0_wp ) THEN
+          IF ( a0 == 0.0_wp ) THEN         ! the function is 0.0_wp
+            nroots = 1 ; root1 = 0.0_wp ; root2 = 0.0_wp
           ELSE                           ! the function is constant
-            nroots = 0 ; root1 = zero ; root2 = zero
+            nroots = 0 ; root1 = 0.0_wp ; root2 = 0.0_wp
           END IF
         ELSE                             ! the function is linear
-          nroots = 1 ; root1 = - a0 / a1 ; root2 = zero
+          nroots = 1 ; root1 = - a0 / a1 ; root2 = 0.0_wp
         END IF
       ELSE                               ! very ill-conditioned quadratic
         nroots = 2
-        IF ( - a1 / a2 > zero ) THEN
-          root1 = zero ; root2 = - a1 / a2
+        IF ( - a1 / a2 > 0.0_wp ) THEN
+          root1 = 0.0_wp ; root2 = - a1 / a2
         ELSE
-          root1 = - a1 / a2 ; root2 = zero
+          root1 = - a1 / a2 ; root2 = 0.0_wp
         END IF
       END IF
 
@@ -143,8 +116,8 @@
 
       IF ( nroots >= 1 ) THEN
         p = ( a2 * root1 + a1 ) * root1 + a0
-        pprime = two * a2 * root1 + a1
-        IF ( pprime /= zero ) THEN
+        pprime = 2.0_wp* a2 * root1 + a1
+        IF ( pprime /= 0.0_wp ) THEN
           If (debug) Then
             Write(rec(1), Fmt=2000)       1, root1, p, - p / pprime
             Call Printmsg(5,.False.,options,1,rec)
@@ -158,8 +131,8 @@
         End if
         IF ( nroots == 2 ) THEN
           p = ( a2 * root2 + a1 ) * root2 + a0
-          pprime = two * a2 * root2 + a1
-          IF ( pprime /= zero ) THEN
+          pprime = 2.0_wp* a2 * root2 + a1
+          IF ( pprime /= 0.0_wp ) THEN
             If (debug) Then
               Write(rec(1), Fmt=2000)       2, root2, p, - p / pprime
               Call Printmsg(5,.False.,options,1,rec)
@@ -214,6 +187,8 @@
       Type( NLLS_options ), Intent (In) :: options
 
 !  Local variables
+      REAL ( KIND = wp ), PARAMETER :: pi = 3.1415926535897931_wp
+      REAL ( KIND = wp ), PARAMETER :: magic = 2.0943951023931953_wp
 
       INTEGER :: info, nroots_q
       REAL ( KIND = wp ) :: a, b, c, d, e, f, p, q, s, t, w, x, y, z
@@ -228,16 +203,16 @@
 
 !  Check to see if the quartic is actually a cubic
 
-      IF ( a3 == zero ) THEN
+      IF ( a3 == 0.0_wp ) THEN
         CALL ROOTS_quadratic( a0, a1, a2, tol, nroots, root1, root2, debug, options )
         root3 = infinity
         RETURN
       END IF
 
-!  Deflate the polnomial if the trailing coefficient is zero
+!  Deflate the polnomial if the trailing coefficient is 0.0_wp
 
-      IF ( a0 == zero ) THEN
-        root1 = zero
+      IF ( a0 == 0.0_wp ) THEN
+        root1 = 0.0_wp
         CALL ROOTS_quadratic( a1, a2, a3, tol, nroots, root2, root3, debug, options )
         nroots = nroots + 1
         RETURN
@@ -250,28 +225,28 @@
         c1 = a1 / a3
         c2 = a2 / a3
 
-        s = c2 / three
+        s = c2 / 3.0_wp
         t = s * c2
-        b = 0.5_wp * ( s * ( twothirds * t - c1 ) + c0 )
-        t = ( t - c1 ) / three
+        b = 0.5_wp * ( s * (  (2.0_wp/3.0_wp)  * t - c1 ) + c0 )
+        t = ( t - c1 ) / 3.0_wp
         c = t * t * t ; d = b * b - c
 
 ! 1 real + 2 equal real or 2 complex roots
 
-        IF ( d >= zero ) THEN
-          d = ( SQRT( d ) + ABS( b ) ) ** onethird
-          IF ( d /= zero ) then
-            IF ( b > zero ) then
+        IF ( d >= 0.0_wp ) THEN
+          d = ( SQRT( d ) + ABS( b ) ) **  (1.0_wp/3.0_wp) 
+          IF ( d /= 0.0_wp ) then
+            IF ( b > 0.0_wp ) then
               b = - d
             ELSE
               b = d
             END IF
             c = t / b
           END IF
-          d = SQRT( threequarters ) * ( b - c )
-          b = b + c ; c = - 0.5 * b - s
+          d = SQRT( 0.75_wp ) * ( b - c )
+          b = b + c ; c = - 0.5_wp * b - s
           root1 = b - s
-          IF ( d == zero ) THEN
+          IF ( d == 0.0_wp ) THEN
             nroots = 3 ; root2 = c ; root3 = c
           ELSE
             nroots = 1
@@ -280,18 +255,18 @@
 ! 3 real roots
 
         ELSE
-          IF ( b == zero ) THEN
-            d = twothirds * ATAN( one )
+          IF ( b == 0.0_wp ) THEN
+            d =  (2.0_wp/3.0_wp)  * ATAN( 1.0_wp )
           ELSE
-            d = ATAN( SQRT( - d ) / ABS( b ) ) / three
+            d = ATAN( SQRT( - d ) / ABS( b ) ) / 3.0_wp
           END IF
-          IF ( b < zero ) THEN
-            b = two * SQRT( t )
+          IF ( b < 0.0_wp ) THEN
+            b = 2.0_wp* SQRT( t )
           ELSE
-            b = - two * SQRT( t )
+            b = - 2.0_wp* SQRT( t )
           END IF
           c = COS( d ) * b
-          t = - SQRT( threequarters ) * SIN( d ) * b - half * c
+          t = - SQRT( 0.75_wp ) * SIN( d ) * b - 0.5_wp * c
           d = - t - c - s ; c = c - s ; t = t - s
           IF ( ABS( c ) > ABS( t ) ) then
             root3 = c
@@ -311,18 +286,18 @@
 !  2. Use Littlewood's method
 
       ELSE IF ( method == 2 ) THEN
-        c2 = a2 / ( three * a3 ) ; c1 = a1 / ( three * a3 ) ; c0 = a0 / a3
+        c2 = a2 / ( 3.0_wp * a3 ) ; c1 = a1 / ( 3.0_wp * a3 ) ; c0 = a0 / a3
         x = c1 - c2 * c2
         y = c0 - c2* ( x + x + c1 )
-        z = y ** 2 + four * x ** 3
+        z = y ** 2 + 4.0_wp * x ** 3
 
 !  there are three real roots
 
-        IF ( z < zero ) THEN
-          a = - two * SQRT( - x )
+        IF ( z < 0.0_wp ) THEN
+          a = - 2.0_wp* SQRT( - x )
           b = y / ( a * x )
-          y = ATAN2( SQRT( one - b ), SQRT( one + b ) ) * twothirds
-          IF ( c2 < zero ) y = y + magic
+          y = ATAN2( SQRT( 1.0_wp - b ), SQRT( 1.0_wp + b ) ) *  (2.0_wp/3.0_wp) 
+          IF ( c2 < 0.0_wp ) y = y + magic
 
 !  calculate root which does not involve cancellation
 
@@ -331,25 +306,25 @@
 !  there may be only one real root
 
         ELSE
-          a = SQRT( z ) ; b = half * ( ABS( y ) + a ) ; c = b ** onethird
-          IF ( c <= zero ) THEN
+          a = SQRT( z ) ; b = 0.5_wp * ( ABS( y ) + a ) ; c = b **  (1.0_wp/3.0_wp) 
+          IF ( c <= 0.0_wp ) THEN
             nroots = 3 ; root1 = - c2 ; root2 = - c2 ; root3 = - c2
             GO TO 900
           ELSE
             nroots = 1
-            c = c - ( c ** 3 - b ) / ( three * c * c )
+            c = c - ( c ** 3 - b ) / ( 3.0_wp * c * c )
             e = c * c + ABS( x )
-            f = one / ( ( x / c ) ** 2 + e )
-            IF ( x >= zero ) THEN
+            f = 1.0_wp / ( ( x / c ) ** 2 + e )
+            IF ( x >= 0.0_wp ) THEN
               x = e / c ; z = y * f
             ELSE
-              x = a * f ; z = SIGN( one, y ) * e / c
+              x = a * f ; z = SIGN( 1.0_wp, y ) * e / c
             END IF
-            IF ( z * c2 >= zero ) THEN
+            IF ( z * c2 >= 0.0_wp ) THEN
               root1 = - z - c2
             ELSE
-              root2 = half * z - c2
-              root3 = half * SQRT( three ) * ABS( x )
+              root2 = 0.5_wp * z - c2
+              root3 = 0.5_wp * SQRT( 3.0_wp ) * ABS( x )
               root1 = - c0 / ( root2 * root2 + root3 * root3 )
               GO TO 900
             END IF
@@ -360,11 +335,11 @@
 
         b0 = - c0 / root1
         IF ( ABS( root1 ** 3 ) <= ABS( c0 ) ) THEN
-          b1 = root1 + three * c2
+          b1 = root1 + 3.0_wp * c2
         ELSE
-          b1 = ( b0 - three * c1 ) / root1
+          b1 = ( b0 - 3.0_wp * c1 ) / root1
         END IF
-        CALL ROOTS_quadratic( b0, b1, one, epsmch, nroots_q,                   &
+        CALL ROOTS_quadratic( b0, b1, 1.0_wp, epsmch, nroots_q,                   &
                               root2, root3, debug, options )
         nroots = nroots + nroots_q
 
@@ -372,35 +347,35 @@
 !  3. Use Viete's method
 
       ELSE IF ( method == 3 ) THEN
-        w = a2 / ( three * a3 )
-        p = ( a1 / ( three * a3 ) - w ** 2 ) ** 3
-        q = - half * ( two * w ** 3 - ( a1 * w - a0 ) / a3 )
+        w = a2 / ( 3.0_wp * a3 )
+        p = ( a1 / ( 3.0_wp * a3 ) - w ** 2 ) ** 3
+        q = - 0.5_wp * ( 2.0_wp* w ** 3 - ( a1 * w - a0 ) / a3 )
         d = p + q ** 2
 
 !  three real roots
 
-        IF ( d < zero ) THEN
-          s = ACOS( MIN( one, MAX( - one, q / SQRT( - p ) ) ) )
-          p = two * ( - p ) ** onesixth
+        IF ( d < 0.0_wp ) THEN
+          s = ACOS( MIN( 1.0_wp, MAX( - 1.0_wp, q / SQRT( - p ) ) ) )
+          p = 2.0_wp* ( - p ) **  (1.0_wp/6.0_wp) 
           nroots = 3
-          root1 = p * COS( onethird * ( s + two * pi ) ) - w
-          root2 = p * COS( onethird * ( s + four * pi ) ) - w
-          root3 = p * COS( onethird * ( s + six * pi ) ) - w
+          root1 = p * COS(  (1.0_wp/3.0_wp)  * ( s + 2.0_wp* pi ) ) - w
+          root2 = p * COS(  (1.0_wp/3.0_wp)  * ( s + 4.0_wp * pi ) ) - w
+          root3 = p * COS(  (1.0_wp/3.0_wp)  * ( s + 6.0_wp * pi ) ) - w
 
 !  one real root
 
         ELSE
           d = SQRT( d ) ; u1 = q + d ; u2 = q - d
           nroots = 1
-          root1 = SIGN( ABS( u1 ) ** onethird, u1 ) +                          &
-                  SIGN( ABS( u2 ) ** onethird, u2 ) - w
+          root1 = SIGN( ABS( u1 ) **  (1.0_wp/3.0_wp) , u1 ) +                          &
+                  SIGN( ABS( u2 ) **  (1.0_wp/3.0_wp) , u2 ) - w
         END IF
 
 !  4. Compute the roots as the eigenvalues of the relevant compainion matrix
 
       ELSE
-        H( 1, 1 ) = zero ; H( 2, 1 ) = one ; H( 3, 1 ) = zero
-        H( 1, 2 ) = zero ; H( 2, 2 ) = zero ; H( 3, 2 ) = one
+        H( 1, 1 ) = 0.0_wp ; H( 2, 1 ) = 1.0_wp ; H( 3, 1 ) = 0.0_wp
+        H( 1, 2 ) = 0.0_wp ; H( 2, 2 ) = 0.0_wp ; H( 3, 2 ) = 1.0_wp
         H( 1, 3 ) = - a0 / a3 ; H( 2, 3 ) = - a1 / a3 ; H( 3, 3 ) = - a2 / a3
         CALL HSEQR( 'E', 'N', 3, 1, 3, H, 3, ER, EI, ZZ, 1, WORK, 33, info )
         IF ( info /= 0 ) THEN
@@ -463,8 +438,8 @@
 !  perfom a Newton iteration to ensure that the roots are accurate
 
       p = ( ( a3 * root1 + a2 ) * root1 + a1 ) * root1 + a0
-      pprime = ( three * a3 * root1 + two * a2 ) * root1 + a1
-      IF ( pprime /= zero ) THEN
+      pprime = ( 3.0_wp * a3 * root1 + 2.0_wp* a2 ) * root1 + a1
+      IF ( pprime /= 0.0_wp ) THEN
         If (debug) Then
           Write(rec(1), Fmt=2000) 1, root1, p, - p / pprime
           Call Printmsg(5,.False.,options,1,rec)
@@ -479,8 +454,8 @@
 
       IF ( nroots == 3 ) THEN
         p = ( ( a3 * root2 + a2 ) * root2 + a1 ) * root2 + a0
-        pprime = ( three * a3 * root2 + two * a2 ) * root2 + a1
-        IF ( pprime /= zero ) THEN
+        pprime = ( 3.0_wp * a3 * root2 + 2.0_wp* a2 ) * root2 + a1
+        IF ( pprime /= 0.0_wp ) THEN
           If (debug) Then
             Write(rec(1), Fmt=2000)       2, root2, p, - p / pprime
             Call Printmsg(5,.False.,options,1,rec)
@@ -494,8 +469,8 @@
         End If
 
         p = ( ( a3 * root3 + a2 ) * root3 + a1 ) * root3 + a0
-        pprime = ( three * a3 * root3 + two * a2 ) * root3 + a1
-        IF ( pprime /= zero ) THEN
+        pprime = ( 3.0_wp * a3 * root3 + 2.0_wp* a2 ) * root3 + a1
+        IF ( pprime /= 0.0_wp ) THEN
           If (debug) Then
             Write(rec(1), Fmt=2000)       3, root3, p, - p / pprime
             Call Printmsg(5,.False.,options,1,rec)
@@ -558,7 +533,7 @@
 
 !  Check to see if the quartic is actually a cubic
 
-      IF ( a4 == zero ) THEN
+      IF ( a4 == 0.0_wp ) THEN
         CALL ROOTS_cubic( a0, a1, a2, a3, tol, nroots, root1, root2, root3,    &
                           debug, options )
         root4 = infinity
@@ -574,59 +549,59 @@
       b2 = a2 / a4
       b3 = a1 / a4
       b4 = a0 / a4
-      d3 = one
+      d3 = 1.0_wp
       d2 =  - b2
-      d1 = b1 * b3 - four * b4
-      d0 = b4 * ( four * b2 - b1 * b1 ) - b3 * b3
+      d1 = b1 * b3 - 4.0_wp * b4
+      d0 = b4 * ( 4.0_wp * b2 - b1 * b1 ) - b3 * b3
 
 !  Compute the roots of the auxiliary cubic
 
       CALL ROOTS_cubic( d0, d1, d2, d3, tol, nrootsc, rootc1, rootc2, rootc3, &
                         debug, options )
       IF ( nrootsc > 1 ) rootc1 = rootc3
-      x1 = b1 * b1 * quarter - b2 + rootc1
-      IF ( x1 < zero ) THEN
+      x1 = b1 * b1 * 0.25_wp - b2 + rootc1
+      IF ( x1 < 0.0_wp ) THEN
         xmd = SQRT( - x1 )
-        xnd = quarter * ( two * b3 - b1 * rootc1 ) / xmd
-        alpha = half * b1 * b1 - rootc1 - b2
-        beta = four * xnd - b1 * xmd
+        xnd = 0.25_wp * ( 2.0_wp* b3 - b1 * rootc1 ) / xmd
+        alpha = 0.5_wp * b1 * b1 - rootc1 - b2
+        beta = 4.0_wp * xnd - b1 * xmd
         r = SQRT( alpha * alpha + beta * beta )
-        gamma = SQRT( half * ( alpha + r ) )
-        IF ( gamma == zero ) THEN
+        gamma = SQRT( 0.5_wp * ( alpha + r ) )
+        IF ( gamma == 0.0_wp ) THEN
           delta = SQRT( - alpha )
         ELSE
-          delta = beta * half / gamma
+          delta = beta * 0.5_wp / gamma
         END IF
-        root1 = half * ( - half * b1 + gamma )
-        root2 = half * ( xmd + delta )
-        root3 = half * ( - half * b1 - gamma )
-        root4 = half * ( xmd - delta )
+        root1 = 0.5_wp * ( - 0.5_wp * b1 + gamma )
+        root2 = 0.5_wp * ( xmd + delta )
+        root3 = 0.5_wp * ( - 0.5_wp * b1 - gamma )
+        root4 = 0.5_wp * ( xmd - delta )
         GO TO 900
       END IF
-      IF ( x1 /= zero ) THEN
+      IF ( x1 /= 0.0_wp ) THEN
         xm = SQRT( x1 )
-        xn = quarter * ( b1 * rootc1 - two * b3 ) / xm
+        xn = 0.25_wp * ( b1 * rootc1 - 2.0_wp* b3 ) / xm
       ELSE
-        xm = zero
-        xn = SQRT( quarter * rootc1 * rootc1 - b4 )
+        xm = 0.0_wp
+        xn = SQRT( 0.25_wp * rootc1 * rootc1 - b4 )
       END IF
-      alpha = half * b1 * b1 - rootc1 - b2
-      beta = four * xn - b1 * xm
+      alpha = 0.5_wp * b1 * b1 - rootc1 - b2
+      beta = 4.0_wp * xn - b1 * xm
       gamma = alpha + beta
       delta = alpha - beta
-      a = - half * b1
+      a = - 0.5_wp * b1
 
 !  Compute how many real roots there are
 
       type_roots = 1
-      IF ( gamma >= zero ) THEN
+      IF ( gamma >= 0.0_wp ) THEN
         nroots = nroots + 2
         type_roots = 0
         gamma = SQRT( gamma )
       ELSE
         gamma = SQRT( - gamma )
       END IF
-      IF ( delta >= zero ) THEN
+      IF ( delta >= 0.0_wp ) THEN
         nroots = nroots + 2
         delta = SQRT( delta )
       ELSE
@@ -637,33 +612,33 @@
 !  Two real roots
 
       IF ( type_roots == 3 ) THEN
-        root1 = half * ( a - xm - delta )
-        root2 = half * ( a - xm + delta )
-        root3 = half * ( a + xm )
-        root4 = half * gamma
+        root1 = 0.5_wp * ( a - xm - delta )
+        root2 = 0.5_wp * ( a - xm + delta )
+        root3 = 0.5_wp * ( a + xm )
+        root4 = 0.5_wp * gamma
         GO TO 900
       ELSE IF ( type_roots /= 4 ) THEN
         IF ( type_roots == 2 ) THEN
-          root1 = half * ( a + xm - gamma )
-          root2 = half * ( a + xm + gamma )
+          root1 = 0.5_wp * ( a + xm - gamma )
+          root2 = 0.5_wp * ( a + xm + gamma )
         ELSE
 
 !  No real roots
 
-          root1 = half * ( a + xm )
-          root2 = half * gamma
+          root1 = 0.5_wp * ( a + xm )
+          root2 = 0.5_wp * gamma
         END IF
-        root3 = half * ( a - xm ) * half
-        root4 = half * delta
+        root3 = 0.5_wp * ( a - xm ) * 0.5_wp
+        root4 = 0.5_wp * delta
         GO TO 900
       END IF
 
 !  Four real roots
 
-      b = half * ( a + xm + gamma )
-      d = half * ( a - xm + delta )
-      c = half * ( a - xm - delta )
-      a = half * ( a + xm - gamma )
+      b = 0.5_wp * ( a + xm + gamma )
+      d = 0.5_wp * ( a - xm + delta )
+      c = 0.5_wp * ( a - xm - delta )
+      a = 0.5_wp * ( a + xm - gamma )
 
 !  Sort the roots
 
@@ -711,9 +686,9 @@
       IF ( nroots == 0 ) RETURN
 
       p = ( ( ( a4 * root1 + a3 ) * root1 + a2 ) * root1 + a1 ) * root1 + a0
-      pprime = ( ( four * a4 * root1 + three * a3 ) * root1 + two * a2 )       &
+      pprime = ( ( 4.0_wp * a4 * root1 + 3.0_wp * a3 ) * root1 + 2.0_wp* a2 )       &
                  * root1 + a1
-      IF ( pprime /= zero ) THEN
+      IF ( pprime /= 0.0_wp ) THEN
         If (debug) Then
           Write(rec(1), Fmt=2000)       1, root1, p, - p / pprime
           Call Printmsg(5,.False.,options,1,rec)
@@ -727,9 +702,9 @@
       End If
 
       p = ( ( ( a4 * root2 + a3 ) * root2 + a2 ) * root2 + a1 ) * root2 + a0
-      pprime = ( ( four * a4 * root2 + three * a3 ) * root2 + two * a2 )       &
+      pprime = ( ( 4.0_wp * a4 * root2 + 3.0_wp * a3 ) * root2 + 2.0_wp* a2 )       &
                  * root2 + a1
-      IF ( pprime /= zero ) THEN
+      IF ( pprime /= 0.0_wp ) THEN
         If (debug) Then
           Write(rec(1), Fmt=2000)       2, root2, p, - p / pprime
           Call Printmsg(5,.False.,options,1,rec)
@@ -744,9 +719,9 @@
 
       IF ( nroots == 4 ) THEN
         p = ( ( ( a4 * root3 + a3 ) * root3 + a2 ) * root3 + a1 ) * root3 + a0
-        pprime = ( ( four * a4 * root3 + three * a3 ) * root3 + two * a2 )     &
+        pprime = ( ( 4.0_wp * a4 * root3 + 3.0_wp * a3 ) * root3 + 2.0_wp* a2 )     &
                    * root3 + a1
-        IF ( pprime /= zero ) THEN
+        IF ( pprime /= 0.0_wp ) THEN
           If (debug) Then
             Write(rec(1), Fmt=2000)       3, root3, p, - p / pprime
             Call Printmsg(5,.False.,options,1,rec)
@@ -760,9 +735,9 @@
         End If
 
         p = ( ( ( a4 * root4 + a3 ) * root4 + a2 ) * root4 + a1 ) * root4 + a0
-        pprime = ( ( four * a4 * root4 + three * a3 ) * root4 + two * a2 )     &
+        pprime = ( ( 4.0_wp * a4 * root4 + 3.0_wp * a3 ) * root4 + 2.0_wp* a2 )     &
                    * root4 + a1
-        IF ( pprime /= zero ) THEN
+        IF ( pprime /= 0.0_wp ) THEN
           If (debug) Then
             Write(rec(1), Fmt=2000)       4, root4, p, - p / pprime
             Call Printmsg(5,.False.,options,1,rec)
@@ -819,7 +794,7 @@
       USE RAL_NLLS_SYMBOLS, Only: RAL_NLLS_ok, RAL_NLLS_error_restrictions,    &
                                    RAL_NLLS_error_ill_conditioned
       USE RAL_NLLS_ROOTS_double, ONLY: ROOTS_cubic
-      USE RAL_NLLS_Workspaces, Only: NLLS_options
+      USE RAL_NLLS_Workspaces
       USE RAL_NLLS_printing
 
       IMPLICIT NONE
@@ -827,34 +802,11 @@
       PRIVATE
       PUBLIC :: DTRS_initialize, DTRS_solve, DTRS_solve_main
 
-!--------------------
-!   P r e c i s i o n
-!--------------------
-
-      INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-
 !----------------------
 !   P a r a m e t e r s
 !----------------------
 
-      INTEGER, PARAMETER :: history_max = 100
       INTEGER, PARAMETER :: max_degree = 3
-      REAL ( KIND = wp ), PARAMETER :: zero = 0.0_wp
-      REAL ( KIND = wp ), PARAMETER :: half = 0.5_wp
-      REAL ( KIND = wp ), PARAMETER :: point4 = 0.4_wp
-      REAL ( KIND = wp ), PARAMETER :: one = 1.0_wp
-      REAL ( KIND = wp ), PARAMETER :: two = 2.0_wp
-      REAL ( KIND = wp ), PARAMETER :: three = 3.0_wp
-      REAL ( KIND = wp ), PARAMETER :: six = 6.0_wp
-      REAL ( KIND = wp ), PARAMETER :: sixth = one / six
-      REAL ( KIND = wp ), PARAMETER :: ten = 10.0_wp
-      REAL ( KIND = wp ), PARAMETER :: twentyfour = 24.0_wp
-      REAL ( KIND = wp ), PARAMETER :: largest = HUGE( one )
-      REAL ( KIND = wp ), PARAMETER :: lower_default = - half * largest
-      REAL ( KIND = wp ), PARAMETER :: upper_default = largest
-      REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
-      REAL ( KIND = wp ), PARAMETER :: teneps = ten * epsmch
-      REAL ( KIND = wp ), PARAMETER :: roots_tol = teneps
       LOGICAL, parameter :: roots_debug = .FALSE.
 
 !--------------------------
@@ -897,8 +849,8 @@
 
 !  lower and upper bounds on the multiplier, if known
 
-        REAL ( KIND = wp ) :: lower = lower_default
-        REAL ( KIND = wp ) :: upper = upper_default
+        REAL ( KIND = wp ) :: lower = (-0.5_wp*infinity)
+        REAL ( KIND = wp ) :: upper = infinity
 
 !  stop when | ||x|| - radius | <=
 !     max( stop_normal * radius, stop_absolute_normal )
@@ -933,11 +885,11 @@
 
 !  value of lambda
 
-        REAL ( KIND = wp ) :: lambda = zero
+        REAL ( KIND = wp ) :: lambda = 0.0_wp
 
 !  corresponding value of ||x(lambda)||_M
 
-        REAL ( KIND = wp ) :: x_norm = zero
+        REAL ( KIND = wp ) :: x_norm = 0.0_wp
       END TYPE
 
 !  - - - - - - - - - - - - - - - - - - - - - - -
@@ -959,20 +911,20 @@
 
 !  the value of the quadratic function
 
-        REAL ( KIND = wp ) :: obj = HUGE( one )
+        REAL ( KIND = wp ) :: obj = infinity
 
 !  the M-norm of x, ||x||_M
 
-        REAL ( KIND = wp ) :: x_norm = zero
+        REAL ( KIND = wp ) :: x_norm = 0.0_wp
 
 !  the Lagrange multiplier corresponding to the trust-region constraint
 
-        REAL ( KIND = wp ) :: multiplier = zero
+        REAL ( KIND = wp ) :: multiplier = 0.0_wp
 
 !  a lower bound max(0,-lambda_1), where lambda_1 is the left-most
 !  eigenvalue of (H,M)
 
-        REAL ( KIND = wp ) :: pole = zero
+        REAL ( KIND = wp ) :: pole = 0.0_wp
 
 !  has the hard case occurred?
 
@@ -983,7 +935,7 @@
         TYPE ( DTRS_history_type ), DIMENSION( history_max ) :: history
       END TYPE
 
-!  interface to BLAS: two norm
+!  interface to BLAS: TWO norm
 
      INTERFACE NRM2
 
@@ -1006,6 +958,7 @@
 !-*-*-*-*-*-*-  D T R S _ I N I T I A L I Z E   S U B R O U T I N E   -*-*-*-*-
 
       SUBROUTINE DTRS_initialize( control, inform )
+      Implicit None
 
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 !
@@ -1079,6 +1032,7 @@
 !   D u m m y   A r g u m e n t s
 !-----------------------------------------------
 
+      Implicit None
       INTEGER, INTENT( IN ) :: n
       REAL ( KIND = wp ), INTENT( IN ) :: radius
       REAL ( KIND = wp ), INTENT( IN ) :: f
@@ -1116,42 +1070,42 @@
 !  scale H by the largest H and remove relatively tiny H
 
       scale_h = MAXVAL( ABS( H ) )
-      IF ( scale_h > zero ) THEN
+      IF ( scale_h > 0.0_wp ) THEN
         DO i = 1, n
           IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
             H_scale( i ) = H( i ) / scale_h
           ELSE
-            H_scale( i ) = zero
+            H_scale( i ) = 0.0_wp
           END IF
         END DO
       ELSE
-        scale_h = one
-        H_scale = zero
+        scale_h = 1.0_wp
+        H_scale = 0.0_wp
       END IF
 
 !  scale c by the largest c and remove relatively tiny c
 
       scale_c = MAXVAL( ABS( C ) )
-      IF ( scale_c > zero ) THEN
+      IF ( scale_c > 0.0_wp ) THEN
         DO i = 1, n
           IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
             C_scale( i ) = C( i ) / scale_c
           ELSE
-            C_scale( i ) = zero
+            C_scale( i ) = 0.0_wp
           END IF
         END DO
       ELSE
-        scale_c = one
-        C_scale = zero
+        scale_c = 1.0_wp
+        C_scale = 0.0_wp
       END IF
 
       radius_scale = ( scale_h / scale_c ) * radius
       f_scale = ( scale_h / scale_c ** 2 ) * f
 
       control_scale = control
-      IF ( control_scale%lower /= lower_default )                              &
+      IF ( control_scale%lower /= (-0.5_wp*infinity) )                              &
         control_scale%lower = control_scale%lower / scale_h
-      IF ( control_scale%upper /= upper_default )                              &
+      IF ( control_scale%upper /= infinity )                              &
         control_scale%upper = control_scale%upper / scale_h
 
 !  solve the scaled problem
@@ -1215,6 +1169,7 @@
 !   D u m m y   A r g u m e n t s
 !-----------------------------------------------
 
+      Implicit None
       INTEGER, INTENT( IN ) :: n
       REAL ( KIND = wp ), INTENT( IN ) :: radius
       REAL ( KIND = wp ), INTENT( IN ) :: f
@@ -1247,6 +1202,8 @@
       Character (Len=80) :: rec(5)
       Integer :: nrec
 
+      Real(Kind=wp), Parameter :: roots_tol = 10.0_wp * epsmch
+
       IF ( LEN( TRIM( control%prefix ) ) > 2 )                                 &
         prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
 
@@ -1266,23 +1223,23 @@
           OPEN( control%problem, FILE = control%problem_file,                  &
                 FORM = 'FORMATTED', STATUS = 'NEW' )
         END IF
-        WRITE( control%problem, * ) n, COUNT( C( : n ) /= zero ),              &
-          COUNT( H( : n ) /= zero )
+        WRITE( control%problem, * ) n, COUNT( C( : n ) /= 0.0_wp ),              &
+          COUNT( H( : n ) /= 0.0_wp )
         WRITE( control%problem, * ) radius, f
         DO i = 1, n
-          IF ( C( i ) /= zero ) WRITE( control%problem, * ) i, C( i )
+          IF ( C( i ) /= 0.0_wp ) WRITE( control%problem, * ) i, C( i )
         END DO
         DO i = 1, n
-          IF ( H( i ) /= zero ) WRITE( control%problem, * ) i, i, H( i )
+          IF ( H( i ) /= 0.0_wp ) WRITE( control%problem, * ) i, i, H( i )
         END DO
         CLOSE( control%problem )
       END IF
 
 !  set initial values
 
-      X = zero ; inform%x_norm = zero ; inform%obj = f
+      X = 0.0_wp ; inform%x_norm = 0.0_wp ; inform%obj = f
       inform%hard_case = .FALSE.
-      delta_lambda = zero
+      delta_lambda = 0.0_wp
 
 !  record desired output level
 
@@ -1325,7 +1282,7 @@
 
 !  check for the trivial case
 
-      IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
+      IF ( c_norm == 0.0_wp .AND. lambda_min >= 0.0_wp ) THEN
         IF (  control%equality_problem ) THEN
           DO i = 1, n
             IF ( H( i ) == lambda_min ) THEN
@@ -1333,12 +1290,12 @@
               EXIT
             END IF
           END DO
-          X( i_hard ) = one / radius
+          X( i_hard ) = 1.0_wp / radius
           inform%x_norm = radius
           inform%obj = f + lambda_min * radius ** 2
           lambda = - lambda_min
         ELSE
-          lambda = zero
+          lambda = 0.0_wp
         END IF
         IF ( printi ) THEN
           WRITE( rec(1), Fmt=99997) prefix, region,             &
@@ -1363,17 +1320,17 @@
         lambda_u = MIN( control%upper,                                         &
                         c_norm_over_radius - lambda_min )
       ELSE
-        lambda_l = MAX( control%lower, zero, - lambda_min,                     &
+        lambda_l = MAX( control%lower, 0.0_wp, - lambda_min,                     &
                         c_norm_over_radius - lambda_max )
         lambda_u = MIN( control%upper,                                         &
-                        MAX( zero, c_norm_over_radius - lambda_min ) )
+                        MAX( 0.0_wp, c_norm_over_radius - lambda_min ) )
       END IF
       lambda = lambda_l
 
 !  check for the "hard case"
 
       IF ( lambda == - lambda_min ) THEN
-        c2 = zero
+        c2 = 0.0_wp
         inform%hard_case = .TRUE.
         DO i = 1, n
           IF ( H( i ) == lambda_min ) THEN
@@ -1394,7 +1351,7 @@
             IF ( H( i ) /= lambda_min ) THEN
               X( i )  = - C( i ) / ( H( i ) + lambda )
             ELSE
-              X( i ) = zero
+              X( i ) = 0.0_wp
             END IF
           END DO
           inform%x_norm = TWO_NORM( X )
@@ -1419,7 +1376,7 @@
             END IF
             inform%x_norm = TWO_NORM( X )
             inform%obj =                                                       &
-                f + half * ( DOT_PRODUCT( C, X ) - lambda * radius ** 2 )
+                f + 0.5_wp * ( DOT_PRODUCT( C, X ) - lambda * radius ** 2 )
             IF ( printi ) THEN
               WRITE( rec(1), Fmt=99997 )  prefix, region,         &
               0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
@@ -1437,12 +1394,12 @@
 
 !  compute the first derivative of ||x|(lambda)||^2 - radius^2
 
-            w_norm2 = zero
+            w_norm2 = 0.0_wp
             DO i = 1, n
               IF ( H( i ) /= lambda_min )                                      &
                 w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
             END DO
-            x_norm2( 1 ) = - two * w_norm2
+            x_norm2( 1 ) = - 2.0_wp* w_norm2
 
 !  compute the Newton correction
 
@@ -1473,7 +1430,7 @@
 
 !  if H(lambda) is positive definite, solve  H(lambda) x = - c
 
-        n_sing = COUNT( H( : n ) + lambda <= zero )
+        n_sing = COUNT( H( : n ) + lambda <= 0.0_wp )
         IF ( n_sing == 0 ) THEN
           DO i = 1, n
             X( i )  = - C( i ) / ( H( i ) + lambda )
@@ -1481,7 +1438,7 @@
         ELSE
           x_big = radius / SQRT( REAL( n_sing, wp ) )
           DO i = 1, n
-            IF ( H( i ) + lambda > zero ) THEN
+            IF ( H( i ) + lambda > 0.0_wp ) THEN
               X( i )  = - C( i ) / ( H( i ) + lambda )
             ELSE
               X( i )  = SIGN( x_big, - C( i ) )
@@ -1497,8 +1454,8 @@
 
 !  if the Newton step lies within the trust region, exit
 
-        IF ( lambda == zero .AND. inform%x_norm <= radius ) THEN
-          inform%obj = f + half * DOT_PRODUCT( C, X )
+        IF ( lambda == 0.0_wp .AND. inform%x_norm <= radius ) THEN
+          inform%obj = f + 0.5_wp * DOT_PRODUCT( C, X )
           inform%status = RAL_NLLS_ok
           region = 'L'
           IF ( printi ) THEN
@@ -1579,18 +1536,18 @@
 
 !  form ||w||^2 = x^T H^-1(lambda) x
 
-        w_norm2 = zero
+        w_norm2 = 0.0_wp
         DO i = 1, n
           w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
         END DO
 
 !  compute the first derivative of x_norm2 = x^T M x
 
-        x_norm2( 1 ) = - two * w_norm2
+        x_norm2( 1 ) = - 2.0_wp* w_norm2
 
 !  compute pi_beta = ||x||^beta and its first derivative when beta = - 1
 
-        beta = - one
+        beta = - 1.0_wp
         CALL DTRS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
 
 !  compute the Newton correction (for beta = - 1)
@@ -1604,23 +1561,23 @@
 
 !  compute the second derivative of x^T x
 
-          z_norm2 = zero
+          z_norm2 = 0.0_wp
           DO i = 1, n
             z_norm2 = z_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 4
           END DO
-          x_norm2( 2 ) = six * z_norm2
+          x_norm2( 2 ) = 6.0_wp * z_norm2
 
 !  compute the third derivatives of x^T x
 
-          v_norm2 = zero
+          v_norm2 = 0.0_wp
           DO i = 1, n
             v_norm2 = v_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 5
           END DO
-          x_norm2( 3 ) = - twentyfour * v_norm2
+          x_norm2( 3 ) = - 24.0_wp * v_norm2
 
 !  compute pi_beta = ||x||^beta and its derivatives when beta = 2
 
-          beta = two
+          beta = 2.0_wp
           CALL DTRS_pi_derivs( max_order, beta, x_norm2( : max_order ),        &
                                pi_beta( : max_order ) )
 
@@ -1628,10 +1585,10 @@
 
           a_0 = pi_beta( 0 ) - ( radius ) ** beta
           a_1 = pi_beta( 1 )
-          a_2 = half * pi_beta( 2 )
-          a_3 = sixth * pi_beta( 3 )
+          a_2 = 0.5_wp * pi_beta( 2 )
+          a_3 = (1.0_wp/6.0_wp) * pi_beta( 3 )
           a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-          IF ( a_max > zero ) THEN
+          IF ( a_max > 0.0_wp ) THEN
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max
             a_2 = a_2 / a_max ; a_3 = a_3 / a_max
           END IF
@@ -1646,7 +1603,7 @@
 
 !  compute pi_beta = ||x||^beta and its derivatives when beta = - 0.4
 
-          beta = - point4
+          beta = - 0.4_wp
           CALL DTRS_pi_derivs( max_order, beta, x_norm2( : max_order ),        &
                                pi_beta( : max_order ) )
 
@@ -1654,10 +1611,10 @@
 
           a_0 = pi_beta( 0 ) - ( radius ) ** beta
           a_1 = pi_beta( 1 )
-          a_2 = half * pi_beta( 2 )
-          a_3 = sixth * pi_beta( 3 )
+          a_2 = 0.5_wp * pi_beta( 2 )
+          a_3 = (1.0_wp/6.0_wp) * pi_beta( 3 )
           a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-          IF ( a_max > zero ) THEN
+          IF ( a_max > 0.0_wp ) THEN
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max
             a_2 = a_2 / a_max ; a_3 = a_3 / a_max
           END IF
@@ -1698,7 +1655,7 @@
 
 !  check that the best Taylor improvement is significant
 
-        IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
+        IF ( ABS( delta_lambda ) < epsmch * MAX( 1.0_wp, ABS( lambda ) ) ) THEN
           IF ( printi ) Then
             WRITE( rec(1), Fmt=99988 ) prefix
             Call Printmsg(2,.False.,options,1,rec)
@@ -1715,7 +1672,7 @@
 
 !  Record the optimal obective value
 
-      inform%obj = f + half * ( DOT_PRODUCT( C, X ) - lambda * x_norm2( 0 ) )
+      inform%obj = f + 0.5_wp * ( DOT_PRODUCT( C, X ) - lambda * x_norm2( 0 ) )
 
 !  ----
 !  Exit
@@ -1723,7 +1680,7 @@
 
  900  CONTINUE
       inform%multiplier = lambda
-      inform%pole = MAX( zero, - lambda_min )
+      inform%pole = MAX( 0.0_wp, - lambda_min )
       RETURN
 
 ! Non-executable statements
@@ -1736,7 +1693,7 @@
 !-*-*-*-*-*-*-  D T R S _ P I _ D E R I V S   S U B R O U T I N E   -*-*-*-*-*-
 
       SUBROUTINE DTRS_pi_derivs( max_order, beta, x_norm2, pi_beta )
-
+      Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Compute pi_beta = ||x||^beta and its derivatives
@@ -1771,17 +1728,17 @@
 
       REAL ( KIND = wp ) :: hbeta
 
-      hbeta = half * beta
+      hbeta = 0.5_wp * beta
       pi_beta( 0 ) = x_norm2( 0 ) ** hbeta
-      pi_beta( 1 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - one ) ) * x_norm2( 1 )
+      pi_beta( 1 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - 1.0_wp ) ) * x_norm2( 1 )
       IF ( max_order == 1 ) RETURN
-      pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - two ) ) *             &
-        ( ( hbeta - one ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
+      pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - 2.0_wp) ) *             &
+        ( ( hbeta - 1.0_wp ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
       IF ( max_order == 2 ) RETURN
-      pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - three ) ) *           &
-        ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - one ) *                 &
-          ( three * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +               &
-            ( hbeta - two ) * x_norm2( 1 ) ** 3 ) )
+      pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - 3.0_wp ) ) *           &
+        ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - 1.0_wp ) *                 &
+          ( 3.0_wp * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +               &
+            ( hbeta - 2.0_wp) * x_norm2( 1 ) ** 3 ) )
 
       RETURN
 
@@ -1793,7 +1750,7 @@
 
       SUBROUTINE DTRS_theta_derivs( max_order, beta, lambda, sigma,            &
                                      theta_beta )
-
+      Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Compute theta_beta = (lambda/sigma)^beta and its derivatives
@@ -1828,16 +1785,16 @@
       REAL ( KIND = wp ) :: los, oos
 
       los = lambda / sigma
-      oos = one / sigma
+      oos = 1.0_wp / sigma
 
       theta_beta( 0 ) = los ** beta
-      theta_beta( 1 ) = beta * ( los ** ( beta - one ) ) * oos
+      theta_beta( 1 ) = beta * ( los ** ( beta - 1.0_wp ) ) * oos
       IF ( max_order == 1 ) RETURN
-      theta_beta( 2 ) = beta * ( los ** ( beta - two ) ) *                    &
-                        ( beta - one ) * oos ** 2
+      theta_beta( 2 ) = beta * ( los ** ( beta - 2.0_wp) ) *                    &
+                        ( beta - 1.0_wp ) * oos ** 2
       IF ( max_order == 2 ) RETURN
-      theta_beta( 3 ) = beta * ( los ** ( beta - three ) ) *                  &
-                        ( beta - one ) * ( beta - two ) * oos ** 3
+      theta_beta( 3 ) = beta * ( los ** ( beta - 3.0_wp ) ) *                  &
+                        ( beta - 1.0_wp ) * ( beta - 2.0_wp) * oos ** 3
 
       RETURN
 
@@ -1848,7 +1805,7 @@
 !-*-*-*-*-  G A L A H A D   T W O  _ N O R M   F U N C T I O N   -*-*-*-*-
 
        FUNCTION TWO_NORM( X )
-
+       Implicit None
 !  Compute the l_2 norm of the vector X
 
 !  Dummy arguments
@@ -1864,7 +1821,7 @@
        IF ( n > 0 ) THEN
          TWO_NORM = NRM2( n, X, 1 )
        ELSE
-         TWO_NORM = zero
+         TWO_NORM = 0.0_wp
        END IF
        RETURN
 
@@ -1909,40 +1866,17 @@
                                   RAL_NLLS_error_unbounded,                    &
                                   RAL_NLLS_error_max_iterations
       USE RAL_NLLS_ROOTS_double
-
+      USE RAL_NLLS_WORKSPACES
       IMPLICIT NONE
 
       PRIVATE
       PUBLIC :: DRQS_initialize, DRQS_solve, DRQS_solve_main
 
-!--------------------
-!   P r e c i s i o n
-!--------------------
-
-      INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
-
 !----------------------
 !   P a r a m e t e r s
 !----------------------
 
-      INTEGER, PARAMETER :: history_max = 100
       INTEGER, PARAMETER :: max_degree = 3
-      REAL ( KIND = wp ), PARAMETER :: zero = 0.0_wp
-      REAL ( KIND = wp ), PARAMETER :: half = 0.5_wp
-      REAL ( KIND = wp ), PARAMETER :: point4 = 0.4_wp
-      REAL ( KIND = wp ), PARAMETER :: one = 1.0_wp
-      REAL ( KIND = wp ), PARAMETER :: two = 2.0_wp
-      REAL ( KIND = wp ), PARAMETER :: three = 3.0_wp
-      REAL ( KIND = wp ), PARAMETER :: six = 6.0_wp
-      REAL ( KIND = wp ), PARAMETER :: sixth = one / six
-      REAL ( KIND = wp ), PARAMETER :: ten = 10.0_wp
-      REAL ( KIND = wp ), PARAMETER :: twentyfour = 24.0_wp
-      REAL ( KIND = wp ), PARAMETER :: largest = HUGE( one )
-      REAL ( KIND = wp ), PARAMETER :: lower_default = - half * largest
-      REAL ( KIND = wp ), PARAMETER :: upper_default = largest
-      REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
-      REAL ( KIND = wp ), PARAMETER :: teneps = ten * epsmch
-      REAL ( KIND = wp ), PARAMETER :: roots_tol = teneps
       LOGICAL, Parameter :: roots_debug = .FALSE.
 
 !--------------------------
@@ -1989,8 +1923,8 @@
 
 !  lower and upper bounds on the multiplier, if known
 
-        REAL ( KIND = wp ) :: lower = - half * HUGE( one )
-        REAL ( KIND = wp ) :: upper =  HUGE( one )
+        REAL ( KIND = wp ) :: lower = -0.5_wp*infinity
+        REAL ( KIND = wp ) :: upper = infinity
 
 !  stop when | ||x|| - (multiplier/sigma)^(1/(p-2)) | <=
 !    max( stop_normal * max( ||x||, (multiplier/sigma)^(1/(p-2)) ),
@@ -2020,11 +1954,11 @@
 
 !  value of lambda
 
-        REAL ( KIND = wp ) :: lambda = zero
+        REAL ( KIND = wp ) :: lambda = 0.0_wp
 
 !  corresponding value of ||x(lambda)||_M
 
-        REAL ( KIND = wp ) :: x_norm = zero
+        REAL ( KIND = wp ) :: x_norm = 0.0_wp
       END TYPE
 
 !  - - - - - - - - - - - - - - - - - - - - - - -
@@ -2051,24 +1985,24 @@
 
 !  the value of the quadratic function
 
-        REAL ( KIND = wp ) :: obj = HUGE( one )
+        REAL ( KIND = wp ) :: obj = infinity
 
 !  the value of the regularized quadratic function
 
-        REAL ( KIND = wp ) :: obj_regularized = HUGE( one )
+        REAL ( KIND = wp ) :: obj_regularized = infinity
 
 !  the M-norm of x, ||x||_M
 
-        REAL ( KIND = wp ) :: x_norm = zero
+        REAL ( KIND = wp ) :: x_norm = 0.0_wp
 
 !  the Lagrange multiplier corresponding to the regularization
 
-        REAL ( KIND = wp ) :: multiplier = zero
+        REAL ( KIND = wp ) :: multiplier = 0.0_wp
 
 !  a lower bound max(0,-lambda_1), where lambda_1 is the left-most
 !  eigenvalue of (H,M)
 
-        REAL ( KIND = wp ) :: pole = zero
+        REAL ( KIND = wp ) :: pole = 0.0_wp
 
 !  has the hard case occurred?
 
@@ -2119,6 +2053,7 @@
 !   D u m m y   A r g u m e n t s
 !---------------------------------
 
+      Implicit None
       TYPE ( DRQS_CONTROL_TYPE ), INTENT( OUT ) :: control
       TYPE ( DRQS_inform_type ), INTENT( OUT ) :: inform
 
@@ -2214,33 +2149,33 @@
 !  scale H by the largest H and remove relatively tiny H
 
       scale_h = MAXVAL( ABS( H ) )
-      IF ( scale_h > zero ) THEN
+      IF ( scale_h > 0.0_wp ) THEN
         DO i = 1, n
           IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
             H_scale( i ) = H( i ) / scale_h
           ELSE
-            H_scale( i ) = zero
+            H_scale( i ) = 0.0_wp
           END IF
         END DO
       ELSE
-        scale_h = one
-        H_scale = zero
+        scale_h = 1.0_wp
+        H_scale = 0.0_wp
       END IF
 
 !  scale c by the largest c and remove relatively tiny c
 
       scale_c = MAXVAL( ABS( C ) )
-      IF ( scale_c > zero ) THEN
+      IF ( scale_c > 0.0_wp ) THEN
         DO i = 1, n
           IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
             C_scale( i ) = C( i ) / scale_c
           ELSE
-            C_scale( i ) = zero
+            C_scale( i ) = 0.0_wp
           END IF
         END DO
       ELSE
-        scale_c = one
-        C_scale = zero
+        scale_c = 1.0_wp
+        C_scale = 0.0_wp
       END IF
 
       sigma_scale                                                              &
@@ -2248,9 +2183,9 @@
       f_scale = f * ( scale_h / scale_c ** 2 )
 
       control_scale = control
-      IF ( control_scale%lower /= lower_default )                              &
+      IF ( control_scale%lower /= -0.5_wp*infinity )                              &
         control_scale%lower = control_scale%lower / scale_h
-      IF ( control_scale%upper /= upper_default )                              &
+      IF ( control_scale%upper /= infinity )                              &
         control_scale%upper = control_scale%upper / scale_h
 
       CALL DRQS_solve_main( n, p, sigma_scale, f_scale, C_scale, H_scale, X,   &
@@ -2331,6 +2266,8 @@
 !   L o c a l   V a r i a b l e s
 !-----------------------------------------------
 
+      Real(Kind=wp), Parameter :: roots_tol = 10.0_wp * epsmch
+
       INTEGER :: i, it, nroots, max_order, n_lambda, i_hard
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda, target
       REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2
@@ -2368,14 +2305,14 @@
           OPEN( control%problem, FILE = control%problem_file,                  &
                 FORM = 'FORMATTED', STATUS = 'NEW' )
         END IF
-        WRITE( control%problem, * ) n, COUNT( C( : n ) /= zero ),              &
-          COUNT( H( : n ) /= zero )
+        WRITE( control%problem, * ) n, COUNT( C( : n ) /= 0.0_wp ),              &
+          COUNT( H( : n ) /= 0.0_wp )
         WRITE( control%problem, * ) p, sigma, f
         DO i = 1, n
-          IF ( C( i ) /= zero ) WRITE( control%problem, * ) i, C( i )
+          IF ( C( i ) /= 0.0_wp ) WRITE( control%problem, * ) i, C( i )
         END DO
         DO i = 1, n
-          IF ( H( i ) /= zero ) WRITE( control%problem, * ) i, i, H( i )
+          IF ( H( i ) /= 0.0_wp ) WRITE( control%problem, * ) i, i, H( i )
         END DO
         CLOSE( control%problem )
       END IF
@@ -2386,11 +2323,11 @@
 
 !  set initial values
 
-      X = zero ; inform%x_norm = zero
+      X = 0.0_wp ; inform%x_norm = 0.0_wp
       inform%obj = f ; inform%obj_regularized = f
 
       inform%hard_case = .FALSE.
-      delta_lambda = zero
+      delta_lambda = 0.0_wp
 
 !  record desired output level
 
@@ -2433,8 +2370,8 @@
 
 !  check for the trivial cases: ||c|| = 0 & H positive semi-definite
 
-      IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
-        lambda = zero ; target = zero
+      IF ( c_norm == 0.0_wp .AND. lambda_min >= 0.0_wp ) THEN
+        lambda = 0.0_wp ; target = 0.0_wp
         IF ( printi ) THEN
           WRITE(rec(1),Fmt=99997) prefix,region,it,inform%x_norm-target,lambda,ABS( delta_lambda )
           WRITE(rec(2), Fmt=99996) prefix
@@ -2447,18 +2384,18 @@
 99996 Format ( A, ' Normal stopping criteria satisfied' )
 
 !  p = 2
-      IF ( p == two ) THEN
-        IF ( lambda_min + sigma > zero ) THEN
+      IF ( p == 2.0_wp) THEN
+        IF ( lambda_min + sigma > 0.0_wp ) THEN
           X(1:n) = - C(1:n) / ( H(1:n) + sigma )
-        ELSE IF ( lambda_min + sigma < zero ) THEN
+        ELSE IF ( lambda_min + sigma < 0.0_wp ) THEN
           inform%status = RAL_NLLS_error_unbounded
-          lambda = zero
+          lambda = 0.0_wp
           GO TO 900
         ELSE
           DO i = 1, n
-            IF ( H( i ) + sigma <= zero .AND. C( i ) /= zero ) THEN
+            IF ( H( i ) + sigma <= 0.0_wp .AND. C( i ) /= 0.0_wp ) THEN
               inform%status = RAL_NLLS_error_unbounded
-              lambda = zero
+              lambda = 0.0_wp
               GO TO 900
             ELSE
               X( i ) = - C( i ) / ( H( i ) + sigma )
@@ -2467,8 +2404,8 @@
         END IF
         lambda = sigma ; target = sigma
         inform%x_norm = TWO_NORM( X )
-        inform%obj_regularized = f + half * DOT_PRODUCT( C, X )
-        inform%obj = inform%obj_regularized - half * sigma * inform%x_norm ** 2
+        inform%obj_regularized = f + 0.5_wp * DOT_PRODUCT( C, X )
+        inform%obj = inform%obj_regularized - 0.5_wp * sigma * inform%x_norm ** 2
         inform%status = RAL_NLLS_ok
         if (printi) Then
           Write(rec(1), Fmt=99997) prefix, region,it,inform%x_norm-target,lambda
@@ -2481,18 +2418,18 @@
 
 !  reccord useful constants
 
-      oos = one / sigma ; oos2 = oos * oos
-      pm2 = p - two ; oopm2 = one / pm2 ; topm2 = two / pm2
+      oos = 1.0_wp / sigma ; oos2 = oos * oos
+      pm2 = p - 2.0_wp; oopm2 = 1.0_wp / pm2 ; topm2 = 2.0_wp/ pm2
 
 !  construct values lambda_l and lambda_u for which lambda_l <= lambda_optimal
 !   <= lambda_u, and ensure that all iterates satisfy lambda_l <= lambda
 !   <= lambda_u
 
       lambda_l =                                                               &
-        MAX( control%lower, zero, - lambda_min,                                &
+        MAX( control%lower, 0.0_wp, - lambda_min,                                &
              DRQS_lambda_root( lambda_max, c_norm * sigma ** oopm2, oopm2, options ) )
       lambda_u =                                                               &
-        MIN( control%upper, MAX( zero,                                         &
+        MIN( control%upper, MAX( 0.0_wp,                                         &
              DRQS_lambda_root( lambda_min, c_norm * sigma ** oopm2, oopm2, options ) ) )
       lambda = lambda_l
 !     write( 6,*) ' initial lambda ', lambda
@@ -2503,9 +2440,9 @@
         DO i = 1, n
           a_0 = - sigma * ABS( C( i ) )
           a_1 = H( i )
-          a_2 = one
+          a_2 = 1.0_wp
           a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ) )
-          IF ( a_max > zero ) THEN
+          IF ( a_max > 0.0_wp ) THEN
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
           END IF
           CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
@@ -2523,7 +2460,7 @@
 !  check for the "hard case"
 
       IF ( lambda == - lambda_min ) THEN
-        c2 = zero
+        c2 = 0.0_wp
         inform%hard_case = .TRUE.
         DO i = 1, n
           IF ( H( i ) == lambda_min ) THEN
@@ -2543,7 +2480,7 @@
             IF ( H( i ) /= lambda_min ) THEN
               X( i )  = - C( i ) / ( H( i ) + lambda )
             ELSE
-              X( i ) = zero
+              X( i ) = 0.0_wp
             END IF
           END DO
           inform%x_norm = TWO_NORM( X )
@@ -2572,7 +2509,7 @@
             END IF
             inform%x_norm = TWO_NORM( X )
             inform%obj =                                                       &
-                f + half * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
+                f + 0.5_wp * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
             inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
 
             IF ( printi ) THEN
@@ -2591,20 +2528,20 @@
 
 !  compute the first derivative of ||x|(lambda)||^2  ...
 
-            w_norm2 = zero
+            w_norm2 = 0.0_wp
             DO i = 1, n
               IF ( H( i ) /= lambda_min )                                      &
                 w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
             END DO
-            x_norm2( 1 ) = - two * w_norm2
+            x_norm2( 1 ) = - 2.0_wp* w_norm2
 
 !  ... and ( lambda / sigma )^(2/(p-2))
 
-            IF ( p == three ) THEN
-              theta_beta( 1 ) = two * lambda * oos2
+            IF ( p == 3.0_wp ) THEN
+              theta_beta( 1 ) = 2.0_wp* lambda * oos2
             ELSE
               theta_beta( 1 ) =                                                &
-                topm2 * ( lambda ** ( topm2 - one ) ) / ( sigma ** topm2 )
+                topm2 * ( lambda ** ( topm2 - 1.0_wp ) ) / ( sigma ** topm2 )
             END IF
 
 !  compute the Newton correction
@@ -2618,7 +2555,7 @@
 !  sum of squares of the singular terms is equal to target^2
 
         ELSE
-          lambda = MAX( lambda * ( one + epsmch ),                             &
+          lambda = MAX( lambda * ( 1.0_wp + epsmch ),                             &
             DRQS_lambda_root( lambda_min, SQRT( c2 ) * sigma ** oopm2, oopm2, options ) )
           lambda_l = MAX( lambda_l, lambda )
         END IF
@@ -2629,9 +2566,9 @@
 
 !  compute the value of ||x(lambda)||
 
-!       IF ( p == three ) THEN   !! For the time being, only p == 3
+!       IF ( p == 3.0_wp ) THEN   !! For the time being, only p == 3
         IF ( .FALSE. ) THEN
-          w_norm2 = zero
+          w_norm2 = 0.0_wp
           DO i = 1, n
             w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 2
           END DO
@@ -2654,7 +2591,7 @@
 !  so the required lambda is no smaller than the largest root of
 !  h(lambda) = ( lambda / sigma )^(2/(p-2))
 
-          w_norm2 = zero
+          w_norm2 = 0.0_wp
           DO i = 1, n
             IF ( i /= j )                                                      &
               w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda_u ) ** 2
@@ -2662,13 +2599,13 @@
           w_norm2 = w_norm2 * sigma ** 2
 
           a_0 = - ( sigma * C( j ) ) ** 2 - w_norm2 * H( j ) ** 2
-          a_1 =  - two * w_norm2 * H( j )
+          a_1 =  - 2.0_wp* w_norm2 * H( j )
           a_2 = H( j ) ** 2 - w_norm2
-          a_3 = two * H( j )
-          a_4 = one
+          a_3 = 2.0_wp* H( j )
+          a_4 = 1.0_wp
           a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ),                     &
                        ABS( a_3 ), ABS( a_4 ) )
-          IF ( a_max > zero ) THEN
+          IF ( a_max > 0.0_wp ) THEN
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max
             a_2 = a_2 / a_max ; a_3 = a_3 / a_max ; a_4 = a_4 / a_max
           END IF
@@ -2725,7 +2662,7 @@
 !  the current estimate gives a good approximation to the required root
 
         IF ( ABS( inform%x_norm - target ) <=                                  &
-             MAX( control%stop_normal * MAX( one, inform%x_norm, target ),     &
+             MAX( control%stop_normal * MAX( 1.0_wp, inform%x_norm, target ),     &
                   control%stop_absolute_normal  ) ) THEN
           IF ( inform%x_norm > target ) THEN
             region = 'L'
@@ -2775,14 +2712,14 @@
 
 !  form ||w||^2 = x^T H^-1(lambda) x
 
-        w_norm2 = zero
+        w_norm2 = 0.0_wp
         DO i = 1, n
           w_norm2 = w_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 3
         END DO
 
 !  compute the first derivative of x_norm2 = x^T M x
 
-        x_norm2( 1 ) = - two * w_norm2
+        x_norm2( 1 ) = - 2.0_wp* w_norm2
 
 !  count the number of corrections computed
 
@@ -2791,20 +2728,20 @@
 !  compute Taylor approximants of degree one;
 !  special (but frequent) case when p = 3
 
-        IF ( p == three ) THEN
+        IF ( p == 3.0_wp ) THEN
 
 !  compute pi_beta = ||x||^beta and its first derivative when beta = 2
 
-          beta = two
+          beta = 2.0_wp
           CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
 
 !  compute the Newton correction (for beta = 2)
 
           a_0 = pi_beta( 0 ) - target ** 2
-          a_1 = pi_beta( 1 ) - two * lambda * oos2
+          a_1 = pi_beta( 1 ) - 2.0_wp* lambda * oos2
           a_2 = - oos2
           a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ) )
-          IF ( a_max > zero ) THEN
+          IF ( a_max > 0.0_wp ) THEN
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
           END IF
           CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
@@ -2817,7 +2754,7 @@
 
 !  compute pi_beta = ||x||^beta and its first derivative when beta = 1
 
-          beta = one
+          beta = 1.0_wp
           CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
 
 !  compute the Newton correction (for beta = 1)
@@ -2831,7 +2768,7 @@
 
 !  compute pi_beta = ||x||^beta and its first derivative when beta = - 1
 
-          beta = - one
+          beta = - 1.0_wp
           CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
 
 !  compute the Newton correction (for beta = -1)
@@ -2840,7 +2777,7 @@
           a_1 = pi_beta( 0 ) + lambda * pi_beta( 1 )
           a_2 = pi_beta( 1 )
           a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ) )
-          IF ( a_max > zero ) THEN
+          IF ( a_max > 0.0_wp ) THEN
             a_0 = a_0 / a_max ; a_1 = a_1 / a_max ; a_2 = a_2 / a_max
           END IF
           CALL ROOTS_quadratic( a_0, a_1, a_2, roots_tol, nroots,              &
@@ -2876,7 +2813,7 @@
 !  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
 !  their first derivatives when beta = (p-2)/2
 
-          beta = pm2 / two
+          beta = pm2 / 2.0_wp
           CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
           CALL DRQS_theta_derivs( 1, beta / pm2, lambda, sigma,                &
                                  theta_beta( : 1 )  )
@@ -2894,7 +2831,7 @@
 !  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
 !  their first derivatives when beta = max(2-p,-1)
 
-          beta = max( - pm2, - one )
+          beta = max( - pm2, - 1.0_wp )
           CALL DRQS_pi_derivs( 1, beta, x_norm2( : 1 ), pi_beta( : 1 ) )
           CALL DRQS_theta_derivs( 1, beta / pm2, lambda, sigma,                &
                                  theta_beta( : 1 ) )
@@ -2914,40 +2851,40 @@
 
 !  compute the second derivative of x^T x
 
-          z_norm2 = zero
+          z_norm2 = 0.0_wp
           DO i = 1, n
             z_norm2 = z_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 4
           END DO
-          x_norm2( 2 ) = six * z_norm2
+          x_norm2( 2 ) = 6.0_wp * z_norm2
 
 !  compute the third derivatives of x^T x
 
-          v_norm2 = zero
+          v_norm2 = 0.0_wp
           DO i = 1, n
             v_norm2 = v_norm2 + C( i ) ** 2 / ( H( i ) + lambda ) ** 5
           END DO
-          x_norm2( 3 ) = - twentyfour * v_norm2
+          x_norm2( 3 ) = - 24.0_wp * v_norm2
 
 !  compute pi_beta = ||x||^beta and its derivatives for various beta
 !  and the resulting Taylor series approximants
 
 !  special (but frequent) case when p = 3
 
-          IF ( p == three ) THEN
+          IF ( p == 3.0_wp ) THEN
 
 !  compute pi_beta = ||x||^beta and its derivatives when beta = 2
 
-            beta = two
+            beta = 2.0_wp
             CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
 
 !  compute the "cubic Taylor approximaton" step (beta = 2)
 
             a_0 = pi_beta( 0 ) - target ** 2
-            a_1 = pi_beta( 1 ) - two * lambda * oos2
-            a_2 = half * pi_beta( 2 ) - oos2
-            a_3 = sixth * pi_beta( 3 )
+            a_1 = pi_beta( 1 ) - 2.0_wp* lambda * oos2
+            a_2 = 0.5_wp * pi_beta( 2 ) - oos2
+            a_3 = (1.0_wp/6.0_wp) * pi_beta( 3 )
             a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-            IF ( a_max > zero ) THEN
+            IF ( a_max > 0.0_wp ) THEN
               a_0 = a_0 / a_max ; a_1 = a_1 / a_max
               a_2 = a_2 / a_max ; a_3 = a_3 / a_max
             END IF
@@ -2959,17 +2896,17 @@
 
 !  compute pi_beta = ||x||^beta and its derivatives when beta = 1
 
-            beta = one
+            beta = 1.0_wp
             CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
 
 !  compute the "cubic Taylor approximaton" step (beta = 1)
 
             a_0 = pi_beta( 0 ) - target
             a_1 = pi_beta( 1 ) - oos
-            a_2 = half * pi_beta( 2 )
-            a_3 = sixth * pi_beta( 3 )
+            a_2 = 0.5_wp * pi_beta( 2 )
+            a_3 = (1.0_wp/6.0_wp) * pi_beta( 3 )
             a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-            IF ( a_max > zero ) THEN
+            IF ( a_max > 0.0_wp ) THEN
               a_0 = a_0 / a_max ; a_1 = a_1 / a_max
               a_2 = a_2 / a_max ; a_3 = a_3 / a_max
             END IF
@@ -2982,7 +2919,7 @@
 !  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^beta and
 !  their derivatives when beta = - 0.4
 
-            beta = - point4
+            beta = - 0.4_wp
             CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
             CALL DRQS_theta_derivs( 3, beta, lambda, sigma,                    &
                                     theta_beta( : 3 )  )
@@ -2991,10 +2928,10 @@
 
             a_0 = pi_beta( 0 ) - theta_beta( 0 )
             a_1 = pi_beta( 1 ) - theta_beta( 1 )
-            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
-            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_2 = 0.5_wp * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = (1.0_wp/6.0_wp) * ( pi_beta( 3 ) - theta_beta( 3 ) )
             a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-            IF ( a_max > zero ) THEN
+            IF ( a_max > 0.0_wp ) THEN
               a_0 = a_0 / a_max ; a_1 = a_1 / a_max
               a_2 = a_2 / a_max ; a_3 = a_3 / a_max
             END IF
@@ -3020,10 +2957,10 @@
 
             a_0 = pi_beta( 0 ) - theta_beta( 0 )
             a_1 = pi_beta( 1 ) - theta_beta( 1 )
-            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
-            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_2 = 0.5_wp * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = (1.0_wp/6.0_wp) * ( pi_beta( 3 ) - theta_beta( 3 ) )
             a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-            IF ( a_max > zero ) THEN
+            IF ( a_max > 0.0_wp ) THEN
               a_0 = a_0 / a_max ; a_1 = a_1 / a_max
               a_2 = a_2 / a_max ; a_3 = a_3 / a_max
             END IF
@@ -3037,7 +2974,7 @@
 !  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
 !  their derivatives when beta = (p-2)/2
 
-            beta = pm2 / two
+            beta = pm2 / 2.0_wp
             CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
             CALL DRQS_theta_derivs( 3, beta / pm2, lambda, sigma,              &
                                     theta_beta( : 3 )  )
@@ -3046,10 +2983,10 @@
 
             a_0 = pi_beta( 0 ) - theta_beta( 0 )
             a_1 = pi_beta( 1 ) - theta_beta( 1 )
-            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
-            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_2 = 0.5_wp * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = (1.0_wp/6.0_wp) * ( pi_beta( 3 ) - theta_beta( 3 ) )
             a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-            IF ( a_max > zero ) THEN
+            IF ( a_max > 0.0_wp ) THEN
               a_0 = a_0 / a_max ; a_1 = a_1 / a_max
               a_2 = a_2 / a_max ; a_3 = a_3 / a_max
             END IF
@@ -3063,7 +3000,7 @@
 !  compute pi_beta = ||x||^beta and theta_beta = (lambda/sigma)^(beta/(p-2)) and
 !  their derivatives when beta = max(2-p,-0.4)
 
-            beta = max( - pm2, - point4 )
+            beta = max( - pm2, - 0.4_wp )
             CALL DRQS_pi_derivs( 3, beta, x_norm2( : 3 ), pi_beta( : 3 ) )
             CALL DRQS_theta_derivs( 3, beta / pm2, lambda, sigma,              &
                                     theta_beta( : 3 )  )
@@ -3072,10 +3009,10 @@
 
             a_0 = pi_beta( 0 ) - theta_beta( 0 )
             a_1 = pi_beta( 1 ) - theta_beta( 1 )
-            a_2 = half * ( pi_beta( 2 ) - theta_beta( 2 ) )
-            a_3 = sixth * ( pi_beta( 3 ) - theta_beta( 3 ) )
+            a_2 = 0.5_wp * ( pi_beta( 2 ) - theta_beta( 2 ) )
+            a_3 = (1.0_wp/6.0_wp) * ( pi_beta( 3 ) - theta_beta( 3 ) )
             a_max = MAX( ABS( a_0 ), ABS( a_1 ), ABS( a_2 ), ABS( a_3 ) )
-            IF ( a_max > zero ) THEN
+            IF ( a_max > 0.0_wp ) THEN
               a_0 = a_0 / a_max ; a_1 = a_1 / a_max
               a_2 = a_2 / a_max ; a_3 = a_3 / a_max
             END IF
@@ -3115,8 +3052,8 @@
 
 !  check that the best Taylor improvement is significant
 
-!write(6,*) ABS( delta_lambda ), epsmch * MAX( one, ABS( lambda ) )
-!       IF ( ABS( delta_lambda ) < epsmch * MAX( one, ABS( lambda ) ) ) THEN
+!write(6,*) ABS( delta_lambda ), epsmch * MAX( 1.0_wp, ABS( lambda ) )
+!       IF ( ABS( delta_lambda ) < epsmch * MAX( 1.0_wp, ABS( lambda ) ) ) THEN
         IF ( ABS( delta_lambda ) < epsmch * ABS( lambda ) ) THEN
           inform%status = RAL_NLLS_ok
           If (printi) Then
@@ -3133,12 +3070,12 @@
 
 !  Record the optimal obective value
 
-      inform%obj = f + half * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
+      inform%obj = f + 0.5_wp * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
       inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
       If (printi) Then
         Write(rec(1), Fmt=99984) prefix, inform%obj_regularized
         Write(rec(2), Fmt=99985) prefix,                                       &
-        f + DOT_PRODUCT( C, X ) + half * DOT_PRODUCT( X, H( : n ) * X ) +      &
+        f + DOT_PRODUCT( C, X ) + 0.5_wp * DOT_PRODUCT( X, H( : n ) * X ) +      &
           ( sigma / p ) * inform%x_norm ** p
         Call Printmsg(2,.False.,options,2,rec)
       End If
@@ -3150,13 +3087,7 @@
 
  900  CONTINUE
       inform%multiplier = lambda
-      inform%pole = MAX( zero, - lambda_min )
-      RETURN
-
-
-! Non-executable statements
-
-!2050 FORMAT( A, ' time( SLS_solve ) = ', F0.2 )
+      inform%pole = MAX( 0.0_wp, - lambda_min )
 
 !  End of subroutine DRQS_solve_main
 
@@ -3165,7 +3096,7 @@
 !-*-*-*-*-*-  D R Q S _ P I _ D E R I V S   S U B R O U T I N E   -*-*-*-*-*-
 
       SUBROUTINE DRQS_pi_derivs( max_order, beta, x_norm2, pi_beta )
-
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Compute pi_beta = ||x||^beta and its derivatives
@@ -3198,32 +3129,32 @@
 
       REAL ( KIND = wp ) :: hbeta
 
-      hbeta = half * beta
+      hbeta = 0.5_wp * beta
       pi_beta( 0 ) = x_norm2( 0 ) ** hbeta
-      IF ( hbeta == one ) THEN
+      IF ( hbeta == 1.0_wp ) THEN
         pi_beta( 1 ) = x_norm2( 1 )
         IF ( max_order == 1 ) RETURN
         pi_beta( 2 ) = x_norm2( 2 )
         IF ( max_order == 2 ) RETURN
         pi_beta( 3 ) = x_norm2( 3 )
-      ELSE IF ( hbeta == two ) THEN
-        pi_beta( 1 ) = two * x_norm2( 0 ) * x_norm2( 1 )
+      ELSE IF ( hbeta == 2.0_wp) THEN
+        pi_beta( 1 ) = 2.0_wp* x_norm2( 0 ) * x_norm2( 1 )
         IF ( max_order == 1 ) RETURN
-        pi_beta( 2 ) = two * ( x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
+        pi_beta( 2 ) = 2.0_wp* ( x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
         IF ( max_order == 2 ) RETURN
-        pi_beta( 3 ) = two *                                                   &
-          ( x_norm2( 0 ) * x_norm2( 3 ) + three * x_norm2( 1 ) * x_norm2( 2 ) )
+        pi_beta( 3 ) = 2.0_wp*                                                   &
+          ( x_norm2( 0 ) * x_norm2( 3 ) + 3.0_wp * x_norm2( 1 ) * x_norm2( 2 ) )
       ELSE
         pi_beta( 1 )                                                           &
-          = hbeta * ( x_norm2( 0 ) ** ( hbeta - one ) ) * x_norm2( 1 )
+          = hbeta * ( x_norm2( 0 ) ** ( hbeta - 1.0_wp ) ) * x_norm2( 1 )
         IF ( max_order == 1 ) RETURN
-        pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - two ) ) *           &
-          ( ( hbeta - one ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
+        pi_beta( 2 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - 2.0_wp) ) *           &
+          ( ( hbeta - 1.0_wp ) * x_norm2( 1 ) ** 2 + x_norm2( 0 ) * x_norm2( 2 ) )
         IF ( max_order == 2 ) RETURN
-        pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - three ) ) *         &
-          ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - one ) *               &
-            ( three * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +             &
-              ( hbeta - two ) * x_norm2( 1 ) ** 3 ) )
+        pi_beta( 3 ) = hbeta * ( x_norm2( 0 ) ** ( hbeta - 3.0_wp ) ) *         &
+          ( x_norm2( 3 ) * x_norm2( 0 ) ** 2 + ( hbeta - 1.0_wp ) *               &
+            ( 3.0_wp * x_norm2( 0 ) * x_norm2( 1 ) * x_norm2( 2 ) +             &
+              ( hbeta - 2.0_wp) * x_norm2( 1 ) ** 3 ) )
       END IF
       RETURN
 
@@ -3234,7 +3165,7 @@
 !-*-*-*-*-  D R Q S _ T H E T A _ D E R I V S   S U B R O U T I N E   -*-*-*-*-
 
       SUBROUTINE DRQS_theta_derivs( max_order, beta, lambda, sigma, theta_beta )
-
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Compute theta_beta = (lambda/sigma)^beta and its derivatives
@@ -3267,29 +3198,29 @@
       REAL ( KIND = wp ) :: los, oos
 
       los = lambda / sigma
-      oos = one / sigma
+      oos = 1.0_wp / sigma
 
       theta_beta( 0 ) = los ** beta
-      IF ( beta == one ) THEN
+      IF ( beta == 1.0_wp ) THEN
         theta_beta( 1 ) = oos
         IF ( max_order == 1 ) RETURN
-        theta_beta( 2 ) = zero
+        theta_beta( 2 ) = 0.0_wp
         IF ( max_order == 2 ) RETURN
-        theta_beta( 3 ) = zero
-      ELSE IF ( beta == two ) THEN
-        theta_beta( 1 ) = two * los * oos
+        theta_beta( 3 ) = 0.0_wp
+      ELSE IF ( beta == 2.0_wp) THEN
+        theta_beta( 1 ) = 2.0_wp* los * oos
         IF ( max_order == 1 ) RETURN
         theta_beta( 2 ) = oos ** 2
         IF ( max_order == 2 ) RETURN
-        theta_beta( 3 ) = zero
+        theta_beta( 3 ) = 0.0_wp
       ELSE
-        theta_beta( 1 ) = beta * ( los ** ( beta - one ) ) * oos
+        theta_beta( 1 ) = beta * ( los ** ( beta - 1.0_wp ) ) * oos
         IF ( max_order == 1 ) RETURN
-        theta_beta( 2 ) = beta * ( los ** ( beta - two ) ) *                   &
-                          ( beta - one ) * oos ** 2
+        theta_beta( 2 ) = beta * ( los ** ( beta - 2.0_wp) ) *                   &
+                          ( beta - 1.0_wp ) * oos ** 2
         IF ( max_order == 2 ) RETURN
-        theta_beta( 3 ) = beta * ( los ** ( beta - three ) ) *                 &
-                          ( beta - one ) * ( beta - two ) * oos ** 3
+        theta_beta( 3 ) = beta * ( los ** ( beta - 3.0_wp ) ) *                 &
+                          ( beta - 1.0_wp ) * ( beta - 2.0_wp) * oos ** 3
       END IF
 
       RETURN
@@ -3301,7 +3232,7 @@
 !-*-*-*-*-*-  D R Q S _ R E Q U I R E D _ R O O T  F U C T I O N   -*-*-*-*-*-
 
       FUNCTION DRQS_required_root( positive, nroots, roots )
-
+        Implicit None
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
 !  Determine the required root of the three roots of the secular equation.
@@ -3349,8 +3280,8 @@
       ELSE
         IF ( SIZE( roots ) == 3 ) THEN
           IF ( nroots == 3 ) THEN
-            IF ( roots( 3 ) > zero ) THEN
-              IF ( roots( 2 ) > zero ) THEN
+            IF ( roots( 3 ) > 0.0_wp ) THEN
+              IF ( roots( 2 ) > 0.0_wp ) THEN
                 DRQS_required_root = roots( 1 )
               ELSE
                 DRQS_required_root = roots( 2 )
@@ -3359,7 +3290,7 @@
               DRQS_required_root = roots( 3 )
             END IF
           ELSE IF ( nroots == 2 ) THEN
-            IF ( roots( 2 ) > zero ) THEN
+            IF ( roots( 2 ) > 0.0_wp ) THEN
               DRQS_required_root = roots( 1 )
             ELSE
               DRQS_required_root = roots( 2 )
@@ -3369,7 +3300,7 @@
           END IF
         ELSE
           IF ( nroots == 2 ) THEN
-            IF ( roots( 2 ) > zero ) THEN
+            IF ( roots( 2 ) > 0.0_wp ) THEN
               DRQS_required_root = roots( 1 )
             ELSE
               DRQS_required_root = roots( 2 )
@@ -3420,49 +3351,50 @@
 !     INTEGER, PARAMETER :: newton_max = 10000
       INTEGER, PARAMETER :: newton_max = 20
       REAL ( KIND = wp ) :: lambda, phi, phip, d_lambda, other, power_plus_1
+      Real(Kind=wp), Parameter :: roots_tol = 10.0_wp * epsmch
 
 !write(6,*) ' a, b, p', a, b, power
 
 !  special case: a = 0 = b
 
-      IF ( a == zero .AND. b == zero ) THEN
-        DRQS_lambda_root = zero ; RETURN
+      IF ( a == 0.0_wp .AND. b == 0.0_wp ) THEN
+        DRQS_lambda_root = 0.0_wp ; RETURN
       END IF
 
-      power_plus_1 = power + one
+      power_plus_1 = power + 1.0_wp
 
 !  compute as initial lower bound on the root
 
-      IF ( power == one ) THEN
-        CALL ROOTS_quadratic( - b , a, one, roots_tol, nroots, other, lambda,  &
+      IF ( power == 1.0_wp ) THEN
+        CALL ROOTS_quadratic( - b , a, 1.0_wp, roots_tol, nroots, other, lambda,  &
                               roots_debug, options )
       ELSE
 
 !  when power > 1, 1/lambda <= 1/lambda^p for lambda in (0,1]
 
-        IF ( power > one ) THEN
-          CALL ROOTS_quadratic( - b , a, one, roots_tol, nroots, other,        &
+        IF ( power > 1.0_wp ) THEN
+          CALL ROOTS_quadratic( - b , a, 1.0_wp, roots_tol, nroots, other,        &
                                 lambda, roots_debug, options )
-          lambda = MIN( one, lambda )
+          lambda = MIN( 1.0_wp, lambda )
         ELSE
           lambda = epsmch
         END IF
 
 !  check if lambda = 1 is acceptable
 
-        IF ( one + a <= b ) lambda = MAX( lambda, one )
+        IF ( 1.0_wp + a <= b ) lambda = MAX( lambda, 1.0_wp )
 
 !  when a > 0, find where the tangent to b/lambda^power at
 !  lambda = b^(1/power+1) intersects lambda + a
 
-        IF ( a >= zero ) THEN
-          lambda = MAX( lambda, b ** ( one / power_plus_1 ) - a / power_plus_1 )
+        IF ( a >= 0.0_wp ) THEN
+          lambda = MAX( lambda, b ** ( 1.0_wp / power_plus_1 ) - a / power_plus_1 )
 
 !  when a < 0, both the lambda-intercept of lambda + a and the interection
 !  of lambda with beta / lambda^(1/power+1) give lower bounds on the root
 
         ELSE
-          lambda = MAX( lambda, - a, b ** ( one / power_plus_1 ) )
+          lambda = MAX( lambda, - a, b ** ( 1.0_wp / power_plus_1 ) )
         END IF
 
 !  perform Newton's method to refine the root
@@ -3470,11 +3402,11 @@
         DO it = 1, newton_max
           phi = lambda + a - b / ( lambda ** power )
 !         write(6,*) ' lambda ', lambda, phi
-          IF ( ABS( phi ) <= ten * epsmch *                                   &
+          IF ( ABS( phi ) <= 10.0_wp * epsmch *                                   &
                  MAX(  lambda + a, b / ( lambda ** power ) ) ) EXIT
-          phip = one + b * power / ( lambda ** power_plus_1 )
+          phip = 1.0_wp + b * power / ( lambda ** power_plus_1 )
           d_lambda = - phi / phip
-          IF ( ABS( d_lambda ) <= epsmch * MAX( one, lambda ) ) EXIT
+          IF ( ABS( d_lambda ) <= epsmch * MAX( 1.0_wp, lambda ) ) EXIT
           lambda = lambda + d_lambda
         END DO
       END IF
@@ -3505,7 +3437,7 @@
        IF ( n > 0 ) THEN
          TWO_NORM = NRM2( n, X, 1 )
        ELSE
-         TWO_NORM = zero
+         TWO_NORM = 0.0_wp
        END IF
        RETURN
 
