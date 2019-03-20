@@ -1870,7 +1870,7 @@
       IMPLICIT NONE
 
       PRIVATE
-      PUBLIC :: DRQS_initialize, DRQS_solve, DRQS_solve_main
+      PUBLIC :: DRQS_initialize, DRQS_solve, DRQS_solve_main, two_norm
 
 !----------------------
 !   P a r a m e t e r s
