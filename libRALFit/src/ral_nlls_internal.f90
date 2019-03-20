@@ -919,6 +919,10 @@ contains
        inform%error_message = 'Unsupported value of inner_method passed in options'
     elseif ( inform%status ==  NLLS_ERROR_PRINT_LEVEL) then
        inform%error_message = 'Illegal value of print_level in options'
+    elseif ( inform%status ==  NLLS_ERROR_NOT_IMPLEMENTED) then
+       inform%error_message = 'Combination of method/regularization options not yet implemented'
+    elseif ( inform%status ==  NLLS_ERROR_UNEXPECTED) then
+       inform%error_message = 'Unexpected error occured'
     else
        inform%error_message = 'Unknown error number'
     end if
@@ -2406,8 +2410,9 @@ contains
         call solve_spd(w%AplusSigma,-v,w%LtL,d,n,inform)
         ! informa%status is passed along, this routine exits here
      else
-!      TODO FIXME ADDRESS this warning! AndrewS, 0 <= reg_order but /= 0 !!!
-write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
+!      Feature not yet implemented, this should have been caught in
+!      check_options()
+       inform%status = NLLS_ERROR_UNEXPECTED
      end if
 
      If (inform%status==0) Then
@@ -3633,10 +3638,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
 !!$    integer :: ii
        integer :: jj, kk
        real(wp) :: normx, hf_local
-       ! Add default return value for status
        status = 0
-
-!      tenJ%H(1:n,1:n) = 0.0_wp ! AndrewS TODO: moved to +3L can be problematic !
        select type(params)
        type is (tensor_params_type)
           params%tenJ%H(1:n,1:n) = 0.0_wp
@@ -3690,6 +3692,7 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
      end subroutine get_Hi
 
      Subroutine check_options(opt, inform)
+       ! Check some option values before enteting the solver
        Implicit None
        Type(NLLS_options), Intent(In) :: opt
        Type(NLLS_inform), Intent(InOut) :: inform
@@ -3699,9 +3702,13 @@ write(*,*) 'Warning: Unsupported regularization order. Use 2.0 (normd undef)'
          inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
        ElseIf (opt%print_level < 0 .Or. Opt%print_level > 5 ) Then
          inform%status = NLLS_ERROR_PRINT_LEVEL
+       ElseIf (opt%model==4.And.opt%nlls_method==3.And.opt%type_of_method==2) Then
+         If (opt%reg_order/=2.0_wp.And.opt%reg_order>0) Then
+!          This specific option combination is not yet implemented!
+           inform%status = NLLS_ERROR_NOT_IMPLEMENTED
+         End If
 !      ElseIf
-!        inform%status =
-!      ...
+!        ...
        End If
 
      End Subroutine
