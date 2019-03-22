@@ -30,6 +30,8 @@ struct ral_nlls_options_d {
   int error; /* Fortran output stream for error messages */
   int out;   /* Fortran output stream for general messages */
   int print_level; /* levels of print output */
+  bool print_options; /* print all options? */
+  int print_header; /*=k; print one-liner header every k-th iteration */
   int maxit; /* maximum number of iterations */
   int model; /* what model to use? */
   int type_of_method; /* what method to use? */
@@ -101,6 +103,7 @@ struct ral_nlls_inform_d {
   ral_nllspkgtype_d_ scaled_g;
   int external_return;
   char external_name[81];
+  ral_nllspkgtype_d_ step;
 };
 
 /* Set default values of options */

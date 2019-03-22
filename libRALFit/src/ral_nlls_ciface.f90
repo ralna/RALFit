@@ -18,6 +18,8 @@ module ral_nlls_ciface
      integer(C_INT) :: error
      integer(C_INT) :: out
      integer(C_INT) :: print_level
+     logical(c_bool) :: print_options
+     integer(C_INT) :: print_header
      integer(C_INT) :: maxit
      integer(C_INT) :: model
      integer(C_INT) :: type_of_method
@@ -89,7 +91,7 @@ module ral_nlls_ciface
      real(wp) :: scaled_g
      integer(C_INT) :: external_return
      character( kind = c_char), dimension(81) :: external_name
-
+     real(wp) :: step
   end type nlls_inform
 
   abstract interface
@@ -146,6 +148,8 @@ contains
     foptions%error = coptions%error
     foptions%out = coptions%out
     foptions%print_level = coptions%print_level
+    foptions%print_options = coptions%print_options
+    foptions%print_header = coptions%print_header
     foptions%maxit = coptions%maxit
     foptions%model = coptions%model
     foptions%type_of_method = coptions%type_of_method
@@ -214,6 +218,7 @@ contains
     end do
     cinfo%bad_alloc(len(finfo%bad_alloc) + 1) = C_NULL_CHAR
     cinfo%iter = finfo%iter
+    cinfo%step = finfo%step
     cinfo%inner_iter = finfo%iter
     cinfo%f_eval = finfo%f_eval
     cinfo%g_eval = finfo%g_eval
@@ -293,6 +298,8 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%error = foptions%error
   coptions%out = foptions%out
   coptions%print_level = foptions%print_level
+  coptions%print_options = foptions%print_options
+  coptions%print_header = foptions%print_header
   coptions%maxit = foptions%maxit
   coptions%model = foptions%model
   coptions%type_of_method = foptions%type_of_method
