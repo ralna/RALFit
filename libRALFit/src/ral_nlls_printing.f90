@@ -53,7 +53,7 @@
           If (options%print_level==lev .Or. .Not. onlythis .And. options%      &
             print_level>lev) Then
             Do i = 1, nrec
-              Write (options%out,Fmt=99999) rec(i)
+              Write (options%out,Fmt=99999) trim(rec(i))
             End Do
           End If
         End If
