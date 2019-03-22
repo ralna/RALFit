@@ -180,7 +180,7 @@
 
         nrec = 53
 
-        Call printmsg(4,.False.,options,nrec,rec)
+        Call printmsg(0,.False.,options,nrec,rec)
 
 99999   Format (A30)
 99998   Format (5X,A30,'=',8X,Es12.4e3)
@@ -192,11 +192,9 @@
       End Subroutine print_options
 
 
-      Subroutine print_bye(level,onlythis,options,inform)
-!       Assumes it is already in the right print level
+      Subroutine print_bye(options,inform)
+!       Assumes print level > 0
         Implicit None
-        Integer, Intent (In) :: level
-        Logical, Intent (In) :: onlythis
         Type (nlls_options), Intent (In) :: options
         Type (nlls_inform), Intent (In) :: inform
 
@@ -205,41 +203,57 @@
 
         Continue
 
-        nrec = 1
-        Write (rec(1),Fmt=99999) ''
+     If (buildmsg(2,.False.,options)) Then
+          nrec = 1
+          Write(rec(nrec), Fmt=60000)
+         Call printmsg(2, .False., options, nrec, rec)
+     End If
 
      If (inform%status /= 0) then
+         nrec = 1
+         Write(rec(nrec), Fmt=99990) 'Error: ', inform%status
+         nrec = nrec + 1
+         Write(rec(nrec), Fmt=60000)
          nrec = nrec + 1
          Write(rec(nrec), Fmt=5000) trim(inform%error_message)
          nrec = nrec + 1
          Write(rec(nrec), Fmt=5001) inform%status
          Call printmsg(1, .False., options, nrec, rec)
      Else
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99998) 'converged, an optimal solution was found'
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99997) 'Norm of error                 ', inform%obj
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99997) 'Norm of gradient              ', inform%norm_g
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99997) 'Norm of scaled gradient       ', inform%scaled_g
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99997) 'Step size                     ', inform%step
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99996) 'Iteration count               ', inform%iter
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99996) 'Function evaluations          ', inform%f_eval
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99996) 'Gradient evaluations          ', inform%g_eval
-        nrec = nrec + 1
-        Write(rec(nrec), Fmt=99996) 'Hessian evaluations           ', inform%h_eval
-        Call printmsg(level,onlythis,options,nrec,rec)
+        If (buildmsg(1,.False.,options)) Then
+          nrec = 1
+          Write(rec(nrec), Fmt=99998) 'converged, an optimal solution was found'
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=60000)
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=99997) 'Norm of error                 ', inform%obj
+          Call printmsg(1,.False.,options,nrec,rec)
+        End If
+        If (buildmsg(2,.False.,options)) Then
+          nrec = 1
+          Write(rec(nrec), Fmt=99997) 'Norm of gradient              ', inform%norm_g
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=99997) 'Norm of scaled gradient       ', inform%scaled_g
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=99997) 'Step size                     ', inform%step
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=99996) 'Iteration count               ', inform%iter
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=99996) 'Function evaluations          ', inform%f_eval
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=99996) 'Gradient evaluations          ', inform%g_eval
+          nrec = nrec + 1
+          Write(rec(nrec), Fmt=99996) 'Hessian evaluations           ', inform%h_eval
+          Call printmsg(2,.False.,options,nrec,rec)
+        End If
      End If
 
 99999 Format(A)
-99998 Format(1X,'Status:',1X,A)
+99998 Format(2X,'Status:',1X,A)
 99997 Format(1X,A30,4X,Es12.5e2)
 99996 Format(1X,A30,4X,I12)
+99990 Format(1X,A,4X,I0)
+60000 Format(1X,53('-'))
 
 5000 Format(1X,'**',1X,A)
 5001 Format(1X,'** ABNORMAL EXIT from RALFit routine nlls_solve: ERROR =',I5)

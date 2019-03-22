@@ -420,17 +420,19 @@
         END IF
         If (debug) Then
           Write(rec(1), Fmt=99993)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
       ELSE IF ( nroots == 2 ) THEN
         If (debug) Then
           Write(rec(1), Fmt=99992)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
       ELSE
         If (debug) Then
           Write(rec(1), Fmt=99991)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
       END IF
-      Call Printmsg(5,.False.,options,1,rec)
 99993 Format ( ' 3 real roots ' )
 99992 Format ( ' 2 real roots ' )
 99991 Format ( ' 1 real root ' )
@@ -1203,6 +1205,11 @@
       Integer :: nrec
 
       Real(Kind=wp), Parameter :: roots_tol = 10.0_wp * epsmch
+!     Assign highes print level to all outputs
+      Integer, Parameter :: prni = 5
+      Integer, Parameter :: prnt = 5
+      Integer, Parameter :: prnd = 5
+
 
       IF ( LEN( TRIM( control%prefix ) ) > 2 )                                 &
         prefix = control%prefix( 2 : LEN( TRIM( control%prefix ) ) - 1 )
@@ -1248,9 +1255,9 @@
 !     printi = out > 0 .AND. print_level > 0
 !     printt = out > 0 .AND. print_level > 1
 !     printd = out > 0 .AND. print_level > 2
-      printi = buildmsg(2,.false.,options)
-      printt = buildmsg(3,.false.,options)
-      printd = buildmsg(4,.false.,options)
+      printi = buildmsg(prni,.false.,options)
+      printt = buildmsg(prnt,.false.,options)
+      printd = buildmsg(prnd,.false.,options)
 
 !  check for n < 0 or Delta < 0
 
@@ -1269,11 +1276,11 @@
       If (printt) Then
         Write(rec(1), Fmt=99999) prefix, c_norm, MAXVAL(ABS(H(:n))),lambda_min
         Write(rec(2), Fmt=99998) prefix
-        Call Printmsg(3,.false.,options,2,rec)
+        Call Printmsg(prnt,.false.,options,2,rec)
       End If
       If ( printi ) Then
         WRITE(rec(1), 2030 ) prefix
-        Call Printmsg(2,.False.,options,1,rec)
+        Call Printmsg(prni,.False.,options,1,rec)
       End IF
 99999 Format(A,' ||c|| = ',ES10.4,', ||H|| = ',ES10.4,', lambda_min = ',ES11.4)
 99998 Format(A, 4X, 28( '-' ), ' phase two ', 28( '-' ) )
@@ -1301,7 +1308,7 @@
           WRITE( rec(1), Fmt=99997) prefix, region,             &
           0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
           WRITE( rec(2), Fmt=99996) prefix
-          Call Printmsg(2,.False.,options,2,rec)
+          Call Printmsg(prni,.False.,options,2,rec)
 99997 Format( A, A2, I4, 3ES22.13 )
 99996 Format( A, ' Normal stopping criteria satisfied' )
         END IF
@@ -1381,7 +1388,7 @@
               WRITE( rec(1), Fmt=99997 )  prefix, region,         &
               0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
               WRITE( rec(2), Fmt=99994 ) prefix
-              Call Printmsg(2,.False.,options,2,rec)
+              Call Printmsg(prni,.False.,options,2,rec)
 99994 Format( A, ' Hard-case stopping criteria satisfied' )
             END IF
             inform%status = RAL_NLLS_ok
@@ -1462,7 +1469,7 @@
             WRITE( rec(1), Fmt=99997) prefix,                    &
               region, it, inform%x_norm - radius, lambda
             WRITE( rec(2), Fmt=99993) prefix
-            Call Printmsg(2,.False.,options,2,rec)
+            Call Printmsg(prni,.False.,options,2,rec)
 99993 Format ( A, ' Interior stopping criteria satisfied')
           END IF
           GO TO 900
@@ -1481,13 +1488,13 @@
           END IF
           IF ( printt .AND. it > 1 ) Then
             WRITE( rec(1), Fmt=2030 ) prefix
-            Call Printmsg(3,.False.,options,1,rec)
+            Call Printmsg(prnt,.False.,options,1,rec)
           End If
           IF ( printi ) THEN
             WRITE( rec(1), Fmt=99997) prefix, region,           &
             it, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
             WRITE( rec(2), Fmt=99996) prefix
-            Call Printmsg(2,.false.,options,2,rec)
+            Call Printmsg(prni,.false.,options,2,rec)
           END IF
           inform%status = RAL_NLLS_ok
           EXIT
@@ -1500,16 +1507,16 @@
         IF ( printd ) THEN
           WRITE( rec(1), Fmt=99992) prefix
           WRITE( rec(2), Fmt=99991) prefix, lambda, inform%x_norm, radius
-          Call Printmsg(4,.False.,options,2,rec)
+          Call Printmsg(prnd,.False.,options,2,rec)
         End If
         IF ( printt .AND. it > 1 ) Then
           WRITE( rec(1), 2030 ) prefix
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(prnt,.False.,options,1,rec)
         End If
         IF ( printi ) THEN
           WRITE( rec(1), Fmt=99997 ) prefix, region, it,          &
             ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
-          Call Printmsg(2,.False.,options,1,rec)
+          Call Printmsg(prni,.False.,options,1,rec)
         END IF
 99992 Format( A, 8X, 'lambda', 13X, 'x_norm', 15X, 'radius' )
 99991 Format( A, 3ES20.12 )
@@ -1638,7 +1645,7 @@
             Write(rec(2), Fmt=99989)prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
             nrec = 2
           End If
-          Call Printmsg(4,.false.,options,nrec,rec)
+          Call Printmsg(prnd,.false.,options,nrec,rec)
         END IF
 
 99990 Format ( A, ' lambda_t (', I1, ')', 3ES20.13 )
@@ -1658,7 +1665,7 @@
         IF ( ABS( delta_lambda ) < epsmch * MAX( 1.0_wp, ABS( lambda ) ) ) THEN
           IF ( printi ) Then
             WRITE( rec(1), Fmt=99988 ) prefix
-            Call Printmsg(2,.False.,options,1,rec)
+            Call Printmsg(prni,.False.,options,1,rec)
           End If
           inform%status = RAL_NLLS_ok
           EXIT
@@ -2267,6 +2274,10 @@
 !-----------------------------------------------
 
       Real(Kind=wp), Parameter :: roots_tol = 10.0_wp * epsmch
+!     Assign highes print level to all outputs
+      Integer, Parameter :: prni = 5
+      Integer, Parameter :: prnt = 5
+      Integer, Parameter :: prnd = 5
 
       INTEGER :: i, it, nroots, max_order, n_lambda, i_hard
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda, target
@@ -2336,9 +2347,9 @@
 !     printi = out > 0 .AND. print_level > 0
 !     printt = out > 0 .AND. print_level > 1
 !     printd = out > 0 .AND. print_level > 2
-      printi = buildmsg(2,.false.,options)
-      printt = buildmsg(3,.false.,options)
-      printd = buildmsg(4,.false.,options)
+      printi = buildmsg(prni,.false.,options)
+      printt = buildmsg(prnt,.false.,options)
+      printd = buildmsg(prnd,.false.,options)
 
 !  check for n < 0 or sigma < 0
 
@@ -2357,11 +2368,11 @@
       IF ( printt ) Then
         WRITE( rec(1), Fmt=99999 ) prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
         WRITE( rec(2), Fmt=99998 ) prefix
-        Call Printmsg(3,.False.,options,2,rec)
+        Call Printmsg(prnt,.False.,options,2,rec)
       End If
       IF ( printi ) Then
         WRITE( rec(1), 2030 ) prefix
-        Call Printmsg(2,.False.,options,1,rec)
+        Call Printmsg(prni,.False.,options,1,rec)
       End If
 
 99999 Format ( A, ' ||c|| = ', ES10.4, ', ||H|| = ', ES10.4, ', lambda_min = ', ES11.4 )
@@ -2375,7 +2386,7 @@
         IF ( printi ) THEN
           WRITE(rec(1),Fmt=99997) prefix,region,it,inform%x_norm-target,lambda,ABS( delta_lambda )
           WRITE(rec(2), Fmt=99996) prefix
-          Call Printmsg(2,.false.,options,2,rec)
+          Call Printmsg(prni,.false.,options,2,rec)
         END IF
         inform%status = RAL_NLLS_ok
         GO TO 900
@@ -2516,7 +2527,7 @@
               WRITE( rec(1), Fmt=99997 ) prefix, region,      &
                 it, inform%x_norm - target, lambda, ABS( delta_lambda )
               WRITE( rec(2), Fmt=99996 ) prefix
-              Call Printmsg(2,.False.,options,2,rec)
+              Call Printmsg(prni,.False.,options,2,rec)
             END IF
             inform%status = RAL_NLLS_ok
             GO TO 900
@@ -2582,7 +2593,7 @@
           If (printd) Then
             WRITE( rec(1) , Fmt=5000 ) prefix, ' upper lambda = ', sigma * w_norm2, lambda_u
 5000 Format (2A,2(1X,ES22.13))
-            Call Printmsg(4,.False.,options,1,rec)
+            Call Printmsg(prnd,.False.,options,1,rec)
           End If
           lambda_u = MIN( sigma * w_norm2, lambda_u )
 
@@ -2614,7 +2625,7 @@
                             roots_debug, options )
           If (printd) Then
               WRITE( rec(1), Fmt=5001 ) prefix, ' starting lambda = ', roots( : nroots )
-              Call Printmsg(4,.False.,options,1,rec)
+              Call Printmsg(prnd,.False.,options,1,rec)
 5001 Format (2A,4Es16.4e2)
           End If
 !         lambda = MAX( roots( nroots ), lambda + epsmch )
@@ -2638,7 +2649,7 @@
           inform%status = RAL_NLLS_error_max_iterations
           IF ( printi ) Then
             WRITE( rec(1), Fmt=99995 ) prefix
-            Call Printmsg(2,.False.,options,1,rec)
+            Call Printmsg(prni,.False.,options,1,rec)
           End If
           EXIT
         END IF
@@ -2675,7 +2686,7 @@
             WRITE( rec(1), Fmt=99991 ) prefix, region,        &
               it, inform%x_norm - target, lambda, ABS( delta_lambda )
             WRITE( rec(2), Fmt=99990 ) prefix
-            Call Printmsg(2, .False., options, 2, rec)
+            Call Printmsg(prni, .False., options, 2, rec)
           END IF
           inform%status = RAL_NLLS_ok
           EXIT
@@ -2691,7 +2702,7 @@
         IF ( printi ) Then
           WRITE( rec(1), Fmt=99991 ) prefix,      &
           region, it, inform%x_norm - target, lambda, ABS( delta_lambda )
-          Call PrintMsg(2,.False.,options, 1, rec)
+          Call PrintMsg(prni,.False.,options, 1, rec)
       End If
 
 !  precaution against rounding producing lambda outside L
@@ -2703,7 +2714,7 @@
               lambda, ABS( delta_lambda )
             Write(rec(2), Fmt=99989) prefix
             99989 Format (A,' Normal stopping criteria with lambda outside L')
-            Call Printmsg(2,.False.,options,2,rec)
+            Call Printmsg(prni,.False.,options,2,rec)
           END IF
           EXIT
         END IF
@@ -3035,9 +3046,9 @@
             Write(rec(2), Fmt=99987) prefix, lambda_new(4 : MIN(6, n_lambda ))
             nrec = nrec + 1
           End If
-          Call Printmsg(4,.False.,options,nrec,rec)
+          Call Printmsg(prnd,.False.,options,nrec,rec)
         END IF
-99988 Format ( A, ' lambda_t (', I1, ')', 3ES20.13 )
+99988 Format ( A, ' lambda_t(',I1,')',1X, 3ES20.13 )
 99987 Format ( A, 13X, 3ES20.13 )
 
 !  compute the best Taylor improvement
@@ -3058,7 +3069,7 @@
           inform%status = RAL_NLLS_ok
           If (printi) Then
             Write(rec(1), Fmt=99986) prefix
-            Call Printmsg(2,.False.,options,1,rec)
+            Call Printmsg(prni,.False.,options,1,rec)
           End If
           EXIT
         END IF
@@ -3077,7 +3088,7 @@
         Write(rec(2), Fmt=99985) prefix,                                       &
         f + DOT_PRODUCT( C, X ) + 0.5_wp * DOT_PRODUCT( X, H( : n ) * X ) +      &
           ( sigma / p ) * inform%x_norm ** p
-        Call Printmsg(2,.False.,options,2,rec)
+        Call Printmsg(prni,.False.,options,2,rec)
       End If
 99985 Format ( A, ' Estimated, true objective value   =',1X,ES22.13 )
 99984 Format ( A, ' Estimated, true regularized value =',1X,Es22.13 )

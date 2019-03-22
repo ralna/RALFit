@@ -131,7 +131,8 @@ contains
       Call printmsg(1, .False., options, nrec, rec)
     End If
 
-    If (buildmsg(4, .False., options)) Then
+!   Print options, (default no)
+    If (buildmsg(0, .False., options).And.options%print_options) Then
       Call print_options(options)
     End If
 
@@ -185,14 +186,13 @@ contains
 
      call nlls_finalize(w,options)
      If (inform%status /= 0) then
-!      @RALNAG ERR_ORACLE
        call nlls_strerror(inform)
      End If
      If (buildmsg(1,.False.,options)) then
-       Call print_bye(1,.False.,options,inform)
+       Call print_bye(options,inform)
      End If
 
-6000 Format(1X,78('-'))
+6000 Format(1X,53('-'))
 6001 Format(2X,'RALFit, unconstrained nonlinear least square solver')
    END SUBROUTINE NLLS_SOLVE
 
@@ -222,7 +222,7 @@ contains
     procedure( eval_hp_type ), optional :: eval_HP
 
     integer :: svdstatus
-    integer :: i, no_reductions, max_tr_decrease
+    integer :: i, no_reductions, max_tr_decrease, prncnt
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue, normX
     logical :: success
@@ -232,7 +232,6 @@ contains
     integer :: nrec, ierr_dummy
     Character(Len=100) :: rec(3)
     Character(Len=1) :: it_type, inn_flag
-
 
 !   thread-safe inits
     svdstatus = 0
@@ -454,25 +453,46 @@ contains
 
        rho  = -1.0_wp ! intialize rho as a negative value
 
-!      @RALNAG ITERBNR
-       If (buildmsg(1, .False., options)) Then
-         Write(rec(1), Fmt=8000)
-         Write(rec(2), Fmt=9000)
-         Write(rec(3), Fmt=8000)
-         nrec = 3
-         Call printmsg(1, .False., options, nrec, rec)
+!      @TAG:ITER0BNR
+       If (it_type=='R') Then
+         If (buildmsg(2, .True., options)) Then
+           Write(rec(1), Fmt=8002)
+           Write(rec(2), Fmt=9002)
+           Write(rec(3), Fmt=8002)
+           Call printmsg(2, .True., options, 3, rec)
+         Else If (buildmsg(3, .False., options)) Then
+           Write(rec(1), Fmt=8000)
+           Write(rec(2), Fmt=9000)
+           Write(rec(3), Fmt=8000)
+           Call printmsg(3, .False., options, 3, rec)
+         End If
+       Else
+         If (buildmsg(4, .False., options)) Then
+           Write(rec(1), Fmt=8000)
+           Call printmsg(4, .False., options, 1, rec)
+        Write(*,'(A)', advance='no') Char(27)//'[39m'
+         End If
        End If
 
-       If (buildmsg(1, .False., options)) Then
-         If (it_type == 'R') Then
-           Write(rec(1),Fmt=9010) inform%iter, inform%obj, inform%norm_g,      &
-             inform%scaled_g, w%Delta, rho, '---'//inn_flag
-         Else
-           Write(rec(1),Fmt=9010) inform%iter, inform%obj, inform%norm_g,      &
-             inform%scaled_g, w%Delta, rho, '--'//it_type//inn_flag
-         End If
+       If (buildmsg(2, .True., options).And.it_type == 'R') Then
+         Write(rec(1),Fmt=9010) 0, inform%obj, inform%norm_g,      &
+           inform%scaled_g
          nrec = 1
-         Call printmsg(1, .False., options, nrec, rec)
+         Call printmsg(2, .True., options, nrec, rec)
+       ElseIf (buildmsg(3, .False., options)) Then
+         If (it_type == 'R') Then
+           Write(rec(1),Fmt=9010) 0, inform%obj, inform%norm_g,      &
+             inform%scaled_g, w%Delta, rho, '---'//inn_flag
+           nrec = 1
+           Call printmsg(3, .False., options, nrec, rec)
+         Else
+           If (buildmsg(4, .False., options)) Then
+             Write(rec(1),Fmt=9010) 0, inform%obj, inform%norm_g,      &
+               inform%scaled_g, w%Delta, rho, '--'//it_type//inn_flag
+             nrec = 1
+             Call printmsg(4, .False., options, nrec, rec)
+           End If
+         End If
        End If
 
        if (.not. options%exact_second_derivatives) then
@@ -496,7 +516,7 @@ contains
           goto 100
        End If
 
-       If (buildmsg(1,.False.,options)) Then
+       If (buildmsg(3,.False.,options)) Then
           if (options%model == 4) then
              second = 'T';
           elseif (.not. w%use_second_derivatives) then
@@ -624,10 +644,10 @@ contains
           normJFnew = norm2(w%g)
 
           if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
-             If (buildmsg(3,.False.,options)) Then
+             If (buildmsg(5,.False.,options)) Then
                Write(rec(1),Fmt=3120) normJFnew
                nrec=1
-               Call Printmsg(3,.False.,options,nrec,rec)
+               Call Printmsg(5,.False.,options,nrec,rec)
              End If
              rho = -2.0_wp
              ! reset J
@@ -668,16 +688,20 @@ contains
        if (inform%status /= 0) goto 100
 
        if (.not. success) then
-          If (buildmsg(1, .False., options)) Then
+          If (buildmsg(3, .False., options)) Then
             If (it_type=='R') Then
               Write(rec(1),Fmt=9020) inform%iter, w%Delta, rho,                &
                 'U'//second//it_type//inn_flag,inform%inner_iter
+              nrec = 1
+              Call printmsg(3, .False., options, nrec, rec)
             Else
-              Write(rec(1),Fmt=9020) inform%iter, w%Delta, rho,                &
-                'U'//second//it_type//inn_flag
+              If (buildmsg(4, .False., options)) Then
+                Write(rec(1),Fmt=9020) inform%iter, w%Delta, rho,                &
+                  'U'//second//it_type//inn_flag
+                nrec = 1
+                Call printmsg(4, .False., options, nrec, rec)
+              End If
             End If
-            nrec = 1
-            Call printmsg(1, .False., options, nrec, rec)
           End If
 !         ! finally, check d makes progress
 !         if ( norm2(w%d) < epsmch * norm2(w%Xnew) ) then
@@ -761,18 +785,66 @@ contains
        w%gradvec(w%iter + 1) = inform%norm_g
     end if
 
-    If (buildmsg(1, .False., options)) Then
+!   @TAG:ITERBNR
+    prncnt = inform%inner_iter + w%iter
+    If ( options%model == 4 ) then
+      ! account for last inner iteration
+      prncnt = prncnt + 1
+    End If
+    If (buildmsg(2, .True., options).And.it_type=='R') Then
+      ! Level 2: Print banner every k-th
+      If (mod(inform%iter, options%print_header)==0) Then
+        Write(rec(1), Fmt=8002)
+        Write(rec(2), Fmt=9002)
+        Write(rec(3), Fmt=8002)
+        Call printmsg(2, .True., options, 3, rec)
+      End If
+    Else If (buildmsg(5, .False., options)) Then
+!       Level 5: Always print banner
+        Write(rec(1), Fmt=8000)
+        Write(rec(2), Fmt=9000)
+        Write(rec(3), Fmt=8000)
+        Call printmsg(5, .False., options, 3, rec)
+    Else If (buildmsg(4, .False., options)) Then
+!     Level 4: Print banner every k-th including inner iteration
+      If (mod(prncnt, options%print_header)==0) Then
+        Write(rec(1), Fmt=8000)
+        Write(rec(2), Fmt=9000)
+        Write(rec(3), Fmt=8000)
+        Call printmsg(4, .False., options, 3, rec)
+      End If
+     Else If (buildmsg(3, .False., options).And.it_type=='R') Then
+!     Level 3: Same as level 2 but long banner version
+      If (mod(inform%iter, options%print_header)==0) Then
+        Write(*,'(A)', advance='no') Char(27)//'[34m'
+        Write(rec(1), Fmt=8000)
+        Write(rec(2), Fmt=9000)
+        Write(rec(3), Fmt=8000)
+        Call printmsg(3, .False., options, 3, rec)
+        Write(*,'(A)', advance='no') Char(27)//'[39m'
+      End If
+    End If
+    If (buildmsg(2, .True., options).And.it_type == 'R') Then
+      Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
+        inform%scaled_g
+      nrec = 1
+      Call printmsg(2, .True., options, nrec, rec)
+    ElseIf (buildmsg(3, .False., options)) Then
       If (it_type=='R') Then
         Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
           inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
-          inform%inner_iter, w%normd
+          inform%inner_iter, inform%step
+        nrec = 1
+        Call printmsg(3, .False., options, nrec, rec)
       Else
-        Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,        &
-          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
-          w%normd
+        If (buildmsg(4, .False., options)) Then
+          Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,        &
+            inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
+            inform%step
+          nrec = 1
+          Call printmsg(4, .False., options, nrec, rec)
+        End If
       End If
-      nrec = 1
-      Call printmsg(1, .False., options, nrec, rec)
     End If
 
     !++++++++++++++++++!
@@ -825,14 +897,16 @@ contains
        inform%bad_alloc = 'nlls_iterate'
     end if
 
-8000 Format(87('-'))
-9000 Format(1X,' Iter |   error    |    grad    |  rel grad  |  Delta  |   rho   |S2IF| inn it| step')
+8000 Format(85('-'))
+9000 Format(1X,' Iter |  error   |    grad    |  rel grad  |  Delta  |   rho   |S2IF| inn it|  step')
+8002 Format(44('-'))
+9002 Format(1X,' Iter |  error   |    grad    |  rel grad')
 !    Successfull iteration Regular iteration
-9010 Format(I7,3(1X,Es12.4e2),1X,2(Es9.2e2,1X),A4,1X,I7,1X,Es7.1e2)
+9010 Format(I7,1X,Es10.4e2,2(1X,Es12.5e2),1X,2(Es9.2e2,1X),A4,1X,I7,1X,Es7.1e2)
 !    Successfull iteration Internal iteration
-9011 Format(I7,3(1X,Es12.4e2),1X,2(Es9.2e2,1X),A4,1X,7X,1X,Es7.1e2)
+9011 Format(I7,1X,Es10.4e2,2(1X,Es12.5e2),1X,2(Es9.2e2,1X),A4,1X,7X,1X,Es7.1e2)
 !    Unsuccessfull iteration partial information
-9020 Format(I7,3(13X),1X,2(Es9.2e2,1X),A4,1X,I7)
+9020 Format(I7,37X,1X,2(Es9.2e2,1X),A4,1X,I7)
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
 3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.')
@@ -963,7 +1037,7 @@ contains
     integer :: i, jj
     logical :: scaling_used
     real(wp) :: normx
-    Character(Len=80) :: rec(1)
+    Character(Len=85) :: rec(1)
 
 
     if (.not. w%allocated) then
@@ -983,8 +1057,11 @@ contains
        call solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, num_successful_steps,&
             d, md, params, options, inform, &
             w%solve_newton_tensor_ws, tenJ, inner_workspace)
+       If (buildmsg(4, .False., options)) Then
+         Write(rec(1), Fmt=8000)
+         Call printmsg(4, .False., options, 1, rec)
+       End If
        normd = norm2(d(1:n)) ! ||d||_D
-
        Xnew = X + d
        call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
        If (inform%status/=0) Then
@@ -1078,30 +1155,30 @@ contains
        if ( options%type_of_method == 1) then
           select case (options%nlls_method)
           case (1) ! Powell's dogleg
-             If (buildmsg(2,.False.,options)) Then
+             If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3000) 'dogleg'
-               Call printmsg(2,.False.,options,1,rec)
+               Call printmsg(5,.False.,options,1,rec)
              End If
              call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
              if (inform%status /= 0) Go To 100
           case (2) ! The AINT method
-             If (buildmsg(2,.False.,options)) Then
+             If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3000) 'AINT_TR'
-               Call printmsg(2,.False.,options,1,rec)
+               Call printmsg(5,.False.,options,1,rec)
              End If
              call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
              if (inform%status /= 0) Go To 100
           case (3) ! More-Sorensen
-             If (buildmsg(2,.False.,options)) Then
+             If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3000) 'More-Sorensen'
-               Call printmsg(2,.False.,options,1,rec)
+               Call printmsg(5,.False.,options,1,rec)
              End If
              call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
              if (inform%status /= 0) Go To 100
           case (4) ! Galahad
-             If (buildmsg(2,.False.,options)) Then
+             If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3000) 'Galahad DTRS'
-               Call printmsg(2,.False.,options,1,rec)
+               Call printmsg(5,.False.,options,1,rec)
              End If
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
@@ -1113,17 +1190,17 @@ contains
        elseif (options%type_of_method == 2) then
           select case (options%nlls_method)
           case (3) ! home-rolled regularization solver
-             If (buildmsg(2,.False.,options)) Then
+             If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3020) 'RALFit Solver'
-               Call printmsg(2,.False.,options,1,rec)
+               Call printmsg(5,.False.,options,1,rec)
              End If
              call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
                   d,normd,w%reg_order,options,inform,w%regularization_solver_ws)
              if (inform%status /= 0) Go To 100
           case(4) ! Galahad
-             If (buildmsg(2,.False.,options)) Then
+             If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3020) 'Galahad DRQS'
-               Call printmsg(2,.False.,options,1,rec)
+               Call printmsg(5,.False.,options,1,rec)
              End If
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
                   d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
@@ -1162,19 +1239,21 @@ contains
 
 100 Continue
 
-     If (buildmsg(2,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        If (inform%status==0) Then
          Write(rec(1), Fmt=3010)
        Else
          Write(rec(1), Fmt=3030)
        End If
-       Call printmsg(2,.False.,options,1,rec)
+       Call printmsg(5,.False.,options,1,rec)
      End If
 
 3000 FORMAT('*** Solving the trust region subproblem using ',A,' ***')
 3010 FORMAT('*** Subproblem solution found ***')
 3020 FORMAT('*** Solving the regularized subproblem using ',A,' ***')
 3030 FORMAT('*** Error or Subproblem solution NOT found ***')
+8000 Format(85('-'))
+
    END SUBROUTINE calculate_step
 
    subroutine generate_scaling(J,A,n,m,scale,extra_scale,w,options,inform)
@@ -1275,10 +1354,10 @@ contains
      type (nlls_options), intent(in) :: options
      Character(Len=80) :: rec(1)
 
-     If (buildmsg(3,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1),Fmt=99999)
 99999 FORMAT('*** Switching to Gauss-Newton ***')
-       Call Printmsg(3,.False.,options,1,rec)
+       Call Printmsg(5,.False.,options,1,rec)
      End If
      w%use_second_derivatives = .false.
      if ((options%type_of_method == 2) .and. &
@@ -1298,10 +1377,10 @@ contains
      type (nlls_options), intent(in) :: options
      Character(Len=80) :: rec(1)
 
-     If (buildmsg(3,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=99999)
 99999 FORMAT('** Switching to (Quasi-)Newton **')
-       Call Printmsg(3,.False.,options,1,rec)
+       Call Printmsg(5,.False.,options,1,rec)
      End If
 
      w%use_second_derivatives = .true.
@@ -1381,9 +1460,9 @@ contains
      normd = norm2(d)
 
 100 continue
-     If (buildmsg(2,.false.,options).And.nstep > 0) Then
+     If (buildmsg(5,.false.,options).And.nstep > 0) Then
          Write(rec(1), Fmt=99999) Trim(steplabs(nstep))
-         Call Printmsg(2,.False.,options,1,rec)
+         Call Printmsg(5,.False.,options,1,rec)
      End If
 99999 Format(A,1X,'step taken')
    END SUBROUTINE dogleg
@@ -1446,9 +1525,9 @@ contains
 
      if (norm_p0 < Delta) then
         ! get obj_p0 : the value of the model at p0
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=2000) 'p0'
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
         call evaluate_model(f,J,hf,X,X,w%p0,obj_p0,obj_p0_gn,m,n, &
              options, inform, w%evaluate_model_ws)
@@ -1470,9 +1549,9 @@ contains
 
      if (norm2(w%y(1:n)) < tau) then
         ! Hard case
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=2010)
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(w%y_hardcase)
@@ -1515,9 +1594,9 @@ contains
      end if
 
      ! get obj_p1: the value of the model at p1
-     If (buildmsg(3,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=2000) 'p1'
-       Call Printmsg(3,.False.,options,1,rec)
+       Call Printmsg(5,.False.,options,1,rec)
      End If
      call evaluate_model(f,J,hf,X,X,w%p1,obj_p1,obj_p1_gn,m,n, &
           options,inform,w%evaluate_model_ws)
@@ -1525,15 +1604,15 @@ contains
      ! what gives the smallest objective: p0 or p1?
      if (obj_p0 < obj_p1) then
         d = w%p0
-        If (buildmsg(2,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=2030) 'p0'
-          Call Printmsg(2,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
      else
         d = w%p1
-        If (buildmsg(2,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=2030) 'p1'
-          Call Printmsg(2,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
      end if
 
@@ -1622,9 +1701,9 @@ contains
      if (inform%status == 0) then
         ! A is symmetric positive definite....
         sigma = 0.0_wp
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=6000)
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
      else
         ! reset the error calls -- handled in the code....
@@ -1634,25 +1713,25 @@ contains
         call min_eig_symm(A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws)
         if (inform%status /= 0) goto 100
         sigma = -(sigma - local_ms_shift)
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=6010)
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
         ! find a shift that makes (A + sigma I) positive definite,
         ! and solve (A + sigma I) (-v) = d
         call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
         if (inform%status /= 0) goto 100
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=6020)
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
      end if
 
      nd = norm2(d)
 
-     If (buildmsg(2,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=5000)
-       Call Printmsg(2,.False.,options,1,rec)
+       Call Printmsg(5,.False.,options,1,rec)
      End If
      ! now, we're not in the trust region initally, so iterate....
      sigma_shift = 0.0_wp
@@ -1663,34 +1742,34 @@ contains
      ! First, check if we're in the t.r. and adjust accordingly
      if (nd .le. Delta) then
         ! we're within the tr radius
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=6030)
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
         if ( abs(sigma) < options%more_sorensen_tiny ) then
            ! we're good....exit
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6040)
-             Call Printmsg(3,.False.,options,1,rec)
+             Call Printmsg(5,.False.,options,1,rec)
            End If
            ! initial point was successful
-           If (buildmsg(2,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=5010) 0, nd, sigma, 0.0_wp
              Write(rec(2), Fmt=5040)
-             Call Printmsg(2,.False.,options,2,rec)
+             Call Printmsg(5,.False.,options,2,rec)
            End If
            Go To 100
         else if ( abs( nd - Delta ) < epsilon ) then
            ! also good...exit
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6050)
-             Call Printmsg(3,.False.,options,1,rec)
+             Call Printmsg(5,.False.,options,1,rec)
            End If
            ! initial point was successful
-           If (buildmsg(2,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=5010) 0, nd, sigma, 0.0_wp
              Write(rec(2), Fmt=5040)
-             Call Printmsg(2,.False.,options,2,rec)
+             Call Printmsg(5,.False.,options,2,rec)
            End If
            Go To 100
         end if
@@ -1698,38 +1777,38 @@ contains
         if (inform%status /= 0 ) goto 100
         d = d + alpha * w%y1
         nd = norm2(d)
-        If (buildmsg(2,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=5010) 0, nd, sigma, 0.0_wp
-          Call Printmsg(2,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=6060)
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
         ! also good....exit
         ! initial point was successful
-        If (buildmsg(2,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=5040)
-          Call Printmsg(2,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
         goto 100
      end if
 
      do i = 1, options%more_sorensen_maxits
-        If (buildmsg(2,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=5010) i-1, nd, sigma, sigma_shift
-          Call Printmsg(2,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
         if ( abs(nd  - Delta) .le. epsilon) then
            ! we're within the tr radius -- exit
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6035)
-             Call Printmsg(3,.False.,options,1,rec)
+             Call Printmsg(5,.False.,options,1,rec)
            End If
            ! initial point was successful
-           If (buildmsg(2,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=5040)
-             Call Printmsg(2,.False.,options,1,rec)
+             Call Printmsg(5,.False.,options,1,rec)
            End If
            goto 100
         end if
@@ -1739,9 +1818,9 @@ contains
              1, 1.0_wp, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
 
         nq = norm2(w%q)
-        If (buildmsg(3,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=6080) nq
-          Call Printmsg(3,.False.,options,1,rec)
+          Call Printmsg(5,.False.,options,1,rec)
         End If
 
         sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
@@ -1771,10 +1850,10 @@ contains
      end do
      ! maxits reached, not converged
      inform%status = NLLS_ERROR_MS_MAXITS
-     If (buildmsg(2,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=5010)
        Write(rec(2), Fmt=5020)
-       Call Printmsg(2,.False.,options,2,rec)
+       Call Printmsg(5,.False.,options,2,rec)
      End If
 
 100  Continue
@@ -1878,14 +1957,14 @@ contains
      sigma = max(0.0_wp,sigma_l)
      ! todo: if the model hasn't changed, use the terminating sigma there instead (p192, TR book)...
 
-     If (buildmsg(3,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=6030) sigma_l, sigma, sigma_u
-       Call printmsg(3,.False.,options,1,rec)
+       Call printmsg(5,.False.,options,1,rec)
      End If
 
-     If (buildmsg(2,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=5000)
-       Call printmsg(2,.False.,options,1,rec)
+       Call printmsg(5,.False.,options,1,rec)
      End If
 
      factorization_done = .false.
@@ -1901,25 +1980,25 @@ contains
         end if
         if (inform%status == 0) then
            ! A is symmetric positive definite....
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6000)
-             Call printmsg(3,.False.,options,1,rec)
+             Call printmsg(5,.False.,options,1,rec)
            End If
            nd = norm2(d)
            if (nd < Delta) then
               region = 3
               region_char = 'G'
               sigma_u = sigma
-              If (buildmsg(3,.False.,options)) Then
+              If (buildmsg(5,.False.,options)) Then
                 Write(rec(1), Fmt=6010) sigma_u
-                Call printmsg(3,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
               End If
 
               ! check for interior convergence....
               if ( abs(sigma) < 1.0e-16_wp) then
-                 If (buildmsg(2,.False.,options)) Then
+                 If (buildmsg(5,.False.,options)) Then
                    Write(rec(1), Fmt=5060)
-                   Call printmsg(2,.False.,options,1,rec)
+                   Call printmsg(5,.False.,options,1,rec)
                  End If
                  goto 100
               end if
@@ -1927,19 +2006,19 @@ contains
               region = 2
               region_char = 'L'
               sigma_l = sigma
-              If (buildmsg(3,.False.,options)) Then
+              If (buildmsg(5,.False.,options)) Then
                 Write(rec(1), Fmt=6020) sigma_l
-                Call printmsg(3,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
               End If
            end if
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6000)
-             Call printmsg(3,.False.,options,1,rec)
+             Call printmsg(5,.False.,options,1,rec)
            End If
         else
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6050)
-             Call printmsg(3,.False.,options,1,rec)
+             Call printmsg(5,.False.,options,1,rec)
            End If
            location_of_breakdown = inform%external_return
            ! reset the error calls -- handled in the code....
@@ -1949,9 +2028,9 @@ contains
            region = 1 ! N
            region_char = 'N'
            sigma_l = sigma
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6020) sigma_l
-             Call printmsg(3,.False.,options,1,rec)
+             Call printmsg(5,.False.,options,1,rec)
            End If
         end if
 
@@ -1960,22 +2039,22 @@ contains
            CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, &
                 1, 1.0_wp, w%LtL, n, w%q, n )
            nq = norm2(w%q)
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6080) nq
-             Call printmsg(3,.False.,options,1,rec)
+             Call printmsg(5,.False.,options,1,rec)
            End If
            sigma_shift = ( (nd/nq)**2 ) * ( (nd - Delta) / Delta )
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6070) sigma_shift
-             Call printmsg(3,.False.,options,1,rec)
+             Call printmsg(5,.False.,options,1,rec)
            End If
            if (region == 3) then ! lambda in G
               ! use the linpack method...
               call linpack_method(n,w%AplusSigma,w%LtL,w%y1,uHu)
               sigma_l = max(sigma_l, sigma - uHu)
-              If (buildmsg(3,.False.,options)) Then
+              If (buildmsg(5,.False.,options)) Then
                 Write(rec(1), Fmt=6020) sigma_l
-                Call printmsg(3,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
               End If
               dHd = dot_product(d, matmul(w%AplusSigma,d))
               call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
@@ -1983,15 +2062,15 @@ contains
               d = d + alpha * w%y1
               ! check for termination
               if ( (alpha**2) * uHu .le. kappa_hard *(dHd + sigma * Delta**2 )) then
-                 If (buildmsg(2,.False.,options)) Then
+                 If (buildmsg(5,.False.,options)) Then
                    Write(rec(1), Fmt=5050)
-                   Call printmsg(2,.False.,options,1,rec)
+                   Call printmsg(5,.False.,options,1,rec)
                  End If
                  goto 100
               end if
-              If (buildmsg(3,.False.,options)) Then
+              If (buildmsg(5,.False.,options)) Then
                 Write(rec(1), Fmt=6060)
-                Call printmsg(3,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
               End If
            end if
         else  ! not in F
@@ -2026,17 +2105,17 @@ contains
         ! check for termination
         if ( (region == 2) .or. (region == 3) ) then ! region F
            if (abs(nd - Delta) .le. kappa_easy * Delta) then
-              If (buildmsg(2,.False.,options)) Then
+              If (buildmsg(5,.False.,options)) Then
                 Write(rec(1), Fmt=5030)
-                Call printmsg(2,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
               End If
               goto 100
            end if
            if ( region == 3 ) then ! region G
               if (sigma == 0) then
-                 If (buildmsg(2,.False.,options)) Then
+                 If (buildmsg(5,.False.,options)) Then
                    Write(rec(1), Fmt=5040)
-                   Call printmsg(2,.False.,options,1,rec)
+                   Call printmsg(5,.False.,options,1,rec)
                  End If
                  goto 100
               else
@@ -2055,9 +2134,9 @@ contains
 
         if ( ( region == 2 ) .and. ( norm2(v) > 0) ) then
            sigma = sigma + sigma_shift
-            If (buildmsg(3,.False.,options)) Then
+            If (buildmsg(5,.False.,options)) Then
               Write(rec(1), Fmt=6040) sigma
-              Call printmsg(3,.False.,options,1,rec)
+              Call printmsg(5,.False.,options,1,rec)
             End If
         elseif (region == 3) then
            call shift_matrix(A,sigma + sigma_shift,w%AplusSigma,n)
@@ -2066,50 +2145,50 @@ contains
               region = 2
               sigma = sigma + sigma_shift
               factorization_done = .true.
-              If (buildmsg(3,.False.,options)) Then
+              If (buildmsg(5,.False.,options)) Then
                 Write(rec(1), Fmt=6040) sigma
-                Call printmsg(3,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
               End If
            else
               sigma_l = max(sigma_l, sigma+sigma_shift)
               ! check sigma_l for interior convergence
               sigma = max( sqrt(sigma_l * sigma_u), &
                    sigma_l + theta * ( sigma_u - sigma_l) )
-              If (buildmsg(3,.False.,options)) Then
+              If (buildmsg(5,.False.,options)) Then
                 Write(rec(1), Fmt=6090) sigma
-                Call printmsg(3,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
               End If
            end if
         else
            sigma = max( sqrt(sigma_l * sigma_u), &
                 sigma_l + theta * ( sigma_u - sigma_l) )
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6090) sigma
-             Call printmsg(3,.False.,options,1,rec)
+             Call printmsg(5,.False.,options,1,rec)
            End If
         end if
 
-        If (buildmsg(2,.False.,options)) Then
+        If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=5010) i, region_char, nd, sigma_l, sigma, sigma_u
-          Call printmsg(2,.False.,options,1,rec)
+          Call printmsg(5,.False.,options,1,rec)
         End If
 
      end do
 
      ! maxits reached, not converged
      inform%status = NLLS_ERROR_MS_MAXITS
-     If (buildmsg(2,.False.,options)) Then
+     If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=5020)
-       Call printmsg(2,.False.,options,1,rec)
+       Call printmsg(5,.False.,options,1,rec)
      End If
 
 100 continue
 
   If (inform%status==0) Then
     nd = norm2(d)
-    If (buildmsg(2,.False.,options)) Then
+    If (buildmsg(5,.False.,options)) Then
       Write(rec(1), Fmt=5010) i, region_char, nd, sigma_l, sigma, sigma_u
-      Call printmsg(2,.False.,options,1,rec)
+      Call printmsg(5,.False.,options,1,rec)
     End If
   End If
 
@@ -2233,9 +2312,9 @@ contains
              goto 100 ! too many shifts -- exit
            End If
            sigma =  sigma + (10.0_wp**no_shifts) * options%more_sorensen_shift
-           If (buildmsg(3,.False.,options)) Then
+           If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=99999) sigma
-             Call Printmsg(3,.False.,options,1,rec)
+             Call Printmsg(5,.False.,options,1,rec)
            End If
         else
            successful_shift = .true.
@@ -2575,9 +2654,9 @@ contains
           md = md_gn + 0.5_wp * dot_product(d(1:n),w%Hd(1:n))
           ! regularized newton terms taken care of already in apply_second_order_info
        end select
-       If (buildmsg(3,.False.,options)) Then
+       If (buildmsg(5,.False.,options)) Then
          Write(rec(1), Fmt=99999) md
-         Call Printmsg(3,.False.,options,1,rec)
+         Call Printmsg(5,.False.,options,1,rec)
        End If
 
 100   continue
@@ -2618,11 +2697,11 @@ contains
           rho = actual_reduction / predicted_reduction
        end if
 
-       If (buildmsg(3,.False.,options)) Then
+       If (buildmsg(5,.False.,options)) Then
          Write(rec(1), Fmt=99999) actual_reduction
          Write(rec(2), Fmt=99998) predicted_reduction
          Write(rec(3), Fmt=99997) rho
-         Call Printmsg(3,.False.,options,3,rec)
+         Call Printmsg(5,.False.,options,3,rec)
        End If
 
 99999  FORMAT('Actual reduction (in cost function) = ', ES12.4)
@@ -2777,7 +2856,7 @@ contains
        Integer :: nrec
        Character(Len=80) :: rec(1)
        Logical :: prnt3
-       prnt3 = buildmsg(3,.false.,options)
+       prnt3 = buildmsg(5,.false.,options)
        nrec = 0
 
        select case(options%tr_update_strategy)
@@ -2899,10 +2978,10 @@ contains
 100   Continue
 !     Pretty print results
       if ((inform%convergence_normf == 1 .Or. inform%convergence_normg == 1   &
-         .Or. inform%convergence_norms == 1).And.buildmsg(2,.false.,options)) Then
+         .Or. inform%convergence_norms == 1).And.buildmsg(5,.false.,options)) Then
         write(rec(1),Fmt=99999) 'Converged (',Trim(labels(nlabel)),   &
           ' test) at iteration', inform%iter
-        Call Printmsg(2,.false.,options,1,rec)
+        Call Printmsg(5,.false.,options,1,rec)
 99999 Format (3A,1X,I0)
       End If
      end subroutine test_convergence
@@ -3388,7 +3467,7 @@ contains
           sn = w%S(n)
        end if
 
-       If (buildmsg(2,.False.,options)) Then
+       If (buildmsg(5,.False.,options)) Then
          Write(rec(1), Fmt=99998)
          Write(rec(2), Fmt=99997)
          If (status==0) Then
@@ -3397,7 +3476,7 @@ contains
            Write(rec(3), Fmt=99995) status
          End If
          nrec = 3
-         Call printmsg(2,.False.,options, nrec, rec)
+         Call printmsg(5,.False.,options, nrec, rec)
        End If
 
 
@@ -3487,6 +3566,8 @@ contains
           w%tparams%p = 2.0_wp
           w%tparams%extra = 1
        end select
+
+       tensor_inform%inner_iter = inform%iter + inform%inner_iter
 
        do i = 1, w%tensor_options%maxit
           call nlls_iterate(n,w%m_in,d, &

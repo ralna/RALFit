@@ -65,7 +65,13 @@ module ral_nlls_workspaces
 !    summary for every iteration, = 2 gives a summary of the inner iteration
 !    for each iteration, >= 3 gives increasingly verbose (debugging) output
 
-     INTEGER :: print_level = 0
+     INTEGER :: print_level = 3
+
+!    Print all the options and their values
+     Logical :: print_options = .False.
+
+!    Print by default banner header every 30 iterations
+     Integer :: print_header = 30
 
 !   any printing will start on this iteration
 
