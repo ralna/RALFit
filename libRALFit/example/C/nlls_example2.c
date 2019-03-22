@@ -73,6 +73,7 @@ int main(void) {
    // Initialize options values
    struct ral_nlls_options options;
    ral_nlls_default_options(&options);
+   options.print_level=0;
    // options.model = 4;
    // options.exact_second_derivatives = true;
 

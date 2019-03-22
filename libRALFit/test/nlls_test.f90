@@ -12,24 +12,20 @@ program nlls_test
   type( NLLS_inform )  :: status
   type( NLLS_options ) :: options
   type( user_type ), target :: params
-  real(wp), allocatable :: v(:),w(:),x(:),y(:),z(:)
-  real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
-  real(wp), allocatable :: results(:), resvec(:)
+  real(wp), allocatable :: w(:),x(:)
+  real(wp), allocatable :: resvec(:)
   real(wp) :: resvec_error
-  real(wp) :: alpha, beta, gamma, delta
-  integer :: m, n, i, no_errors_helpers, no_errors_main, info
+  integer :: m, n, i, no_errors_helpers, no_errors_main
   integer :: nlls_method, model, tr_update, inner_method
   logical :: test_all, test_subs
-  character (len = 80) :: expected_string
   integer :: fails
 
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
 
-  type( NLLS_workspace ) :: work
-
   options%error = 18
-  options%out   = 17 
+  options%out   = 17
+  options%print_level = 0
   open(unit = options%out, file="nlls_test.out")
   open(unit = options%error, file="nlls_test_error.out")
   

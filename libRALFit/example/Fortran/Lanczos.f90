@@ -28,7 +28,7 @@ contains
        r(1:m) = params%y(:) &
             - x(1)*exp(-x(2)*params%t(:)) &
             - x(3)*exp(-x(4)*params%t(:)) &
-            - x(5)*exp(-x(6)*params%t(:)) 
+            - x(5)*exp(-x(n)*params%t(:))
     end select
 
     status = 0 ! success
@@ -50,7 +50,7 @@ contains
          J(2*m+1:3*m) = -exp(-x(4)*params%t(1:m))                     ! J_i3
          J(3*m+1:4*m) = +params%t(1:m) * x(3) * exp(-x(4)*params%t(1:m))! J_i4
          J(4*m+1:5*m) = -exp(-x(6)*params%t(1:m))                     ! J_i5
-         J(5*m+1:6*m) = +params%t(1:m) * x(5) * exp(-x(6)*params%t(1:m))! J_i6
+         J(5*m+1:6*m) = +params%t(1:m) * x(5) * exp(-x(n)*params%t(1:m))! J_i6
     end select
 
 
@@ -93,7 +93,7 @@ contains
       class(params_base_type), intent(inout) :: params
 
       integer :: i
-      
+      status = 0
       HP(1:n*m) = 0.0
       select type(params)
       type is (params_type)
@@ -130,7 +130,6 @@ program lanczos
   integer :: m,n
   real(wp), allocatable :: x(:)
   type(params_type) :: params
-  integer :: inner_method
   real(wp) :: tic, toc
   
   ! data to be fitted
@@ -191,7 +190,7 @@ program lanczos
   allocate(x(n))
   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
 
-  options%print_level = 1
+  options%print_level = 4
   options%exact_second_derivatives = .true.
   options%model = 4
   options%nlls_method = 3
