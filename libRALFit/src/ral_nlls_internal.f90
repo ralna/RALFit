@@ -3780,11 +3780,11 @@ contains
          inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
        ElseIf (opt%print_level < 0 .Or. Opt%print_level > 5 ) Then
          inform%status = NLLS_ERROR_PRINT_LEVEL
-       ElseIf (opt%model==4.And.opt%nlls_method==3.And.opt%type_of_method==2) Then
-         If (opt%reg_order/=2.0_wp.And.opt%reg_order>0) Then
-!          This specific option combination is not yet implemented!
-           inform%status = NLLS_ERROR_NOT_IMPLEMENTED
-         End If
+!      ElseIf (opt%model==4.And.opt%nlls_method==3.And.opt%type_of_method==2) Then
+!        If (opt%reg_order/=2.0_wp.And.opt%reg_order>0) Then
+!         This specific option combination is not yet implemented!
+!          inform%status = NLLS_ERROR_NOT_IMPLEMENTED
+!        End If
 !      ElseIf
 !        ...
        End If
