@@ -287,24 +287,6 @@ The derived data type for holding options
 		 |exact_second_derivatives|
 		 Default is false.
 
-   **Solving a regularized problem**
-
-   .. c:member:: int regularization 
-      
-		 |regularization|
-					  
-		 .. include:: ../common/options_regularization.txt
-		 Default is 0.
-					  
-   .. c:member:: double regularization_term 
-
-		 |regularization_term|
-		 Default is 0.0.
-						
-   .. c:member:: double regularization_power
-      
-		 |regularization_power|
-		 Default is 0.0.
 
    **Stopping rules**
 
@@ -497,7 +479,25 @@ The derived data type for holding options
 		 
 		 |output_progress_vectors|
 		 Default is false.
-   
+
+   **Internal options to help solving a regularized problem implicitly**
+
+   .. c:member:: int regularization 
+      
+		 |regularization|
+					  
+		 .. include:: ../common/options_regularization.txt
+		 Default is 0.
+					  
+   .. c:member:: double regularization_term 
+
+		 |regularization_term|
+		 Default is 0.0.
+						
+   .. c:member:: double regularization_power
+      
+		 |regularization_power|
+		 Default is 0.0.
 
 
 The derived data type for holding information

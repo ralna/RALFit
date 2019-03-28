@@ -331,16 +331,6 @@ The derived data type for holding options
 						    
    :f logical exact_second_derivatives [default=false]: |exact_second_derivatives|
 
-   **Solving a regularized problem**
-
-   :f integer regularization [default=0]: |regularization|
-					  
-					  .. include:: ../common/options_regularization.txt
-					  
-   :f real regularization_term [default=0.0]: |regularization_term|
-						
-   :f real regularization_power [default=0.0]: |regularization_power|
-
 
    **Stopping rules**
 
@@ -430,6 +420,16 @@ The derived data type for holding options
 
    :f logical output_progress_vectors [default=false]: |output_progress_vectors|
    
+   **Internal options to help solving a regularized problem implicitly**
+
+   :f integer regularization [default=0]: |regularization|
+					  
+					  .. include:: ../common/options_regularization.txt
+					  
+   :f real regularization_term [default=0.0]: |regularization_term|
+						
+   :f real regularization_power [default=0.0]: |regularization_power|
+
 
 
 The derived data type for holding information

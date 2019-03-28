@@ -1,7 +1,7 @@
 .. list-table::
    
    * - 0
-     - :math:`\sigma = 0`, and an unregularized problem is solved
+     - :math:`\sigma = 0`, and an unchanged problem is solved
    * - 1
      - a non-linear least-squares problem of size :math:`n+m`
        is solved implicitly.  Can only be used if :math:`p=2`.

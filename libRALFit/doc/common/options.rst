@@ -38,13 +38,13 @@
 
 .. |initial_radius| replace:: specifies the initial trust-region radius, :math:`\Delta`.
 
-.. |regularization| replace:: specifies if a regularized non-linear least squares 
-			      problem needs to be solved, and if so, what method is 
-			      used to solve it.  Possible values are:
+.. |regularization| replace:: specifies the method by which a regularized non-linear least squares 
+			      problem is solved implicitly.  Is designed to be used when solving the
+			      nonlinear least-squares problem recursively.  Possible values are:
 
-.. |regularization_term| replace:: specifies the regularization weight, :math:`\sigma`, used in the least-squares problem.
+.. |regularization_term| replace:: specifies the regularization weight, :math:`\sigma`, used when implicitly solving the least-squares problem.
 
-.. |regularization_power| replace:: specifies the regularization index, :math:`p`, used in the least-squares problem.
+.. |regularization_power| replace:: specifies the regularization index, :math:`p`, used when implicitly solving  the least-squares problem.
 
 .. |maximum_radius| replace:: specifies the maximum size permitted for the trust-region radius.
 
