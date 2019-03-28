@@ -60,7 +60,6 @@ if(NOT CompileMiniLAPACK)
     set(CompileMiniLAPACK On)
   else()
     message( STATUS "The LAPACK library was found at" ${LAPACK_LIBRARIES} )
-    include_directories(${LAPACK_INCLUDE_DIRS})
     set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
   endif()
 endif()
@@ -78,8 +77,7 @@ if(CompileMiniLAPACK)
    if ( NOT BLAS_FOUND )
      message( FATAL_ERROR "BLAS required, but not found!")
    endif ( NOT BLAS_FOUND ) 	    
-   message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )	
-   include_directories(${BLAS_INCLUDE_DIRS})
+   message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )
    set(LIBS ${LIBS} ${BLAS_LIBRARIES})
    add_subdirectory(lapack)
    set(LAPACK_LIBRARIES ral_nlls_lapack)		   
@@ -87,9 +85,7 @@ if(CompileMiniLAPACK)
 endif()
 
 # Main libral_nlls library
-include_directories(include ${CMAKE_BINARY_DIR}) # BINARY_DIR for generated .mod
-add_library (ral_nlls SHARED ${SRC_FILES} ) 
-target_link_libraries(ral_nlls ${LIBS} -lm -ldl)
+add_subdirectory(src)
 
 
 # Tests and examples
