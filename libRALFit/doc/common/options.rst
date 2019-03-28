@@ -92,7 +92,7 @@
 
 .. |hybrid_switch_its| replace:: if ``model=3``, sets how many iterates in a row must the condition in the definition of ``hybrid_tol`` hold before a switch.
 
-.. |reg_order| replace:: if ``nlls_method = 4``, the order of the regularization used (:math:`p` in **TODO** (eq:: reg_subproblem)).   If ``reg_order = 0.0``, then the algorithm chooses an appropriate value of :math:`p`. 
+.. |reg_order| replace:: if ``type_of_method = 2``, the order of the regularization used (:math:`p` in  (eq::reg_subproblem)).   If ``reg_order = 0.0``, then the algorithm chooses an appropriate value of :math:`p`. 
 
 .. |inner_method| replace::  if ``nlls_method = 4``, specifies the method used to pass in the regularization parameter to the inner non-linear least squares solver.   Possible values are:
 

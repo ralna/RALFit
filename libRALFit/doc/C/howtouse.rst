@@ -375,7 +375,12 @@ The derived data type for holding options
 		 .. include:: ../common/options_tr_update_strategy.txt
 		    
 		 Default is 1.
-	 
+
+   .. c:member:: double reg_order
+		 
+		 |reg_order|
+		 Default is 0.0.
+		
    **Scaling options**
    
    .. c:member:: int scale
@@ -429,11 +434,6 @@ The derived data type for holding options
 
    **Newton-Tensor options** These options are used if ``model=4``
 					     
-   .. c:member:: double reg_order
-		 
-		 |reg_order|
-		 Default is 0.0.
-		
    .. c:member:: int inner_method
 		 
 		 |inner_method| 
