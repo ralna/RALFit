@@ -27,7 +27,6 @@ typedef double ral_nllspkgtype_d_;
 struct ral_nlls_options_d {
   int f_arrays; /* Use 1-based indexing if true(!=0) else 0-based */
   
-  int error; /* Fortran output stream for error messages */
   int out;   /* Fortran output stream for general messages */
   int print_level; /* levels of print output */
   bool print_options; /* print all options? */

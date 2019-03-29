@@ -72,9 +72,8 @@
 
 !  read input Spec data
 
-!  error = unit for error messages
 !  out = unit for information
-!  print_level = level of output desired (<=0 = nothing)
+!  print_level = level of output desired (0=nothing)
 !  nlls_method = method used (1=dogleg, 2=AINT, 3=More-Sorensen)
 !  model = model used (1=first order, 2=Newton)
 !  initial_radius = initial TR radius
@@ -86,7 +85,6 @@
 !  set up algorithmic input data
       READ( indr, "(A)") control_name
       READ( indr, "(I6)") control%out
-      READ( indr, "(I6)") control%error
       READ( indr, "(I6)") control%print_level
       READ( indr, "(I6)") control%maxit
       READ( indr, "(I6)") control%model

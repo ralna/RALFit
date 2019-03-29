@@ -53,19 +53,19 @@ module ral_nlls_workspaces
 !!! P R I N T I N G   C O N T R O L S !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!   error and warning diagnostics occur on stream error
-
-     INTEGER :: error = 6
-
 !   general output occurs on stream out
 
      INTEGER :: out = 6
 
-!   the level of output required. <= 0 gives no output, = 1 gives a one-line
-!    summary for every iteration, = 2 gives a summary of the inner iteration
-!    for each iteration, >= 3 gives increasingly verbose (debugging) output
+!    The level of output required.
+!    print_level = 0 gives no output (DEFAULT),
+!    print_level = 1 gives a summary at the end of the solve,
+!    print_level = 2 prints one-line summary for every iteration,
+!    print_level = 3 same as 2 but add more details,
+!    print_level = 4 same as 3 & also prints one-line inner iteration info,
+!    print_level = 5 same as 4 with very verbose (debugging) output.
 
-     INTEGER :: print_level = 3
+     INTEGER :: print_level = 0
 
 !    Print all the options and their values
      Logical :: print_options = .False.

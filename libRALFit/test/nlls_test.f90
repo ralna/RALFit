@@ -23,11 +23,9 @@ program nlls_test
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
 
-  options%error = 18
   options%out   = 17
   options%print_level = 0
   open(unit = options%out, file="nlls_test.out")
-  open(unit = options%error, file="nlls_test_error.out")
   
   test_all = .true.
   test_subs = .true.

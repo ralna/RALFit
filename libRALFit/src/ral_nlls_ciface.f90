@@ -15,7 +15,6 @@ module ral_nlls_ciface
   type, bind(C) :: nlls_options
      integer(C_INT) :: f_arrays ! true (!=0) or false (==0)
 
-     integer(C_INT) :: error
      integer(C_INT) :: out
      integer(C_INT) :: print_level
      logical(c_bool) :: print_options
@@ -145,7 +144,6 @@ contains
     logical, intent(out) :: f_arrays
 
     f_arrays = (coptions%f_arrays .ne. 0)
-    foptions%error = coptions%error
     foptions%out = coptions%out
     foptions%print_level = coptions%print_level
     foptions%print_options = coptions%print_options
@@ -295,7 +293,6 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
 
 
   coptions%f_arrays = 0 ! (false) default to C style arrays
-  coptions%error = foptions%error
   coptions%out = foptions%out
   coptions%print_level = foptions%print_level
   coptions%print_options = foptions%print_options

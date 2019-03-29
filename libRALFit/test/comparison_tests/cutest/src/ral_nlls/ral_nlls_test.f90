@@ -28,7 +28,6 @@ module ral_nlls_workspaces
 
 
   TYPE, public :: Nlls_options
-     INTEGER :: error = 6
      INTEGER :: out = 6
      INTEGER :: print_level = 0
      INTEGER :: maxit = 100

@@ -71,8 +71,6 @@
 
         Write (rec(1),Fmt=99995)
 !       Begin OPTLIST.AWK contents
-        Write(adj,Fmt=99999) "error"
-        Write(rec(2),Fmt=99997) Adjustl(adj), options%error
         Write(adj,Fmt=99999) "out"
         Write(rec(3),Fmt=99997) Adjustl(adj), options%out
         Write(adj,Fmt=99999) "print_level"
