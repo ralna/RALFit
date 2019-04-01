@@ -192,8 +192,8 @@ contains
        Call print_bye(options,inform)
      End If
 
-6000 Format(1X,53('-'))
-6001 Format(2X,'RALFit, unconstrained nonlinear least square solver')
+6000 Format(1X,57('-'))
+6001 Format(2X,'RALFit: An unconstrained nonlinear least-squares solver')
    END SUBROUTINE NLLS_SOLVE
 
 
@@ -245,7 +245,7 @@ contains
       it_type = 'I'
     End Select
     ! inn_flag: status flag for the success of inner it convergence
-    ! Three-state '-' Not in inner iteration, 'C' Converged, 'E' not convErged
+    ! Three-state '-' in inner iteration, 'C' Converged, 'E' not convErged
     inn_flag = '-'
     ! todo: make max_tr_decrease a control variable
 
@@ -363,9 +363,9 @@ contains
        ! Test convergence !
        !++++++++++++++++++!
        ! Note: pretty printing was pushed into test_convergence
-       call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,w%normd,options,inform)
-       if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1       &
-             .Or. inform%convergence_norms == 1) Then
+       ! normd is not yet available, test on step size is ignored
+       call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,1.0_wp,options,inform)
+       if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1) Then
 !        Converged!
          Go To 100
        End If
@@ -453,7 +453,11 @@ contains
 
        rho  = -1.0_wp ! intialize rho as a negative value
 
-!      @TAG:ITER0BNR
+!      @TAG:ITER0_BANNER
+!      The following section builds and prints the initial
+!      banner containing the information related to the initial iterate,
+!      it builds different banners for each print_level.
+!      Details cand be found in tag ITER_BANNER
        If (it_type=='R') Then
          If (buildmsg(2, .True., options)) Then
            Write(rec(1), Fmt=8002)
@@ -784,7 +788,30 @@ contains
        w%gradvec(w%iter + 1) = inform%norm_g
     end if
 
-!   @TAG:ITERBNR
+!   @TAG:ITER_BANNER
+!   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+!   !       Print iterate one-line information (and possibly header)       !
+!   !                                                                      !
+!   ! Description of columns                                               !
+!   ! * Iter:  current iteration counter valuei                            !
+!   ! * error: objective value (F)                                         !
+!   ! * grad:  norm-two of gradient (JF)                                   !
+!   ! * rel grad: relative gradient norm-two (F/JF)                        !
+!   ! * Delta: TR radius                                                   !
+!   ! * rho: quantity: actual_reduction / predicted_reduction              !
+!   ! * S2IF: flags:                                                       !
+!   !     * S=TR iteration was successful (S) or unsuccessful (U)          !
+!   !     * 2=iteration used 2nd order information (Y) or not (N)          !
+!   !     * I=iteration type: regular (R) or inner (I)                     !
+!   !     * F=exit flag from inner solver. Has three states:               !
+!   !       Subproblem converged (C), or                                   !
+!   !       Subproblem not solved (E) or                                   !
+!   !       Currently inside subproblem, in which case (-)                 !
+!   !     * Note: dashes (-) in the positions of flags `S`, `2` and 'I'    !
+!   !       indicate information is not available.                         !
+!   ! * inn it: inner iteration cummulative counter                        !
+!   ! * step: size of last step                                            !
+!   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
     prncnt = inform%inner_iter + w%iter
     If ( options%model == 4 ) then
       ! account for last inner iteration
@@ -3450,10 +3477,7 @@ contains
        jobu  = 'N' ! calculate no left singular vectors
        jobvt = 'N' ! calculate no right singular vectors
        lwork = size(w%work)
-! TODO AndrewS: Lanczos.f90 causes Warning: Floating divide by 0.0_wp occurred
-! ieee=stop will break example. This needs to be addressed
-! commit e33f752da78837b1506f29fa5d0ff4c8a1ab3dbd
-      call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1,        &
+       call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1,        &
             w%work, lwork, status )
        if (status .ne. 0) Then
           ! allow to continue, but warn user and return 0.0_wp singular values

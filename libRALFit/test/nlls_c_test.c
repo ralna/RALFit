@@ -80,7 +80,6 @@ int generic_test(int model, int method){
   
   options.model = model;
   options.nlls_method = method;
-  options.print_level = 0;
   
   // Call fitting routine
   double x[2] = { 2.5, 0.25 }; // Initial guess

@@ -1655,7 +1655,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%reg_order = 0.0_wp
      call setup_workspaces(w,n,m,options,inform)
      ! switch_to_quasi_newton expect for w%hf_temp to be defined.
-     ! It is fill with zeros...
+     ! Fill with zeros...
      w%hf_temp(1:n**2) = 0.0_wp
      call switch_to_quasi_newton(w,n,options)
      call remove_workspaces(w,options)

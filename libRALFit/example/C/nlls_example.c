@@ -73,7 +73,6 @@ int main(void) {
    // Initialize options values
    struct ral_nlls_options options;
    ral_nlls_default_options(&options);
-   options.print_level=0;
 
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess

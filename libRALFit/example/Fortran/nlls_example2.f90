@@ -125,7 +125,6 @@ program nlls_example2
    real(wp), allocatable :: x(:)
    type(params_type) :: params
    integer :: inner_method
-   options%print_level = 0
    ! Data to be fitted
    m = 5
    allocate(params%t(m), params%y(m))
