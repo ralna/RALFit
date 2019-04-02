@@ -56,7 +56,7 @@ program nlls_test
 !!$     
 !!$     call generate_data_example(params%x_values,params%y_values,m)      
      call generate_data_example(params)
-     options%print_level = 3     
+     options%print_level = 5
 
      do tr_update = 1,2
         do nlls_method = 1,4
