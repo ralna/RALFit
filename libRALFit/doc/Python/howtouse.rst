@@ -95,6 +95,18 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 		 .. include:: ../common/options_print_level.txt
 			      
 		 Default is 0.
+
+   * print_options (bool)
+
+     |print_options|
+
+     Default is false.
+
+   * print_header (int)
+
+     |print_header|
+
+     Default is 30.
       
    **Choice of Algorithm**
 

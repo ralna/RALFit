@@ -16,6 +16,10 @@
 .. !|  5 | As 4, plus gives more verbose (debugging) output.                      |
 .. !+----+------------------------------------------------------------------------+
 
+.. |print_options| replace:: determines whether to print a list of all options and their values at the beggining of the solve.
+
+.. |print_header| replace:: it will print the column header every 30 iterations when ``print_level > 1``.
+
 .. |maxit| replace:: gives the number of iterations the algorithm is allowed to take before being stopped.  This is not accessed if |nlls_iterate| is used. 
 
 .. |model| replace:: specifies the model, :math:`m_k(\cdot)`, used.  Possible values are:

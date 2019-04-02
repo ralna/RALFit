@@ -251,6 +251,18 @@ The derived data type for holding options
 		 .. include:: ../common/options_print_level.txt
 			      
 		 Default is 0.
+
+   .. c:member:: bool print_options
+
+     |print_options|
+
+     Default is false.
+
+   .. c:member:: int print_header
+
+     |print_header|
+
+     Default is 30.
       
    **Choice of Algorithm**
 
