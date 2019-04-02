@@ -467,6 +467,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 !       options%error = default_options%error
 !       options%out = default_options%out
 !       options%print_level = default_options%print_level
+       options%print_options = default_options%print_options
+       options%print_header = default_options%print_header 
        options%maxit = default_options%maxit
        options%model = default_options%model
        options%type_of_method = default_options%type_of_method

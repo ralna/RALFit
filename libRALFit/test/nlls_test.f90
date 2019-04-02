@@ -63,6 +63,7 @@ program nlls_test
            do model = 1,number_of_models
 
               call reset_default_options(options)
+              options%print_options = .True.
               options%nlls_method = nlls_method
               options%tr_update_strategy = tr_update
               options%model = model_to_test(model)
