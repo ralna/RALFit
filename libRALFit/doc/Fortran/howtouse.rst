@@ -309,7 +309,6 @@ The derived data type for holding options
    
    **Printing Controls**
    
-   :f integer error [default=6]: |error|
    :f integer out [default=6]: |out|
    :f integer print_level [default=0]: |print_level|
 
@@ -476,6 +475,8 @@ The derived data type for holding information
    :f integer external_return: |external_return|
    
    :f character external_name(80): |external_name|
+
+   :f real step: |step|
    
 
 The workspace derived data type

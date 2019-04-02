@@ -29,9 +29,11 @@ Possible values are:
     * - -13
       -  Error accessing pre-allocated workspace.
     * - -14
-      -  Unsupported value in type_of_method
+      -  Unsupported value in ``type_of_method``.
+    * - -15
+      -  Unsupported value of ``inner_method`` passed in options.
     * - -101
-      -  Unsupported model in dogleg (``nlls_method = 1``).
+      -  Unsupported model in dogleg (``nlls_method=1``).
     * - -201
       -  All eigenvalues are imaginary (``nlls_method=2``).
     * - -202
@@ -44,3 +46,9 @@ Possible values are:
       -  No progress being made in ``more_sorensen`` subroutine (``nlls_method=3``).
     * - -401
       - ``model = 4`` selected, but ``exact_second_derivatives`` is set to ``false``. 
+    * - -900
+      - Illegal value of ``print_level`` in options array. Valid range is 0 to 5. 
+    * - -950
+      - Combination of method/regularization options not yet implemented
+    * - -999
+      - Unexpected error occured

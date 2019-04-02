@@ -1,17 +1,19 @@
-.. |error| replace:: the Fortran unit number for error messages.  If it is negative, these messages will be suppressed.
-
 .. |out| replace::  the Fortran unit number for general messages. If it is negative, these messages will be suppressed.
 
 .. |print_level| replace:: controls the level of output required.  Options are:
 
 .. !+----+------------------------------------------------------------------------+
-.. !| <1 | No informational output will occur.                                    |
+.. !|  0 | No informational output will occur.                                    |
 .. !+----+------------------------------------------------------------------------+
-.. !|  1 | Gives a one-line summary for each iteration.                           |
-.. ! +----+------------------------------------------------------------------------+
-.. !|  2 | As 1, plus gives a summary of the inner iteration for each iteration.  |
+.. !|  1 | Prints a brief summary when finished.                                  |
 .. !+----+------------------------------------------------------------------------+
-.. !|  3 | As 2, plus gives more verbose (debugging) output.                      |
+.. !|  2 | Gives a one-line summary for each iteration.                           |
+.. !+----+------------------------------------------------------------------------+
+.. !|  3 | As 2, but with more details.                                           |
+.. !+----+------------------------------------------------------------------------+
+.. !|  4 | As 3, plus gives a summary of the inner iteration for each iteration.  |
+.. !+----+------------------------------------------------------------------------+
+.. !|  5 | As 4, plus gives more verbose (debugging) output.                      |
 .. !+----+------------------------------------------------------------------------+
 
 .. |maxit| replace:: gives the number of iterations the algorithm is allowed to take before being stopped.  This is not accessed if |nlls_iterate| is used. 

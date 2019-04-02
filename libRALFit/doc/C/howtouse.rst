@@ -239,10 +239,6 @@ The derived data type for holding options
    
    **Printing Controls**
    
-   .. c:member:: int error 
-		 
-		 |error|
-		 Default is 6.
    .. c:member:: int out 
 
 		 |out|
@@ -580,6 +576,10 @@ The derived data type for holding information
    .. c:member:: character external_name(81)
 
 		 |external_name|
+
+   .. c:member:: double step
+
+     |step|
    
 
 The workspace derived data type

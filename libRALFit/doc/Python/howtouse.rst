@@ -83,11 +83,6 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
    
    **Printing Controls**
    
-   * error (int)
-		 
-		 |error|
-		 Default is 6.
-
    * out (int)
 
 		 |out|
@@ -392,4 +387,7 @@ This is used to hold information about the progress of the algorithm.
    *  scaled_g (float)
 
 		 |scaled_g|
+
+   *  step (float)
+     |step|
 
