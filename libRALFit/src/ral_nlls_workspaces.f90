@@ -806,9 +806,7 @@ contains
 100 continue
 
 !   Clean-up if error encountered
-    If (inform%alloc_status /= 0) Then
-      Call remove_workspaces(workspace, options)
-    End If
+    If (inform%alloc_status /= 0) Call remove_workspaces(workspace, options)
 
   end subroutine setup_workspaces
 
@@ -1099,10 +1097,10 @@ contains
        if (inform%status /= 0) goto 100
     end if
     w%allocated = .true.
-100 continue
-    If (inform%status/=0) Then
-      Call remove_workspace_calculate_step(w,options,tenJ,inner_workspace)
-    End If
+100 Continue
+
+    If (inform%status/=0) Call remove_workspace_calculate_step(w,options,tenJ,inner_workspace)
+
   end subroutine setup_workspace_calculate_step
 
   recursive subroutine remove_workspace_calculate_step(w,options,tenJ, inner_workspace)
@@ -1151,9 +1149,7 @@ contains
           end select
        end if
     end if
-    if (options%scale > 0) then
-       call remove_workspace_generate_scaling(w%generate_scaling_ws,options)
-    end if
+    if (options%scale > 0) call remove_workspace_generate_scaling(w%generate_scaling_ws,options)
 
     w%allocated = .false.
   end subroutine remove_workspace_calculate_step
@@ -1181,9 +1177,9 @@ contains
     w%allocated = .true.
 
 100 continue
-    If (inform%status /= 0) Then
-      Call remove_workspace_dogleg(w, options)
-    End If
+
+    If (inform%status /= 0) Call remove_workspace_dogleg(w, options)
+
   end subroutine setup_workspace_dogleg
 
   subroutine remove_workspace_dogleg(w,options)
@@ -1296,9 +1292,8 @@ contains
     w%allocated = .true.
 
 100 continue
-    If (inform%status/=0) Then
-      Call remove_workspace_AINT_tr(w, options)
-    End If
+
+    If (inform%status/=0) Call remove_workspace_AINT_tr(w, options)
 
   end subroutine setup_workspace_AINT_tr
 
@@ -1408,9 +1403,9 @@ contains
     w%allocated = .true.
 
 100 continue
-    If (inform%status/=0) Then
-      Call remove_workspace_min_eig_symm(w,options)
-    End If
+
+    If (inform%status/=0) Call remove_workspace_min_eig_symm(w,options)
+
   end subroutine setup_workspace_min_eig_symm
 
   subroutine remove_workspace_min_eig_symm(w,options)
@@ -1484,9 +1479,9 @@ contains
 
     w%allocated = .true.
 100 Continue
-    If (inform%status/=0) Then
-      Call remove_workspace_max_eig(w,options)
-    End If
+
+    If (inform%status/=0) Call remove_workspace_max_eig(w,options)
+
   end subroutine setup_workspace_max_eig
 
   subroutine remove_workspace_max_eig(w,options)
@@ -1556,10 +1551,10 @@ contains
     w%allocated = .true.
 
 100 continue
-    If (inform%status/=0) Then
-      ! This call duplicates some deallocs but it is ok
-      Call remove_workspace_solve_galahad(w,options)
-    End If
+
+    ! This call duplicates some deallocs but it is ok
+    If (inform%status/=0) Call remove_workspace_solve_galahad(w,options)
+
   end subroutine setup_workspace_solve_galahad
 
   subroutine remove_workspace_solve_galahad(w,options)
@@ -1618,9 +1613,7 @@ contains
     real(wp) :: A_dummy(1)
     integer :: lwork, ierr_dummy
 
-    If (allocated(w%ew)) Then
-      Deallocate(w%ew, stat=ierr_dummy)
-    End If
+    If (allocated(w%ew)) Deallocate(w%ew, stat=ierr_dummy)
     allocate(workquery(1),w%ew(n), stat = inform%alloc_status)
     If (inform%alloc_status /= 0 ) Then
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1652,12 +1645,9 @@ contains
     w%allocated = .true.
 
 100 continue
-    If (allocated(w%ew)) Then
-      Deallocate(w%ew, stat=ierr_dummy)
-    End If
-    If (inform%status/=0) Then
-      Call remove_workspace_all_eig_symm(w,options)
-    End If
+    If (allocated(w%ew)) Deallocate(w%ew, stat=ierr_dummy)
+    If (inform%status/=0) Call remove_workspace_all_eig_symm(w,options)
+
   end subroutine setup_workspace_all_eig_symm
 
   subroutine remove_workspace_all_eig_symm(w,options)
@@ -1686,16 +1676,14 @@ contains
     End If
 
     call setup_workspace_min_eig_symm(n,m,w%min_eig_symm_ws,options,inform)
-    if (inform%status /= 0) Then
-      goto 100
-    End If
+    if (inform%status /= 0) goto 100
 
     w%allocated = .true.
 
 100 continue
-    If (inform%status/=0) Then
-      Call remove_workspace_more_sorensen(w,options)
-    End If
+
+    If (inform%status/=0) Call remove_workspace_more_sorensen(w,options)
+
   end subroutine setup_workspace_more_sorensen
 
   subroutine remove_workspace_more_sorensen(w,options)
@@ -1742,9 +1730,9 @@ contains
     w%allocated = .true.
 
 100 continue
-    If (inform%status/=0) Then
-      Call remove_workspace_generate_scaling(w,options)
-    End If
+
+    If (inform%status/=0) Call remove_workspace_generate_scaling(w,options)
+
   end subroutine setup_workspace_generate_scaling
 
   subroutine remove_workspace_generate_scaling(w,options)
