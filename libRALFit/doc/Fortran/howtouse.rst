@@ -315,9 +315,9 @@ The derived data type for holding options
 
 				       .. include:: ../common/options_print_level.txt
 
-   :f integer print_options [default=false]: |print_options|
+   :f logical print_options [default=false]: |print_options|
 
-   :f logical print_header [default=30]: |print_header|
+   :f integer print_header [default=30]: |print_header|
       
    **Choice of Algorithm**
 

@@ -18,7 +18,7 @@
 
 .. |print_options| replace:: determines whether to print a list of all options and their values at the beggining of the solve.
 
-.. |print_header| replace:: it will print the column header every 30 iterations when ``print_level > 1``.
+.. |print_header| replace:: prints the column header every ``print_header`` iterations when ``print_level > 1``.
 
 .. |maxit| replace:: gives the number of iterations the algorithm is allowed to take before being stopped.  This is not accessed if |nlls_iterate| is used. 
 
