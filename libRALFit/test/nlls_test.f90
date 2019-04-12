@@ -418,6 +418,17 @@ program nlls_test
      end if
      status%status = 0
 
+    ! test for unsupported inner_method
+     call reset_default_options(options)
+     options%model = 4
+     options%inner_method = 3125
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. NLLS_ERROR_WRONG_INNER_METHOD ) then 
+        write(*,*) 'Error: wrong inner method passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
      ! test for unsupported method, with type_of_method = 2
      call reset_default_options(options)
      options%type_of_method = 2

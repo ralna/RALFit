@@ -1052,6 +1052,7 @@ contains
        call setup_workspace_solve_newton_tensor(n,m,&
             w%solve_newton_tensor_ws,&
             options, inform, tenJ, inner_workspace)
+       if (inform%status /= 0) goto 100
     else
        if ( options%type_of_method == 1) then
           select case (options%nlls_method)
