@@ -1,8 +1,9 @@
     Module ral_nlls_printing
-      Use ral_nlls_workspaces, Only: nlls_options, nlls_inform
+      Use ral_nlls_workspaces, Only: wp, nlls_options, nlls_inform
       Implicit None
       Private
-      Public                           :: buildmsg, printmsg, print_options, print_bye
+      Public                           :: buildmsg, printmsg, print_options,   &
+                                          print_bye
 
     Contains
 
@@ -181,8 +182,48 @@
         Write(rec(55),Fmt=99996) Adjustl(adj), options%update_lower_order
         Write(adj,Fmt=99999) "fortran_jacobian"
         Write(rec(56),Fmt=99996) Adjustl(adj), options%fortran_jacobian
-        Write (rec(57),Fmt=99994)
-        nrec = 57
+        Write(adj,Fmt=99999) "box_nfref_max"
+        Write(rec(57),Fmt=99997) Adjustl(adj), options%box_nfref_max
+        Write(adj,Fmt=99999) "box_ntrfail"
+        Write(rec(58),Fmt=99997) Adjustl(adj), options%box_ntrfail
+        Write(adj,Fmt=99999) "box_gamma"
+        Write(rec(59),Fmt=99998) Adjustl(adj), options%box_gamma
+        Write(adj,Fmt=99999) "box_decmin"
+        Write(rec(60),Fmt=99998) Adjustl(adj), options%box_decmin
+        Write(adj,Fmt=99999) "box_bigbnd"
+        Write(rec(61),Fmt=99998) Adjustl(adj), options%box_bigbnd
+        Write(adj,Fmt=99999) "box_wolfe_descent"
+        Write(rec(62),Fmt=99998) Adjustl(adj), options%box_wolfe_descent
+        Write(adj,Fmt=99999) "box_wolfe_curvature"
+        Write(rec(63),Fmt=99998) Adjustl(adj), options%box_wolfe_curvature
+        Write(adj,Fmt=99999) "box_kanzow_power"
+        Write(rec(64),Fmt=99998) Adjustl(adj), options%box_kanzow_power
+        Write(adj,Fmt=99999) "box_kanzow_descent"
+        Write(rec(65),Fmt=99998) Adjustl(adj), options%box_kanzow_descent
+        Write(adj,Fmt=99999) "box_quad_model_descent"
+        Write(rec(66),Fmt=99998) Adjustl(adj), options%box_quad_model_descent
+        Write(adj,Fmt=99999) "box_tr_test_step"
+        Write(rec(67),Fmt=99996) Adjustl(adj), options%box_tr_test_step
+        Write(adj,Fmt=99999) "box_wolfe_test_step"
+        Write(rec(68),Fmt=99996) Adjustl(adj), options%box_wolfe_test_step
+        Write(adj,Fmt=99999) "box_tau_max"
+        Write(rec(69),Fmt=99998) Adjustl(adj), options%box_tau_max
+        Write(adj,Fmt=99999) "box_max_ntrfail"
+        Write(rec(70),Fmt=99997) Adjustl(adj), options%box_max_ntrfail
+        Write(adj,Fmt=99999) "box_quad_match"
+        Write(rec(71),Fmt=99997) Adjustl(adj), options%box_quad_match
+        Write(adj,Fmt=99999) "box_alpha_scale"
+        Write(rec(72),Fmt=99998) Adjustl(adj), options%box_alpha_scale
+        Write(adj,Fmt=99999) "box_delta_scale"
+        Write(rec(73),Fmt=99998) Adjustl(adj), options%box_delta_scale
+        Write(adj,Fmt=99999) "box_tau_min"
+        Write(rec(74),Fmt=99998) Adjustl(adj), options%box_tau_min
+        Write(adj,Fmt=99999) "box_ls_step_maxit"
+        Write(rec(75),Fmt=99997) Adjustl(adj), options%box_ls_step_maxit
+        Write(adj,Fmt=99999) "box_linesearch_type"
+        Write(rec(76),Fmt=99997) Adjustl(adj), options%box_linesearch_type
+        Write (rec(77),Fmt=99994)
+        nrec = 77
 !       End OPTLIST.AWK contents
 
         Call printmsg(0,.False.,options,nrec,rec)
@@ -197,71 +238,118 @@
       End Subroutine print_options
 
 
-      Subroutine print_bye(options,inform)
+      Subroutine print_bye(options,inform,box)
 !       Assumes print level > 0
         Implicit None
         Type (nlls_options), Intent (In) :: options
         Type (nlls_inform), Intent (In) :: inform
+        Logical, Intent (In)           :: box
 
-        Integer                        :: nrec
-        Character (Len=80)                 :: rec(10)
+        Integer                        :: nrec, tot
+        Character (90)                 :: rec(20)
 
         Continue
 
-     If (buildmsg(2,.False.,options)) Then
-          nrec = 1
-          Write(rec(nrec), Fmt=60000)
-         Call printmsg(2, .False., options, nrec, rec)
-     End If
-
-     If (inform%status /= 0) then
-         nrec = 1
-         Write(rec(nrec), Fmt=99990) 'Error: ', inform%status
-         nrec = nrec + 1
-         Write(rec(nrec), Fmt=60000)
-         nrec = nrec + 1
-         Write(rec(nrec), Fmt=5000) trim(inform%error_message)
-         nrec = nrec + 1
-         Write(rec(nrec), Fmt=5001) inform%status
-         Call printmsg(1, .False., options, nrec, rec)
-     Else
-        If (buildmsg(1,.False.,options)) Then
-          nrec = 1
-          Write(rec(nrec), Fmt=99998) 'converged, an optimal solution was found'
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=60000)
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=99997) 'Norm of error                 ', inform%obj
-          Call printmsg(1,.False.,options,nrec,rec)
-        End If
         If (buildmsg(2,.False.,options)) Then
           nrec = 1
-          Write(rec(nrec), Fmt=99997) 'Norm of gradient              ', inform%norm_g
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=99997) 'Norm of scaled gradient       ', inform%scaled_g
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=99997) 'Step size                     ', inform%step
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=99996) 'Iteration count               ', inform%iter
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=99996) 'Function evaluations          ', inform%f_eval
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=99996) 'Gradient evaluations          ', inform%g_eval
-          nrec = nrec + 1
-          Write(rec(nrec), Fmt=99996) 'Hessian evaluations           ', inform%h_eval
+          Write (rec(nrec),Fmt=99993)
           Call printmsg(2,.False.,options,nrec,rec)
         End If
-     End If
 
-99999 Format(A)
-99998 Format(2X,'Status:',1X,A)
-99997 Format(1X,A30,4X,Es12.5e2)
-99996 Format(1X,A30,4X,I12)
-99990 Format(1X,A,4X,I0)
-60000 Format(1X,53('-'))
+        If (inform%status/=0) Then
+          nrec = 1
+          Write (rec(nrec),Fmt=99994) 'Error: ', inform%status
+          nrec = nrec + 1
+          Write (rec(nrec),Fmt=99993)
+          nrec = nrec + 1
+          Write (rec(nrec),Fmt=99992) trim(inform%error_message)
+          nrec = nrec + 1
+          Write (rec(nrec),Fmt=99991)
+          Call printmsg(1,.False.,options,nrec,rec)
+        Else
+          If (buildmsg(1,.False.,options)) Then
+            nrec = 1
+            Write (rec(nrec),Fmt=99998)                                        &
+              'converged, an optimal solution was found'
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99993)
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99997) 'Norm of error                 ',      &
+              inform%obj
+            Call printmsg(1,.False.,options,nrec,rec)
+          End If
+          If (buildmsg(2,.False.,options)) Then
+            tot = max(1,inform%iter+inform%ls_step_iter+inform%pg_step_iter)
+            nrec = 1
+            If (box) Then
+              Write (rec(nrec),Fmt=99997) 'Norm of projected gradient    ',    &
+                inform%norm_g
+              nrec = nrec + 1
+              Write (rec(nrec),Fmt=99997) 'Norm of scaled proj. gradient ',    &
+                inform%scaled_g
+            Else
+              Write (rec(nrec),Fmt=99997) 'Norm of gradient              ',    &
+                inform%norm_g
+              nrec = nrec + 1
+              Write (rec(nrec),Fmt=99997) 'Norm of scaled gradient       ',    &
+                inform%scaled_g
+            End If
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99996) 'Iteration count               ', tot
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    Trust region step         ',      &
+              inform%iter, 100.0_wp*inform%iter/tot
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    LS step                   ',      &
+              inform%ls_step_iter, 100.0_wp*inform%ls_step_iter/tot
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
+              inform%pg_step_iter, 100.0_wp*inform%pg_step_iter/tot
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99996) 'Function evaluations          ',      &
+              inform%f_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    Trust region step         ',      &
+              inform%f_eval - inform%f_eval_ls - inform%f_eval_pg,             &
+              100.0_wp*(inform%f_eval-inform%f_eval_ls-inform%f_eval_pg)/      &
+              inform%f_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    LS step                   ',      &
+              inform%f_eval_ls, 100.0_wp*real(inform%f_eval_ls)/inform%f_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
+              inform%f_eval_pg, 100.0_wp*real(inform%f_eval_pg)/inform%f_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99996) 'Gradient evaluations          ',      &
+              inform%g_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    Trust region step         ',      &
+              inform%g_eval - inform%g_eval_ls - inform%g_eval_pg,             &
+              100.0_wp*(inform%g_eval-inform%g_eval_ls-inform%g_eval_pg)/      &
+              inform%g_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    LS step                   ',      &
+              inform%g_eval_ls, 100.0_wp*real(inform%g_eval_ls)/inform%g_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
+              inform%g_eval_pg, 100.0_wp*real(inform%g_eval_pg)/inform%g_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99996) 'Hessian evaluations           ',      &
+              inform%h_eval
+            Call printmsg(2,.False.,options,nrec,rec)
+          End If
+        End If
 
-5000 Format(1X,'**',1X,A)
-5001 Format(1X,'** ABNORMAL EXIT from RALFit routine nlls_solve: ERROR =',I5)
+99999   Format (A)
+99998   Format (2X,'Status:',1X,A)
+99997   Format (1X,A30,4X,Es12.5e2)
+99996   Format (1X,A30,4X,I12)
+99995   Format (1X,A30,4X,I12,1X,'(',F5.1,'%)')
+99994   Format (1X,A,4X,I0)
+99993   Format (1X,57('-'))
+
+99992   Format (1X,'**',1X,A)
+99991   Format (1X,'** ABNORMAL EXIT from RALFit.')
       End Subroutine print_bye
 
     End Module ral_nlls_printing

@@ -29,6 +29,8 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_WORKSPACE_ERROR          =  -13
   Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_TYPE_METHOD  =  -14
   Integer, Parameter, Public :: NLLS_ERROR_WRONG_INNER_METHOD       =  -15
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -16
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -17
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -42,6 +44,10 @@ module ral_nlls_workspaces
   ! DTRS errors
   ! Tensor model errors
   Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES    = -401
+
+  ! Linesearch errors
+  Integer, Parameter, Public :: NLLS_ERROR_LS_STEP                  = -501
+  Integer, Parameter, Public :: NLLS_ERROR_PG_STEP                  = -502
 
   ! Misc errors
   Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900
@@ -247,7 +253,7 @@ module ral_nlls_workspaces
 !   scale the variables?
 !   0 - no scaling
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
-!       tiny values get set to 1.0_wp
+!       tiny values get set to one
 !   2 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
      INTEGER :: scale = 1
      REAL(wp) :: scale_max = 1.0e11_wp
@@ -303,6 +309,57 @@ module ral_nlls_workspaces
 
      ! C or Fortran storage of Jacobian?
      logical :: Fortran_Jacobian = .true.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! B O X   B O U N D   O P T I O N S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!    Memory size for the non-monotone linesearch
+     Integer :: box_nFref_max = 4
+!    Times the TR loop can fail
+     Integer :: box_ntrfail = 2 
+!    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
+     Real(Kind=wp) :: box_gamma = 0.99995_wp
+     Real(Kind=wp) :: box_decmin = 2.0_wp * 1.0e-16_wp ! macheps
+!    Magic number to consider box bound (+/-) infinity
+     Real(Kind=wp) :: box_bigbnd = 1.0e20_wp
+!    Wolfe descent condition (0<\sigma1<1/2), curvature condition (0<\sigma2)
+     Real(Kind=wp) :: box_wolfe_descent = 1.0e-4_wp
+     Real(Kind=wp) :: box_wolfe_curvature = 0.9_wp
+!    Tolerance to consider projected dir a descent direction
+!    See LS STEP Section 4 p392 Kanzow 2014
+     Real(Kind=wp) :: box_kanzow_power = 2.1_wp
+!    sqrt(mcheps)
+     Real(Kind=wp) :: box_kanzow_descent = 1.0e-8_wp
+!    sqrt(mcheps)
+     Real(Kind=wp) :: box_quad_model_descent = 1.0e-8_wp
+!    Take projected TR step when TR test is Ok?
+!    True  => take step
+!    False => force a LS or PG step
+     Logical       :: box_tr_test_step = .False.
+!    Take projected  TR step when Wolfe test is Ok?
+!    True  => take step
+!    False => force a LS or PG step
+     Logical       :: box_wolfe_test_step = .False.
+!    Threshold to determine if the projection of TR direction
+!    is too severe 0<tau_max<1
+     Real(Kind=wp) :: box_tau_max = 0.25_wp
+!    Max times TR iterations can fail without passing the various
+!    descent tests: 2? 3? 5? Ignored when proj(x)==x
+     Integer       :: box_max_ntrfail = 2
+!    Number of consecutive times quadratic model matches f(x_k+1)
+!    required before setting initial alpha step for PG step equal 
+!    to scale_alpha*alpha_k-1
+     Integer       :: box_quad_match = 1
+!    Initial step scale (if quad_i >= box_quad_i)
+     Real(Kind=wp) :: box_alpha_scale = 2.0_wp
+!    Scaling factor to use when updating Delta from LS/PG step 
+     Real(Kind=wp) :: box_Delta_scale = 2.0_wp
+!    <dTR,-g> < tau_min in order to test for descent
+     Real(Kind=wp) :: box_tau_min = 1.0e-4_wp
+     Integer       :: box_ls_step_maxit = 20
+!    LS type: 1 => Dennis-Schnable; 2 => Hager-Zhang
+     Integer       :: box_linesearch_type = 1
 
   END TYPE nlls_options
 
@@ -390,12 +447,13 @@ module ral_nlls_workspaces
 
      REAL ( KIND = wp ) :: obj = infinity
 
-!  the norm of the gradient of the objective function at the best estimate
-!   of the solution determined by NLLS_solve
+!  the norm of the gradient or projected gradient of the objective function 
+!  at the current best estimate of the solution determined by NLLS_solve
 
      REAL ( KIND = wp ) :: norm_g = infinity
 
-! the norm of the gradient, scaled by the norm of the residual
+! the norm of the gradient (or projected gradient), scaled by the norm of 
+! the residual
 
      REAL ( KIND = wp ) :: scaled_g = infinity
 
@@ -408,13 +466,38 @@ module ral_nlls_workspaces
      CHARACTER ( LEN = 80 ) :: external_name = REPEAT( ' ', 80 )
 
 ! Step size of last iteration (w%normd)
-     Real(Kind=wp) :: step = 1.0e10_wp
+     Real(Kind=wp) :: step = infinity
+
+! LS Step iterations
+     Integer :: ls_step_iter = 0
+     Integer :: f_eval_ls = 0
+     Integer :: g_eval_ls = 0
+! PG Step iterations
+     Integer :: pg_step_iter = 0
+     Integer :: f_eval_pg = 0
+     Integer :: g_eval_pg = 0
 
   END TYPE nlls_inform
 
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
+
+  Type, Public, Extends(params_base_type) :: params_box_type
+    ! See if problem has box bounds
+    Integer :: iusrbox = 0
+    Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
+    ! projection changed the direction? d /= P(d)?
+    Logical :: prjchd = .false.
+    ! Convergence metrics
+    Real(Kind=wp) :: normPD
+    ! Memory for HZLS (LS)
+    Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
+    ! Consecutive times quadratic model is accurate
+    Integer       :: quad_i = 0
+    ! Memory for nonmonotone LS
+    Integer       :: nFref = 0
+  End Type params_box_type
 
   abstract interface
      subroutine eval_hf_type(status, n, m, x, f, h, params)
@@ -796,7 +879,6 @@ contains
          goto 100
        End If
     end if
-
     call setup_workspace_calculate_step(n,m,workspace%calculate_step_ws, &
          options, inform, workspace%tenJ, workspace%iw_ptr)
     if (inform%status/=0) goto 100
@@ -943,7 +1025,6 @@ contains
     w%tensor_options%maxit = 100
     w%tensor_options%reg_order = -1.0_wp
     w%tensor_options%output_progress_vectors = .false.
-
     select case (options%inner_method)
     case (1)
        w%tensor_options%type_of_method = 2
