@@ -1393,7 +1393,7 @@ contains
        End If
     end if
     lwork = int(workquery(1))
-    if (allocated(workquery)) deallocate(workquery)
+    if (allocated(workquery)) deallocate(workquery, stat=ierr_dummy)
     allocate( w%work(lwork), stat = inform%alloc_status )
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
