@@ -478,11 +478,6 @@ The derived data type for holding options
 						  
    **Other options**
 					     
-   .. c:member:: bool calculate_svd_J
-		 
-		 |calculate_svd_J|
-		 Default is false.
-
    .. c:member:: bool output_progress_vectors
 		 
 		 |output_progress_vectors|

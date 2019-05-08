@@ -66,7 +66,6 @@ struct ral_nlls_options_d {
   bool scale_trim_min; /* if min attained, trim? (or set to 1) */
   bool scale_trim_max; /* if max attained, trim? (or set to 1) */
   bool scale_require_increase; /* scaling matrix must increase to update */
-  bool calculate_svd_J;
   bool setup_workspaces;
   bool remove_workspaces;
   int more_sorensen_maxits;

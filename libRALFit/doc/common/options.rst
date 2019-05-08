@@ -84,8 +84,6 @@
 
 .. |scale_require_increase| replace:: specifies whether or not to require :math:`{\tt D}_{i,i}` to increase before updating it.
 
-.. |calculate_svd_J| replace:: specifies whether or not to calculate the singular value decomposition of :math:`{\tt J}` at each iteration.  
-
 .. |more_sorensen_maxits| replace:: if ``nlls_method = 3``, specifies the maximum number of iterations allowed in the More-Sorensen method.
 
 .. |more_sorensen_shift| replace:: if ``nlls_method = 3``, specifies the shift to be used in the More-Sorensen method. 
