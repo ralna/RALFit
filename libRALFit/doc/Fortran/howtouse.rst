@@ -308,17 +308,21 @@ The derived data type for holding options
    This is used to hold controlling data. The components  are automatically given default values in the definition of the type.
    
    **Printing Controls**
-   
-   :f integer error [default=6]: |error|
+
    :f integer out [default=6]: |out|
+
    :f integer print_level [default=0]: |print_level|
 
 				       .. include:: ../common/options_print_level.txt
+
+   :f logical print_options [default=false]: |print_options|
+
+   :f integer print_header [default=30]: |print_header|
       
    **Choice of Algorithm**
-				   
+
    :f integer model [default=3]: |model| 
-				 
+
 	     			 .. include:: ../common/options_model.txt
 
    :f integer type_of_method [default=1]: |type_of_method|
@@ -476,6 +480,8 @@ The derived data type for holding information
    :f integer external_return: |external_return|
    
    :f character external_name(80): |external_name|
+
+   :f real step: |step|
    
 
 The workspace derived data type

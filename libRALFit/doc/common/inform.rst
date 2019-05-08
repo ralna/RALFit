@@ -28,8 +28,10 @@
 
 .. |norm_g| replace:: holds the gradient of the objective function at the best estimate of the solution determined by the package.
 
-.. |scaled_g| replace:: holds the gradient of the objective function at the best estimate of the solution determined by the package.
+.. |scaled_g| replace:: holds a scaled version of the gradient of the objective function at the best estimate of the solution determined by the package.
 
 .. |external_return| replace:: gives the error code that was returned by a call to an external routine.
 
 .. |external_name| replace:: holds the name of the external code that flagged an error.
+
+.. |step| replace:: holds the size of the last step taken.

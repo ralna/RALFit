@@ -14,12 +14,13 @@ set(CMAKE_EXE_LINKER_FLAGS "-Wl,-export-dynamic")
 
 # Set the source files that we're going to compile
 set ( SRC_FILES
-        src/ral_nlls_double.f90
+  src/ral_nlls_double.f90
 	src/ral_nlls_internal.f90
 	src/ral_nlls_dtrs_double.f90
 	src/ral_nlls_symbols.f90
 	src/ral_nlls_ciface.f90
 	src/ral_nlls_workspaces.f90
+  src/ral_nlls_printing.f90
 	)	
 
 # Support for CMAKE_BUILD_TYPE={Debug,Release,Profile}

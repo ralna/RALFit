@@ -1,10 +1,14 @@
 .. list-table::
 	   
-   * - < 1			
+   * - 0
      - No informational output will occur.
-   * - 1 
+   * - 1
+     - Prints a brief summary when finished.
+   * - 2
      - Gives a one-line summary for each iteration. 
-   * - 2 
-     - As 1, plus gives a summary of the inner iteration for each iteration.
-   * - 3 
-     - As 2, plus gives more verbose (debugging) output.
+   * - 3
+     - As 2, but with more details. 
+   * - 4 
+     - As 3, plus gives a summary of the inner iteration for each iteration.
+   * - 5 
+     - As 4, plus gives more verbose (debugging) output.

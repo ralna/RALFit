@@ -83,11 +83,6 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
    
    **Printing Controls**
    
-   * error (int)
-		 
-		 |error|
-		 Default is 6.
-
    * out (int)
 
 		 |out|
@@ -100,6 +95,18 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 		 .. include:: ../common/options_print_level.txt
 			      
 		 Default is 0.
+
+   * print_options (bool)
+
+     |print_options|
+
+     Default is false.
+
+   * print_header (int)
+
+     |print_header|
+
+     Default is 30.
       
    **Choice of Algorithm**
 
@@ -392,4 +399,7 @@ This is used to hold information about the progress of the algorithm.
    *  scaled_g (float)
 
 		 |scaled_g|
+
+   *  step (float)
+     |step|
 

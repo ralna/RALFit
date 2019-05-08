@@ -16,10 +16,6 @@ controlling data. The components must be initialised through a call to
 \noindent {\bf Components that control printing}
 \begin{description}
 
-\scalarinteger{error}
-with default value {\tt 6} that is used as the \conly{Fortran }unit number for error messages. 
-If it is negative, these messages will be suppressed.
-
 \scalarinteger{out}
 with default value {\tt 6} that is used as the \conly{Fortran }unit number for general messages. If it is negative, these messages will be suppressed.
 
@@ -33,6 +29,12 @@ with default value {\tt 0} that controls the level of output required.
 \end{description}
 The default is {\tt print\_level} $=$ 0.
 \end{description}
+
+\scalarlogical{print_options}
+with default value {\tt false}, determines whether to print a list of all options and their values at the beggining of the solve.
+
+\scalarinteger{print_header}
+with default value {\tt 30}, it will print the column header every 30 iterations when {\tt print\_level} is greater than 1.
 
 \noindent {\bf Components that control the main iteration}.
 

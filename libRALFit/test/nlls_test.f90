@@ -12,26 +12,20 @@ program nlls_test
   type( NLLS_inform )  :: status
   type( NLLS_options ) :: options
   type( user_type ), target :: params
-  real(wp), allocatable :: v(:),w(:),x(:),y(:),z(:)
-  real(wp), allocatable :: A(:,:), B(:,:), C(:,:)
-  real(wp), allocatable :: results(:), resvec(:)
+  real(wp), allocatable :: w(:),x(:)
+  real(wp), allocatable :: resvec(:)
   real(wp) :: resvec_error
-  real(wp) :: alpha, beta, gamma, delta
-  integer :: m, n, i, no_errors_helpers, no_errors_main, info
+  integer :: m, n, i, no_errors_helpers, no_errors_main
   integer :: nlls_method, model, tr_update, inner_method
   logical :: test_all, test_subs
-  character (len = 80) :: expected_string
   integer :: fails
 
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
 
-  type( NLLS_workspace ) :: work
-
-  options%error = 18
-  options%out   = 17 
+  options%out   = 17
+  options%print_level = 0
   open(unit = options%out, file="nlls_test.out")
-  open(unit = options%error, file="nlls_test_error.out")
   
   test_all = .true.
   test_subs = .true.
@@ -62,13 +56,14 @@ program nlls_test
 !!$     
 !!$     call generate_data_example(params%x_values,params%y_values,m)      
      call generate_data_example(params)
-     options%print_level = 3     
+     options%print_level = 5
 
      do tr_update = 1,2
         do nlls_method = 1,4
            do model = 1,number_of_models
 
               call reset_default_options(options)
+              options%print_options = .True.
               options%nlls_method = nlls_method
               options%tr_update_strategy = tr_update
               options%model = model_to_test(model)
@@ -419,6 +414,17 @@ program nlls_test
      call solve_basic(X,params,options,status)
      if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_METHOD ) then 
         write(*,*) 'Error: unsupported method passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+    ! test for unsupported inner_method
+     call reset_default_options(options)
+     options%model = 4
+     options%inner_method = 3125
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. NLLS_ERROR_WRONG_INNER_METHOD ) then 
+        write(*,*) 'Error: wrong inner method passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0

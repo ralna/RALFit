@@ -196,23 +196,14 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          PyErr_SetString(PyExc_RuntimeError, "Non-string option, can't interpret!");
          return false;
       }
-      if(strcmp(key_name, "error")==0) {
-	long v = PyInt_AsLong(value);
-	if(v==-1 && PyErr_Occurred()) {
-	  PyErr_SetString(PyExc_RuntimeError, "options['error'] must be an integer.");
-	  return false;
-	}
-	options->error = (int) v;
-	continue;
-      }
       if(strcmp(key_name, "out")==0) {
-	long v = PyInt_AsLong(value);
-	if(v==-1 && PyErr_Occurred()) {
-	  PyErr_SetString(PyExc_RuntimeError, "options['out'] must be an integer.");
-	  return false;
-	}
-	options->out = (int) v;
-	continue;
+      	long v = PyInt_AsLong(value);
+	      if(v==-1 && PyErr_Occurred()) {
+      	  PyErr_SetString(PyExc_RuntimeError, "options['out'] must be an integer.");
+       	  return false;
+      	}
+      	options->out = (int) v;
+      	continue;
       }
       if(strcmp(key_name, "print_level")==0) {
          long v = PyInt_AsLong(value);
@@ -221,6 +212,27 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
             return false;
          }
          options->print_level = (int) v;
+         continue;
+      }
+      if(strcmp(key_name, "print_options")==0) {
+  	    int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+		    if (vint == 1) {
+	        options->print_options=true;
+      	} else if (vint == 0) {
+      	  options->print_options=false;
+      	} else {
+    	    PyErr_SetString(PyExc_RuntimeError, "options['print_options'] must be a bool.");
+      	  return false;
+	      }
+      	continue;
+      }
+      if(strcmp(key_name, "print_header")==0) {
+         long v = PyInt_AsLong(value);
+         if(v==-1 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['print_header'] must be an integer.");
+            return false;
+         }
+         options->print_header = (int) v;
          continue;
       }
       if(strcmp(key_name, "maxit")==0) {
@@ -737,6 +749,7 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyDict_SetItemString(pyinfo, "obj", PyFloat_FromDouble(inform->obj));
    PyDict_SetItemString(pyinfo, "norm_g", PyFloat_FromDouble(inform->norm_g));
    PyDict_SetItemString(pyinfo, "scaled_g",PyFloat_FromDouble(inform->scaled_g));
+   PyDict_SetItemString(pyinfo, "step",PyFloat_FromDouble(inform->step));
 
    return pyinfo;
 }

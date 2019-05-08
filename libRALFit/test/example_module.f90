@@ -5,7 +5,6 @@ module example_module
   use :: ral_nlls_workspaces
   implicit none 
 
-  integer, parameter :: wp = kind(1.0d0)
   type, extends( params_base_type ) :: user_type
      real(wp), allocatable :: x_values(:)
      real(wp), allocatable :: y_values(:)
@@ -15,7 +14,7 @@ module example_module
 contains
   
   
-SUBROUTINE eval_F( status, n, m, X, f, params)
+SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
 !  -------------------------------------------------------------------
 !  eval_F, a subroutine for evaluating the function f at a point X
@@ -25,7 +24,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
+       INTEGER, INTENT( IN ) :: n_dummy, m
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
        class( params_base_type ), intent(inout) :: params
@@ -57,22 +56,22 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        
      END SUBROUTINE eval_F
 
-     subroutine eval_F_error( status, n, m, X, f, params)
+     subroutine eval_F_error( status, n_dummy, m_dummy, X_dummy, f_dummy, params_dummy)
        ! a fake eval_f to flag an error 
        USE ISO_FORTRAN_ENV
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
-       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
-       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(inout) :: params
+       INTEGER, INTENT( IN ) :: n_dummy, m_dummy
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f_dummy
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X_dummy
+       class( params_base_type ), intent(inout) :: params_dummy
 
        status = -1
        
      end subroutine eval_F_error
 
-     SUBROUTINE eval_J( status, n, m, X, J, params)
+     SUBROUTINE eval_J( status, n_dummy, m, X, J, params)
 
 !  -------------------------------------------------------------------
 !  eval_J, a subroutine for evaluating the Jacobian J at a point X
@@ -82,7 +81,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
+       INTEGER, INTENT( IN ) :: n_dummy, m
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
        REAL ( wp ), DIMENSION( * ),INTENT( IN ) :: X
        class( params_base_type ), intent(inout) :: params
@@ -122,7 +121,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
      END SUBROUTINE eval_J
 
-     SUBROUTINE eval_J_c( status, n, m, X, J, params)
+     SUBROUTINE eval_J_c( status, n_dummy, m, X, J, params)
 
 !  -------------------------------------------------------------------
 !  eval_J, a subroutine for evaluating the Jacobian J at a point X
@@ -132,7 +131,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
+       INTEGER, INTENT( IN ) :: n_dummy, m
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
        REAL ( wp ), DIMENSION( * ),INTENT( IN ) :: X
        class( params_base_type ), intent(inout) :: params
@@ -177,22 +176,22 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
 
      
-     subroutine eval_J_error( status, n, m, X, J, params)
+     subroutine eval_J_error( status, n_dummy, m_dummy, X_dummy, J_dummy, params_dummy)
        ! a fake eval_J to flag an error 
        USE ISO_FORTRAN_ENV
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
-       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
-       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(inout) :: params
+       INTEGER, INTENT( IN ) :: n_dummy, m_dummy
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J_dummy
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X_dummy
+       class( params_base_type ), intent(inout) :: params_dummy
 
        status = -1
        
      end subroutine eval_J_error
 
-     SUBROUTINE eval_H( status, n, m, X, f, h, params)
+     SUBROUTINE eval_H( status, n_dummy, m, X, f, h, params)
 
 !  -------------------------------------------------------------------
 !  eval_H, a subroutine for evaluating the second derivative hessian terms
@@ -202,7 +201,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
+       INTEGER, INTENT( IN ) :: n_dummy, m
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: f
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: h
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
@@ -249,7 +248,7 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
        
      END SUBROUTINE eval_H
 
-     subroutine eval_H_error( status, n, m, X, f, h, params)
+     subroutine eval_H_error( status, n_dummy, m_dummy, X_dummy, f_dummy, h_dummy, params_dummy)
 
 !  -------------------------------------------------------------------
 !  a fake eval_H for flagging an error
@@ -259,11 +258,11 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
-       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: f
-       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: h
-       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
-       class( params_base_type ), intent(inout) :: params
+       INTEGER, INTENT( IN ) :: n_dummy, m_dummy
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: f_dummy
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: h_dummy
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X_dummy
+       class( params_base_type ), intent(inout) :: params_dummy
 
        status = -1
        
@@ -468,6 +467,8 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
 !       options%error = default_options%error
 !       options%out = default_options%out
 !       options%print_level = default_options%print_level
+       options%print_options = default_options%print_options
+       options%print_header = default_options%print_header 
        options%maxit = default_options%maxit
        options%model = default_options%model
        options%type_of_method = default_options%type_of_method
@@ -1657,6 +1658,9 @@ SUBROUTINE eval_F( status, n, m, X, f, params)
      options%type_of_method = 2
      options%reg_order = 0.0_wp
      call setup_workspaces(w,n,m,options,inform)
+     ! switch_to_quasi_newton expect for w%hf_temp to be defined.
+     ! Fill with zeros...
+     w%hf_temp(1:n**2) = 0.0_wp
      call switch_to_quasi_newton(w,n,options)
      call remove_workspaces(w,options)
 

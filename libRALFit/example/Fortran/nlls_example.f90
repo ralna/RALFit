@@ -26,7 +26,7 @@ contains
       real(wp) :: x1, x2
 
       x1 = x(1)
-      x2 = x(2)
+      x2 = x(n)
       select type(params)
       type is(params_type)
          r(1:m) = x1 * exp(x2*params%t(:)) - params%y(:)
@@ -48,7 +48,7 @@ contains
       real(wp) :: x1, x2
 
       x1 = x(1)
-      x2 = x(2)
+      x2 = x(n)
       select type(params)
       type is(params_type)
          J(  1:  m) = exp(x2*params%t(1:m))                     ! J_i1

@@ -265,20 +265,23 @@ latex_elements['preamble'] = '\usepackage{amsmath}\n\usepackage{amssymb}\n'
 #####################################################
 # add LaTeX macros 
 
-f = file('common/RALFit_header.sty')
+f = open('common/RALFit_header.sty', 'r')
+flines = f.readlines()
+
 
 try:
     imgmath_latex_preamble  # check whether this is already defined
 except NameError:
     imgmath_latex_preamble = ""
 
-for macro in f:
+for macro in flines:
     # used when building latex and pdf versions
     latex_elements['preamble'] += macro + '\n'
     # used when building html version
     imgmath_latex_preamble += macro + '\n'
 # (from http://stackoverflow.com/questions/9728292/creating-latex-math-macros-within-sphinx)
 
+f.close()
 #####################################################
 
 # Grouping the document tree into LaTeX files. List of tuples
