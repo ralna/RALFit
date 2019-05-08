@@ -420,8 +420,6 @@ The derived data type for holding options
 						  
    **Other options**
 					     
-   :f logical calculate_svd_J [default=false]: |calculate_svd_J|
-
    :f logical output_progress_vectors [default=false]: |output_progress_vectors|
    
    **Internal options to help solving a regularized problem implicitly**

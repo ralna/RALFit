@@ -153,8 +153,6 @@
         Write(rec(41),Fmt=99996) Adjustl(adj), options%scale_trim_max
         Write(adj,Fmt=99999) "scale_require_increase"
         Write(rec(42),Fmt=99996) Adjustl(adj), options%scale_require_increase
-        Write(adj,Fmt=99999) "calculate_svd_j"
-        Write(rec(43),Fmt=99996) Adjustl(adj), options%calculate_svd_j
         Write(adj,Fmt=99999) "setup_workspaces"
         Write(rec(44),Fmt=99996) Adjustl(adj), options%setup_workspaces
         Write(adj,Fmt=99999) "remove_workspaces"

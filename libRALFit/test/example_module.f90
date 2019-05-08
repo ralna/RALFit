@@ -504,7 +504,6 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%scale_trim_max = default_options%scale_trim_max
        options%scale_trim_min = default_options%scale_trim_min
        options%scale_require_increase = default_options%scale_require_increase
-       options%calculate_svd_J = default_options%calculate_svd_J
        options%setup_workspaces = default_options%setup_workspaces
        options%remove_workspaces = default_options%remove_workspaces
        options%more_sorensen_maxits = default_options%more_sorensen_maxits
@@ -2088,40 +2087,6 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call reset_default_options(options)
      
    end subroutine shift_matrix_tests
-
-
-   subroutine get_svd_J_tests(options,fails)
-     
-     type( nlls_options ), intent(inout) :: options
-     integer, intent(out) :: fails
-     
-     real(wp), allocatable :: J(:)
-     real(wp) :: s1, sn
-     integer :: n,m, info
-     type( nlls_workspace ) :: work
-     type( nlls_workspace ), Target :: iw
-     type( nlls_inform ) :: status
-
-     
-     fails = 0 
-     work%iw_ptr => iw
-     iw%iw_ptr => iw
-          
-     n = 2
-     m = 3
-     allocate(J(n*m)) 
-     J = 1.0_wp
-     
-     call get_svd_J(n,m,J,s1,sn,options,status,info,work%get_svd_J_ws)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
-        write(*,*) 'Error: workspace error not flagged when workspaces not setup'
-        fails = fails + 1
-     end if
-     
-     call reset_default_options(options)    
-
-   end subroutine get_svd_J_tests
-
    
    
    subroutine error_message_tests(options,fails)

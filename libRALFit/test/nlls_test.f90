@@ -102,7 +102,6 @@ program nlls_test
      options%inner_method = 2 
      options%print_level = 1
      options%exact_second_derivatives = .true.
-     options%calculate_svd_J = .true.
      
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
@@ -633,9 +632,6 @@ program nlls_test
 
      call shift_matrix_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-
-     call get_svd_J_tests(options,fails)
-     no_errors_helpers = no_errors_helpers + fails   
      
      call error_message_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails

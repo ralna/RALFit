@@ -571,20 +571,6 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
       }
 
            
-      if(strcmp(key_name, "calculate_svd_J")==0) {
-	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
-	
-	if (vint == 1){
-	  options->calculate_svd_J=true;
-	}else if (vint == 0){
-	  options->calculate_svd_J=false;
-	}else{
-	  PyErr_SetString(PyExc_RuntimeError, "options['calculate_svd_J'] must be a bool.");
-	  return false;
-	}
-	continue;
-      }
-
       if(strcmp(key_name, "setup_workspaces")==0) {
 	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
 	

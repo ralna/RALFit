@@ -323,11 +323,6 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 						  
    **Other options**
 					     
-   *  calculate_svd_J (bool)
-		 
-		 |calculate_svd_J|
-		 Default is false.
-
    *  output_progress_vectors (bool)
 		 
 		 |output_progress_vectors|

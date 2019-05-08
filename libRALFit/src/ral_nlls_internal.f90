@@ -66,7 +66,7 @@ module ral_nlls_internal
     public :: mult_jt, solve_spd, solve_general, matmult_inner
     public :: matmult_outer, outer_product, min_eig_symm, max_eig, all_eig_symm
     public :: remove_workspaces, setup_workspaces
-    public :: get_svd_j, calculate_step, evaluate_model
+    public :: calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info, rank_one_update
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix
@@ -221,7 +221,6 @@ contains
     REAL( wp ), DIMENSION( m ), INTENT( IN ), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
 
-    integer :: svdstatus
     integer :: i, no_reductions, max_tr_decrease, prncnt
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue, normX
@@ -234,7 +233,6 @@ contains
     Character(Len=1) :: it_type, inn_flag
 
 !   thread-safe inits
-    svdstatus = 0
     max_tr_decrease = 100
     bad_allocate = .false.
     num_successful_steps = 0
@@ -323,13 +321,6 @@ contains
           w%Delta = options%initial_radius_scale * (Jmax**2)
        else
           w%Delta = options%initial_radius
-       end if
-
-       if ( options%calculate_svd_J ) then
-          ! calculate the svd of J (if needed)
-          call get_svd_J(n,m,w%J,&
-               w%smallest_sv(1), w%largest_sv(1), &
-               options,inform,svdstatus,w%get_svd_J_ws)
        end if
 
        w%normF = norm2(w%f(1:m))
@@ -633,12 +624,6 @@ contains
              call scale_J_by_weights(w%J,n,m,weights,options)
           end if
 
-          if ( options%calculate_svd_J ) then
-             call get_svd_J(n,m,w%J,&
-                  w%smallest_sv(w%iter + 1), w%largest_sv(w%iter + 1), &
-                  options,inform,svdstatus,w%get_svd_J_ws)
-          end if
-
           ! g = -J^Tf
           call mult_Jt(w%J,n,m,w%fnew,w%g,options)
           w%g = -w%g
@@ -903,14 +888,6 @@ contains
          bad_allocate = .true.
        end if
     end if
-    if ((.not.bad_allocate) .And. options%calculate_svd_J) then
-       if (allocated(inform%smallest_sv) ) deallocate(inform%smallest_sv, stat=ierr_dummy)
-       allocate(inform%smallest_sv(w%iter + 1), stat=inform%alloc_status)
-       if (inform%alloc_status /= 0) bad_allocate = .true.
-       if (allocated(inform%largest_sv) ) deallocate(inform%largest_sv)
-       allocate(inform%largest_sv(w%iter + 1), stat=inform%alloc_status)
-       if (inform%alloc_status /= 0) bad_allocate = .true.
-    end if
 
     if (bad_allocate) then
        if (allocated(inform%resvec)) deallocate(inform%resvec ,stat=ierr_dummy)
@@ -934,7 +911,6 @@ contains
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
 3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.')
-3140 FORMAT('Warning: Error when calculating svd, status = ',I0)
   end subroutine nlls_iterate
 
 
@@ -3447,67 +3423,6 @@ contains
           AplusSigma(i,i) = AplusSigma(i,i) + sigma
        end do
      end subroutine shift_matrix
-
-     subroutine get_svd_J(n,m,J,s1,sn,options,inform,status,w)
-       Implicit None
-       integer, intent(in) :: n,m
-       real(wp), intent(in) :: J(:)
-       real(wp), intent(out) :: s1, sn
-       type( nlls_options ) :: options
-       type( nlls_inform ), intent(inout) :: inform
-       integer, intent(out) :: status
-       type( get_svd_J_work ) :: w
-
-       !  Given an (m x n)  matrix J held by columns as a vector,
-       !  this routine returns the largest and smallest singular values
-       !  of J.
-
-       character(Len=1) :: jobu, jobvt
-       integer :: lwork
-       Character(Len=80) :: rec(3)
-       Integer :: nrec
-
-       If (.not. w%allocated) Then
-         status = NLLS_ERROR_WORKSPACE_ERROR
-         inform%status = NLLS_ERROR_WORKSPACE_ERROR
-         goto 100
-       End If
-
-       w%Jcopy(:) = J(:)
-       jobu  = 'N' ! calculate no left singular vectors
-       jobvt = 'N' ! calculate no right singular vectors
-       lwork = size(w%work)
-       call dgesvd( JOBU, JOBVT, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1,        &
-            w%work, lwork, status )
-       if (status .ne. 0) Then
-          ! allow to continue, but warn user and return 0.0_wp singular values
-          s1 = 0.0_wp
-          sn = 0.0_wp
-       else
-          s1 = w%S(1)
-          sn = w%S(n)
-       end if
-
-       If (buildmsg(5,.False.,options)) Then
-         Write(rec(1), Fmt=99998)
-         Write(rec(2), Fmt=99997)
-         If (status==0) Then
-           Write(rec(3), Fmt=99996) s1, sn, s1/sn, 'Ok'
-         Else
-           Write(rec(3), Fmt=99995) status
-         End If
-         nrec = 3
-         Call printmsg(5,.False.,options, nrec, rec)
-       End If
-
-
-100   continue
-99998 Format ('*** SVD(J) information LAPACK dgesvd ***')
-99997 Format (1X,' min eig | max ieg | cond(J) | return')
-99996 Format (1X,3(Es9.2e2,1X),A7)
-99995 Format (1X,'      ??        ??        ??',1X,I7)
-
-     end subroutine get_svd_J
 
 
      ! routines needed for the Newton tensor model
