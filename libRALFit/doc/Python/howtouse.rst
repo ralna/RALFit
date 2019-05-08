@@ -139,24 +139,6 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 		 |exact_second_derivatives|
 		 Default is false.
 
-   **Solving a regularized problem**
-
-   *  regularization (int)
-      
-		 |regularization|
-					  
-		 .. include:: ../common/options_regularization.txt
-		 Default is 0.
-					  
-   *  regularization_term (float)
-
-		 |regularization_term|
-		 Default is 0.0.
-						
-   *  regularization_power (float)
-      
-		 |regularization_power|
-		 Default is 0.0.
 
    **Stopping rules**
 
@@ -245,6 +227,12 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 		 .. include:: ../common/options_tr_update_strategy.txt
 		    
 		 Default is 1.
+
+    *  reg_order (float)
+		 
+		 |reg_order|
+		 Default is 0.0.
+
 	 
    **Scaling options**
    
@@ -298,12 +286,7 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 		 Default is 1.
 
    **Newton-Tensor options** These options are used if ``model=4``
-					     
-   *  reg_order (float)
-		 
-		 |reg_order|
-		 Default is 0.0.
-		 
+					     		 
    *  inner_method (int)
 		 
 		 |inner_method| 
@@ -349,7 +332,26 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 		 
 		 |output_progress_vectors|
 		 Default is false.
-   
+
+   **Internal options to help solving a regularized problem implicitly**
+
+   *  regularization (int)
+      
+		 |regularization|
+					  
+		 .. include:: ../common/options_regularization.txt
+		 Default is 0.
+					  
+   *  regularization_term (float)
+
+		 |regularization_term|
+		 Default is 0.0.
+						
+   *  regularization_power (float)
+      
+		 |regularization_power|
+		 Default is 0.0.
+
 
 .. _info:
 
