@@ -335,16 +335,6 @@ The derived data type for holding options
 						    
    :f logical exact_second_derivatives [default=false]: |exact_second_derivatives|
 
-   **Solving a regularized problem**
-
-   :f integer regularization [default=0]: |regularization|
-					  
-					  .. include:: ../common/options_regularization.txt
-					  
-   :f real regularization_term [default=0.0]: |regularization_term|
-						
-   :f real regularization_power [default=0.0]: |regularization_power|
-
 
    **Stopping rules**
 
@@ -384,7 +374,9 @@ The derived data type for holding options
    :f integer tr_update_strategy [default=1]: |tr_update_strategy|
 
 					      .. include:: ../common/options_tr_update_strategy.txt
-	 
+
+   :f real reg_order [default=0.0]: |reg_order|
+							   
    **Scaling options**
    
    :f integer scale [default=1]: |scale|
@@ -410,8 +402,6 @@ The derived data type for holding options
 
    **Newton-Tensor options** These options are used if ``model=4``
 					     
-   :f real reg_order [default=0.0]: |reg_order|
-		
    :f integer inner_method [default=2]: |inner_method| 
 
 					.. include:: ../common/options_inner_method.txt
@@ -430,10 +420,18 @@ The derived data type for holding options
 						  
    **Other options**
 					     
-   :f logical calculate_svd_J [default=false]: |calculate_svd_J|
-
    :f logical output_progress_vectors [default=false]: |output_progress_vectors|
    
+   **Internal options to help solving a regularized problem implicitly**
+
+   :f integer regularization [default=0]: |regularization|
+					  
+					  .. include:: ../common/options_regularization.txt
+					  
+   :f real regularization_term [default=0.0]: |regularization_term|
+						
+   :f real regularization_power [default=0.0]: |regularization_power|
+
 
 
 The derived data type for holding information

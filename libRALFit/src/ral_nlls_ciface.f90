@@ -56,7 +56,6 @@ module ral_nlls_ciface
      logical(c_bool) :: scale_trim_min
      logical(c_bool) :: scale_trim_max
      logical(c_bool) :: scale_require_increase
-     logical(c_bool) :: calculate_svd_J
      logical(c_bool) :: setup_workspaces
      logical(c_bool) :: remove_workspaces
      integer(c_int) :: more_sorensen_maxits
@@ -213,7 +212,6 @@ contains
     foptions%scale_trim_max = coptions%scale_trim_max
     foptions%scale_trim_min = coptions%scale_trim_min
     foptions%scale_require_increase = coptions%scale_require_increase
-    foptions%calculate_svd_J = coptions%calculate_svd_J
     foptions%setup_workspaces = coptions%setup_workspaces
     foptions%remove_workspaces = coptions%remove_workspaces
     foptions%more_sorensen_maxits = coptions%more_sorensen_maxits
@@ -389,7 +387,6 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%scale_trim_max = foptions%scale_trim_max
   coptions%scale_trim_min = foptions%scale_trim_min
   coptions%scale_require_increase = foptions%scale_require_increase
-  coptions%calculate_svd_J = foptions%calculate_svd_J
   coptions%setup_workspaces = foptions%setup_workspaces
   coptions%remove_workspaces = foptions%remove_workspaces
   coptions%more_sorensen_maxits = foptions%more_sorensen_maxits

@@ -44,13 +44,13 @@
 
 .. |initial_radius| replace:: specifies the initial trust-region radius, :math:`\Delta`.
 
-.. |regularization| replace:: specifies if a regularized non-linear least squares 
-			      problem needs to be solved, and if so, what method is 
-			      used to solve it.  Possible values are:
+.. |regularization| replace:: specifies the method by which a regularized non-linear least squares 
+			      problem is solved implicitly.  Is designed to be used when solving the
+			      nonlinear least-squares problem recursively.  Possible values are:
 
-.. |regularization_term| replace:: specifies the regularization weight, :math:`\sigma`, used in the least-squares problem.
+.. |regularization_term| replace:: specifies the regularization weight, :math:`\sigma`, used when implicitly solving the least-squares problem.
 
-.. |regularization_power| replace:: specifies the regularization index, :math:`p`, used in the least-squares problem.
+.. |regularization_power| replace:: specifies the regularization index, :math:`p`, used when implicitly solving  the least-squares problem.
 
 .. |maximum_radius| replace:: specifies the maximum size permitted for the trust-region radius.
 
@@ -84,8 +84,6 @@
 
 .. |scale_require_increase| replace:: specifies whether or not to require :math:`{\tt D}_{i,i}` to increase before updating it.
 
-.. |calculate_svd_J| replace:: specifies whether or not to calculate the singular value decomposition of :math:`{\tt J}` at each iteration.  
-
 .. |more_sorensen_maxits| replace:: if ``nlls_method = 3``, specifies the maximum number of iterations allowed in the More-Sorensen method.
 
 .. |more_sorensen_shift| replace:: if ``nlls_method = 3``, specifies the shift to be used in the More-Sorensen method. 
@@ -98,7 +96,7 @@
 
 .. |hybrid_switch_its| replace:: if ``model=3``, sets how many iterates in a row must the condition in the definition of ``hybrid_tol`` hold before a switch.
 
-.. |reg_order| replace:: if ``nlls_method = 4``, the order of the regularization used (:math:`p` in **TODO** (eq:: reg_subproblem)).   If ``reg_order = 0.0``, then the algorithm chooses an appropriate value of :math:`p`. 
+.. |reg_order| replace:: if ``type_of_method = 2``, the order of the regularization used (:math:`p` in  (:eq:`regsub`)).   If ``reg_order = 0.0``, then the algorithm chooses an appropriate value of :math:`p`. 
 
 .. |inner_method| replace::  if ``nlls_method = 4``, specifies the method used to pass in the regularization parameter to the inner non-linear least squares solver.   Possible values are:
 

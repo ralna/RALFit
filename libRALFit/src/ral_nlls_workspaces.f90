@@ -262,8 +262,6 @@ module ral_nlls_workspaces
      LOGICAL :: scale_trim_max = .TRUE.
      LOGICAL :: scale_require_increase = .FALSE.
 
-     logical :: calculate_svd_J = .false.
-
      logical :: setup_workspaces = .true.
      logical :: remove_workspaces = .true.
 
@@ -652,11 +650,6 @@ module ral_nlls_workspaces
      type( generate_scaling_work ) :: generate_scaling_ws
   end type calculate_step_work
 
-  type, public :: get_svd_J_work ! workspace for subroutine get_svd_J
-     logical :: allocated = .false.
-     real(wp), allocatable :: Jcopy(:), S(:), work(:)
-  end type get_svd_J_work
-
   type, public :: tenJ_type ! workspace for evaltensor_J
      logical :: allocated = .false.
      real(wp), allocatable :: Hs(:,:), Js(:) ! work arrays for evaltensor_f
@@ -685,7 +678,6 @@ module ral_nlls_workspaces
      real(wp), allocatable :: resvec(:), gradvec(:)
      real(wp), allocatable :: largest_sv(:), smallest_sv(:)
      type ( calculate_step_work ) :: calculate_step_ws
-     type ( get_svd_J_work ) :: get_svd_J_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
      type (tenJ_type ) :: tenJ
@@ -780,30 +772,6 @@ contains
             goto 100
           End If
        end if
-    end if
-
-    if( options%calculate_svd_J ) then
-       if (.not. allocated(workspace%largest_sv)) then
-          allocate(workspace%largest_sv(options%maxit + 1), &
-               stat = inform%alloc_status)
-          If (inform%alloc_status /= 0) Then
-            inform%bad_alloc = 'setup_workspaces'
-            inform%status = NLLS_ERROR_ALLOCATION
-            goto 100
-          End If
-       end if
-       if (.not. allocated(workspace%smallest_sv)) then
-          allocate(workspace%smallest_sv(options%maxit + 1), &
-               stat = inform%alloc_status)
-          If (inform%alloc_status /= 0) Then
-            inform%bad_alloc = 'setup_workspaces'
-            inform%status = NLLS_ERROR_ALLOCATION
-            goto 100
-          End If
-       end if
-       call setup_workspace_get_svd_J(n,m,workspace%get_svd_J_ws, &
-            options, inform)
-       if (inform%status /= 0) goto 100
     end if
 
     if( .not. allocated(workspace%J)) then
@@ -915,12 +883,6 @@ contains
     if(allocated(workspace%JNewton)) deallocate(workspace%JNewton, stat=ierr_dummy )
     if(allocated(workspace%XNewton)) deallocate(workspace%XNewton, stat=ierr_dummy )
 
-    if( options%calculate_svd_J ) then
-       if (allocated(workspace%largest_sv)) deallocate(workspace%largest_sv, stat=ierr_dummy)
-       if (allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv, stat=ierr_dummy)
-       call remove_workspace_get_svd_J(workspace%get_svd_J_ws, options)
-    end if
-
     if(allocated(workspace%J)) deallocate(workspace%J, stat=ierr_dummy )
     if(allocated(workspace%f)) deallocate(workspace%f, stat=ierr_dummy )
     if(allocated(workspace%fnew)) deallocate(workspace%fnew, stat=ierr_dummy )
@@ -937,65 +899,6 @@ contains
 
   end subroutine remove_workspaces
 
-  subroutine setup_workspace_get_svd_J(n,m,w,options,inform)
-    implicit none
-    integer, intent(in) :: n, m
-    type( get_svd_J_work ), intent(out) :: w
-    type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
-
-    integer :: lwork
-    character(Len=1) :: jobu, jobvt
-    Integer :: ierr_dummy
-
-    allocate( w%Jcopy(n*m),w%S(n),w%work(1),stat=inform%alloc_status)
-    If (inform%alloc_status /= 0) Then
-      inform%bad_alloc = 'setup_workspace_get_svd_J'
-      inform%status = NLLS_ERROR_ALLOCATION
-      goto 100
-    End If
-
-    jobu  = 'N' ! calculate no left singular vectors
-    jobvt = 'N' ! calculate no right singular vectors
-
-    ! make a workspace query....
-    call dgesvd( jobu, jobvt, n, m, w%Jcopy, n, w%S, w%S, 1, w%S, 1, &
-         w%work, -1, inform%external_return )
-    If ( inform%external_return /= 0 ) Then
-      inform%status = NLLS_ERROR_FROM_EXTERNAL
-      inform%external_name = "lapack_dgesvd"
-      goto 100
-    End If
-
-    lwork = int(w%work(1))
-    if (allocated(w%work)) deallocate(w%work, stat=ierr_dummy)
-    allocate(w%work(lwork), stat=inform%alloc_status)
-    If (inform%alloc_status /= 0) Then
-      inform%bad_alloc = 'setup_workspace_get_svd_J'
-      inform%status = NLLS_ERROR_ALLOCATION
-      goto 100
-    End If
-
-    w%allocated = .true.
-
-100 continue
-
-    If ( inform%alloc_status /= 0 ) Then
-      Call remove_workspace_get_svd_J(w, options)
-    End If
-  end subroutine setup_workspace_get_svd_J
-
-  subroutine remove_workspace_get_svd_J(w,options)
-    implicit none
-    type( get_svd_J_work ), Intent(InOut) :: w
-    type( nlls_options ), Intent(In) :: options
-
-    if( allocated(w%Jcopy) ) deallocate( w%Jcopy )
-    if( allocated(w%S) ) deallocate( w%S )
-    if( allocated(w%work) ) deallocate( w%work )
-
-    w%allocated = .false.
-  end subroutine remove_workspace_get_svd_J
 
   subroutine setup_workspace_solve_newton_tensor(n,m,w,options,inform,tenJ,inner_workspace)
     implicit none
@@ -1474,7 +1377,7 @@ contains
        End If
     end if
     lwork = int(workquery(1))
-    if (allocated(workquery)) deallocate(workquery)
+    if (allocated(workquery)) deallocate(workquery, stat=ierr_dummy)
     allocate( w%work(lwork), stat = inform%alloc_status )
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION

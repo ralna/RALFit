@@ -1,4 +1,5 @@
 from distutils.core import setup, Extension
+import numpy as np
 
 ral_nlls_module = Extension(
         'ral_nlls',
@@ -6,7 +7,7 @@ ral_nlls_module = Extension(
         libraries = ['ral_nlls', 'lapack', 'blas'],
         library_dirs = ['build'],
         extra_compile_args = ['-std=c99'],
-        include_dirs = ['include'],
+        include_dirs = ['include',np.get_include()],
         )
 
 setup (name='RalNLLS', version='1.0', description='Nonlinear least squares',
