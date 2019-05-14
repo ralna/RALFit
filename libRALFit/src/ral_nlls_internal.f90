@@ -207,7 +207,7 @@ contains
        End Select
      End If
 
-6000 Format(1X,57('-'))
+6000 Format(1X,58('-'))
 6001 Format(2X,'RALFit: A box-constrained nonlinear least-squares solver')
    END SUBROUTINE NLLS_SOLVE
 
