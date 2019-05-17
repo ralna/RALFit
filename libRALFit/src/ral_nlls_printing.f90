@@ -67,11 +67,10 @@
         Type (nlls_options), Intent (In) :: options
 
         Integer                        :: nrec
-        Character (80)                 :: rec(80)
+        Character (80)                 :: rec(76)
         Character (30)                 :: adj
 
         Write (rec(1),Fmt=99995)
-!       Begin OPTLIST.AWK contents
         Write(adj,Fmt=99999) "out"
         Write(rec(2),Fmt=99997) Adjustl(adj), options%out
         Write(adj,Fmt=99999) "print_level"
@@ -155,74 +154,73 @@
         Write(adj,Fmt=99999) "scale_require_increase"
         Write(rec(42),Fmt=99996) Adjustl(adj), options%scale_require_increase
         Write(adj,Fmt=99999) "setup_workspaces"
-        Write(rec(44),Fmt=99996) Adjustl(adj), options%setup_workspaces
+        Write(rec(43),Fmt=99996) Adjustl(adj), options%setup_workspaces
         Write(adj,Fmt=99999) "remove_workspaces"
-        Write(rec(45),Fmt=99996) Adjustl(adj), options%remove_workspaces
+        Write(rec(44),Fmt=99996) Adjustl(adj), options%remove_workspaces
         Write(adj,Fmt=99999) "more_sorensen_maxits"
-        Write(rec(46),Fmt=99997) Adjustl(adj), options%more_sorensen_maxits
+        Write(rec(45),Fmt=99997) Adjustl(adj), options%more_sorensen_maxits
         Write(adj,Fmt=99999) "more_sorensen_shift"
-        Write(rec(47),Fmt=99998) Adjustl(adj), options%more_sorensen_shift
+        Write(rec(46),Fmt=99998) Adjustl(adj), options%more_sorensen_shift
         Write(adj,Fmt=99999) "more_sorensen_tiny"
-        Write(rec(48),Fmt=99998) Adjustl(adj), options%more_sorensen_tiny
+        Write(rec(47),Fmt=99998) Adjustl(adj), options%more_sorensen_tiny
         Write(adj,Fmt=99999) "more_sorensen_tol"
-        Write(rec(49),Fmt=99998) Adjustl(adj), options%more_sorensen_tol
+        Write(rec(48),Fmt=99998) Adjustl(adj), options%more_sorensen_tol
         Write(adj,Fmt=99999) "hybrid_tol"
-        Write(rec(50),Fmt=99998) Adjustl(adj), options%hybrid_tol
+        Write(rec(49),Fmt=99998) Adjustl(adj), options%hybrid_tol
         Write(adj,Fmt=99999) "hybrid_switch_its"
-        Write(rec(51),Fmt=99997) Adjustl(adj), options%hybrid_switch_its
+        Write(rec(50),Fmt=99997) Adjustl(adj), options%hybrid_switch_its
         Write(adj,Fmt=99999) "reg_order"
-        Write(rec(52),Fmt=99998) Adjustl(adj), options%reg_order
+        Write(rec(51),Fmt=99998) Adjustl(adj), options%reg_order
         Write(adj,Fmt=99999) "inner_method"
-        Write(rec(53),Fmt=99997) Adjustl(adj), options%inner_method
+        Write(rec(52),Fmt=99997) Adjustl(adj), options%inner_method
         Write(adj,Fmt=99999) "output_progress_vectors"
-        Write(rec(54),Fmt=99996) Adjustl(adj), options%output_progress_vectors
+        Write(rec(53),Fmt=99996) Adjustl(adj), options%output_progress_vectors
         Write(adj,Fmt=99999) "update_lower_order"
-        Write(rec(55),Fmt=99996) Adjustl(adj), options%update_lower_order
+        Write(rec(54),Fmt=99996) Adjustl(adj), options%update_lower_order
         Write(adj,Fmt=99999) "fortran_jacobian"
-        Write(rec(56),Fmt=99996) Adjustl(adj), options%fortran_jacobian
+        Write(rec(55),Fmt=99996) Adjustl(adj), options%fortran_jacobian
         Write(adj,Fmt=99999) "box_nfref_max"
-        Write(rec(57),Fmt=99997) Adjustl(adj), options%box_nfref_max
+        Write(rec(56),Fmt=99997) Adjustl(adj), options%box_nfref_max
         Write(adj,Fmt=99999) "box_ntrfail"
-        Write(rec(58),Fmt=99997) Adjustl(adj), options%box_ntrfail
+        Write(rec(57),Fmt=99997) Adjustl(adj), options%box_ntrfail
         Write(adj,Fmt=99999) "box_gamma"
-        Write(rec(59),Fmt=99998) Adjustl(adj), options%box_gamma
+        Write(rec(58),Fmt=99998) Adjustl(adj), options%box_gamma
         Write(adj,Fmt=99999) "box_decmin"
-        Write(rec(60),Fmt=99998) Adjustl(adj), options%box_decmin
+        Write(rec(59),Fmt=99998) Adjustl(adj), options%box_decmin
         Write(adj,Fmt=99999) "box_bigbnd"
-        Write(rec(61),Fmt=99998) Adjustl(adj), options%box_bigbnd
+        Write(rec(60),Fmt=99998) Adjustl(adj), options%box_bigbnd
         Write(adj,Fmt=99999) "box_wolfe_descent"
-        Write(rec(62),Fmt=99998) Adjustl(adj), options%box_wolfe_descent
+        Write(rec(61),Fmt=99998) Adjustl(adj), options%box_wolfe_descent
         Write(adj,Fmt=99999) "box_wolfe_curvature"
-        Write(rec(63),Fmt=99998) Adjustl(adj), options%box_wolfe_curvature
+        Write(rec(62),Fmt=99998) Adjustl(adj), options%box_wolfe_curvature
         Write(adj,Fmt=99999) "box_kanzow_power"
-        Write(rec(64),Fmt=99998) Adjustl(adj), options%box_kanzow_power
+        Write(rec(63),Fmt=99998) Adjustl(adj), options%box_kanzow_power
         Write(adj,Fmt=99999) "box_kanzow_descent"
-        Write(rec(65),Fmt=99998) Adjustl(adj), options%box_kanzow_descent
+        Write(rec(64),Fmt=99998) Adjustl(adj), options%box_kanzow_descent
         Write(adj,Fmt=99999) "box_quad_model_descent"
-        Write(rec(66),Fmt=99998) Adjustl(adj), options%box_quad_model_descent
+        Write(rec(65),Fmt=99998) Adjustl(adj), options%box_quad_model_descent
         Write(adj,Fmt=99999) "box_tr_test_step"
-        Write(rec(67),Fmt=99996) Adjustl(adj), options%box_tr_test_step
+        Write(rec(66),Fmt=99996) Adjustl(adj), options%box_tr_test_step
         Write(adj,Fmt=99999) "box_wolfe_test_step"
-        Write(rec(68),Fmt=99996) Adjustl(adj), options%box_wolfe_test_step
+        Write(rec(67),Fmt=99996) Adjustl(adj), options%box_wolfe_test_step
         Write(adj,Fmt=99999) "box_tau_max"
-        Write(rec(69),Fmt=99998) Adjustl(adj), options%box_tau_max
+        Write(rec(68),Fmt=99998) Adjustl(adj), options%box_tau_max
         Write(adj,Fmt=99999) "box_max_ntrfail"
-        Write(rec(70),Fmt=99997) Adjustl(adj), options%box_max_ntrfail
+        Write(rec(69),Fmt=99997) Adjustl(adj), options%box_max_ntrfail
         Write(adj,Fmt=99999) "box_quad_match"
-        Write(rec(71),Fmt=99997) Adjustl(adj), options%box_quad_match
+        Write(rec(70),Fmt=99997) Adjustl(adj), options%box_quad_match
         Write(adj,Fmt=99999) "box_alpha_scale"
-        Write(rec(72),Fmt=99998) Adjustl(adj), options%box_alpha_scale
+        Write(rec(71),Fmt=99998) Adjustl(adj), options%box_alpha_scale
         Write(adj,Fmt=99999) "box_delta_scale"
-        Write(rec(73),Fmt=99998) Adjustl(adj), options%box_delta_scale
+        Write(rec(72),Fmt=99998) Adjustl(adj), options%box_delta_scale
         Write(adj,Fmt=99999) "box_tau_min"
-        Write(rec(74),Fmt=99998) Adjustl(adj), options%box_tau_min
+        Write(rec(73),Fmt=99998) Adjustl(adj), options%box_tau_min
         Write(adj,Fmt=99999) "box_ls_step_maxit"
-        Write(rec(75),Fmt=99997) Adjustl(adj), options%box_ls_step_maxit
+        Write(rec(74),Fmt=99997) Adjustl(adj), options%box_ls_step_maxit
         Write(adj,Fmt=99999) "box_linesearch_type"
-        Write(rec(76),Fmt=99997) Adjustl(adj), options%box_linesearch_type
-        Write (rec(77),Fmt=99994)
-        nrec = 77
-!       End OPTLIST.AWK contents
+        Write(rec(75),Fmt=99997) Adjustl(adj), options%box_linesearch_type
+        Write (rec(76),Fmt=99994)
+        nrec = 76
 
         Call printmsg(0,.False.,options,nrec,rec)
 
@@ -234,7 +232,6 @@
 99994   Format (1X,'End of Options')
 
       End Subroutine print_options
-
 
       Subroutine print_bye(options,inform,box)
 !       Assumes print level > 0
