@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 
 import sys
 import numpy as np
@@ -42,13 +43,13 @@ def main():
     problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
     no_probs = len(problems)
         
-    print "*************************************"
-    print "**                                 **"
-    print "**        R A L _ N L L S          **"
-    print "**                                 **"
-    print "*************************************"
+    print("*************************************")
+    print("**                                 **")
+    print("**        R A L _ N L L S          **")
+    print("**                                 **")
+    print("*************************************")
 
-    print "Testing ",no_probs," problems with ",no_tests," minimizers"
+    print("Testing {} problems with {} minimizers".format(no_probs,no_tests))
 
     if compute_results:
         # run the tests!
@@ -115,12 +116,12 @@ def main():
         for j in range(no_tests):
             sum_times[j][:] = data[j]['solve_time'][:]
 
-        print sum_times
+        print("{}".format(sum_times))
         no_runs = 0
         while no_runs < args.test_times:
             run_cutest_and_copy_results_locally(args,problems)
             no_runs += 1
-            print "run "+str(no_runs)+"/"+str(args.test_times)
+            print("run {}/{}".format(no_runs,args.test_times))
 
             for j in range(no_tests):
                 try:
@@ -135,14 +136,12 @@ def main():
                     # so that the performance profiles work below...
                     add_inner_information(args.control_files[j],data[j])
                 sum_times[j][:] += data[j]['solve_time'][:]
-                print "sum_times = "
-                print sum_times
-                print "solve_time = "
-                print data[j]['solve_time'][:]
-        print "final solve time = "
+                print("sum_times = {}".format(sum_times))
+                print("solve_time = {}".format(data[j]['solve_time'][:]))
+#        print "final solve time = "
         for j in range(no_tests):
             data[j]['solve_time'][:] = sum_times[j][:]/no_runs
-            print data[j]['solve_time'][:]
+            print("final solve time = {}".format(data[j]['solve_time'][:]))
         
             
             
@@ -167,15 +166,15 @@ def main():
     normalized_inner = np.copy(all_inner)
     normalized_solve_time = np.copy(all_solve_time)
 
-    print "no_tests = "+str(no_tests)
-    print "no_probs = "+str(no_probs)
+    print("no_tests = {}".format(no_tests))
+    print("no_probs = {}".format(no_probs))
 
     
-    print "********************"
+    print("********************")
     for j in range(no_tests):
         for i in range(no_probs):
-            print data[j]['pname'][i]    
-    print "********************"
+            print("{}".format(data[j]['pname'][i]))
+    print("********************")
     
     failure = np.zeros((no_probs, no_tests))
     
@@ -256,43 +255,39 @@ def main():
                   inner_boundaries, 'normalized_inner', args.control_files, 
                   failure, additive, short_hash)
     
-    print "Iteration numbers, git commit "+short_hash
-    print "%10s" % "problem",
+    print("Iteration numbers, git commit {}".format(short_hash))
+    print("problem   ")
     for j in range(0,no_tests):
-        print " ", 
-        print "%16s" % args.control_files[j],
-    print " "
+        print(" {0: <16}".format(args.control_files[j]))
+    print(" ")
 
     for i in range(0,no_probs):
-        print "%10s" % data[0]['pname'][i],
+        print("{0: <10}".format(data[0]['pname'][i]))
         for j in range(0,no_tests):
-            print ' ', 
-            print "%16d" % all_iterates[j][i],
-        print ' '
+            print(' {0: <16} '.format(all_iterates[j][i]))
 
-    print "\n\n"
+    print("\n\n")
     for j in range (0, no_tests):
-        print args.control_files[j]+" is best ",best[j],\
-            " times (and clear best ",clear_best[j]," times)"
+        print("{} is best {} times (and clear best {} times)".format(
+            args.control_files[j],best[j],clear_best[j]))
 
     for j in range (0, no_tests):
-        print args.control_files[j]+" took ",average_iterates[j],\
-            " iterations and ", average_funeval[j], \
-            " func. evals on average, and failed ", no_failures[j]," times)"
+        print("{{} took {} iterations and {} func. evals on average, and failed {} times)"
+            .format(args.control_files[j],average_iterates[j],average_funeval[j],no_failures[j]))
         if average_inner[j] > average_iterates[j]:
-            print args.control_files[j]+" took ", average_inner[j],\
-                " inner iterations on average"
+            print("{} took inner iterations on average".format(
+            args.control_files[j],average_inner[j]))
 
     for j in range (0,no_tests):
-        print args.control_files[j]+" took "+str(np.sum(all_solve_time[:][j]))+"s to solve all problems"
+        print("{} took {}s to solve all problems".format(args.control_files[j],np.sum(all_solve_time[:][j])))
 
     if hash_error == True:
-        print "\n\n"
-        print "************************************************"
-        print "*                 W A R N I N G               **"
-        print "* results computed with different git commits  *"
-        print "************************************************"
-        print "\n"
+        print("\n\n")
+        print("************************************************")
+        print("*                 W A R N I N G               **")
+        print("* results computed with different git commits  *")
+        print("************************************************")
+        print("\n")
 
     plot_prof(args.control_files,no_tests,prob_list,args.np)
 
@@ -306,7 +301,7 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
     badaverage = '#ff7f00'
     bad = '#ff0000'
 
-    print filename
+    print(filename)
     output = open('data/'+filename+'.html','w')
     output.write('<!DOCTYPE html>\n')
     output.write('<html>\n')
@@ -435,7 +430,7 @@ def run_cutest_and_copy_results_locally(args,problems):
     no_probs = len(problems)
     for i in range(no_probs):
         # let's run the tests!
-        print "**** "+ problems[i] +" ****"
+        print("**** "+ problems[i] +" ****")
         compute(no_tests,args.control_files,problems,i,args.starting_point)
     
     
@@ -507,9 +502,9 @@ def compute(no_tests,control_files,problems,i,starting_point):
 
 def plot_prof(control_files,no_tests,prob_list,np):
     # performance profiles for iterations
-    Strings = ["./pypprof -ne -c 5 -s iterations ",
-               "./pypprof -ne -c 6 -s fevals ",
-               "./pypprof -ne -nf --log -c 13 -s time "]
+    Strings = ["python pypprof -ne -c 5 -s iterations ",
+               "python pypprof -ne -c 6 -s fevals ",
+               "python pypprof -ne -nf --log -c 13 -s time "]
     data_files = ""
     for j in range(no_tests):
         data_files += control_files[j]+".out"
@@ -534,7 +529,7 @@ def plot_prof(control_files,no_tests,prob_list,np):
         for string in Strings:
             os.system(string)
     except:
-        print "Performance profiles not available: ensure pprof is in the path"#
+        print("Performance profiles not available: ensure pprof is in the path")
     os.chdir("..")
 
 if __name__ == "__main__":
