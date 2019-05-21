@@ -18,6 +18,9 @@ def main():
     parser.add_argument("-nl","--no_legend", help="if present, we do not add a legend", action="store_true")
     parser.add_argument("-mk","--use_marker", help="if present, use markers", action="store_true")
     parser.add_argument("-ls","--use_linestyles", help="if present, cycle through linestyles", action="store_true")
+    parser.add_argument("-lw","--linewidth",help="set the line width parameter",default=1.0)
+    parser.add_argument("-ms","--markersize", help="set the markersize paramer",default=10.0)
+    parser.add_argument("-nt","--no_title",help="If present, no title will be printed", action="store_true")
     args = parser.parse_args()
     control_files = args.control_files
     no_tests = len(control_files) #!len(sys.argv)-1
@@ -90,34 +93,36 @@ def main():
 def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args):
 
     if args.use_marker:
-        marker = itertools.cycle(('+', '.', 'o', '*', ','))
+        marker = itertools.cycle(('+', 'o', 'x', '*', 's'))
     else:
         marker = itertools.cycle(('',''))
 
     if args.use_linestyles:
-        linestyle = itertools.cycle((':','-.','--','-'))
+        linestyle = itertools.cycle(('--',':','-.','-'))
     else:
         linestyle = itertools.cycle(('-','-'))
     
-    plt.figure(1)
+    plt.figure(1,figsize=(8,12.5))
     for i in range(no_tests):
-        plt.semilogy(progress[i]['grad'], label=control_files[i], marker=marker.next(), markersize=10.0,markevery=0.4, linestyle=linestyle.next())
+        plt.semilogy(progress[i]['grad'], label=control_files[i], marker=marker.next(), markersize=args.markersize,markevery=0.4, linestyle=linestyle.next(),linewidth=args.linewidth, dash_capstyle='round',markeredgewidth=1.5)
     if not args.no_legend:
         plt.legend()
-
     print os.getcwd()
-    plt.title(problem+': gradients')
+    if not args.no_title:
+        plt.title(problem+': gradients')
     plt.xlabel('Iteration number')
     plt.ylabel('$||J^Tr||_2$')
+
     plt.savefig('data/img/'+problem+'_'+short_hash+'.png')
 
     plt.figure(2)
     for i in range(no_tests):
         # plt.semilogy(progress[i]['res']-mineps, label=control_files[i])
-        plt.semilogy(progress[i]['res'], label=control_files[i], marker=marker.next(), markersize=10.0,markevery=0.4, linestyle=linestyle.next())
+        plt.semilogy(progress[i]['res'], label=control_files[i], marker=marker.next(), markersize=args.markersize,markevery=0.4, linestyle=linestyle.next(),linewidth=args.linewidth)
     if not args.no_legend:
         plt.legend()
-    plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
+    if not args.no_title:
+        plt.title(problem+': residuals \n minimizer = '+str(minvalue) )
     plt.xlabel('Iteration number')
     #plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
     plt.ylabel('$1/2||r_k||^2_2$')
