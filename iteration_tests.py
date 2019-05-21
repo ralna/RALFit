@@ -40,9 +40,9 @@ def main():
     compute_results = not args.reuse_data
     
     prob_list = args.problem_list
-    problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
+    problems = np.genfromtxt("cutest/sif/"+prob_list+".txt", dtype = 'U10')
     no_probs = len(problems)
-        
+
     print("*************************************")
     print("**                                 **")
     print("**        R A L _ N L L S          **")
