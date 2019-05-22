@@ -272,7 +272,7 @@ def main():
             args.control_files[j],best[j],clear_best[j]))
 
     for j in range (0, no_tests):
-        print("{{} took {} iterations and {} func. evals on average, and failed {} times)"
+        print("{} took {} iterations and {} func. evals on average, and failed {} times)"
             .format(args.control_files[j],average_iterates[j],average_funeval[j],no_failures[j]))
         if average_inner[j] > average_iterates[j]:
             print("{} took inner iterations on average".format(
