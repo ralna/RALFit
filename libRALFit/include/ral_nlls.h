@@ -93,7 +93,7 @@ struct ral_nlls_options_d {
   ral_nllspkgtype_d_ box_quad_model_descent;
   bool box_tr_test_step;
   bool box_wolfe_test_step;
-  ral_nllspkgtype_d_ box_tau_max;
+  ral_nllspkgtype_d_ box_tau_descent;
   int box_max_ntrfail;
   int box_quad_match;
   ral_nllspkgtype_d_ box_alpha_scale;

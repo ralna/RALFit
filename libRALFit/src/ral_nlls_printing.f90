@@ -62,12 +62,13 @@
 99999   Format (A)
       End Subroutine printmsg
 
+
       Subroutine print_options(options)
         Implicit None
         Type (nlls_options), Intent (In) :: options
 
         Integer                        :: nrec
-        Character (80)                 :: rec(76)
+        Character (80)                 :: rec(78)
         Character (30)                 :: adj
 
         Write (rec(1),Fmt=99995)
@@ -203,24 +204,28 @@
         Write(rec(66),Fmt=99996) Adjustl(adj), options%box_tr_test_step
         Write(adj,Fmt=99999) "box_wolfe_test_step"
         Write(rec(67),Fmt=99996) Adjustl(adj), options%box_wolfe_test_step
-        Write(adj,Fmt=99999) "box_tau_max"
-        Write(rec(68),Fmt=99998) Adjustl(adj), options%box_tau_max
-        Write(adj,Fmt=99999) "box_max_ntrfail"
-        Write(rec(69),Fmt=99997) Adjustl(adj), options%box_max_ntrfail
-        Write(adj,Fmt=99999) "box_quad_match"
-        Write(rec(70),Fmt=99997) Adjustl(adj), options%box_quad_match
-        Write(adj,Fmt=99999) "box_alpha_scale"
-        Write(rec(71),Fmt=99998) Adjustl(adj), options%box_alpha_scale
-        Write(adj,Fmt=99999) "box_delta_scale"
-        Write(rec(72),Fmt=99998) Adjustl(adj), options%box_delta_scale
         Write(adj,Fmt=99999) "box_tau_min"
-        Write(rec(73),Fmt=99998) Adjustl(adj), options%box_tau_min
+        Write(rec(68),Fmt=99998) Adjustl(adj), options%box_tau_min
+        Write(adj,Fmt=99999) "box_tau_descent"
+        Write(rec(69),Fmt=99998) Adjustl(adj), options%box_tau_descent
+        Write(adj,Fmt=99999) "box_max_ntrfail"
+        Write(rec(70),Fmt=99997) Adjustl(adj), options%box_max_ntrfail
+        Write(adj,Fmt=99999) "box_quad_match"
+        Write(rec(71),Fmt=99997) Adjustl(adj), options%box_quad_match
+        Write(adj,Fmt=99999) "box_alpha_scale"
+        Write(rec(72),Fmt=99998) Adjustl(adj), options%box_alpha_scale
+        Write(adj,Fmt=99999) "box_delta_scale"
+        Write(rec(73),Fmt=99998) Adjustl(adj), options%box_delta_scale
+        Write(adj,Fmt=99999) "box_tau_wolfe"
+        Write(rec(74),Fmt=99998) Adjustl(adj), options%box_tau_wolfe
+        Write(adj,Fmt=99999) "box_tau_tr_step"
+        Write(rec(75),Fmt=99998) Adjustl(adj), options%box_tau_tr_step
         Write(adj,Fmt=99999) "box_ls_step_maxit"
-        Write(rec(74),Fmt=99997) Adjustl(adj), options%box_ls_step_maxit
+        Write(rec(76),Fmt=99997) Adjustl(adj), options%box_ls_step_maxit
         Write(adj,Fmt=99999) "box_linesearch_type"
-        Write(rec(75),Fmt=99997) Adjustl(adj), options%box_linesearch_type
-        Write (rec(76),Fmt=99994)
-        nrec = 76
+        Write(rec(77),Fmt=99997) Adjustl(adj), options%box_linesearch_type
+        Write (rec(78),Fmt=99994)
+        nrec = 78
 
         Call printmsg(0,.False.,options,nrec,rec)
 
@@ -232,6 +237,7 @@
 99994   Format (1X,'End of Options')
 
       End Subroutine print_options
+
 
       Subroutine print_bye(options,inform,box)
 !       Assumes print level > 0

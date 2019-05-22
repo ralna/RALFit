@@ -29,8 +29,9 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_WORKSPACE_ERROR          =  -13
   Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_TYPE_METHOD  =  -14
   Integer, Parameter, Public :: NLLS_ERROR_WRONG_INNER_METHOD       =  -15
-  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -16
-  Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -17
+  Integer, Parameter, Public :: NLLS_ERROR_INITIAL_GUESS            =  -16
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -17
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -18
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -334,14 +335,16 @@ module ral_nlls_workspaces
 !    Take projected TR step when TR test is Ok?
 !    True  => take step
 !    False => force a LS or PG step
-     Logical       :: box_tr_test_step = .False.
+     Logical       :: box_tr_test_step = .True.
 !    Take projected  TR step when Wolfe test is Ok?
 !    True  => take step
 !    False => force a LS or PG step
-     Logical       :: box_wolfe_test_step = .False.
+     Logical       :: box_wolfe_test_step = .True.
 !    Threshold to determine if the projection of TR direction
-!    is too severe 0<tau_max<1
-     Real(Kind=wp) :: box_tau_max = 0.25_wp
+!    is too severe 0<tau_min<1
+     Real(Kind=wp) :: box_tau_min = 0.25_wp
+!    tau >= tau_descent in order to test for descent
+     Real(Kind=wp) :: box_tau_descent = 1.0e-4_wp
 !    Max times TR iterations can fail without passing the various
 !    descent tests: 2? 3? 5? Ignored when proj(x)==x
      Integer       :: box_max_ntrfail = 2
@@ -350,15 +353,14 @@ module ral_nlls_workspaces
 !    to scale_alpha*alpha_k-1
      Integer       :: box_quad_match = 1
 !    Initial step scale (if quad_i >= box_quad_i)
-     Real(Kind=wp) :: box_alpha_scale = 2.0_wp
+     Real(Kind=wp) :: box_alpha_scale = 1.0_wp
 !    Scaling factor to use when updating Delta from LS/PG step 
      Real(Kind=wp) :: box_Delta_scale = 2.0_wp
-!    <dTR,-g> < tau_min in order to test for descent
-     Real(Kind=wp) :: box_tau_min = 1.0e-4_wp
+     Real(Kind=wp) :: box_tau_wolfe = 0.3_wp
+     Real(Kind=wp) :: box_tau_tr_step = 0.3_wp
      Integer       :: box_ls_step_maxit = 20
 !    LS type: 1 => Dennis-Schnable; 2 => Hager-Zhang
      Integer       :: box_linesearch_type = 1
-
   END TYPE nlls_options
 
 !  - - - - - - - - - - - - - - - - - - - - - - -
@@ -488,7 +490,7 @@ module ral_nlls_workspaces
     ! projection changed the direction? d /= P(d)?
     Logical :: prjchd = .false.
     ! Convergence metrics
-    Real(Kind=wp) :: normPD
+    Real(Kind=wp) :: normPD, gtd
     ! Memory for HZLS (LS)
     Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
     ! Consecutive times quadratic model is accurate

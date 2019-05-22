@@ -82,7 +82,7 @@ module ral_nlls_ciface
      real(wp) :: box_quad_model_descent
      Logical(c_bool):: box_tr_test_step
      Logical(c_bool):: box_wolfe_test_step
-     real(wp) :: box_tau_max
+     real(wp) :: box_tau_descent
      integer(c_int):: box_max_ntrfail
      integer(c_int):: box_quad_match
      real(wp) :: box_alpha_scale
@@ -236,7 +236,7 @@ contains
     foptions%box_quad_model_descent = coptions%box_quad_model_descent
     foptions%box_tr_test_step = coptions%box_tr_test_step
     foptions%box_wolfe_test_step = coptions%box_wolfe_test_step
-    foptions%box_tau_max = coptions%box_tau_max
+    foptions%box_tau_descent = coptions%box_tau_descent
     foptions%box_max_ntrfail = coptions%box_max_ntrfail
     foptions%box_quad_match = coptions%box_quad_match
     foptions%box_alpha_scale = coptions%box_alpha_scale
@@ -413,7 +413,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%box_quad_model_descent = foptions%box_quad_model_descent
   coptions%box_tr_test_step = foptions%box_tr_test_step
   coptions%box_wolfe_test_step = foptions%box_wolfe_test_step
-  coptions%box_tau_max = foptions%box_tau_max
+  coptions%box_tau_descent = foptions%box_tau_descent
   coptions%box_max_ntrfail = foptions%box_max_ntrfail
   coptions%box_quad_match = foptions%box_quad_match
   coptions%box_alpha_scale = foptions%box_alpha_scale

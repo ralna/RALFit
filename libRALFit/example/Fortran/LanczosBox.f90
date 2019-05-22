@@ -1,10 +1,17 @@
 ! examples/Fortran/Lanczos.f90
 
 module lanczos_box_module
-  use ral_nlls_double, only : params_base_type, params_box_type
+  Use nag_precisions, only: wp
+  use nag_params_base_type_type
+  use nag_params_box_type_type
+  Use nag_ral_nlls_eval_types
+  Use nag_nlls_options_type
+  Use nag_nlls_inform_type
+  Use nag_ral_nlls_ib_aux
+
   implicit none
 
-  integer, parameter :: wp = kind(0d0)
+! integer, parameter :: wp = kind(0d0)
 
   type, extends(params_box_type) :: params_type
      real(wp), dimension(:), allocatable :: t ! The m data points t_i
@@ -47,6 +54,7 @@ contains
     real(wp), dimension(*), intent(in) :: x
     real(wp), dimension(*), intent(out) :: J
     class(params_base_type), intent(inout) :: params
+    Integer :: r, c
 
     select type(params)
     type is(params_type)
@@ -56,6 +64,14 @@ contains
          J(3*m+1:4*m) = +params%t(1:m) * x(3) * exp(-x(4)*params%t(1:m))! J_i4
          J(4*m+1:5*m) = -exp(-x(6)*params%t(1:m))                     ! J_i5
          J(5*m+1:6*m) = +params%t(1:m) * x(5) * exp(-x(6)*params%t(1:m))! J_i6
+
+!          Do r = 1, m
+!           Do c = 1, n
+!             Write(*,'(Es9.2e2,1X)',advance='no') J(n*(r-1)+c)
+!           End Do
+!           Write(*,*) ''
+!          End Do
+
     end select
 
 
@@ -94,7 +110,6 @@ end module lanczos_box_module
 
 program lanczos_box
 
-  use ral_nlls_double
   use lanczos_box_module
   
   implicit none
@@ -165,22 +180,34 @@ program lanczos_box
   n = 6
   allocate(x(n))
   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
+  x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 2
  
   ! Add the box bound
   Allocate(blx(n),bux(n),xnew(n), d(n))
 ! TEST ONE  
   blx(1:n) = -1.0e20_wp
   bux(1:n) = +1.0e20_wp
+!   blx(1:n) = 0.0e20_wp
+!   bux(1:n) = 0.0e20_wp
 ! TEST TWO  
 !  blx(1:n) = -1.0_wp
 !  bux(1:n) = +1.0e20_wp
 ! TEST THREE  
 !  blx(1:n) = -1.0_wp
 !  bux(1:n) = +1.0_wp
-blx(1) = 0.444
-bux(1) = 0.445
-blx(5) = -5.1_wp
-bux(5) = +1.0_wp
+blx(1) = 0.59_wp!44
+bux(1) = 1.445_wp
+blx(5) = -3.9e-1_wp
+bux(5) = -0.200_wp
+! ------------------
+bux(6) = 10.0_wp !! working good
+bux(6) = 11.0_wp !! fast !! 45 iterations 
+! optimum at x =    0.6889229829244405   1.8735055049705871   2.0682924682678787   4.6402277568643573  -0.2444283933594384   1.8736741088671192
+! 2.1732349926983754E-06
+! bux(6) = 12.0_wp !! stagnation !! 43882 iterations
+! optimum at x =    0.5900000000000000   2.0808044760419366   2.3127303035245053   5.0477989247787995  -0.3900000000000000   6.3782210775222410
+! 6.4906367799130378E-06
+
 ! TEST four fail  
 !   blx(1:n) = -1.0_wp
 !   bux(1:n) = -1.1_wp
@@ -209,8 +236,8 @@ bux(5) = +1.0_wp
     Write(*,*) 'No bounds or all bound where -/+infinity'
   End If
 99999  Format (5X,3(Es13.6e2,2X))
-  options%print_level = 3
-  options%exact_second_derivatives = .true.
+  options%print_level = 1
+  options%exact_second_derivatives = .false. !.true.
 !  options%model = 1 ! GN
 !  options%model = 2 ! (Quasi-)Newton
   options%model = 3 ! Hybrid
@@ -228,9 +255,11 @@ bux(5) = +1.0_wp
 !  options%inner_method = 1 ! passed in as a base reg term 
   options%inner_method = 2 ! expanded NLLS is solved
 !  options%inner_method = 3 ! implicit recursive call
-  options%maxit = 50000000
-  options%box_linesearch_type = 1
-!  options%box_tr_test_step = .True.
+  options%maxit = 2000000
+  options%box_linesearch_type = 2
+!   options%box_tr_test_step = .False. !.True.
+!   options%box_wolfe_test_step = .True.
+!   options%box_max_ntrfail = 10
 
   call cpu_time(tic)
   call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
@@ -257,5 +286,5 @@ bux(5) = +1.0_wp
   print *, "     ", inform%f_eval, " function evaluations (LS:",inform%f_eval_ls,' PG:',inform%f_eval_pg,')'
   print *, "     ", inform%g_eval, " gradient evaluations (LS:",inform%g_eval_ls,' PG:',inform%g_eval_pg,')'
   print *, "     ", inform%h_eval, " hessian evaluations"
-  print *, "     ", toc-tic, " seconds"
+! print *, "     ", toc-tic, " seconds"
 end program lanczos_box
