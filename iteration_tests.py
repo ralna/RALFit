@@ -347,7 +347,7 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
 
     for i in range(0,no_probs):
         output.write('  <tr>\n')
-        output.write('    <td>'+problems[i]+'</td>')
+        output.write('    <td>{}</td>'.format(problems[i]))
         for j in range(0,no_tests):
             if additive:
                 current_value = data[i][j] - smallest[i] + 1
@@ -369,7 +369,8 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
                 colour = badaverage
             else:
                 colour = bad
-            output.write('    <td bgcolor='+colour+'>'+str(format(data[i][j]))+label+'</td>')
+            output_string = '    <td bgcolor={}>{}{}</td>'.format(colour,format(data[i][j]),label)
+            output.write(output_string)
         output.write('\n')
         output.write('  </tr>\n')
     output.write('</table>\n')
@@ -446,7 +447,8 @@ def run_cutest_and_copy_results_locally(args,problems):
         # get the hash of the git version
         short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
         f = open('data/'+test+".hash",'w')
-        f.write(short_hash+"\t"+str(no_probs))
+        output_string = "{} \t{}".format(short_hash,no_probs)
+        f.write(output_string)
         f.close()
 
     
