@@ -61,17 +61,17 @@ def main():
     info = np.dtype({'names' :   ['pname','n','m','status','iter',
                                   'func','jac','hess','inner',
                                   'res','grad','ratio','solve_time'],
-                     'formats' : ['S10' ,int ,int,int,int,
+                     'formats' : ['U10' ,int ,int,int,int,
                                   int, int, int, int,
                                   float,float,float,float]})
     info_noinner = np.dtype({'names' :   ['pname','n','m','status','iter',
                                           'func','jac','hess',
                                           'res','grad','ratio','solve_time'],
-                             'formats' : ['S10' ,int ,int,int,int,
+                             'formats' : ['U10' ,int ,int,int,int,
                                           int, int, int, 
                                           float,float,float,float]})
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
-                         'formats' : ['S7',int]})
+                         'formats' : ['U7',int]})
 
     data = [None for i in range(no_tests)]
     metadata = [None for i in range(no_tests)]
@@ -89,17 +89,17 @@ def main():
                      # then do not collect inner data (maybe fix)
     for j in range(no_tests):
         try:
-            data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+            data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info)
         except ValueError:
             # these are results that don't include inner iterations
             # (i.e. from gsl)
             # only in this case, don't look for inner iterations
-            data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
+            data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
             InnerResults = 0
             # we want to put this back into a file that *does* have inner iterations,
             # so that the performance profiles work below...
             add_inner_information(args.control_files[j],data[j])
-        metadata[j] = np.loadtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
+        metadata[j] = np.genfromtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
         if "gsl" in args.control_files[j].lower(): # == "gsl":
             too_many_its[j] = -2
         else:
