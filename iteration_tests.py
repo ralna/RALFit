@@ -359,7 +359,10 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
                 colour = badaverage
             else:
                 colour = bad
-            output_string = '    <td bgcolor={}>{}{}</td>'.format(colour,format(data[i][j]),label)
+            if additive:
+                output_string = '    <td bgcolor={}>{}{}</td>'.format(colour,data[i][j],label)
+            else:
+                output_string = '    <td bgcolor={}>{:f}{}</td>'.format(colour,data[i][j],label)
             output.write(output_string)
         output.write('\n')
         output.write('  </tr>\n')
