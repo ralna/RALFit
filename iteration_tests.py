@@ -364,7 +364,7 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
         output.write('\n')
         output.write('  </tr>\n')
     output.write('</table>\n')
-    output.write('Computed using git commit <b>#'+short_hash+'</b>\n\n')
+    output.write('Computed using git commit <b>#{}</b>\n\n'.format(short_hash))
     output.write('</body>\n')
     output.write('</html>\n')
     output.close()
@@ -435,11 +435,10 @@ def run_cutest_and_copy_results_locally(args,problems):
             gslresults.write("\n")
             gslresults.close()
         # get the hash of the git version
-        short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
-        f = open('data/'+test+".hash",'w')
-        output_string = "{} \t{}".format(short_hash,no_probs)
-        f.write(output_string)
-        f.close()
+        short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD'],
+                           universal_newlines=True).strip()
+        with open('data/'+test+".hash",'w') as hash_file:
+            hash_file.write("{}\t {}".format(short_hash,no_probs))
 
     
 
