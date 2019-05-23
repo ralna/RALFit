@@ -125,12 +125,12 @@ def main():
 
             for j in range(no_tests):
                 try:
-                    data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+                    data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info)
                 except ValueError:
                     # these are results that don't include inner iterations
                     # (i.e. from gsl)
                     # only in this case, don't look for inner iterations
-                    data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
+                    data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
                     InnerResults = 0
                     # we want to put this back into a file that *does* have inner iterations,
                     # so that the performance profiles work below...
