@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import sys
 import numpy as np
