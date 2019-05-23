@@ -1,7 +1,8 @@
 BaseReg               control_name
 6                     out
-6                     error
 0                     print_level
+F                     print_options
+30                    print_header
 5000                  maxit
 4                     model
 2                     type_of_method
@@ -38,7 +39,6 @@ T                     use_ews_subproblem
 T                     scale_trim_min
 T                     scale_trim_max
 F                     scale_require_increase
-F                     calculate_svd_J
 T                     setup_workspaces
 T                     remove_workspaces
 500                   more_sorensen_maxits

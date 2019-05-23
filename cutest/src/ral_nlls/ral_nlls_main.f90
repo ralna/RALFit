@@ -90,8 +90,10 @@
 !  set up algorithmic input data
       READ( indr, "(A)") control_name
       READ( indr, "(I6)") control%out
-      READ( indr, "(I6)") control%error
+!      READ( indr, "(I6)") control%error
       READ( indr, "(I6)") control%print_level
+      READ( indr, "(L)") control%print_options
+      READ( indr, "(I6)") control%print_header
       READ( indr, "(I6)") control%maxit
       READ( indr, "(I6)") control%model
       READ( indr, "(I6)") control%type_of_method                                             
@@ -128,7 +130,6 @@
       READ( indr, "(L)") control%scale_trim_min
       READ( indr, "(L)") control%scale_trim_max
       READ( indr, "(L)") control%scale_require_increase
-      READ( indr, "(L)") control%calculate_svd_J
       READ( indr, "(L)") control%setup_workspaces
       READ( indr, "(L)") control%remove_workspaces
       READ( indr, "(I6)") control%more_sorensen_maxits

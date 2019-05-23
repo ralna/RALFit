@@ -257,20 +257,25 @@ def main():
     
     print("Iteration numbers, git commit {}".format(short_hash))
     
+    print("\n")
     for j in range (0, no_tests):
         print("{} is best {} times (and clear best {} times)".format(
             args.control_files[j],best[j],clear_best[j]))
 
+    print("\n")
     for j in range (0, no_tests):
         print("{} took {} iterations and {} func. evals on average, and failed {} times)"
             .format(args.control_files[j],average_iterates[j],average_funeval[j],no_failures[j]))
         if average_inner[j] > average_iterates[j]:
-            print("{} took inner iterations on average".format(
+            print("{} took {} inner iterations on average".format(
             args.control_files[j],average_inner[j]))
-
+    print("")
+            
     for j in range (0,no_tests):
         print("{} took {}s to solve all problems".format(args.control_files[j],np.sum(all_solve_time[:][j])))
 
+    print("")
+    
     if hash_error == True:
         print("\n\n")
         print("************************************************")
