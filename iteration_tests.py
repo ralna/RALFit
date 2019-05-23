@@ -256,17 +256,7 @@ def main():
                   failure, additive, short_hash)
     
     print("Iteration numbers, git commit {}".format(short_hash))
-    print("problem   ")
-    for j in range(0,no_tests):
-        print(" {0: <16}".format(args.control_files[j]))
-    print(" ")
-
-    for i in range(0,no_probs):
-        print("{0: <10}".format(data[0]['pname'][i]))
-        for j in range(0,no_tests):
-            print(' {0: <16} '.format(all_iterates[j][i]))
-
-    print("\n\n")
+    
     for j in range (0, no_tests):
         print("{} is best {} times (and clear best {} times)".format(
             args.control_files[j],best[j],clear_best[j]))
