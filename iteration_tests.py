@@ -71,7 +71,7 @@ def main():
                                           int, int, int, 
                                           float,float,float,float]})
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
-                         'formats' : ['U7',int]})
+                         'formats' : ['U10',int]})
 
     data = [None for i in range(no_tests)]
     metadata = [None for i in range(no_tests)]
