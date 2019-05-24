@@ -5,7 +5,7 @@ ral_nlls_module = Extension(
         'ral_nlls',
         sources = ['src/ral_nlls_pyiface.c'],
         libraries = ['ral_nlls', 'lapack', 'blas'],
-        library_dirs = ['build'],
+        library_dirs = ['build/src/'],
         extra_compile_args = ['-std=c99'],
         include_dirs = ['include',np.get_include()],
         )

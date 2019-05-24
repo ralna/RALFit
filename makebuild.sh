@@ -16,7 +16,6 @@ RESULT=$?
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
 cd $SCRIPTPATH/libRALFit/
-ln -s build/src/libral_nlls.so .
 python3 setup.py build_ext
 python3 setup.py install
 RESULT=$?
