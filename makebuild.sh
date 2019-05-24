@@ -17,7 +17,7 @@ RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
 cd $SCRIPTPATH/libRALFit/
 python3 setup.py build_ext --build-lib=$SCRIPTPATH/libRALFit/example/Python/
-ln -s $SCRIPTPATH/libRALFit/build/src/libral_nlls.so $SCRIPTPATH/libRALFit/example/Python/
+ln -s $SCRIPTPATH/libRALFit/build/src/libral_nlls.so $SCRIPTPATH/libRALFit/test/
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 4
 cd test
