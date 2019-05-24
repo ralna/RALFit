@@ -15,6 +15,13 @@ RESULT=$?
 ./nlls_c_test
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
-cd ../../
+cd $SCRIPTPATH/libRALFit/
+python3 setup.py build_ext --inplace
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 4
+cd test
+./nlls_python_test
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 5
 
 exit 0

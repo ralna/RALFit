@@ -1,0 +1,18 @@
+#!/bin/bash
+
+python3 ../example/Python/solve.py > Python_example_output.out
+RESULT=$?
+[ $RESULT -ne 0 ] && exit -1
+diff Python_example_output.out solve_python.output
+RESULT=$?
+if [ $RESULT -gt 1 ] 
+then
+  echo "Something is wrong with the diff"
+  exit -2
+elif [ $RESULT -eq 1 ]
+then
+  exit -3
+else
+  echo "** Python tests passed successfully **"
+  exit 0
+fi
