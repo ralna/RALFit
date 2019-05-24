@@ -16,7 +16,8 @@ RESULT=$?
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
 cd $SCRIPTPATH/libRALFit/
-python3 setup.py build_ext --inplace
+python3 setup.py build_ext
+python3 setup.py install
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 4
 cd test
