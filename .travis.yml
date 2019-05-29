@@ -1,4 +1,4 @@
-language: c
+language: c, python
 sudo: required
 
 before_install:
@@ -6,9 +6,20 @@ before_install:
   - sudo apt-get install lcov
   - sudo apt-get install libblas-dev
   - sudo apt-get install liblapack-dev
-  - sudo apt-get install python3-dev
-  - sudo apt-get install python3-numpy
-
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b
+  - export PATH=/home/travis/miniconda/bin:$PATH
+  - conda update --yes conda
+  # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
+  - sudo rm -rf /dev/shm
+  - sudo ln -s /run/shm /dev/shm
+  
+# Install packages
+install:
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION numpy 
+  
+# Install packages
 script:
   - ./makebuild.sh
   - ./makecov.sh
