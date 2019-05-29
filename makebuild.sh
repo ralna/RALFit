@@ -5,7 +5,8 @@ cd $SCRIPTPATH/libRALFit/
 mkdir build
 cd build
 cmake ..
-make 
+make
+make install
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 1
 cd test
