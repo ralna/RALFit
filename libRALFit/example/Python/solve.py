@@ -49,7 +49,7 @@ x0 = numpy.array([2.5, 0.25])
 (x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=(t,y))
 
 # Print result
-print("Found a local optimum at x = {}".format(x))
+print("Found a local optimum at x = [ {0:.8f}  {1:.8f} ]".format(x[0],x[1]))
 print("RALFit converged in {:d} iterations".format(inform["iter"]))
 print("The cost function is {:f} at the minimum, and ||J^Tr||={:e}"
       .format(inform["obj"],inform["norm_g"])
