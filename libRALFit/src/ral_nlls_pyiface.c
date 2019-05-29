@@ -897,7 +897,8 @@ PyMODINIT_FUNC
 PyInit_ral_nlls(void)
 
 #else
-
+#define INITERROR return
+  
 void
 initral_nlls(void)
 #endif
