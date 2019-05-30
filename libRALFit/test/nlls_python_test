@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python3 ../example/Python/solve.py > Python_example_output.out
+python ../example/Python/solve.py > Python_example_output.out
 RESULT=$?
 [ $RESULT -ne 0 ] && exit -1
 diff Python_example_output.out solve_python.output
