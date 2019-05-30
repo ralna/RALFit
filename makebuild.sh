@@ -48,9 +48,7 @@ fi
 ## run python tests ##
 ######################
 
-#cd $SCRIPTPATH/libRALFit/
 export LD_LIBRARY_PATH=$SCRIPTPATH/libRALFit/build/src/:$LD_LIBRARY_PATH
-#cd test
 ./nlls_python_test &> nlls_python_test.output
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 5
