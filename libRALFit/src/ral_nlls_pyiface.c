@@ -200,7 +200,6 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
    if(!pyoptions) return true; // Just use defaults
 
    #if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION > 6)
-   #define PyInt_Check    PyLong_Check 
    #define PyInt_AsLong   PyLong_AsLong
    #define PyInt_FromLong   PyLong_FromLong
    #endif
