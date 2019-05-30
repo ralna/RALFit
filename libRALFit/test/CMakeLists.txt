@@ -8,3 +8,7 @@ target_link_libraries(cdriver ral_nlls -lm)
 
 add_executable (nlls_c_test nlls_c_test.c)
 target_link_libraries(nlls_c_test ral_nlls -lm)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nlls_python_test
+	${CMAKE_CURRENT_BINARY_DIR}/nlls_python_test
+ 	COPYONLY)
