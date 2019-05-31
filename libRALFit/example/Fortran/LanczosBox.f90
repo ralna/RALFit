@@ -1,17 +1,9 @@
-! examples/Fortran/Lanczos.f90
+! examples/Fortran/LanczosBox.f90
 
 module lanczos_box_module
-  Use nag_precisions, only: wp
-  use nag_params_base_type_type
-  use nag_params_box_type_type
-  Use nag_ral_nlls_eval_types
-  Use nag_nlls_options_type
-  Use nag_nlls_inform_type
-  Use nag_ral_nlls_ib_aux
-
+  use ral_nlls_double
   implicit none
-
-! integer, parameter :: wp = kind(0d0)
+  integer, parameter :: wp = kind(0d0)
 
   type, extends(params_box_type) :: params_type
      real(wp), dimension(:), allocatable :: t ! The m data points t_i
@@ -201,11 +193,13 @@ blx(5) = -3.9e-1_wp
 bux(5) = -0.200_wp
 ! ------------------
 bux(6) = 10.0_wp !! working good
-bux(6) = 11.0_wp !! fast !! 45 iterations 
-! optimum at x =    0.6889229829244405   1.8735055049705871   2.0682924682678787   4.6402277568643573  -0.2444283933594384   1.8736741088671192
+! bux(6) = 11.0_wp !! fast !! 45 iterations 
+! optimum at x =    0.6889229829244405   1.8735055049705871   2.0682924682678787
+! 4.6402277568643573  -0.2444283933594384   1.8736741088671192
 ! 2.1732349926983754E-06
 ! bux(6) = 12.0_wp !! stagnation !! 43882 iterations
-! optimum at x =    0.5900000000000000   2.0808044760419366   2.3127303035245053   5.0477989247787995  -0.3900000000000000   6.3782210775222410
+! optimum at x =    0.5900000000000000   2.0808044760419366   2.3127303035245053
+! 5.0477989247787995  -0.3900000000000000   6.3782210775222410
 ! 6.4906367799130378E-06
 
 ! TEST four fail  
@@ -219,6 +213,8 @@ bux(6) = 11.0_wp !! fast !! 45 iterations
 !   blx(5) = 1.59_wp
 !   blx(6) = 4.99_wp
 !   iusrbox = 1
+
+
 
   Call nlls_setup_bounds(params, n, blx, bux, options, inform)
   if (inform%status/=0) then
@@ -256,7 +252,7 @@ bux(6) = 11.0_wp !! fast !! 45 iterations
   options%inner_method = 2 ! expanded NLLS is solved
 !  options%inner_method = 3 ! implicit recursive call
   options%maxit = 2000000
-  options%box_linesearch_type = 2
+  options%box_linesearch_type = 1
 !   options%box_tr_test_step = .False. !.True.
 !   options%box_wolfe_test_step = .True.
 !   options%box_max_ntrfail = 10
