@@ -257,7 +257,7 @@ For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A subroutine may be supplied to calculate
-:math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})` for
+:math:`P({\bm x},{\bm y}) := ( \nabla^2 r_1({\bm x}){\bm y} \dots  \nabla^2 r_m({\bm x}){\bm y})` for
 given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^n`. The
 subroutine must implement the following interface:
 

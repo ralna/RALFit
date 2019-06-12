@@ -18,7 +18,7 @@
 
 .. |weights| replace:: If present, this holds the square-roots of the diagonal entries of the weighting matrix, :math:`{\bm W}`. If absent, then the norm in the least squares problem is taken to be the 2-norm, that is, :math:`{\bm W} = I`.
 
-.. |eval_HP_desc| replace:: If present, this is a routine that, given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^m`, returns the matrix :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`. Further details of the format required are given in |eval_HP| in :ref:`user-routines`.  This is only referenced if ``model = 4`` in |nlls_options|.
+.. |eval_HP_desc| replace:: If present, this is a routine that, given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^m`, returns the matrix :math:`P({\bm x},{\bm y}) := ( \nabla^2 r_1({\bm x}){\bm y} \dots  \nabla^2 r_m({\bm x}){\bm y})`. Further details of the format required are given in |eval_HP| in :ref:`user-routines`.  This is only referenced if ``model = 4`` in |nlls_options|.
 		       
 .. |iterate_X| replace:: on the first call it must hold the initial guess for :math:`\bm x`. On return it holds the value of :math:`\bm x` at the current iterate,  and must be passed unaltered to any subsequent call to |nlls_iterate|.
 
