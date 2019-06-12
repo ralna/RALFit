@@ -620,20 +620,19 @@ contains
            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
            If (params%prjchd) Then
              w%d(1:n) = w%Xnew(1:n)-X(1:n)
+             w%norm_2_d = norm2(w%d)
            End If
            ! tau = |P(X+d)-X| / |d|. At this point:
            ! * w%d=P(X+d)-X is the projected trust region step, while 
-           ! * w%normd is the norm of the unprojected trust region step.
+           ! * w%norm_2_d is the norm of the unprojected trust region step.
            ! if tau << 1 then the TR step is orthogonal to the active constraints
-           tau = norm2(w%d) / tau ! w%normd ! TODO ISSUE #24
+           tau = w%norm_2_d / tau
            If (tau - 1.0_wp > 1.0e-5_wp) Then ! TODO move to constants wrt to macheps
              inform%status = NLLS_ERROR_UNEXPECTED
              Go To 100
            End If
            ! fix rounding error
            tau = max(0.0_wp, min(1.0_wp, tau))
-           ! Now update w%normd to |P(X+d)-X|
-           If (params%prjchd) w%normd = norm2(w%d)
            If (no_reductions==1) Then
 !            gtd = g(x)^T (P(x+d)-x)
              params%gtd = 0.0_wp
@@ -921,7 +920,7 @@ contains
 !       Quadratic model Mk(step) is fitted using f(X_k), f'(X_k)^Tdir and
 !       f'(X_k+1), and is used to approximate f(X_k+1), if approximation is good
 !       quad_i counter is incremented. ! TODO replace these dot_products
-        If (abs(w%normF+(w%normd)*(dot_product(params%g,w%d)+                    &
+        If (abs(w%normF+(w%norm_2_d)*(dot_product(params%g,w%d)+                    &
             dot_product(w%g,w%d)/2.0_wp) - normFnew) <= options%box_quad_model_descent) Then
           params%quad_i = params%quad_i + 1
         Else
@@ -931,7 +930,7 @@ contains
         If (buildmsg(5, .False., options)) Then
           Write(rec(1), Fmt=99999) 
           Write(rec(2), Fmt=99998) params%quad_q, params%quad_c,params%quad_i,           & 
-            abs(w%normF+(w%normd)*(dot_product(params%g,w%d)+                    &
+            abs(w%normF+(w%norm_2_d)*(dot_product(params%g,w%d)+                    &
             dot_product(w%g,w%d)/2.0_wp)- normFnew),                             &
             100.0_wp*Real(params%nFref,Kind=wp)/Real(options%box_nFref_max,Kind=wp),      &
             maxval(params%normFref(1:params%nFref)),inform%ls_step_iter,inform%pg_step_iter
@@ -1479,11 +1478,13 @@ contains
 
         ! reverse the scaling on the step and update
         if ( (scaling_used) ) then
+           ! recalculate ||d||
+           norm_2_d = 0.0_wp
            do i = 1, n
               d(i) = d(i) / w%scale(i)
+              norm_2_d = norm_2_d + d(i)**2
            end do
-           ! recalculate ||d||
-           norm_2_d = norm2(d)
+           norm_2_d = sqrt(norm_2_d)
         else
            norm_2_d = norm_S_d
         end if
@@ -4032,12 +4033,12 @@ contains
 !       lstype=1: search direction:=Xnew-X is of descent, so take LS step, or
 !       lstype=2: perform a Cauchy step (PG step)
 !       Make sure projection is NOT too orthogonal wrt the active constraints
-        If (-dot_product(params%g,w%d)<=-options%box_kanzow_descent*w%normd**  &
+        If (-dot_product(params%g,w%d)<=-options%box_kanzow_descent*w%norm_2_d**  &
           options%box_kanzow_power .And. tau>options%box_tau_descent) Then
           lstype = 1
 !         Rescale search direction to match norm of gradient
-          w%d(1:n) = (w%normjf/w%normd)*w%d(1:n)
-          w%normd = norm2(w%d)
+          w%d(1:n) = (w%normjf/w%norm_2_d)*w%d(1:n)
+          w%norm_2_d = norm2(w%d)
           inform%ls_step_iter = inform%ls_step_iter + 1
           Select Case (options%box_linesearch_type)
           Case (1)
@@ -4056,7 +4057,7 @@ contains
             End If
           Case (2)
             If (params%quad_i>=options%box_quad_match) Then
-              alpha = max(min(1.0E+10_wp,0.5_wp*options%box_alpha_scale*inform%step/w%normd),1.0E-10_wp)
+              alpha = max(min(1.0E+10_wp,0.5_wp*options%box_alpha_scale*inform%step/w%norm_2_d),1.0E-10_wp)
 !             alpha = 0.5_wp
             Else
 !             alpha = 1.0/hz_psi2
@@ -4105,11 +4106,11 @@ contains
         End If
 !       Update LS/PG step data
         w%d(1:n) = w%xnew(1:n) - x(1:n)
-        w%normd = norm2(w%d)
+        w%norm_2_d = norm2(w%d)
 !       ---------------------------------!
 !       Update TR radius with LS/PG step !
 !       ---------------------------------!
-        w%Delta = options%box_delta_scale*w%normd
+        w%Delta = options%box_delta_scale*w%norm_2_d
 
 100     Continue
 
@@ -4349,7 +4350,7 @@ contains
         End If
         alpn = alpha
         ierr = 0
-        stepmx = 1.0E3_wp*max(w%normd,1.0_wp)
+        stepmx = 1.0E3_wp*max(w%norm_2_d,1.0_wp)
 !       TODO  steptl = 1.0e3_wp * sqrt(x02ajf()); 
 !       extend the life of dennis-schnabel LS by allowing smaller steps
         steptl = 1.05e-8_wp ! this parameter determines how small
