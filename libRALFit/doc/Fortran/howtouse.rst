@@ -253,7 +253,7 @@ subroutine must implement the following interface:
 
    :p params_base_type params [in]: |eval_Hf_params|
 
-For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
+For evaluating the function :math:`P({\bm x},{\bm y}) := (  \nabla^2 r_1({\bm x}){\bm y} \dots   \nabla^2 r_m({\bm x}){\bm y})`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A subroutine may be supplied to calculate
