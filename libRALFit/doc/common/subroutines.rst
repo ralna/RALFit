@@ -72,6 +72,6 @@
 
 .. |eval_HP_y| replace:: holds :math:`{\bm y}`, the vector which multiplies each Hessian.
 
-.. |eval_HP_HP| replace:: must be set by the routine to hold the matrix :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`, held by columns as a vector.
+.. |eval_HP_HP| replace:: must be set by the routine to hold the matrix :math:`P({\bm x},{\bm y}) := ( \nabla^2 r_1({\bm x}){\bm y} \dots   \nabla^2 r_m({\bm x}){\bm y})`, held by columns as a vector.
 
 .. |eval_HP_status| replace:: is initialised to ``0`` before the routine is called. If it is set to a non-zero value by the routine, then |nlls_solve| / |nlls_iterate| will exit with error.
