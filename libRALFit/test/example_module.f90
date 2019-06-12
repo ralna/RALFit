@@ -1470,7 +1470,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      ! check if rho increases...
      rho = (options%eta_very_successful + options%eta_too_successful) / 2
-     work%normd = 100.0_wp
+     work%norm_S_d = 100.0_wp
      call update_trust_region_radius(rho,options,status,work)
      if ( work%Delta <= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'

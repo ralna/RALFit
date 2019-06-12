@@ -407,7 +407,7 @@ contains
        ! Test convergence !
        !++++++++++++++++++!
        ! Note: pretty printing was pushed into test_convergence
-       ! normd is not yet available, test on step size is ignored
+       ! norm_2_d is not yet available, test on step size is ignored
        call test_convergence(w%normF,inform%norm_g,w%normF0,w%normJF0,1.0_wp,options,inform)
        if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1) Then
 !        Converged!
@@ -584,7 +584,7 @@ contains
             X,md,md_gn,&
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, &
             num_successful_steps, &
-            w%Xnew,w%d,w%normd, &
+            w%Xnew,w%d,w%norm_2_d,w%norm_S_d, &
             options,inform,&
             w%calculate_step_ws, w%tenJ, w%iw_ptr)
        if (inform%status /= 0) then
@@ -1021,7 +1021,7 @@ contains
     End Select
     inform%obj = 0.5_wp*(w%normF**2)
     inform%scaled_g = inform%norm_g/w%normF
-    inform%step = w%normd
+    inform%step = w%norm_2_d
     if (options%output_progress_vectors) then
        w%resvec (w%iter + 1) = inform%obj
        w%gradvec(w%iter + 1) = inform%norm_g
@@ -1115,7 +1115,7 @@ contains
     ! Test convergence !
     !++++++++++++++++++!
     ! Note: pretty printing was pushed into test_convergence
-    call test_convergence(w%normF,inform%norm_g,w%normF0,w%normJF0,w%normd,options,inform)
+    call test_convergence(w%normF,inform%norm_g,w%normF0,w%normJF0,w%norm_2_d,options,inform)
     if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1       &
           .Or. inform%convergence_norms == 1) Then
 !      Converged!
@@ -1273,7 +1273,7 @@ contains
 
   RECURSIVE SUBROUTINE calculate_step(J,f,hf,g,X,md,md_gn,n,m,use_second_derivatives, &
                             Delta,eval_HF,params,num_successful_steps,&
-                            Xnew,d,normd,options,inform,w,tenJ, inner_workspace)
+                            Xnew,d,norm_2_d,norm_S_d,options,inform,w,tenJ, inner_workspace)
     implicit none
 ! -------------------------------------------------------
 ! calculate_step, find the next step in the optimization
@@ -1290,7 +1290,7 @@ contains
     logical, intent(in) :: use_second_derivatives
     real(wp), intent(out) :: d(:), Xnew(:)
     real(wp), intent(out) :: md, md_gn
-    real(wp), intent(out) :: normd
+    real(wp), intent(out) :: norm_2_d,norm_S_d
     TYPE( nlls_options ), INTENT( IN ) :: options
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( calculate_step_work ) :: w
@@ -1312,7 +1312,7 @@ contains
     d(1:n) = 0.0_wp
     w%scale = 1.0_wp
 
-    normd = 1.0e10_wp ! set normd so that it can't be undefined later
+    norm_2_d = 1.0e10_wp ! set norm_2_d so that it can't be undefined later
 
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
@@ -1324,7 +1324,7 @@ contains
          Write(rec(1), Fmt=8000)
          Call printmsg(4, .False., options, 1, rec)
        End If
-       normd = norm2(d(1:n)) ! ||d||_D
+       norm_2_d = norm2(d(1:n)) ! ||d||_D
        Xnew = X + d
        call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
        If (inform%status/=0) Then
@@ -1422,21 +1422,21 @@ contains
                Write(rec(1), Fmt=3000) 'dogleg'
                Call printmsg(5,.False.,options,1,rec)
              End If
-             call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%dogleg_ws)
+             call dogleg(J,f,hf,g,n,m,Delta,d,norm_S_d,options,inform,w%dogleg_ws)
              if (inform%status /= 0) Go To 100
           case (2) ! The AINT method
              If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3000) 'AINT_TR'
                Call printmsg(5,.False.,options,1,rec)
              End If
-             call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,normd,options,inform,w%AINT_tr_ws)
+             call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,norm_S_d,options,inform,w%AINT_tr_ws)
              if (inform%status /= 0) Go To 100
           case (3) ! More-Sorensen
              If (buildmsg(5,.False.,options)) Then
                Write(rec(1), Fmt=3000) 'More-Sorensen'
                Call printmsg(5,.False.,options,1,rec)
              End If
-             call more_sorensen(w%A,w%v,n,m,Delta,d,normd,options,inform,w%more_sorensen_ws)
+             call more_sorensen(w%A,w%v,n,m,Delta,d,norm_S_d,options,inform,w%more_sorensen_ws)
              if (inform%status /= 0) Go To 100
           case (4) ! Galahad
              If (buildmsg(5,.False.,options)) Then
@@ -1444,7 +1444,7 @@ contains
                Call printmsg(5,.False.,options,1,rec)
              End If
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
-                  d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+                  d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
              if (inform%status /= 0) Go To 100
           case default
              inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
@@ -1458,7 +1458,7 @@ contains
                Call printmsg(5,.False.,options,1,rec)
              End If
              call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
-                  d,normd,w%reg_order,options,inform,w%regularization_solver_ws)
+                  d,norm_S_d,w%reg_order,options,inform,w%regularization_solver_ws)
              if (inform%status /= 0) Go To 100
           case(4) ! Galahad
              If (buildmsg(5,.False.,options)) Then
@@ -1466,7 +1466,7 @@ contains
                Call printmsg(5,.False.,options,1,rec)
              End If
              call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
-                  d,normd,w%reg_order,options,inform,w%solve_galahad_ws)
+                  d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
              if (inform%status /= 0) Go To 100
           case default
              inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
@@ -1477,14 +1477,15 @@ contains
           goto 100
        end if ! type_of_method
 
-        ! reverse the scaling on the step and update normd TODO:AndrewS
+        ! reverse the scaling on the step and update
         if ( (scaling_used) ) then
-!           normd = 0.0_wp
            do i = 1, n
               d(i) = d(i) / w%scale(i)
-!              normd = normd + d(i)**2
            end do
-!           normd = sqrt(normd)
+           ! recalculate ||d||
+           norm_2_d = norm2(d)
+        else
+           norm_2_d = norm_S_d
         end if
 
         !++++++++++++++++++++++++++++!
@@ -3141,7 +3142,7 @@ contains
              select case(options%type_of_method)
              case(1)
                 w%Delta = min(options%maximum_radius, &
-                     options%radius_increase * w%normd )
+                     options%radius_increase * w%norm_S_d )
                 ! if we have a trust region method, then we
                 ! increase based on ||d||, not on Delta, as there's
                 ! no point increasing the radius if we're within the
@@ -3214,9 +3215,9 @@ contains
 3060   FORMAT('Changing Delta to ', ES12.4)
      end subroutine update_trust_region_radius
 
-     subroutine test_convergence(normF,normJF,normF0,normJF0,normd,options,inform)
+     subroutine test_convergence(normF,normJF,normF0,normJF0,norm_2_d,options,inform)
        Implicit None
-       real(wp), intent(in) :: normF, normJf, normF0, normJF0, normd
+       real(wp), intent(in) :: normF, normJf, normF0, normJF0, norm_2_d
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        Character(Len=8), Parameter :: labels(3) = (/'||f||   ', 'gradient', 'step    '/)
@@ -3235,7 +3236,7 @@ contains
           nlabel = 2
           Go To 100
        end if
-       if ( normd <= options%stop_s ) then
+       if ( norm_2_d < options%stop_s ) then
           inform%convergence_norms = 1
           nlabel = 3
        end if
