@@ -5,6 +5,17 @@
 
 #include "ral_nlls.h"
 
+struct ral_nlls_state {
+  PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct ral_nlls_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct ral_nlls_state _state;
+#endif
+
 struct callback_data {
    PyObject* f;
    PyObject* J;
@@ -12,6 +23,9 @@ struct callback_data {
    PyObject* params;
 };
 
+///
+/// get the argument list of a 
+///
 static
 PyObject* build_arglist(Py_ssize_t sz, PyObject* extra) {
    Py_ssize_t als = sz;
@@ -28,8 +42,6 @@ PyObject* build_arglist(Py_ssize_t sz, PyObject* extra) {
 ///
 /// the eval_f subroutine
 ///
-
-
 static
 int eval_f(int n, int m, void *params, const double *x, double *f) {
    // Recover our datatype
@@ -77,7 +89,6 @@ int eval_f(int n, int m, void *params, const double *x, double *f) {
 ///
 /// the eval_J subroutine
 ///
-
 static
 int eval_J(int n, int m, void *params, const double *x, double *J) {
    // Recover our datatype
@@ -188,10 +199,14 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 
    if(!pyoptions) return true; // Just use defaults
 
+   #if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION > 6)
+   #define PyInt_AsLong   PyLong_AsLong
+   #define PyInt_FromLong   PyLong_FromLong
+   #endif
    PyObject *key, *value;
    Py_ssize_t pos = 0;
    while(PyDict_Next(pyoptions, &pos, &key, &value)) {
-      const char* key_name = PyString_AsString(key);
+      const char* key_name = PyBytes_AsString(key);
       if(!key_name) {
          PyErr_SetString(PyExc_RuntimeError, "Non-string option, can't interpret!");
          return false;
@@ -850,9 +865,58 @@ static PyMethodDef RalNllsMethods[] = {
    {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
+
+#if PY_MAJOR_VERSION >= 3
+
+static int ral_nlls_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+
+static int ral_nlls_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+static struct PyModuleDef ral_nllsdef = {
+        PyModuleDef_HEAD_INIT,
+        "ral_nlls",
+        NULL,
+        sizeof(struct ral_nlls_state),
+        RalNllsMethods,
+        NULL,
+        ral_nlls_traverse,
+        ral_nlls_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
 PyMODINIT_FUNC
+PyInit_ral_nlls(void)
+
+#else
+#define INITERROR return
+  
+void
 initral_nlls(void)
+#endif
 {
-   (void) Py_InitModule("ral_nlls", RalNllsMethods);
-   import_array();
+#if PY_MAJOR_VERSION >= 3
+PyObject *ral_nlls = PyModule_Create(&ral_nllsdef);
+#else
+PyObject *ral_nlls = Py_InitModule("ral_nlls", RalNllsMethods);
+#endif
+if (ral_nlls == NULL)
+  INITERROR;
+struct ral_nlls_state *st = GETSTATE(ral_nlls);
+st->error = PyErr_NewException("ral_nlls.Error", NULL, NULL);
+if (st->error == NULL) {
+   Py_DECREF(ral_nlls);
+   INITERROR;
+}
+import_array();
+#if PY_MAJOR_VERSION >= 3
+return ral_nlls;
+#endif
 }

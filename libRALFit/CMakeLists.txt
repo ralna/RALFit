@@ -85,6 +85,32 @@ if(CompileMiniLAPACK)
    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})   
 endif()
 
+# Python interface
+find_program(PYTHON "python")
+
+if (PYTHON)
+   message( STATUS "looking for file in ${CMAKE_CURRENT_SOURCE_DIR}")	
+   set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
+   set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
+   set(OUTPUT   "${CMAKE_CURRENT_BINARY_DIR}/build/timestamp")
+
+   configure_file(${SETUP_PY_IN} ${SETUP_PY})
+
+   add_custom_command(OUTPUT ${OUTPUT}
+   		      COMMAND ${PYTHON} ${SETUP_PY} build
+		      COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT})
+
+
+   message( STATUS "python found -- writing to ${CMAKE_CURRENT_BINARY_DIR}")
+
+   add_custom_target(target ALL DEPENDS ${OUTPUT} ral_nlls)
+
+   install(CODE "execute_process(
+   	    COMMAND ${PYTHON} ${SETUP_PY} install --user
+	    )"	    
+	   )
+endif()
+
 # Main libral_nlls library
 add_subdirectory(src)
 
@@ -93,4 +119,5 @@ add_subdirectory(src)
 add_subdirectory (test)
 add_subdirectory (example/C)
 add_subdirectory (example/Fortran)
+add_subdirectory (example/Python)
 #add_subdirectory (example/C++)
