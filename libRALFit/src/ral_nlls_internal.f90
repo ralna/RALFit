@@ -352,13 +352,15 @@ contains
           normX = norm2(X(1:n))
           call update_regularized_normF(w%normF,normX,options)
        end if
-       w%normF0 = w%normF
 
        If ( (log(w%normF)>100.0_wp) .or. (w%normF/=w%normF) ) Then
          ! Initial guess x0 is not usable
          inform%status = NLLS_ERROR_INITIAL_GUESS
          Go To 100
        End If
+
+       ! Avoid NaN if F(x0)=0.0 is solution
+       w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp)
 
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g,options)
@@ -394,7 +396,7 @@ contains
          inform%norm_g = w%normJF
        End Select
        w%normJF0 = inform%norm_g
-       inform%scaled_g = inform%norm_g / w%normF
+       inform%scaled_g = inform%norm_g / w%normF0
 
        ! if we need to output vectors of the history of the residual
        ! and gradient, the set the initial values
@@ -1019,7 +1021,7 @@ contains
       inform%norm_g = w%normJF
     End Select
     inform%obj = 0.5_wp*(w%normF**2)
-    inform%scaled_g = inform%norm_g/w%normF
+    inform%scaled_g = inform%norm_g/merge(1.0_wp, w%normF, w%normF==0.0_wp)
     inform%step = w%norm_2_d
     if (options%output_progress_vectors) then
        w%resvec (w%iter + 1) = inform%obj
@@ -2759,7 +2761,7 @@ contains
      else
 !      Feature not yet implemented, this should have been caught in
 !      check_options()
-       inform%status = NLLS_ERROR_UNEXPECTED
+       inform%status = NLLS_ERROR_NOT_IMPLEMENTED
      end if
 
      If (inform%status==0) Then
@@ -3217,6 +3219,7 @@ contains
      end subroutine update_trust_region_radius
 
      subroutine test_convergence(normF,normJF,normF0,normJF0,norm_2_d,options,inform)
+       ! Assumes normF0 is not zero
        Implicit None
        real(wp), intent(in) :: normF, normJf, normF0, normJF0, norm_2_d
        type( nlls_options ), intent(in) :: options
