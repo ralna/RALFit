@@ -44,7 +44,7 @@
 
 .. |eval_J_X| replace::  holds the current point :math:`{\bm x}_{k}^{}` at which to evaluate :math:`{\bm J} (  {\bm x} _{k}^{})`.
 
-.. |eval_J_r| replace:: must be set by the routine to hold the Jacobian of the residual function evaluated at the current point :math:`{\bm x}_{k}^{}`, :math:`{\bm r} (  {\bm x} _{k}^{})`. ``J(i*m+j)`` must be set to hold :math:`\nabla_{x_j} r_i(  {\bm x} _{k}^{})`.
+.. |eval_J_r| replace:: must be set by the routine to hold the Jacobian of the residual function evaluated at the current point :math:`{\bm x}_{k}^{}`, :math:`{\bm r} (  {\bm x} _{k}^{})`. ``J((i-1)*n+j)`` must be set to hold :math:`\nabla_{x_j} r_i(  {\bm x} _{k}^{})`.
 
 .. |eval_J_status| replace:: is initialised to ``0`` before the routine is called. If it is set to a non-zero value by the routine, then |nlls_solve| / |nlls_iterate| will exit with error.
 
