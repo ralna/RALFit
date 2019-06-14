@@ -62,182 +62,261 @@
 99999   Format (A)
       End Subroutine printmsg
 
+    Subroutine print_options(options)
+      Implicit None
+      Type (nlls_options), Intent (In) :: options
 
-      Subroutine print_options(options)
-        Implicit None
-        Type (nlls_options), Intent (In) :: options
+      Integer                          :: nrec
+      Character (80)                   :: rec(100)
+      Character (30)                   :: adj
 
-        Integer                        :: nrec
-        Character (80)                 :: rec(78)
-        Character (30)                 :: adj
+      nrec = 1
+      Write (rec(nrec),Fmt=99995)
+      Write (adj,Fmt=99999) 'out'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%out
+      Write (adj,Fmt=99999) 'print_level'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%print_level
+      Write (adj,Fmt=99999) 'print_options'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%print_options
+      Write (adj,Fmt=99999) 'print_header'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%print_header
+      Write (adj,Fmt=99999) 'maxit'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%maxit
+      Write (adj,Fmt=99999) 'model'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%model
+      Write (adj,Fmt=99999) 'type_of_method'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%type_of_method
+      Write (adj,Fmt=99999) 'nlls_method'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%nlls_method
+      Write (adj,Fmt=99999) 'lls_solver'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%lls_solver
+      Write (adj,Fmt=99999) 'stop_g_absolute'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%stop_g_absolute
+      Write (adj,Fmt=99999) 'stop_g_relative'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%stop_g_relative
+      Write (adj,Fmt=99999) 'stop_f_absolute'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%stop_f_absolute
+      Write (adj,Fmt=99999) 'stop_f_relative'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%stop_f_relative
+      Write (adj,Fmt=99999) 'stop_s'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%stop_s
+      Write (adj,Fmt=99999) 'relative_tr_radius'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%relative_tr_radius
+      Write (adj,Fmt=99999) 'initial_radius_scale'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%initial_radius_scale
+      Write (adj,Fmt=99999) 'initial_radius'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%initial_radius
+      Write (adj,Fmt=99999) 'base_regularization'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%base_regularization
+      Write (adj,Fmt=99999) 'regularization'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%regularization
+      Write (adj,Fmt=99999) 'regularization_term'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%regularization_term
+      Write (adj,Fmt=99999) 'regularization_power'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%regularization_power
+      Write (adj,Fmt=99999) 'maximum_radius'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%maximum_radius
+      Write (adj,Fmt=99999) 'eta_successful'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%eta_successful
+      Write (adj,Fmt=99999) 'eta_success_but_reduce'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%eta_success_but_reduce
+      Write (adj,Fmt=99999) 'eta_very_successful'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%eta_very_successful
+      Write (adj,Fmt=99999) 'eta_too_successful'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%eta_too_successful
+      Write (adj,Fmt=99999) 'radius_increase'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%radius_increase
+      Write (adj,Fmt=99999) 'radius_reduce'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%radius_reduce
+      Write (adj,Fmt=99999) 'radius_reduce_max'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%radius_reduce_max
+      Write (adj,Fmt=99999) 'tr_update_strategy'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%tr_update_strategy
+      Write (adj,Fmt=99999) 'hybrid_switch'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%hybrid_switch
+      Write (adj,Fmt=99999) 'exact_second_derivatives'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%                       &
+        exact_second_derivatives
+      Write (adj,Fmt=99999) 'subproblem_eig_fact'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%subproblem_eig_fact
+      Write (adj,Fmt=99999) 'use_ews_subproblem'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%use_ews_subproblem
+      Write (adj,Fmt=99999) 'force_min_eig_symm'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%force_min_eig_symm
+      Write (adj,Fmt=99999) 'scale'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%scale
+      Write (adj,Fmt=99999) 'scale_max'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%scale_max
+      Write (adj,Fmt=99999) 'scale_min'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%scale_min
+      Write (adj,Fmt=99999) 'scale_trim_min'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%scale_trim_min
+      Write (adj,Fmt=99999) 'scale_trim_max'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%scale_trim_max
+      Write (adj,Fmt=99999) 'scale_require_increase'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%scale_require_increase
+      Write (adj,Fmt=99999) 'setup_workspaces'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%setup_workspaces
+      Write (adj,Fmt=99999) 'remove_workspaces'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%remove_workspaces
+      Write (adj,Fmt=99999) 'more_sorensen_maxits'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%more_sorensen_maxits
+      Write (adj,Fmt=99999) 'more_sorensen_shift'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%more_sorensen_shift
+      Write (adj,Fmt=99999) 'more_sorensen_tiny'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%more_sorensen_tiny
+      Write (adj,Fmt=99999) 'more_sorensen_tol'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%more_sorensen_tol
+      Write (adj,Fmt=99999) 'hybrid_tol'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%hybrid_tol
+      Write (adj,Fmt=99999) 'hybrid_switch_its'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%hybrid_switch_its
+      Write (adj,Fmt=99999) 'reg_order'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%reg_order
+      Write (adj,Fmt=99999) 'inner_method'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%inner_method
+      Write (adj,Fmt=99999) 'output_progress_vectors'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%                       &
+        output_progress_vectors
+      Write (adj,Fmt=99999) 'update_lower_order'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%update_lower_order
+      Write (adj,Fmt=99999) 'fortran_jacobian'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%fortran_jacobian
+      Write (adj,Fmt=99999) 'box_nfref_max'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_nfref_max
+      Write (adj,Fmt=99999) 'box_ntrfail'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_ntrfail
+      Write (adj,Fmt=99999) 'box_gamma'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_gamma
+      Write (adj,Fmt=99999) 'box_decmin'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_decmin
+      Write (adj,Fmt=99999) 'box_bigbnd'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_bigbnd
+      Write (adj,Fmt=99999) 'box_wolfe_descent'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_wolfe_descent
+      Write (adj,Fmt=99999) 'box_wolfe_curvature'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_wolfe_curvature
+      Write (adj,Fmt=99999) 'box_kanzow_power'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_kanzow_power
+      Write (adj,Fmt=99999) 'box_kanzow_descent'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_kanzow_descent
+      Write (adj,Fmt=99999) 'box_quad_model_descent'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_quad_model_descent
+      Write (adj,Fmt=99999) 'box_tr_test_step'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%box_tr_test_step
+      Write (adj,Fmt=99999) 'box_wolfe_test_step'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%box_wolfe_test_step
+      Write (adj,Fmt=99999) 'box_tau_min'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_tau_min
+      Write (adj,Fmt=99999) 'box_tau_descent'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_tau_descent
+      Write (adj,Fmt=99999) 'box_max_ntrfail'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_max_ntrfail
+      Write (adj,Fmt=99999) 'box_quad_match'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_quad_match
+      Write (adj,Fmt=99999) 'box_alpha_scale'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_alpha_scale
+      Write (adj,Fmt=99999) 'box_delta_scale'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_delta_scale
+      Write (adj,Fmt=99999) 'box_tau_wolfe'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_tau_wolfe
+      Write (adj,Fmt=99999) 'box_tau_tr_step'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_tau_tr_step
+      Write (adj,Fmt=99999) 'box_ls_step_maxit'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_ls_step_maxit
+      Write (adj,Fmt=99999) 'box_linesearch_type'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_linesearch_type
 
-        Write (rec(1),Fmt=99995)
-        Write(adj,Fmt=99999) "out"
-        Write(rec(2),Fmt=99997) Adjustl(adj), options%out
-        Write(adj,Fmt=99999) "print_level"
-        Write(rec(3),Fmt=99997) Adjustl(adj), options%print_level
-        Write(adj,Fmt=99999) "print_options"
-        Write(rec(4),Fmt=99996) Adjustl(adj), options%print_options
-        Write(adj,Fmt=99999) "print_header"
-        Write(rec(5),Fmt=99997) Adjustl(adj), options%print_header
-        Write(adj,Fmt=99999) "maxit"
-        Write(rec(6),Fmt=99997) Adjustl(adj), options%maxit
-        Write(adj,Fmt=99999) "model"
-        Write(rec(7),Fmt=99997) Adjustl(adj), options%model
-        Write(adj,Fmt=99999) "type_of_method"
-        Write(rec(8),Fmt=99997) Adjustl(adj), options%type_of_method
-        Write(adj,Fmt=99999) "nlls_method"
-        Write(rec(9),Fmt=99997) Adjustl(adj), options%nlls_method
-        Write(adj,Fmt=99999) "lls_solver"
-        Write(rec(10),Fmt=99997) Adjustl(adj), options%lls_solver
-        Write(adj,Fmt=99999) "stop_g_absolute"
-        Write(rec(11),Fmt=99998) Adjustl(adj), options%stop_g_absolute
-        Write(adj,Fmt=99999) "stop_g_relative"
-        Write(rec(12),Fmt=99998) Adjustl(adj), options%stop_g_relative
-        Write(adj,Fmt=99999) "stop_f_absolute"
-        Write(rec(13),Fmt=99998) Adjustl(adj), options%stop_f_absolute
-        Write(adj,Fmt=99999) "stop_f_relative"
-        Write(rec(14),Fmt=99998) Adjustl(adj), options%stop_f_relative
-        Write(adj,Fmt=99999) "stop_s"
-        Write(rec(15),Fmt=99998) Adjustl(adj), options%stop_s
-        Write(adj,Fmt=99999) "relative_tr_radius"
-        Write(rec(16),Fmt=99997) Adjustl(adj), options%relative_tr_radius
-        Write(adj,Fmt=99999) "initial_radius_scale"
-        Write(rec(17),Fmt=99998) Adjustl(adj), options%initial_radius_scale
-        Write(adj,Fmt=99999) "initial_radius"
-        Write(rec(18),Fmt=99998) Adjustl(adj), options%initial_radius
-        Write(adj,Fmt=99999) "base_regularization"
-        Write(rec(19),Fmt=99998) Adjustl(adj), options%base_regularization
-        Write(adj,Fmt=99999) "regularization"
-        Write(rec(20),Fmt=99997) Adjustl(adj), options%regularization
-        Write(adj,Fmt=99999) "regularization_term"
-        Write(rec(21),Fmt=99998) Adjustl(adj), options%regularization_term
-        Write(adj,Fmt=99999) "regularization_power"
-        Write(rec(22),Fmt=99998) Adjustl(adj), options%regularization_power
-        Write(adj,Fmt=99999) "maximum_radius"
-        Write(rec(23),Fmt=99998) Adjustl(adj), options%maximum_radius
-        Write(adj,Fmt=99999) "eta_successful"
-        Write(rec(24),Fmt=99998) Adjustl(adj), options%eta_successful
-        Write(adj,Fmt=99999) "eta_success_but_reduce"
-        Write(rec(25),Fmt=99998) Adjustl(adj), options%eta_success_but_reduce
-        Write(adj,Fmt=99999) "eta_very_successful"
-        Write(rec(26),Fmt=99998) Adjustl(adj), options%eta_very_successful
-        Write(adj,Fmt=99999) "eta_too_successful"
-        Write(rec(27),Fmt=99998) Adjustl(adj), options%eta_too_successful
-        Write(adj,Fmt=99999) "radius_increase"
-        Write(rec(28),Fmt=99998) Adjustl(adj), options%radius_increase
-        Write(adj,Fmt=99999) "radius_reduce"
-        Write(rec(29),Fmt=99998) Adjustl(adj), options%radius_reduce
-        Write(adj,Fmt=99999) "radius_reduce_max"
-        Write(rec(30),Fmt=99998) Adjustl(adj), options%radius_reduce_max
-        Write(adj,Fmt=99999) "tr_update_strategy"
-        Write(rec(31),Fmt=99997) Adjustl(adj), options%tr_update_strategy
-        Write(adj,Fmt=99999) "hybrid_switch"
-        Write(rec(32),Fmt=99998) Adjustl(adj), options%hybrid_switch
-        Write(adj,Fmt=99999) "exact_second_derivatives"
-        Write(rec(33),Fmt=99996) Adjustl(adj), options%exact_second_derivatives
-        Write(adj,Fmt=99999) "subproblem_eig_fact"
-        Write(rec(34),Fmt=99996) Adjustl(adj), options%subproblem_eig_fact
-        Write(adj,Fmt=99999) "use_ews_subproblem"
-        Write(rec(35),Fmt=99996) Adjustl(adj), options%use_ews_subproblem
-        Write(adj,Fmt=99999) "force_min_eig_symm"
-        Write(rec(36),Fmt=99996) Adjustl(adj), options%force_min_eig_symm
-        Write(adj,Fmt=99999) "scale"
-        Write(rec(37),Fmt=99997) Adjustl(adj), options%scale
-        Write(adj,Fmt=99999) "scale_max"
-        Write(rec(38),Fmt=99998) Adjustl(adj), options%scale_max
-        Write(adj,Fmt=99999) "scale_min"
-        Write(rec(39),Fmt=99998) Adjustl(adj), options%scale_min
-        Write(adj,Fmt=99999) "scale_trim_min"
-        Write(rec(40),Fmt=99996) Adjustl(adj), options%scale_trim_min
-        Write(adj,Fmt=99999) "scale_trim_max"
-        Write(rec(41),Fmt=99996) Adjustl(adj), options%scale_trim_max
-        Write(adj,Fmt=99999) "scale_require_increase"
-        Write(rec(42),Fmt=99996) Adjustl(adj), options%scale_require_increase
-        Write(adj,Fmt=99999) "setup_workspaces"
-        Write(rec(43),Fmt=99996) Adjustl(adj), options%setup_workspaces
-        Write(adj,Fmt=99999) "remove_workspaces"
-        Write(rec(44),Fmt=99996) Adjustl(adj), options%remove_workspaces
-        Write(adj,Fmt=99999) "more_sorensen_maxits"
-        Write(rec(45),Fmt=99997) Adjustl(adj), options%more_sorensen_maxits
-        Write(adj,Fmt=99999) "more_sorensen_shift"
-        Write(rec(46),Fmt=99998) Adjustl(adj), options%more_sorensen_shift
-        Write(adj,Fmt=99999) "more_sorensen_tiny"
-        Write(rec(47),Fmt=99998) Adjustl(adj), options%more_sorensen_tiny
-        Write(adj,Fmt=99999) "more_sorensen_tol"
-        Write(rec(48),Fmt=99998) Adjustl(adj), options%more_sorensen_tol
-        Write(adj,Fmt=99999) "hybrid_tol"
-        Write(rec(49),Fmt=99998) Adjustl(adj), options%hybrid_tol
-        Write(adj,Fmt=99999) "hybrid_switch_its"
-        Write(rec(50),Fmt=99997) Adjustl(adj), options%hybrid_switch_its
-        Write(adj,Fmt=99999) "reg_order"
-        Write(rec(51),Fmt=99998) Adjustl(adj), options%reg_order
-        Write(adj,Fmt=99999) "inner_method"
-        Write(rec(52),Fmt=99997) Adjustl(adj), options%inner_method
-        Write(adj,Fmt=99999) "output_progress_vectors"
-        Write(rec(53),Fmt=99996) Adjustl(adj), options%output_progress_vectors
-        Write(adj,Fmt=99999) "update_lower_order"
-        Write(rec(54),Fmt=99996) Adjustl(adj), options%update_lower_order
-        Write(adj,Fmt=99999) "fortran_jacobian"
-        Write(rec(55),Fmt=99996) Adjustl(adj), options%fortran_jacobian
-        Write(adj,Fmt=99999) "box_nfref_max"
-        Write(rec(56),Fmt=99997) Adjustl(adj), options%box_nfref_max
-        Write(adj,Fmt=99999) "box_ntrfail"
-        Write(rec(57),Fmt=99997) Adjustl(adj), options%box_ntrfail
-        Write(adj,Fmt=99999) "box_gamma"
-        Write(rec(58),Fmt=99998) Adjustl(adj), options%box_gamma
-        Write(adj,Fmt=99999) "box_decmin"
-        Write(rec(59),Fmt=99998) Adjustl(adj), options%box_decmin
-        Write(adj,Fmt=99999) "box_bigbnd"
-        Write(rec(60),Fmt=99998) Adjustl(adj), options%box_bigbnd
-        Write(adj,Fmt=99999) "box_wolfe_descent"
-        Write(rec(61),Fmt=99998) Adjustl(adj), options%box_wolfe_descent
-        Write(adj,Fmt=99999) "box_wolfe_curvature"
-        Write(rec(62),Fmt=99998) Adjustl(adj), options%box_wolfe_curvature
-        Write(adj,Fmt=99999) "box_kanzow_power"
-        Write(rec(63),Fmt=99998) Adjustl(adj), options%box_kanzow_power
-        Write(adj,Fmt=99999) "box_kanzow_descent"
-        Write(rec(64),Fmt=99998) Adjustl(adj), options%box_kanzow_descent
-        Write(adj,Fmt=99999) "box_quad_model_descent"
-        Write(rec(65),Fmt=99998) Adjustl(adj), options%box_quad_model_descent
-        Write(adj,Fmt=99999) "box_tr_test_step"
-        Write(rec(66),Fmt=99996) Adjustl(adj), options%box_tr_test_step
-        Write(adj,Fmt=99999) "box_wolfe_test_step"
-        Write(rec(67),Fmt=99996) Adjustl(adj), options%box_wolfe_test_step
-        Write(adj,Fmt=99999) "box_tau_min"
-        Write(rec(68),Fmt=99998) Adjustl(adj), options%box_tau_min
-        Write(adj,Fmt=99999) "box_tau_descent"
-        Write(rec(69),Fmt=99998) Adjustl(adj), options%box_tau_descent
-        Write(adj,Fmt=99999) "box_max_ntrfail"
-        Write(rec(70),Fmt=99997) Adjustl(adj), options%box_max_ntrfail
-        Write(adj,Fmt=99999) "box_quad_match"
-        Write(rec(71),Fmt=99997) Adjustl(adj), options%box_quad_match
-        Write(adj,Fmt=99999) "box_alpha_scale"
-        Write(rec(72),Fmt=99998) Adjustl(adj), options%box_alpha_scale
-        Write(adj,Fmt=99999) "box_delta_scale"
-        Write(rec(73),Fmt=99998) Adjustl(adj), options%box_delta_scale
-        Write(adj,Fmt=99999) "box_tau_wolfe"
-        Write(rec(74),Fmt=99998) Adjustl(adj), options%box_tau_wolfe
-        Write(adj,Fmt=99999) "box_tau_tr_step"
-        Write(rec(75),Fmt=99998) Adjustl(adj), options%box_tau_tr_step
-        Write(adj,Fmt=99999) "box_ls_step_maxit"
-        Write(rec(76),Fmt=99997) Adjustl(adj), options%box_ls_step_maxit
-        Write(adj,Fmt=99999) "box_linesearch_type"
-        Write(rec(77),Fmt=99997) Adjustl(adj), options%box_linesearch_type
-        Write (rec(78),Fmt=99994)
-        nrec = 78
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99994)
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99999) ''
+      Call printmsg(0,.False.,options,nrec,rec)
 
-        Call printmsg(0,.False.,options,nrec,rec)
+99999 Format (A30)
+99998 Format (5X,A30,'=',8X,Es12.4e3)
+99997 Format (5X,A30,'=',10X,I10)
+99996 Format (5X,A30,'=',10X,L10)
+99995 Format (1X,'Begin of Options')
+99994 Format (1X,'End of Options')
 
-99999   Format (A30)
-99998   Format (5X,A30,'=',8X,Es12.4e3)
-99997   Format (5X,A30,'=',10X,I10)
-99996   Format (5X,A30,'=',10X,L10)
-99995   Format (1X,'Begin of Options')
-99994   Format (1X,'End of Options')
-
-      End Subroutine print_options
-
+    End Subroutine print_options
 
       Subroutine print_bye(options,inform,box)
 !       Assumes print level > 0
@@ -251,10 +330,10 @@
 
         Continue
 
-        If (buildmsg(2,.False.,options)) Then
+        If (buildmsg(1,.False.,options)) Then
           nrec = 1
           Write (rec(nrec),Fmt=99993)
-          Call printmsg(2,.False.,options,nrec,rec)
+          Call printmsg(1,.False.,options,nrec,rec)
         End If
 
         If (inform%status/=0) Then

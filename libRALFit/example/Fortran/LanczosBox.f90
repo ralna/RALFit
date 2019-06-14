@@ -251,6 +251,7 @@ bux(6) = 10.0_wp !! working good
 !  options%inner_method = 1 ! passed in as a base reg term 
   options%inner_method = 2 ! expanded NLLS is solved
 !  options%inner_method = 3 ! implicit recursive call
+  options%print_options = .True.
   options%maxit = 2000000
   options%box_linesearch_type = 1
 !   options%box_tr_test_step = .False. !.True.
