@@ -207,7 +207,7 @@ A subroutine must be supplied to calculate
 
    :p real X(n) [in]: |eval_J_X|
 
-   :p real J(m*n) [out]: |eval_J_r|
+   :p real J(m*n) [out]: |eval_J_r| ``J((i-1)*n+j)`` must be set to hold :math:`\nabla_{x_j} r_i(  {\bm x} _{k}^{})`  if the option ``Fortran_Jacobian=.true.``.
 
    :p params_base_type params [in]: |eval_J_params|
 
