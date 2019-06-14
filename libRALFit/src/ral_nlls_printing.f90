@@ -262,10 +262,10 @@
 
         Continue
 
-     If (buildmsg(2,.False.,options)) Then
+     If (buildmsg(1,.False.,options)) Then
           nrec = 1
           Write(rec(nrec), Fmt=60000)
-         Call printmsg(2, .False., options, nrec, rec)
+         Call printmsg(1, .False., options, nrec, rec)
      End If
 
      If (inform%status /= 0) then
