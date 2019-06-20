@@ -246,8 +246,9 @@ contains
     integer :: nrec, ierr_dummy
     Character(Len=220) :: rec(3)
     Character(Len=1) :: it_type, inn_flag
-    Character(Len=5) :: looplab(0:4) = (/'TR Ok', 'gamma', 'Wolfe', 'PrBad', 'MaxIt'/)
-    Character(Len=2) :: lslab(0:3) = (/'  ', 'LS', 'PG', 'BO'/)
+    Character(Len=5), Parameter :: looplab(0:4) = (/'TR Ok', 'gamma', 'Wolfe', &
+      'PrBad', 'MaxIt'/)
+    Character(Len=2), Parameter  :: lslab(0:3) = (/'  ', 'LS', 'PG', 'BO'/)
     Real(Kind=wp) :: tau, gtd_new
     Logical       :: takestep, wolfe
     Integer       :: ntrfail, nlab, lstype
