@@ -82,7 +82,6 @@ struct ral_nlls_options_d {
   bool update_lower_order;
   bool Fortran_Jacobian;
   int box_nFref_max;
-  int box_ntrfail;
   ral_nllspkgtype_d_ box_gamma;
   ral_nllspkgtype_d_ box_decmin;
   ral_nllspkgtype_d_ box_bigbnd;

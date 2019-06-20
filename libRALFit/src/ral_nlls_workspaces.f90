@@ -315,8 +315,6 @@ module ral_nlls_workspaces
 
 !    Memory size for the non-monotone linesearch
      Integer :: box_nFref_max = 4
-!    Times the TR loop can fail
-     Integer :: box_ntrfail = 2 
 !    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
      Real(Kind=wp) :: box_gamma = 0.99995_wp
      Real(Kind=wp) :: box_decmin = 2.0_wp * 1.0e-16_wp ! macheps

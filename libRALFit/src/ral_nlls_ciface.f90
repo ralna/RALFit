@@ -71,7 +71,6 @@ module ral_nlls_ciface
      logical(c_bool) :: Fortran_Jacobian
 
      integer(c_int) :: box_nFref_max
-     integer(c_int) :: box_ntrfail 
      real(wp) :: box_gamma
      real(wp) :: box_decmin
      real(wp) :: box_bigbnd
@@ -225,7 +224,6 @@ contains
     foptions%output_progress_vectors = coptions%output_progress_vectors
     foptions%Fortran_Jacobian = coptions%Fortran_Jacobian
     foptions%box_nFref_max = coptions%box_nFref_max 
-    foptions%box_ntrfail = coptions%box_ntrfail 
     foptions%box_gamma = coptions%box_gamma
     foptions%box_decmin = coptions%box_decmin
     foptions%box_bigbnd = coptions%box_bigbnd
@@ -402,7 +400,6 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%Fortran_Jacobian = foptions%Fortran_Jacobian
 
   coptions%box_nFref_max = foptions%box_nFref_max 
-  coptions%box_ntrfail = foptions%box_ntrfail 
   coptions%box_gamma = foptions%box_gamma
   coptions%box_decmin = foptions%box_decmin
   coptions%box_bigbnd = foptions%box_bigbnd

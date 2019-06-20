@@ -241,9 +241,6 @@
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_nfref_max
       Write (adj,Fmt=99999) 'box_ntrfail'
       nrec = nrec + 1
-      Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_ntrfail
-      Write (adj,Fmt=99999) 'box_gamma'
-      nrec = nrec + 1
       Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_gamma
       Write (adj,Fmt=99999) 'box_decmin'
       nrec = nrec + 1
