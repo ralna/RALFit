@@ -3,7 +3,7 @@ Module NAG_EXPORT_MOD
       Implicit None
       Private
       Public :: e04rlln, e04rlpn
-    
+
       Integer, Parameter :: nps_ils_alpnorig = 1
       Integer, Parameter :: nps_ils_alporig = 2
       Integer, Parameter :: nps_ils_bracket = 3
@@ -16,7 +16,7 @@ Module NAG_EXPORT_MOD
       Integer, Parameter :: nps_ils_status = 10
       Integer, Parameter :: nps_ils_wrnflat = 11
       Integer, Parameter, Public :: nps_ils_len = 12
-      
+
       Integer, Parameter :: nps_rls_alp = 1
       Integer, Parameter :: nps_rls_alpl = 2
       Integer, Parameter :: nps_rls_alpn = 3
@@ -32,9 +32,9 @@ Module NAG_EXPORT_MOD
       Integer, Parameter :: nps_rls_mu2 = 13
       Integer, Parameter :: nps_rls_pi0 = 14
       Integer, Parameter, Public :: nps_rls_len = 15
-    
+
     Contains
-    
+
     Subroutine e04rlpn(f0,pi0,dirnrm,alpn,maxalp,eta,mu1,mu2,maxit,ils,rls,    &
       iflag)
 !     NAG COPYRIGHT 2015.

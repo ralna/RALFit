@@ -4043,7 +4043,6 @@ contains
 !         Rescale search direction to match norm of gradient
           w%d(1:n) = (w%normjf/w%norm_2_d)*w%d(1:n)
           w%norm_2_d = norm2(w%d)
-          inform%ls_step_iter = inform%ls_step_iter + 1
           Select Case (options%box_linesearch_type)
           Case (1)
             alpha = 1.0_wp
@@ -4094,7 +4093,6 @@ contains
           End If
         End If
         If (take_pg_step) Then
-          inform%pg_step_iter = inform%pg_step_iter + 1
 !         Nonmonotone Projected Gradient Linesearch ----------------------------
           lstype = lstype + 2
           If (present(weights)) Then
@@ -4318,6 +4316,7 @@ contains
         iretcd = 1
 
 100     Continue
+        inform%ls_step_iter = inform%ls_step_iter + j
         If (buildmsg(5,.False.,options)) Then
           Write (rec(1),Fmt=99999)
           Call printmsg(5, .False., options, 1, rec)
