@@ -3742,6 +3742,8 @@ contains
        w%tparams%parent_params => params
        w%tparams%tenJ => tenJ
 
+       md = 0.0_wp
+
        if (.not. w%tparams%eval_hp_provided) then
           ! let's get all the Hi's...
           do i = 1,m
@@ -3797,11 +3799,21 @@ contains
        call nlls_finalize(inner_workspace,w%tensor_options)
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
 
+       If (inform%status/=0) Then
+         Go To 100
+       End If
+
         ! now we need to evaluate the model at the new point
         w%tparams%extra = 0
-        ! Does not fail
+!       Note: can fail if eval_hp consistently returns status/=0...
         call evaltensor_f(inform%external_return, n, m, d, &
              w%model_tensor, w%tparams)
+        If (inform%external_return/=0) Then
+          inform%status = NLLS_ERROR_EVALUATION
+          inform%external_name = 'evaltensor_f'
+          Go To 100
+        End If
+
         md = 0.5_wp * norm2( w%model_tensor(1:m) )**2
         ! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
