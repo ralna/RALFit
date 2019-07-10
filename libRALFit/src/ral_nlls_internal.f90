@@ -1315,6 +1315,7 @@ contains
     w%scale = 1.0_wp
 
     norm_2_d = 1.0e10_wp ! set norm_2_d so that it can't be undefined later
+    norm_S_d = 1.0e10_wp ! set norm_S_d so that it can't be undefined later
 
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
@@ -3836,7 +3837,10 @@ contains
           ! TODO: add options to allow calling from C
 
           ! Now, calculate s'Hs
-          call calculate_sHs(n,m, s, params)
+          call calculate_sHs(n,m, s, params, status)
+          If (status/=0) Then
+            Go To 100
+          End If
 
           ! put them all together for the first 1:m terms of f
           f(1:params%m) = params%f(1:params%m) + params%tenJ%Js(1:params%m) +  &
@@ -3850,18 +3854,24 @@ contains
                                (norm2(s(1:n))**(params%p/2.0_wp))
           end if
        end select
+100    Continue
      end subroutine evaltensor_f
 
-     subroutine calculate_sHs( n, m, s, params)
+     subroutine calculate_sHs( n, m, s, params, status)
        Implicit None
        integer, intent(in) :: n, m
        real(wp), dimension(*), intent(in) :: s
        class( params_base_type ), intent(inout) :: params
-       integer :: ii, status
+       Integer, Intent(out) :: status
+       integer :: ii
+       status = 0
        select type(params)
        type is(tensor_params_type)
           if (params%eval_hp_provided) then
              call params%eval_HP(status,n,params%m,params%x,s(1:n),params%tenJ%Hs,params%parent_params)
+             If (status/=0) Then
+               Go To 100
+             End If
           else
              do ii = 1,params%m
                 params%tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
@@ -3871,6 +3881,7 @@ contains
           end if
           call dgemv('T',n,params%m,1.0_wp,params%tenJ%Hs(1,1),n,s,1,0.0_wp, params%tenJ%stHs(1),1)
        end select
+100    Continue
      end subroutine calculate_sHs
 
      subroutine evaltensor_J(status, n, m, s, J, params)
@@ -3973,6 +3984,7 @@ contains
        else
           call eval_HF(inform%external_return, n, m, X, ei, Hi, params)
        end if
+       inform%h_eval = inform%h_eval + 1
        If (inform%external_return/=0) Then
          inform%status = NLLS_ERROR_FROM_EXTERNAL
          inform%external_name = "eval_HF"
