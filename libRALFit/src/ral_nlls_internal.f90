@@ -312,6 +312,7 @@ contains
        inform%f_eval = inform%f_eval + 1
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_F'
+         inform%external_return = 2511
          inform%status = NLLS_ERROR_EVALUATION
          goto 100
        End If
@@ -325,6 +326,7 @@ contains
        inform%g_eval = inform%g_eval + 1
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_J'
+         inform%external_return = 2512
          inform%status = NLLS_ERROR_EVALUATION
          goto 100
        End If
@@ -440,6 +442,7 @@ contains
              inform%h_eval = inform%h_eval + 1
              If (inform%external_return /= 0) Then
                inform%external_name = 'eval_HF'
+               inform%external_return = 2513
                inform%status = NLLS_ERROR_EVALUATION
                goto 100
              End If
@@ -485,6 +488,7 @@ contains
              inform%h_eval = inform%h_eval + 1
              If (inform%external_return /= 0) Then
                inform%external_name = 'eval_HF'
+               inform%external_return = 2513
                inform%status = NLLS_ERROR_EVALUATION
                goto 100
              End If
@@ -655,6 +659,7 @@ contains
 
        If (inform%external_return .ne. 0) Then
           inform%external_name = 'eval_F'
+          inform%external_return = 2511
           inform%status = NLLS_ERROR_EVALUATION
           goto 100
        End If
@@ -712,6 +717,7 @@ contains
           inform%g_eval = inform%g_eval + 1
           If (inform%external_return /= 0) Then
             inform%external_name = 'eval_J'
+            inform%external_return = 2512
             inform%status = NLLS_ERROR_EVALUATION
             goto 100
           End If
@@ -743,6 +749,7 @@ contains
              inform%g_eval = inform%g_eval + 1
              If (inform%external_return /= 0) Then
                inform%external_name = 'eval_J'
+               inform%external_return = 2512
                inform%status = NLLS_ERROR_EVALUATION
                goto 100
              End If
@@ -880,6 +887,7 @@ contains
           inform%g_eval = inform%g_eval + 1
           If (inform%external_return /= 0) Then
             inform%external_name = 'eval_J'
+            inform%external_return = 2512
             inform%status = NLLS_ERROR_EVALUATION
             goto 100
           End If
@@ -998,6 +1006,7 @@ contains
        end if
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_HF'
+         inform%external_return = 2512
          inform%status = NLLS_ERROR_EVALUATION
          goto 100
        End If
@@ -1326,6 +1335,9 @@ contains
        If (buildmsg(4, .False., options)) Then
          Write(rec(1), Fmt=8000)
          Call printmsg(4, .False., options, 1, rec)
+       End If
+       If (inform%status/=0) Then
+         Go To 100
        End If
        norm_2_d = norm2(d(1:n)) ! ||d||_D
        Xnew = X + d
@@ -3810,7 +3822,8 @@ contains
              w%model_tensor, w%tparams)
         If (inform%external_return/=0) Then
           inform%status = NLLS_ERROR_EVALUATION
-          inform%external_name = 'evaltensor_f'
+          inform%external_name = 'eval_hp'
+          inform%external_return = 2514
           Go To 100
         End If
 
@@ -3998,8 +4011,9 @@ contains
        end if
        inform%h_eval = inform%h_eval + 1
        If (inform%external_return/=0) Then
-         inform%status = NLLS_ERROR_FROM_EXTERNAL
+         inform%status = NLLS_ERROR_EVALUATION
          inform%external_name = "eval_HF"
+         inform%external_return = 2513
        End iF
      end subroutine get_Hi
 
@@ -4417,6 +4431,7 @@ contains
           inform%g_eval_ls = inform%g_eval_ls + 1
           If (inform%external_return /= 0) Then
             inform%external_name = 'eval_J'
+            inform%external_return = 2512
             inform%status = NLLS_ERROR_EVALUATION
             ierr = -90
             goto 100
@@ -4518,6 +4533,7 @@ contains
             inform%g_eval_pg = inform%g_eval_pg + 1
             If (inform%external_return /= 0) Then
               inform%external_name = 'eval_J'
+              inform%external_return = 2512
               inform%status = NLLS_ERROR_EVALUATION
               goto 100
             End If

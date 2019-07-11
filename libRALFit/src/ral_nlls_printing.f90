@@ -423,7 +423,7 @@
 99996   Format (1X,A30,4X,I12)
 99995   Format (1X,A30,4X,I12,1X,'(',F5.1,'%)')
 99994   Format (1X,A,4X,I0)
-99993   Format (1X,57('-'))
+99993   Format (1X,58('-'))
 
 99992   Format (1X,'**',1X,A)
 99991   Format (1X,'** ABNORMAL EXIT from RALFit.')
