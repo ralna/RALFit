@@ -1211,6 +1211,8 @@ contains
 
     if ( inform%status == NLLS_ERROR_MAXITS ) then
        inform%error_message = 'Maximum number of iterations reached'
+    elseif ( inform%status == NLLS_ERROR_INITIAL_GUESS ) then
+       inform%error_message = 'Initial iterate x0 is not usable as starting point'
     elseif ( inform%status == NLLS_ERROR_EVALUATION ) then
        write(inform%error_message,Fmt=5004) &
             'Error code from user-supplied subroutine',trim(inform%external_name), &
