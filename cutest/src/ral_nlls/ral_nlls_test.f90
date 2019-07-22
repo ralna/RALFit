@@ -583,7 +583,8 @@ module ral_nlls_workspaces
      real(wp) :: normF0, normJF0, normF, normJF
      real(wp) :: normJFold, normJF_Newton
      real(wp) :: Delta
-     real(wp) :: normd
+     real(wp) :: norm_2_d ! 2-norm of d
+     real(wp) :: norm_S_d ! S-norm of d, where S is the scaling
      logical :: use_second_derivatives = .false.
      integer :: hybrid_count = 0
      real(wp) :: hybrid_tol = 1.0_wp
