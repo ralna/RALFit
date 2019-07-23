@@ -288,6 +288,7 @@ contains
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_F'
          inform%status = NLLS_ERROR_EVALUATION
+         ! Fails at initial point -- bail out
          goto 100
        End If
        if ( present(weights)) then
@@ -301,6 +302,7 @@ contains
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_J'
          inform%status = NLLS_ERROR_EVALUATION
+         ! Fails at initial point -- bail out
          goto 100
        End If
        if ( present(weights) ) then
