@@ -8,6 +8,7 @@ module example_module
   type, extends( params_base_type ) :: user_type
      real(wp), allocatable :: x_values(:)
      real(wp), allocatable :: y_values(:)
+     integer :: iter = 0 
      integer :: m
   end type user_type
 
@@ -56,6 +57,43 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        
      END SUBROUTINE eval_F
 
+     SUBROUTINE eval_F_one_error( status, n_dummy, m, X, f, params)
+
+!  -------------------------------------------------------------------
+!  eval_F, a subroutine for evaluating the function f at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(inout) :: params
+       Real (Kind=wp) :: ex
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          do i = 1,m
+             ! Avoid overflow
+             ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+             f(i) = params%y_values(i) - exp( ex )
+          end do
+          params%iter = params%iter + 1
+          
+          if (params%iter == 2) then 
+             status = -1
+          else
+             status = 0
+          end if
+
+       end select
+       
+     END SUBROUTINE eval_F_one_error
+
+     
      subroutine eval_F_error( status, n_dummy, m_dummy, X_dummy, f_dummy, params_dummy)
        ! a fake eval_f to flag an error 
        USE ISO_FORTRAN_ENV
@@ -121,6 +159,39 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      END SUBROUTINE eval_J
 
+     SUBROUTINE eval_J_one_error( status, n_dummy, m, X, J, params)
+
+!  -------------------------------------------------------------------
+!  eval_J, a subroutine for evaluating the Jacobian J at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
+       REAL ( wp ), DIMENSION( * ),INTENT( IN ) :: X
+       class( params_base_type ), intent(inout) :: params
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          do i = 1,m
+             J(i) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
+             J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
+          end do
+          params%iter = params%iter + 1
+          if (params%iter == 2) then 
+             status = -1
+          else
+             status = 0
+          end if
+       end select
+     
+     END SUBROUTINE eval_J_one_error
+
+     
      SUBROUTINE eval_J_c( status, n_dummy, m, X, J, params)
 
 !  -------------------------------------------------------------------
