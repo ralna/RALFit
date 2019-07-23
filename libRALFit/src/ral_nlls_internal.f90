@@ -2733,6 +2733,12 @@ contains
              call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
           end if
           inform%h_eval = inform%h_eval + 1
+          If (inform%external_return /= 0) Then
+             inform%external_name = 'eval_HF'
+             inform%status = NLLS_ERROR_EVALUATION
+             goto 100
+          End If
+
        else
           ! use the rank-one approximation...
           call rank_one_update(w%hf,w,n,options)
