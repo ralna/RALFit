@@ -2739,7 +2739,7 @@ contains
           If (inform%external_return /= 0) Then
              inform%external_name = 'eval_HF'
              inform%status = NLLS_ERROR_EVALUATION
-             goto 100
+             return
           End If
 
        else
