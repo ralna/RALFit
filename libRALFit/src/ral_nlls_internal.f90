@@ -3670,6 +3670,7 @@ contains
        type is (tensor_params_type)
           params%tenJ%H(1:n,1:n) = 0.0_wp
           call params%eval_HF(status,n,params%m,params%x,f(1:m),HF(1:n**2),params%parent_params)
+          if (status .ne. 0) return
 !!$          do ii = 1,params%m
 !!$             params%tenJ%H(1:n,1:n) = params%tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
 !!$          end do
