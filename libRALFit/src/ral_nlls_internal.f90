@@ -229,6 +229,7 @@ contains
     character :: second
     integer :: num_successful_steps
     integer :: nrec, ierr_dummy
+    integer :: eval_f_status, eval_J_status
     Character(Len=100) :: rec(3)
     Character(Len=1) :: it_type, inn_flag
 
@@ -497,11 +498,13 @@ contains
           w%g_old = w%g
        end if
 
-    end if
+    end if ! end of first call
 
     w%iter = w%iter + 1
     inform%iter = w%iter
     success = .false.
+    eval_f_status = 0
+    eval_J_status = 0
     no_reductions = 0
 
     do while (.not. success)
@@ -556,121 +559,119 @@ contains
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
-       call eval_F(inform%external_return, n, m, w%Xnew, w%fnew, params)
+       call eval_F(eval_f_status, n, m, w%Xnew, w%fnew, params)
        inform%f_eval = inform%f_eval + 1
 
-       If (inform%external_return .ne. 0) Then
-          inform%external_name = 'eval_F'
-          inform%status = NLLS_ERROR_EVALUATION
-          goto 100
-       End If
-       if ( present(weights) ) then
-          ! set f -> Wf
-          w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
-       end if
-       normFnew = norm2(w%fnew(1:m))
-
-       if (options%regularization > 0) then
-          normX = norm2(w%Xnew)
-          call update_regularized_normF(normFnew,normX,options)
-       end if
-
-       !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
-       ! Calculate the quantity                                   !
-       !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
-       !         --------------------------   ------------------- !
-       !             m_k(0)  - m_k(d)         predicted_reduction !
-       !                                                          !
-       ! if model is good, rho should be close to one             !
-       !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-       call calculate_rho(w%normF,normFnew,md,rho,options)
-       if ( (rho > HUGE(wp)) .or. &
-            (rho .ne. rho) .or. &
-            (rho .le. options%eta_successful) ) then
-          ! rho is either very large, NaN, or unsuccessful
-          num_successful_steps = 0
-          if ( (w%use_second_derivatives) .and.  &
-               (options%model == 3) .and. &
-               (no_reductions==1) ) then
-             ! recalculate rho based on the approx GN model
-             ! (i.e. the Gauss-Newton model evaluated at the Quasi-Newton step)
-             call calculate_rho(w%normF,normFnew,md_gn,rho_gn,options)
-             if (rho_gn > options%eta_successful) then
-                ! don't trust this model -- switch to GN
-                ! (See Dennis, Gay and Walsh (1981), Section 5)
-                call switch_to_gauss_newton(w,n,options)
-                w%hf_temp(:) = 0.0_wp
-                cycle
-             end if
-          end if
+       If (eval_f_status .ne. 0) Then
+          rho = -1.0_wp ! give a rho that will fail
        else
-          ! rho seems to be good -- calculate the Jacobian
-          if (.not. options%exact_second_derivatives) then
-             ! save the value of g_mixed, which is needed for
-             ! call to rank_one_update
-             ! g_mixed = -J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
-             w%g_mixed = -w%g_mixed
-          end if
-
-          ! evaluate J and hf at the new point
-          call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
-          inform%g_eval = inform%g_eval + 1
-          If (inform%external_return /= 0) Then
-            inform%external_name = 'eval_J'
-            inform%status = NLLS_ERROR_EVALUATION
-            goto 100
-          End If
           if ( present(weights) ) then
-             ! set J -> WJ
-             call scale_J_by_weights(w%J,n,m,weights,options)
+             ! set f -> Wf
+             w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
           end if
-
-          ! g = -J^Tf
-          call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-          w%g = -w%g
-          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
-
-          normJFnew = norm2(w%g)
-
-          if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1),Fmt=3120) normJFnew
-               nrec=1
-               Call Printmsg(5,.False.,options,nrec,rec)
-             End If
-             rho = -2.0_wp
-             ! reset J
-             call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
-             inform%g_eval = inform%g_eval + 1
-             If (inform%external_return /= 0) Then
-               inform%external_name = 'eval_J'
-               inform%status = NLLS_ERROR_EVALUATION
-               goto 100
-             End If
-             if ( present(weights) ) then
-                ! set J -> WJ
-                call scale_J_by_weights(w%J,n,m,weights,options)
-             end if
-             ! reset g
-             if (.not. options%exact_second_derivatives) then
-                ! this is already saved...
-                w%g = w%g_old
-             else
-                call mult_Jt(w%J,n,m,w%f,w%g,options)
-                w%g = -w%g
+          normFnew = norm2(w%fnew(1:m))
+          
+          if (options%regularization > 0) then
+             normX = norm2(w%Xnew)
+             call update_regularized_normF(normFnew,normX,options)
+          end if
+          
+          !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+          ! Calculate the quantity                                   !
+          !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
+          !         --------------------------   ------------------- !
+          !             m_k(0)  - m_k(d)         predicted_reduction !
+          !                                                          !
+          ! if model is good, rho should be close to one             !
+          !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+          call calculate_rho(w%normF,normFnew,md,rho,options)
+          if ( (rho > HUGE(wp)) .or. &
+               (rho .ne. rho) .or. &
+               (rho .le. options%eta_successful) ) then
+             ! rho is either very large, NaN, or unsuccessful
+             num_successful_steps = 0
+             if ( (w%use_second_derivatives) .and.  &
+                  (options%model == 3) .and. &
+                  (no_reductions==1) ) then
+                ! recalculate rho based on the approx GN model
+                ! (i.e. the Gauss-Newton model evaluated at the Quasi-Newton step)
+                call calculate_rho(w%normF,normFnew,md_gn,rho_gn,options)
+                if (rho_gn > options%eta_successful) then
+                   ! don't trust this model -- switch to GN
+                   ! (See Dennis, Gay and Walsh (1981), Section 5)
+                   call switch_to_gauss_newton(w,n,options)
+                   w%hf_temp(:) = 0.0_wp
+                   cycle
+                end if
              end if
           else
-             ! success!!
-             w%normJFold = w%normJF
-             w%normF = normFnew
-             w%normJF = normJFnew
+             ! rho seems to be good -- calculate the Jacobian
+             if (.not. options%exact_second_derivatives) then
+                ! save the value of g_mixed, which is needed for
+                ! call to rank_one_update
+                ! g_mixed = -J_k^T r_{k+1}
+                call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+                w%g_mixed = -w%g_mixed
+             end if
 
-             num_successful_steps = num_successful_steps + 1
-             success = .true.
+             ! evaluate J and hf at the new point
+             call eval_J(eval_J_status, n, m, w%Xnew(1:n), w%J, params)
+             inform%g_eval = inform%g_eval + 1
+             If (eval_J_status /= 0) Then
+                rho = -1.0_wp ! set rho to trigger reduce trust-region
+             else
+                if ( present(weights) ) then
+                   ! set J -> WJ
+                   call scale_J_by_weights(w%J,n,m,weights,options)
+                end if
+                
+                ! g = -J^Tf
+                call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+                w%g = -w%g
+                if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
+                
+                normJFnew = norm2(w%g)
+                
+                if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
+                   If (buildmsg(5,.False.,options)) Then
+                      Write(rec(1),Fmt=3120) normJFnew
+                      nrec=1
+                      Call Printmsg(5,.False.,options,nrec,rec)
+                   End If
+                   rho = -2.0_wp
+                   ! reset J
+                   call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
+                   inform%g_eval = inform%g_eval + 1
+                   If (inform%external_return /= 0) Then
+                      inform%external_name = 'eval_J'
+                      inform%status = NLLS_ERROR_EVALUATION
+                      goto 100
+                   End If
+                   if ( present(weights) ) then
+                      ! set J -> WJ
+                      call scale_J_by_weights(w%J,n,m,weights,options)
+                   end if
+                   ! reset g
+                   if (.not. options%exact_second_derivatives) then
+                      ! this is already saved...
+                      w%g = w%g_old
+                   else
+                      call mult_Jt(w%J,n,m,w%f,w%g,options)
+                      w%g = -w%g
+                   end if
+                else
+                   ! success!!
+                   w%normJFold = w%normJF
+                   w%normF = normFnew
+                   w%normJF = normJFnew
+                   
+                   num_successful_steps = num_successful_steps + 1
+                   success = .true.
+                end if
+             end if
           end if
        end if
-
+       
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
