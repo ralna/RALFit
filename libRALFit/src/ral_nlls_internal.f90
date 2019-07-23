@@ -3596,12 +3596,23 @@ contains
        integer, intent(in) :: n, m
        real(wp), dimension(*), intent(in) :: s
        class( params_base_type ), intent(inout) :: params
-       integer :: ii, status
+       integer :: ii, status, compute_Hp
+
+       compute_Hp = 0 
+       
        select type(params)
        type is(tensor_params_type)
+
+          ! if the user has provided a hp routine, then  try to use that
           if (params%eval_hp_provided) then
              call params%eval_HP(status,n,params%m,params%x,s(1:n),params%tenJ%Hs,params%parent_params)
+             ! if this fails, try our own routine to compute Hp
+             if (status .ne. 0) compute_Hp = 1
           else
+             compute_Hp = 1
+          end if
+
+          if (compute_Hp == 1) then
              do ii = 1,params%m
                 params%tenJ%H(1:n,1:n) = params%Hi(1:n,1:n,ii)
                 params%tenJ%Hs(1:n,ii) = 0.0_wp
