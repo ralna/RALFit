@@ -479,6 +479,7 @@ program nlls_test
      ! save the resvec, so that we can compare later
      allocate(resvec(status%iter))
      resvec(1:status%iter) = status%resvec(1:status%iter)
+
      ! now run with a row-major ordered Jacobian
      X = [1.0, 2.0]
      options%Fortran_Jacobian = .false.
@@ -499,6 +500,20 @@ program nlls_test
      
      
      deallocate(resvec)
+     
+     ! now run with a row-major ordered Jacobian
+     ! and also with a relative tr radius
+     X = [1.0, 2.0]
+     options%Fortran_Jacobian = .false.
+     options%relative_tr_radius = 1
+     call nlls_solve(n, m, X,                         &
+                     eval_F, eval_J_c, eval_H, params,  &
+                     options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'C Jacobian, relative_tr_radius test failed'
+        no_errors_main = no_errors_main + 1
+     end if
+
      
      ! three tests for incorrect returns from eval_f/J/H
      call reset_default_options(options)
