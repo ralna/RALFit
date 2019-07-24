@@ -22,6 +22,7 @@ program nlls_test
 
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
+!  character*40 :: details
 
   options%out   = 17
   options%print_level = 0
@@ -67,6 +68,13 @@ program nlls_test
               options%nlls_method = nlls_method
               options%tr_update_strategy = tr_update
               options%model = model_to_test(model)
+              
+              call print_line(options%out)
+              write(options%out,*) "tr_update_strategy = ", options%tr_update_strategy
+              write(options%out,*) "nlls_method        = ", options%nlls_method
+              write(options%out,*) "model              = ", options%model
+              call print_line(options%out)
+
               call solve_basic(X,params,options,status)
               if (( nlls_method == 1).and.( options%model > 1)) then
                  if ( status%status .ne. NLLS_ERROR_DOGLEG_MODEL ) then
@@ -102,6 +110,11 @@ program nlls_test
      options%inner_method = 2 
      options%print_level = 1
      options%exact_second_derivatives = .true.
+
+     call print_line(options%out)
+     write(options%out,*) "type_of_method = ", options%type_of_method
+     call print_line(options%out)
+
      
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
@@ -111,6 +124,63 @@ program nlls_test
         write(*,*) 'info%status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
+
+     ! now, let's run through all the print options...
+     do i = 1,6
+
+        call reset_default_options(options)
+        options%print_level = i
+
+        call print_line(options%out)
+        write(options%out,*) "print_level = ", options%print_level
+        call print_line(options%out)
+        
+        
+        call solve_basic(X,params,options,status)
+        if ( i == 6) then
+           if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL) then
+              write(*,*) 'print test: expected error not returned'
+              write(*,*) 'info%status = ', status%status
+              no_errors_main = no_errors_main + 1
+           end if
+        elseif (status%status .ne. 0) then
+           write(*,*) 'nlls_solve failed to converge: print test'
+           write(*,*) 'info%status = ', status%status
+           no_errors_main = no_errors_main + 1
+        end if
+     end do
+
+     ! and the print options with regularization....
+     call reset_default_options(options)
+     options%type_of_method = 2 ! regularization
+     options%inner_method = 2 
+     options%exact_second_derivatives = .true.
+
+     do i = 1,6
+        
+        options%print_level = i
+
+        call print_line(options%out)
+        write(options%out,*) "type_of_method = ", options%type_of_method
+        write(options%out,*) "print_level = ", options%print_level
+        call print_line(options%out)
+        call solve_basic(X,params,options,status)
+        if ( i == 6) then
+           if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL) then
+              write(*,*) 'print test: expected error not returned'
+              write(*,*) 'info%status = ', status%status
+              no_errors_main = no_errors_main + 1
+           end if
+        elseif (status%status .ne. 0) then
+           write(*,*) 'nlls_solve failed to converge: print test'
+           write(*,*) 'info%status = ', status%status
+           no_errors_main = no_errors_main + 1
+        end if
+        
+     end do
+     
+     options%print_level = 1
+
      
      do i = 1,2
         ! Let's do a test where the regularization weight is non-zero
@@ -118,6 +188,11 @@ program nlls_test
         options%regularization = i
         options%regularization_term = 1e-2
         options%regularization_power = 2.0_wp
+
+        call print_line(options%out)
+        write(options%out,*) "Regularization power is two, weight is non-zero"
+        call print_line(options%out)
+        
         call solve_basic(X,params,options,status)
         if ( status%status .ne. 0 ) then
            write(*,*) 'nlls_solve failed to converge: non-zero regularization weight'
@@ -127,6 +202,10 @@ program nlls_test
            no_errors_main = no_errors_main + 1
         end if
 
+        call print_line(options%out)
+        write(options%out,*) "Regularization power is three, weight is non-zero"
+        call print_line(options%out)
+        
         ! and, the same test with a regularization power of three:
         call reset_default_options(options)
         options%regularization = i
@@ -141,6 +220,9 @@ program nlls_test
            no_errors_main = no_errors_main + 1
         end if
 
+        call print_line(options%out)
+        write(options%out,*) "Regularization, model = 2"
+        call print_line(options%out)
 
         ! now let's get regularization with model = 2
         call reset_default_options(options)
@@ -164,6 +246,12 @@ program nlls_test
      options%type_of_method = 2
      options%model = 1
      options%reg_order = -1.0
+
+     call print_line(options%out)
+     write(options%out,*) "Optimal regularization order"
+     call print_line(options%out)
+
+     
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: negative reg_order'
@@ -178,6 +266,12 @@ program nlls_test
      options%type_of_method = 2
      options%model = 3
      options%reg_order = -1.0
+
+     
+     call print_line(options%out)
+     write(options%out,*) "Optimal regularization order with hybrid model"
+     call print_line(options%out)
+     
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: negative reg_order'
@@ -193,6 +287,14 @@ program nlls_test
      options%model = 1 ! Gauss-Newton
      options%nlls_method = 3
      options%reg_order = 2.0
+     options%print_level = 5
+
+     call print_line(options%out)
+     write(options%out,*) "Regularization"
+     write(options%out,*) "model = ", options%model
+     write(options%out,*) "nlls_method = ", options%nlls_method
+     call print_line(options%out)
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: negative reg_order'
@@ -202,12 +304,42 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
 
+     ! home-rolled MS, no eigenvalues
+     call reset_default_options(options)
+     options%model = 1 ! Gauss-Newton
+     options%nlls_method = 3
+     options%use_ews_subproblem = .false.
+     options%print_level = 5
+
+     call print_line(options%out)
+     write(options%out,*) "Trust region"
+     write(options%out,*) "model = ", options%model
+     write(options%out,*) "nlls_method = ", options%nlls_method
+     write(options%out,*) "use_ews_subproblem = ", options%use_ews_subproblem
+     call print_line(options%out)
+
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'no eigenvalue MS failed to converge'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+
+     
      ! now, let's do the tensor model...
      call reset_default_options(options)
      options%type_of_method = 2 ! regularization
      options%model = 4 ! hybrid model
      options%exact_second_derivatives = .true.
-
+     options%print_level = 4
+     
+     call print_line(options%out)
+     write(options%out,*) "Regularization"
+     write(options%out,*) "model = ", options%model
+     call print_line(options%out)
+    
      do inner_method = 1,4
         options%inner_method = inner_method
         call solve_basic(X,params,options,status)
@@ -221,6 +353,10 @@ program nlls_test
      end do
 
      ! let's try one with HP included...
+     call print_line(options%out)
+     write(options%out,*) "Pass in eval_HP"
+     call print_line(options%out)
+
      options%inner_method = 2
      n = 2
      m = 67
@@ -237,10 +373,42 @@ program nlls_test
      end if
      
 
+     ! and HP + weights....
+     options%inner_method = 2
+     n = 2
+     m = 67
+     X = [1.0, 2.0]
+     allocate(w(m))
+     do i = 1, m
+        w(i) = 2.0
+     end do
+
+     call print_line(options%out)
+     write(options%out,*) "Pass in eval_HP and weights"
+     call print_line(options%out)
+
+     
+     call nlls_solve(n, m, X,                        &
+          eval_F,eval_J,eval_H, params,   &
+          options, status, weights=w, eval_HP=eval_HP)
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'nlls_solve failed to converge: tensor model, eval_HP, weights'
+        write(*,*) 'NLLS_METHOD = ', options%nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'info%status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+     deallocate(w)
+     
      ! now, let's get an error return...
      call reset_default_options(options)
      options%model = 4
      options%exact_second_derivatives = .false.
+     call print_line(options%out)
+     write(options%out,*) "model = ", options%model
+     write(options%out,*) "exact_second_derivatives = ", options%exact_second_derivatives
+     call print_line(options%out)
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. NLLS_ERROR_NO_SECOND_DERIVATIVES ) then
         write(*,*) 'expected error return', NLLS_ERROR_NO_SECOND_DERIVATIVES,' but'
@@ -254,6 +422,11 @@ program nlls_test
      options%maxit = 5
      options%model = 1
      options%nlls_method = 1
+
+     call print_line(options%out)
+     write(options%out,*) "Reach maxits"
+     call print_line(options%out)
+     
      call solve_basic(X,params,options,status)
      if ( status%status .ne. NLLS_ERROR_MAXITS) then
         write(*,*) 'Error: incorrect error return when maxits expected to be reached'
@@ -268,6 +441,11 @@ program nlls_test
      options%model = 1
      options%nlls_method = 1
      options%output_progress_vectors = .true.
+     
+     call print_line(options%out)
+     write(options%out,*) "output_progress_vectors = ", options%output_progress_vectors
+     call print_line(options%out)
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0) then
         write(*,*) 'Error: did not converge when output_progress_vectors = true'
@@ -281,6 +459,10 @@ program nlls_test
      call reset_default_options(options)
      options%exact_second_derivatives = .true.
      options%relative_tr_radius = 1
+     call print_line(options%out)
+     write(options%out,*) "relative_tr_radius = ", options%relative_tr_radius
+     call print_line(options%out)
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge:'
@@ -296,6 +478,11 @@ program nlls_test
      do i = 1, m
         w(i) = 2.0
      end do
+
+     call print_line(options%out)
+     write(options%out,*) "Pass in weights"
+     call print_line(options%out)
+     
      call nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status, w )
@@ -306,10 +493,16 @@ program nlls_test
         write(*,*) 'status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
+
      ! and the same with exact second derivatives (model = 2..4 )
      options%exact_second_derivatives = .true.
      do model = 2,4
         options%model = model
+        
+        call print_line(options%out)
+        write(options%out,*) "Pass in weights"
+        write(options%out,*) "model = ", options%model
+        call print_line(options%out)
         call nlls_solve(n, m, X,                         &
              eval_F, eval_J, eval_H, params,  &
              options, status, weights=w )
@@ -326,6 +519,12 @@ program nlls_test
      ! Let's do one run with non-exact second derivatives 
      call reset_default_options(options)
      options%exact_second_derivatives = .false.
+
+     call print_line(options%out)
+     write(options%out,*) "exact_second_derivatives = ", options%exact_second_derivatives
+     call print_line(options%out)
+
+     
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge:'
@@ -338,6 +537,11 @@ program nlls_test
      call reset_default_options(options)
      options%model = 2
      options%exact_second_derivatives = .false.
+     call print_line(options%out)
+     write(options%out,*) "exact_second_derivatives = ", options%exact_second_derivatives
+     write(options%out,*) "model = ", options%model
+     call print_line(options%out)
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge:'
@@ -354,6 +558,10 @@ program nlls_test
      options%print_level = 3
      params%y_values = params%y_values + 15.0_wp
      X(1) = 7.0; X(2) = -5.0
+     call print_line(options%out)
+     write(options%out,*) "switch to second order"
+     call print_line(options%out)
+
      call nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status )
@@ -373,6 +581,10 @@ program nlls_test
      options%print_level = 3
      params%y_values = exp( 0.3_wp * params%x_values + 0.2_wp)
      X(1) = 0.3; X(2) = 0.1
+     call print_line(options%out)
+     write(options%out,*) "||f|| = 0"
+     call print_line(options%out)
+
      call nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status )
@@ -384,7 +596,171 @@ program nlls_test
      end if
      options%relative_tr_radius = 0
      
+     ! test for c-based Jabobians
+     ! run fortran based and c based, and check the resvecs are the same
+     call reset_default_options(options)
+     ! first, let's get a standard output...
+     call print_line(options%out)
+     write(options%out,*) "C-based Jacobians: get standard output"
+     call print_line(options%out)
+     
+     n = 2
+     m = 67
+     X =[1.0, 2.0]
+     options%output_progress_vectors = .true.
+     
+     call nlls_solve(n, m, X,                         &
+                     eval_F, eval_J, eval_H, params,  &
+                     options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'solve failed'
+        no_errors_main = no_errors_main + 1
+     end if
+     ! save the resvec, so that we can compare later
+     allocate(resvec(status%iter))
+     resvec(1:status%iter) = status%resvec(1:status%iter)
+
+     ! now run with a row-major ordered Jacobian
+     X = [1.0, 2.0]
+     options%Fortran_Jacobian = .false.
+     call print_line(options%out)
+     write(options%out,*) "C-based Jacobians: Fortran_Jacobian = ", options%Fortran_Jacobian
+     call print_line(options%out)
+
+     call nlls_solve(n, m, X,                         &
+                     eval_F, eval_J_c, eval_H, params,  &
+                     options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'solve failed'
+        no_errors_main = no_errors_main + 1
+     end if
+     resvec(:) = resvec(:) - status%resvec(1:size(resvec))
+     resvec_error = dot_product( resvec(:),resvec(:) )
+     if ( resvec_error > 1e-14 ) then
+        write(*,*) 'C Jacobian test failed: resvec error = ', resvec_error
+        write(*,*) 'resvec = ', resvec
+        no_errors_main = no_errors_main + 1
+     end if
+     
+     
+     deallocate(resvec)
+     
+     ! now run with a row-major ordered Jacobian
+     ! and also with a relative tr radius
+     X = [1.0, 2.0]
+     options%Fortran_Jacobian = .false.
+     options%relative_tr_radius = 1
+     call print_line(options%out)
+     write(options%out,*) "C-based Jacobians: Fortran_Jacobian = ", options%Fortran_Jacobian
+     write(options%out,*) "relative_tr_radius = ", options%relative_tr_radius
+     call print_line(options%out)
+
+     call nlls_solve(n, m, X,                         &
+                     eval_F, eval_J_c, eval_H, params,  &
+                     options, status )
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'C Jacobian, relative_tr_radius test failed'
+        no_errors_main = no_errors_main + 1
+     end if
+   
+     ! three tests for incorrect returns from eval_f/J/H
+     call reset_default_options(options)
+     n = 2
+     m = 67
+     options%exact_second_derivatives = .true.
+     do i = 1,5       
+        X = [1.0, 2.0]
+        select case (i)
+        case (1)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_F"
+           call print_line(options%out)
+
+           call nlls_solve(n, m, X,                         &
+                eval_F_error, eval_J, eval_H, params,  &
+                options, status )
+        case (2)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_J"
+           call print_line(options%out)
+
+           call nlls_solve(n, m, X,                         &
+                eval_F, eval_J_error, eval_H, params,  &
+                options, status )   
+        case (3)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_HF"
+           call print_line(options%out)
+
+           call nlls_solve(n, m, X,                         &
+                eval_F, eval_J, eval_H_error, params,  &
+                options, status )
+        case (4)
+           options%model = 2
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_HF"
+           write(options%out,*) "model = ", options%model
+           call print_line(options%out)
+
+           call nlls_solve(n, m, X,                         &
+                eval_F, eval_J, eval_H_error, params,  &
+                options, status )
+        case (5)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_HF"
+           write(options%out,*) "model = ", options%model
+           call print_line(options%out)
+
+           options%model = 4
+           call nlls_solve(n, m, X,                         &
+                eval_F, eval_J, eval_H_error, params,  &
+                options, status )
+        end select
+        if ( status%status .ne. NLLS_ERROR_EVALUATION ) then 
+           write(*,*) 'Error: error return from eval_x not caught'
+           no_errors_main = no_errors_main + 1
+        end if
+     end do
+     status%status = 0
+
+
+     ! three tests for incorrect returns from eval_f/J/H
+     ! after the first case
+     call reset_default_options(options)
+     n = 2
+     m = 67
+!     options%exact_second_derivatives = .true.
+     do i = 1,2       
+        X = [1.0, 2.0]
+        params%iter = 0
+        select case (i)
+        case (1)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_F at iteration 2"
+           call print_line(options%out)
+           call nlls_solve(n, m, X,                         &
+                eval_F_one_error, eval_J, eval_H, params,  &
+                options, status )
+        case (2)
+           write(options%out,*) "Error in eval_J at iteration 2"
+           call nlls_solve(n, m, X,                         &
+                eval_F, eval_J_one_error, eval_H, params,  &
+                options, status )   
+        end select
+        if ( status%status .ne. 0 ) then 
+           write(*,*) 'Error: single error return from eval_x should have worked'
+           write(*,*) '       but status = ', status%status, ' returned'
+           no_errors_main = no_errors_main + 1
+        end if
+     end do
+     status%status = 0
+
      ! now let's check errors on the parameters passed to the routine...
+
+     call print_line(options%out)
+     write(options%out,*) "Parameter errors"
+     call print_line(options%out)
+
      
      options%print_level = 3
 
@@ -459,101 +835,6 @@ program nlls_test
         write(*,*) 'Error: unsupported TR strategy passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
-     status%status = 0
-
-     ! test for c-based Jabobians
-     ! run fortran based and c based, and check the resvecs are the same
-     call reset_default_options(options)
-     ! first, let's get a standard output...
-     n = 2
-     m = 67
-     X =[1.0, 2.0]
-     options%output_progress_vectors = .true.
-     call nlls_solve(n, m, X,                         &
-                     eval_F, eval_J, eval_H, params,  &
-                     options, status )
-     if ( status%status .ne. 0 ) then
-        write(*,*) 'solve failed'
-        no_errors_main = no_errors_main + 1
-     end if
-     ! save the resvec, so that we can compare later
-     allocate(resvec(status%iter))
-     resvec(1:status%iter) = status%resvec(1:status%iter)
-     ! now run with a row-major ordered Jacobian
-     X = [1.0, 2.0]
-     options%Fortran_Jacobian = .false.
-     call nlls_solve(n, m, X,                         &
-                     eval_F, eval_J_c, eval_H, params,  &
-                     options, status )
-     if ( status%status .ne. 0 ) then
-        write(*,*) 'solve failed'
-        no_errors_main = no_errors_main + 1
-     end if
-     resvec(:) = resvec(:) - status%resvec(1:size(resvec))
-     resvec_error = dot_product( resvec(:),resvec(:) )
-     if ( resvec_error > 1e-14 ) then
-        write(*,*) 'C Jacobian test failed: resvec error = ', resvec_error
-        write(*,*) 'resvec = ', resvec
-        no_errors_main = no_errors_main + 1
-     end if
-     
-     
-     deallocate(resvec)
-     
-     ! three tests for incorrect returns from eval_f/J/H
-     call reset_default_options(options)
-     n = 2
-     m = 67
-     options%exact_second_derivatives = .true.
-     do i = 1,3       
-        X = [1.0, 2.0]
-        select case (i)
-        case (1)
-           call nlls_solve(n, m, X,                         &
-                eval_F_error, eval_J, eval_H, params,  &
-                options, status )
-        case (2)
-           call nlls_solve(n, m, X,                         &
-                eval_F, eval_J_error, eval_H, params,  &
-                options, status )   
-        case (3)
-           call nlls_solve(n, m, X,                         &
-                eval_F, eval_J, eval_H_error, params,  &
-                options, status )   
-        end select
-        if ( status%status .ne. NLLS_ERROR_EVALUATION ) then 
-           write(*,*) 'Error: error return from eval_x not caught'
-           no_errors_main = no_errors_main + 1
-        end if
-     end do
-     status%status = 0
-
-      
-     ! three tests for incorrect returns from eval_f/J/H
-     ! after the first case
-     call reset_default_options(options)
-     n = 2
-     m = 67
-!     options%exact_second_derivatives = .true.
-     do i = 1,2       
-        X = [1.0, 2.0]
-        params%iter = 0
-        select case (i)
-        case (1)
-           call nlls_solve(n, m, X,                         &
-                eval_F_one_error, eval_J, eval_H, params,  &
-                options, status )
-        case (2)
-           call nlls_solve(n, m, X,                         &
-                eval_F, eval_J_one_error, eval_H, params,  &
-                options, status )   
-        end select
-        if ( status%status .ne. 0 ) then 
-           write(*,*) 'Error: single error return from eval_x should have worked'
-           write(*,*) '       but status = ', status%status, ' returned'
-           no_errors_main = no_errors_main + 1
-        end if
-     end do
      status%status = 0
 
      if (no_errors_main == 0) then
