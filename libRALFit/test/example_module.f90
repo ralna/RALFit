@@ -498,6 +498,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%hybrid_switch = default_options%hybrid_switch
        options%exact_second_derivatives = default_options%exact_second_derivatives
        options%subproblem_eig_fact = default_options%subproblem_eig_fact
+       options%use_ews_subproblem = default_options%use_ews_subproblem
        options%scale = default_options%scale
        options%scale_max = default_options%scale_max
        options%scale_min = default_options%scale_min
@@ -2368,6 +2369,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      
    end subroutine error_message_tests
 
+   subroutine print_line(unit)
+     integer, intent(in) :: unit
+     
+     write(unit,*) "=================================================="
+     
+   end subroutine print_line
 
    
  end module example_module
