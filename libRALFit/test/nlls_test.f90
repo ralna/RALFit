@@ -743,9 +743,18 @@ program nlls_test
                 eval_F_one_error, eval_J, eval_H, params,  &
                 options, status )
         case (2)
+           call print_line(options%out)
            write(options%out,*) "Error in eval_J at iteration 2"
-           call nlls_solve(n, m, X,                         &
+           call print_line(options%out)
+           call nlls_solve(n, m, X,                        &
                 eval_F, eval_J_one_error, eval_H, params,  &
+                options, status )
+        case (3)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_HF at iteration 2"
+           call print_line(options%out)
+           call nlls_solve(n, m, X,                        &
+                eval_F, eval_J, eval_H_one_error, params,  &
                 options, status )           
         end select
         if ( status%status .ne. 0 ) then 

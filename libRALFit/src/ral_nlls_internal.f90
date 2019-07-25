@@ -386,14 +386,13 @@ contains
              end if
              inform%h_eval = inform%h_eval + 1
              If (inform%external_return /= 0) Then
-               inform%external_name = 'eval_HF'
-               inform%status = NLLS_ERROR_EVALUATION
-               goto 100
-             End If
-
-             if (options%regularization > 0) then
-                call update_regularized_hessian(w%hf,X,n,options)
-             end if
+                inform%external_return = 0
+                call switch_to_gauss_newton(w,n,options)
+             else
+                if (options%regularization > 0) then
+                   call update_regularized_hessian(w%hf,X,n,options)
+                end if
+             end If
           else
              ! S_0 = 0 (see Dennis, Gay and Welsch)
              w%hf(1:n**2) = 0.0_wp
@@ -431,9 +430,10 @@ contains
              end if
              inform%h_eval = inform%h_eval + 1
              If (inform%external_return /= 0) Then
-               inform%external_name = 'eval_HF'
-               inform%status = NLLS_ERROR_EVALUATION
-               goto 100
+                ! as we're in first_call, return to user
+                inform%external_name = 'eval_HF'
+                inform%status = NLLS_ERROR_EVALUATION
+                goto 100
              End If
           else
              ! no second derivatives in tensor model
@@ -1355,7 +1355,9 @@ contains
         w%calculate_step_ws%reg_order = 2.0_wp
      end if
      ! save hf as hf_temp
-     w%hf_temp(1:n**2) = w%hf(1:n**2)
+     if ( .not. options%exact_second_derivatives) then
+        w%hf_temp(1:n**2) = w%hf(1:n**2)
+     end if
      w%hf(1:n**2) = 0.0_wp
    end subroutine switch_to_gauss_newton
 

@@ -446,6 +446,60 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        
      end subroutine eval_H_error
 
+     SUBROUTINE eval_H_one_error( status, n_dummy, m, X, f, h, params)
+
+!  -------------------------------------------------------------------
+!  eval_H, a subroutine for evaluating the second derivative hessian terms
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: h
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(inout) :: params
+
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          ! evaluate 
+          ! HF = \sum_{i=1}^m F_i H_i
+          h(1:4) = 0.0
+          do i = 1, m
+             h(1) = &
+                  h(1) + f(i)* ( & 
+                  - (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) &
+                  )
+             h(2) = &
+                  h(2) + f(i)* ( &
+                  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) &
+                  )
+             h(4) = &
+                  h(4) + f(i)* ( &
+                  -  exp( X(1) * params%x_values(i) + X(2) ) &
+                  )
+          end do
+          h(3) = h(2)
+
+          params%iter = params%iter + 1
+
+          if (params%iter == 2) then 
+             status = -1
+          else
+             status = 0
+          end if
+          
+       end select
+
+       status = 0
+       
+     END SUBROUTINE eval_H_one_error
+
+     
      subroutine eval_HP ( status, n, m, x, y, hp, params )
        
        INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
