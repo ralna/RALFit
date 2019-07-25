@@ -93,6 +93,113 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        
      END SUBROUTINE eval_F_one_error
 
+     SUBROUTINE eval_F_allbutone_error( status, n_dummy, m, X, f, params)
+
+!  -------------------------------------------------------------------
+!  eval_F, a subroutine for evaluating the function f at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(inout) :: params
+       Real (Kind=wp) :: ex
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          do i = 1,m
+             ! Avoid overflow
+             ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+             f(i) = params%y_values(i) - exp( ex )
+          end do
+          params%iter = params%iter + 1
+          
+          if (params%iter > 1) then 
+             status = -1
+          else
+             status = 0
+          end if
+
+       end select
+       
+     END SUBROUTINE eval_F_allbutone_error
+
+
+     SUBROUTINE eval_F_large( status, n_dummy, m, X, f, params)
+
+!  -------------------------------------------------------------------
+!  eval_F, a subroutine for evaluating the function f at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(inout) :: params
+       Real (Kind=wp) :: ex
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          if (params%iter == 2) then
+             do i = 1, m
+                f(i) = 1e100_wp!exp(88.0)
+             end do
+          else
+             do i = 1,m
+                ! Avoid overflow
+                ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+                f(i) = params%y_values(i) - exp( ex )
+             end do
+          end if
+          params%iter = params%iter + 1
+       end select
+       status = 0
+       
+     END SUBROUTINE eval_F_large
+
+     SUBROUTINE eval_J_large( status, n_dummy, m, X, J, params)
+
+!  -------------------------------------------------------------------
+!  eval_J, a subroutine for evaluating the Jacobian J at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
+       REAL ( wp ), DIMENSION( * ),INTENT( IN ) :: X
+       class( params_base_type ), intent(inout) :: params
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          if (params%iter == 2) then
+             do i = 1,2*m
+                J(i) = 1e100_wp!exp(88.0)
+             end do
+             params%iter = params%iter + 1
+          else
+             do i = 1,m
+                J(i) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
+                J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
+             end do
+          end if
+       end select
+       
+       status = 0
+       
+     END SUBROUTINE eval_J_large
      
      subroutine eval_F_error( status, n_dummy, m_dummy, X_dummy, f_dummy, params_dummy)
        ! a fake eval_f to flag an error 
@@ -588,6 +695,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%inner_method = default_options%inner_method
        options%output_progress_vectors = default_options%output_progress_vectors
        options%update_lower_order = default_options%update_lower_order
+       options%fortran_jacobian = .true.
        
      end subroutine reset_default_options
 
