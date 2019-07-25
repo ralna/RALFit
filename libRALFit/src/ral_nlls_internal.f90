@@ -639,26 +639,8 @@ contains
                       Call Printmsg(5,.False.,options,nrec,rec)
                    End If
                    rho = -2.0_wp
-                   ! reset J
-                   call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
-                   inform%g_eval = inform%g_eval + 1
-                   If (inform%external_return /= 0) Then
-                      inform%external_name = 'eval_J'
-                      inform%status = NLLS_ERROR_EVALUATION
-                      goto 100
-                   End If
-                   if ( present(weights) ) then
-                      ! set J -> WJ
-                      call scale_J_by_weights(w%J,n,m,weights,options)
-                   end if
-                   ! reset g
-                   if (.not. options%exact_second_derivatives) then
-                      ! this is already saved...
-                      w%g = w%g_old
-                   else
-                      call mult_Jt(w%J,n,m,w%f,w%g,options)
-                      w%g = -w%g
-                   end if
+                   call reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
+                   If (inform%external_return /= 0) goto 100
                 else
                    ! success!!
                    w%normJFold = w%normJF
@@ -703,7 +685,7 @@ contains
 !            goto 100
 !         end if
        end if
-    end do
+    end do ! successful step found
 
     ! if we reach here, a successful step has been found
     ! update X and f
@@ -3072,6 +3054,43 @@ contains
           end do
        end if
      end subroutine scale_J_by_weights
+
+     subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
+
+       integer, intent(in) :: n, m
+       real(wp), intent(in) :: X(:)
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(inout) :: inform
+       class( params_base_type ) :: params
+       type( nlls_workspace ), intent(inout) :: w
+       procedure( eval_j_type ) :: eval_J
+       real( wp ), intent(in), optional :: weights(:)
+
+       integer :: i
+       
+       call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
+       inform%g_eval = inform%g_eval + 1
+       If (inform%external_return /= 0) Then
+          inform%external_name = 'eval_J'
+          inform%status = NLLS_ERROR_EVALUATION
+          goto 100
+       End If
+       if ( present(weights) ) then
+          ! set J -> WJ
+          call scale_J_by_weights(w%J,n,m,weights,options)
+       end if
+       ! reset g
+       if (.not. options%exact_second_derivatives) then
+          ! this is already saved...
+          w%g = w%g_old
+       else
+          call mult_Jt(w%J,n,m,w%f,w%g,options)
+          w%g = -w%g
+       end if
+
+100    continue
+       
+     end subroutine reset_gradients
 
 !     subroutine add_matrices3(A,B,n,C)
 !       Implicit None
