@@ -473,6 +473,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%model = default_options%model
        options%type_of_method = default_options%type_of_method
        options%nlls_method = default_options%nlls_method
+       options%allow_fallback_method = default_options%allow_fallback_method
        options%lls_solver = default_options%lls_solver
        options%stop_g_absolute = default_options%stop_g_absolute
        options%stop_g_relative = default_options%stop_g_relative
