@@ -1023,7 +1023,8 @@ contains
     logical :: scaling_used
     real(wp) :: normx
     Character(Len=85) :: rec(1)
-
+    integer :: num_methods_tried, subproblem_success, subproblem_method
+        
 
     if (.not. w%allocated) then
       inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -1138,40 +1139,106 @@ contains
        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
 
        if ( options%type_of_method == 1) then
-          select case (options%nlls_method)
-          case (1) ! Powell's dogleg
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1), Fmt=3000) 'dogleg'
-               Call printmsg(5,.False.,options,1,rec)
-             End If
-             call dogleg(J,f,hf,g,n,m,Delta,d,norm_S_d,options,inform,w%dogleg_ws)
-             if (inform%status /= 0) Go To 100
-          case (2) ! The AINT method
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1), Fmt=3000) 'AINT_TR'
-               Call printmsg(5,.False.,options,1,rec)
-             End If
-             call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,norm_S_d,options,inform,w%AINT_tr_ws)
-             if (inform%status /= 0) Go To 100
-          case (3) ! More-Sorensen
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1), Fmt=3000) 'More-Sorensen'
-               Call printmsg(5,.False.,options,1,rec)
-             End If
-             call more_sorensen(w%A,w%v,n,m,Delta,d,norm_S_d,options,inform,w%more_sorensen_ws)
-             if (inform%status /= 0) Go To 100
-          case (4) ! Galahad
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1), Fmt=3000) 'Galahad DTRS'
-               Call printmsg(5,.False.,options,1,rec)
-             End If
-             call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
-                  d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
-             if (inform%status /= 0) Go To 100
-          case default
-             inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
-             goto 100
-          end select ! nlls_method
+          subproblem_success = -1
+          subproblem_method = options%nlls_method
+          num_methods_tried = 0
+          do while (subproblem_success .ne. 0)
+
+             if  (num_methods_tried>0) then
+                ! if we're trying this method for the second time,
+                ! return to user
+                if (subproblem_method == options%nlls_method) Go To 100
+                ! only use fallback if the options say it's ok
+                if (.not. options%allow_fallback_method) Go To 100
+             end if
+                                     
+             select case (subproblem_method)
+             case (1) ! Powell's dogleg
+                If (buildmsg(5,.False.,options)) Then
+                   Write(rec(1), Fmt=3000) 'dogleg'
+                   Call printmsg(5,.False.,options,1,rec)
+                End If
+                if (.not. w%dogleg_ws%allocated) then
+                   call setup_workspace_dogleg(n,m,w%dogleg_ws, &
+                        options, inform)
+                end if
+                
+                call dogleg(J,f,hf,g,n,m,Delta,d,norm_S_d, &
+                     options,inform,w%dogleg_ws)
+                
+                if (inform%status /= 0) then
+                   ! try aint
+                   subproblem_method = 2
+                else
+                   subproblem_success = 0
+                end if
+             case (2) ! The AINT method
+                If (buildmsg(5,.False.,options)) Then
+                   Write(rec(1), Fmt=3000) 'AINT_TR'
+                   Call printmsg(5,.False.,options,1,rec)
+                End If
+                if (.not. w%aint_tr_ws%allocated) then
+                   call setup_workspace_aint_tr(n,m,w%AINT_tr_ws, &
+                        options, inform)
+                end if
+                
+                call AINT_TR(J,w%A,f,X,w%v,hf,n,m,Delta,d,norm_S_d, &
+                     options,inform,w%AINT_tr_ws)
+
+                if (inform%status /= 0) then
+                   ! try more-sorensen
+                   subproblem_method = 3
+                else
+                   subproblem_success = 0
+                end if
+             case (3) ! More-Sorensen
+                If (buildmsg(5,.False.,options)) Then
+                   Write(rec(1), Fmt=3000) 'More-Sorensen'
+                   Call printmsg(5,.False.,options,1,rec)
+                End If
+                if (.not. w%more_sorensen_ws%allocated) then
+                   call setup_workspace_more_sorensen(n,m,w%more_sorensen_ws, &
+                        options, inform)
+                end if
+                
+                call more_sorensen(w%A,w%v,n,m,Delta,d,norm_S_d, &
+                     options,inform,w%more_sorensen_ws)
+                if (inform%status /= 0) then
+                   ! try gltr
+                   subproblem_method = 4
+                else
+                   subproblem_success = 0
+                end if
+             case (4) ! Galahad
+                If (buildmsg(5,.False.,options)) Then
+                   Write(rec(1), Fmt=3000) 'Galahad DTRS'
+                   Call printmsg(5,.False.,options,1,rec)
+                End If
+                if (.not. w%solve_galahad_ws%allocated) then
+                   call setup_workspace_solve_galahad(n,m,w%solve_galahad_ws, &
+                        options, inform)
+                end if
+
+                call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
+                     d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
+                if (inform%status /= 0) then
+                   ! try dogleg
+                   if (use_second_derivatives) then
+                      subproblem_method = 2
+                   else ! dogleg doesn't work with Hessians...
+                      subproblem_method = 1
+                   end if
+                else
+                   subproblem_success = 0
+                end if
+             case default
+                ! this should never be reached, as it's checked in
+                ! setup_workspaces and the error should be flagged there
+                inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
+                goto 100
+             end select ! nlls_method
+             num_methods_tried = num_methods_tried + 1                
+          end do
        elseif (options%type_of_method == 2) then
           select case (options%nlls_method)
           case (3) ! home-rolled regularization solver
@@ -1191,6 +1258,8 @@ contains
                   d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
              if (inform%status /= 0) Go To 100
           case default
+             ! this should never be reached, as it's checked in
+             ! setup_workspaces and the error should be flagged there
              inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
              goto 100
           end select ! nlls_method

@@ -77,14 +77,7 @@ program nlls_test
               call print_line(options%out)
 
               call solve_basic(X,params,options,status)
-              if (( nlls_method == 1).and.( options%model > 1)) then
-                 if ( status%status .ne. NLLS_ERROR_DOGLEG_MODEL ) then
-                    write(*,*) 'incorrect error return from nlls_solve:'
-                    write(*,*) 'NLLS_METHOD = ', nlls_method
-                    write(*,*) 'MODEL = ', options%model
-                    no_errors_main = no_errors_main + 1
-                 end if
-              else if ( options%model == 0 ) then
+              if ( options%model == 0 ) then
                  if ( status%status .ne. -3 ) then
                     write(*,*) 'incorrect error return from nlls_solve:'
                     write(*,*) 'NLLS_METHOD = ', nlls_method
@@ -104,6 +97,27 @@ program nlls_test
            end do
         end do
      end do
+
+
+     ! dogleg, no fallback
+     call reset_default_options(options)
+     options%nlls_method = 1 ! dogleg
+     options%model = 2 ! newton
+     options%allow_fallback_method = .false.
+     options%print_level = 1
+     
+     call print_line(options%out)
+     write(options%out,*) "dogleg, model = 2, no fallback"
+     call print_line(options%out)
+          
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. NLLS_ERROR_DOGLEG_MODEL ) then
+        write(*,*) 'incorrect error return from nlls_solve:'
+        write(*,*) 'NLLS_METHOD = ', nlls_method
+        write(*,*) 'MODEL = ', options%model
+        write(*,*) 'status returned = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
      
      ! now, let's test the regularization method
      call reset_default_options(options)
