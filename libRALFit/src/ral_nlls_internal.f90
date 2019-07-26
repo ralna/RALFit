@@ -3334,7 +3334,7 @@ contains
      end subroutine scale_J_by_weights
 
      subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
-
+       Implicit None
        integer, intent(in) :: n, m
        real(wp), intent(in) :: X(:)
        type( nlls_options ), intent(in) :: options
@@ -3920,6 +3920,7 @@ contains
 
           ! if the user has provided a hp routine, then  try to use that
           if (params%eval_hp_provided) then
+             status = 0
              call params%eval_HP(status,n,params%m,params%x,s(1:n),params%tenJ%Hs,params%parent_params)
              ! if this fails, try our own routine to compute Hp
              If (status .ne. 0) compute_Hp = 1
