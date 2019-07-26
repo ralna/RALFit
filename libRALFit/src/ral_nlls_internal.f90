@@ -1137,11 +1137,11 @@ contains
 
 
        ! (Gauss-)/(Quasi-)Newton method -- solve as appropriate...
-
+       subproblem_success = -1
+       subproblem_method = options%nlls_method
+       num_methods_tried = 0
+       
        if ( options%type_of_method == 1) then
-          subproblem_success = -1
-          subproblem_method = options%nlls_method
-          num_methods_tried = 0
           do while (subproblem_success .ne. 0)
 
              if  (num_methods_tried>0) then
@@ -1240,29 +1240,62 @@ contains
              num_methods_tried = num_methods_tried + 1                
           end do
        elseif (options%type_of_method == 2) then
-          select case (options%nlls_method)
-          case (3) ! home-rolled regularization solver
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1), Fmt=3020) 'RALFit Solver'
-               Call printmsg(5,.False.,options,1,rec)
-             End If
-             call regularization_solver(w%A,w%v,n,m,Delta,num_successful_steps, &
-                  d,norm_S_d,w%reg_order,options,inform,w%regularization_solver_ws)
-             if (inform%status /= 0) Go To 100
-          case(4) ! Galahad
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1), Fmt=3020) 'Galahad DRQS'
-               Call printmsg(5,.False.,options,1,rec)
-             End If
-             call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
-                  d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
-             if (inform%status /= 0) Go To 100
-          case default
-             ! this should never be reached, as it's checked in
-             ! setup_workspaces and the error should be flagged there
-             inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
-             goto 100
-          end select ! nlls_method
+          do while (subproblem_success .ne. 0)
+
+             if  (num_methods_tried>0) then
+                ! if we're trying this method for the second time,
+                ! return to user
+                if (subproblem_method == options%nlls_method) Go To 100
+                ! only use fallback if the options say it's ok
+                if (.not. options%allow_fallback_method) Go To 100
+             end if
+             
+             select case (options%nlls_method)
+             case (3) ! home-rolled regularization solver
+                If (buildmsg(5,.False.,options)) Then
+                   Write(rec(1), Fmt=3020) 'RALFit Solver'
+                   Call printmsg(5,.False.,options,1,rec)
+                End If
+                if (.not. w%regularization_solver_ws%allocated) then
+                   call setup_regularization_solver(n,m, &
+                        w%regularization_solver_ws, options, inform)
+                end if               
+                
+                call regularization_solver(w%A,w%v,n,m,Delta,      &
+                     num_successful_steps, d,norm_S_d,w%reg_order, &
+                     options,inform,w%regularization_solver_ws)
+                if (inform%status /= 0) then
+                   ! try galahad
+                   subproblem_method = 4
+                else
+                   subproblem_success = 0
+                end if
+             case(4) ! Galahad
+                If (buildmsg(5,.False.,options)) Then
+                   Write(rec(1), Fmt=3020) 'Galahad DRQS'
+                   Call printmsg(5,.False.,options,1,rec)
+                End If
+                if (.not. w%solve_galahad_ws%allocated) then
+                   call setup_solve_galahad(n,m, &
+                        w%solve_galahad_ws, options, inform)
+                end if
+
+                call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
+                     d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
+                if (inform%status /= 0) then
+                   ! try galahad
+                   subproblem_method = 3
+                else
+                   subproblem_success = 0
+                end if
+             case default
+                ! this should never be reached, as it's checked in
+                ! setup_workspaces and the error should be flagged there
+                inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
+                goto 100
+             end select ! nlls_method
+
+          end do
        else
           inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
           goto 100

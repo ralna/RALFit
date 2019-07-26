@@ -610,6 +610,7 @@ module ral_nlls_workspaces
   public :: setup_workspaces, remove_workspaces
   public :: setup_workspace_dogleg, setup_workspace_AINT_tr
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
+  public :: setup_workspace_regularization_solver
 
 contains
 
