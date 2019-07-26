@@ -118,6 +118,11 @@ module ral_nlls_workspaces
 
      INTEGER :: nlls_method = 4
 
+!   allow the algorithm to use a different subproblem solver if one fails
+
+     LOGICAL :: allow_fallback_method = .true.
+
+     
 !  which linear least squares solver should we use?
 
      INTEGER :: lls_solver = 1
