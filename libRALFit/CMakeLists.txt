@@ -48,7 +48,7 @@ if(TestCoverage)
    set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage")
    set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage")
    set(CMAKE_LDFLAGS_DEBUG "-g -fprofile-arcs -ftest-coverage")
-   SETUP_TARGET_FOR_COVERAGE(test_coverage test/test coverage)
+   SETUP_TARGET_FOR_COVERAGE(test_coverage test/nlls_f90_test coverage)
 endif(TestCoverage)
 
 # BLAS and LAPACK
