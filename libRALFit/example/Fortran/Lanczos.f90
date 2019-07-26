@@ -98,14 +98,14 @@ contains
       select type(params)
       type is (params_type)
          do i = 1, m
-            HP((n-1)*i + 1) = params%t(i) * exp(-x(2)*params%t(i)) * y(2)
-            HP((n-1)*i + 2) = params%t(i) * exp(-x(2)*params%t(i)) * y(1) - &
+            HP((i-1)*n + 1) = params%t(i) * exp(-x(2)*params%t(i)) * y(2)
+            HP((i-1)*n + 2) = params%t(i) * exp(-x(2)*params%t(i)) * y(1) - &
                  (params%t(i)**2) * x(1) * exp(-x(2)*params%t(i)) * y(2)
-            HP((n-1)*i + 3) = params%t(i) * exp(-x(4)*params%t(i)) * y(4)
-            HP((n-1)*i + 4) = params%t(i) * exp(-x(4)*params%t(i)) * y(3) - &
+            HP((i-1)*n + 3) = params%t(i) * exp(-x(4)*params%t(i)) * y(4)
+            HP((i-1)*n + 4) = params%t(i) * exp(-x(4)*params%t(i)) * y(3) - &
                  (params%t(i)**2) * x(3) * exp(-x(4)*params%t(i)) * y(4)
-            HP((n-1)*i + 5) = params%t(i) * exp(-x(6)*params%t(i)) * y(6)
-            HP((n-1)*i + 6) = params%t(i) * exp(-x(6)*params%t(i)) * y(5) - &
+            HP((i-1)*n + 5) = params%t(i) * exp(-x(6)*params%t(i)) * y(6)
+            HP((i-1)*n + 6) = params%t(i) * exp(-x(6)*params%t(i)) * y(5) - &
                  (params%t(i)**2) * x(5) * exp(-x(6)*params%t(i)) * y(6)
          end do
       end select
@@ -203,7 +203,7 @@ program lanczos
   options%maxit = 1000
 
   call cpu_time(tic)
-  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)!, eval_HP=eval_HP)
+  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform, eval_HP=eval_HP)
   if(inform%status.ne.0) then
      print *, "ral_nlls() returned with error flag ", inform%status
      stop
