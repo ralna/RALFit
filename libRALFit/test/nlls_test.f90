@@ -68,6 +68,7 @@ program nlls_test
               options%nlls_method = nlls_method
               options%tr_update_strategy = tr_update
               options%model = model_to_test(model)
+              options%exact_second_derivatives = .true.
               
               call print_line(options%out)
               write(options%out,*) "tr_update_strategy = ", options%tr_update_strategy
@@ -724,6 +725,149 @@ program nlls_test
      status%status = 0
 
 
+     ! three tests for incorrect returns from eval_f/J/H
+     ! after the first case
+     call reset_default_options(options)
+     n = 2
+     m = 67
+!     options%exact_second_derivatives = .true.
+     do i = 1,3       
+        X = [1.0, 2.0]
+        params%iter = 0
+        select case (i)
+        case (1)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_F at iteration 2"
+           call print_line(options%out)
+           call nlls_solve(n, m, X,                         &
+                eval_F_one_error, eval_J, eval_H, params,  &
+                options, status )
+        case (2)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_J at iteration 2"
+           call print_line(options%out)
+           call nlls_solve(n, m, X,                        &
+                eval_F, eval_J_one_error, eval_H, params,  &
+                options, status )
+        case (3)
+           call print_line(options%out)
+           write(options%out,*) "Error in eval_HF at iteration 2"
+           call print_line(options%out)
+           call nlls_solve(n, m, X,                        &
+                eval_F, eval_J, eval_H_one_error, params,  &
+                options, status )           
+        end select
+        if ( status%status .ne. 0 ) then 
+           write(*,*) 'Error: single error return from eval_x should have worked'
+           write(*,*) '       but status = ', status%status, ' returned'
+           no_errors_main = no_errors_main + 1
+        end if
+     end do
+     status%status = 0
+
+
+     ! tests for too many reductions of tr 
+     call reset_default_options(options)
+     n = 2
+     m = 67
+!     options%exact_second_derivatives = .true.
+     X = [1.0, 2.0]
+     params%iter = 0
+     call print_line(options%out)
+     write(options%out,*) "Too many TR radius reductions"
+     call print_line(options%out)
+     call nlls_solve(n, m, X,                         &
+          eval_F_allbutone_error, eval_J, eval_H, params,  &
+          options, status )
+     if ( status%status .ne. NLLS_ERROR_MAX_TR_REDUCTIONS ) then 
+        write(*,*) 'Error: expected to many reductions error'
+        write(*,*) '       but status = ', status%status, ' returned'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! tests for too large f(x)
+     call reset_default_options(options)
+     n = 2
+     m = 67
+!     options%exact_second_derivatives = .true.
+     X = [1.0, 2.0]
+     params%iter = 0
+     options%print_level = 5
+     call print_line(options%out)
+     write(options%out,*) "Large JtF, defaults"
+     call print_line(options%out)
+     call nlls_solve(n, m, X,                         &
+          eval_F_large, eval_J_large, eval_H, params,  &
+          options, status )
+     if ( status%status .ne. 0 ) then 
+        write(*,*) 'Error: Large JtF test failed, but pass expected'
+        write(*,*) '       status = ', status%status, ' returned'
+        write(*,*) status%error_message
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! tests for too large f(x) with exact second derivatives
+     call reset_default_options(options)
+     n = 2
+     m = 67
+     options%exact_second_derivatives = .true.
+     X = [1.0, 2.0]
+     params%iter = 0
+     options%print_level = 3
+     options%print_options = .true.
+
+     call print_line(options%out)
+     write(options%out,*) "Large JtF (exact H)"
+     call print_line(options%out)
+     call nlls_solve(n, m, X,                         &
+          eval_F, eval_J, eval_H, params,  &
+          options, status )
+     
+     X = [1.0, 2.0]
+     call nlls_solve(n, m, X,                         &
+          eval_F_large, eval_J_large, eval_H, params,  &
+          options, status )
+     if ( status%status .ne. 0 ) then 
+        write(*,*) 'Error: Large JtF test (exact H) failed, but pass expected'
+        write(*,*) '       status = ', status%status, ' returned'
+        write(*,*) status%error_message
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+
+     ! tests for too large f(x) with weights
+     call reset_default_options(options)
+     n = 2
+     m = 67
+     X = [1.0, 2.0]
+
+     allocate(w(m))
+     do i = 1, m
+        w(i) = 2.0
+     end do
+
+     params%iter = 0
+     options%print_level = 2
+     call print_line(options%out)
+     write(options%out,*) "Large JtF (with weights)"
+     call print_line(options%out)
+     call nlls_solve(n, m, X,                         &
+          eval_F_large, eval_J_large, eval_H, params,  &
+          options, status, weights=w )
+     if ( status%status .ne. 0 ) then 
+        write(*,*) 'Error: Large JtF (with weights) test failed, but pass expected'
+        write(*,*) '       status = ', status%status, ' returned'
+        write(*,*) status%error_message
+        no_errors_main = no_errors_main + 1
+     end if
+     deallocate(w)
+     status%status = 0
+
+     
+     
      ! now let's check errors on the parameters passed to the routine...
 
      call print_line(options%out)
@@ -805,7 +949,6 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
-
 
      if (no_errors_main == 0) then
         write(*,*) '*** All (main) tests passed successfully! ***'
