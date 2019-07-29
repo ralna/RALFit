@@ -1038,24 +1038,19 @@ contains
             w%solve_newton_tensor_ws, &
             options, tenJ, inner_workspace)
     else
-       if (w%dogleg_ws%allocated) then
+       if (w%dogleg_ws%allocated) &
           call remove_workspace_dogleg(w%dogleg_ws, options)
-       end if
-       if (w%AINT_tr_ws%allocated) then
+       if (w%AINT_tr_ws%allocated) &
           call remove_workspace_AINT_tr(w%AINT_tr_ws, options)
-       end if
-       if (w%more_sorensen_ws%allocated) then
+       if (w%more_sorensen_ws%allocated) &
           call remove_workspace_more_sorensen(&
                w%more_sorensen_ws,options)
-       end if
-       if (w%solve_galahad_ws%allocated) then 
+       if (w%solve_galahad_ws%allocated) &
           call remove_workspace_solve_galahad(&
                w%solve_galahad_ws, options)
-       end if
-       if (w%regularization_solver_ws%allocated) then 
+       if (w%regularization_solver_ws%allocated) &
           call remove_workspace_regularization_solver(&
                w%regularization_solver_ws, options)
-       end if
     end if
     if (options%scale > 0) call remove_workspace_generate_scaling(w%generate_scaling_ws,options)
 
