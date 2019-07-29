@@ -1145,11 +1145,15 @@ contains
        do while (.not. subproblem_success)
           
           if  (num_methods_tried>0) then
-             ! if we're trying this method for the second time,
-             ! return to user
-             if (subproblem_method == options%nlls_method) Go To 100
-             ! only use fallback if the options say it's ok
-             if (.not. options%allow_fallback_method) Go To 100
+             ! If we're using a method for the second time, or
+             ! we're not allowing a fallback, then bail...
+             if ( (subproblem_method == options%nlls_method) .or. & 
+                  (.not. options%allow_fallback_method)) Go To 100
+
+             if (buildmsg(5,.False.,options)) then
+                Write(rec(1), Fmt=3040)
+                Call printmsg(3,.False.,options,1,rec)
+             end if
           end if
        
           if ( options%type_of_method == 1) then
@@ -1318,6 +1322,7 @@ contains
 3010 FORMAT('*** Subproblem solution found ***')
 3020 FORMAT('*** Solving the regularized subproblem using ',A,' ***')
 3030 FORMAT('*** Error or Subproblem solution NOT found ***')
+3040 FORMAT('*** Subproblem solution not found.  Trying next method ***')
 8000 Format(85('-'))
 
    END SUBROUTINE calculate_step
