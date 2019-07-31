@@ -1018,7 +1018,7 @@ contains
 
   recursive subroutine remove_workspace_calculate_step(w,options,tenJ, inner_workspace)
     implicit none
-    type( calculate_step_work ), intent(out) :: w
+    type( calculate_step_work ), intent(inout) :: w
     type( nlls_options ), intent(in) :: options
     type( tenJ_type), Intent(inout) :: tenJ
     Type( NLLS_workspace), Intent(InOut) :: inner_workspace
@@ -1038,19 +1038,24 @@ contains
             w%solve_newton_tensor_ws, &
             options, tenJ, inner_workspace)
     else
-       if (w%dogleg_ws%allocated) &
+       if (w%dogleg_ws%allocated) then
           call remove_workspace_dogleg(w%dogleg_ws, options)
-       if (w%AINT_tr_ws%allocated) &
+       end if
+       if (w%AINT_tr_ws%allocated) then
           call remove_workspace_AINT_tr(w%AINT_tr_ws, options)
-       if (w%more_sorensen_ws%allocated) &
+       end if
+       if (w%more_sorensen_ws%allocated) then
           call remove_workspace_more_sorensen(&
                w%more_sorensen_ws,options)
-       if (w%solve_galahad_ws%allocated) &
+       end if
+       if (w%solve_galahad_ws%allocated) then
           call remove_workspace_solve_galahad(&
                w%solve_galahad_ws, options)
-       if (w%regularization_solver_ws%allocated) &
+       end if
+       if (w%regularization_solver_ws%allocated) then
           call remove_workspace_regularization_solver(&
                w%regularization_solver_ws, options)
+       end if
     end if
     if (options%scale > 0) call remove_workspace_generate_scaling(w%generate_scaling_ws,options)
 

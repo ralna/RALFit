@@ -907,7 +907,7 @@ contains
 
   subroutine nlls_finalize(w,options)
     implicit none
-    type( nlls_workspace ) :: w
+    type( nlls_workspace ), intent(inout) :: w
     type( nlls_options ) :: options
     ! reset all the scalars
     w%first_call = 1
@@ -1014,7 +1014,7 @@ contains
     real(wp), intent(out) :: norm_2_d,norm_S_d
     TYPE( nlls_options ), INTENT( IN ) :: options
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-    TYPE( calculate_step_work ) :: w
+    TYPE( calculate_step_work ), intent(inout) :: w
     Type( tenJ_type ), Intent(InOut) :: tenJ
     Type( NLLS_workspace ), Intent(InOut) :: inner_workspace
 
