@@ -1032,8 +1032,8 @@ contains
 !   !     * I=iteration type: regular (R) or inner (I)                     !
 !   !     * F=exit flag from inner solver. Has three states:               !
 !   !       Subproblem converged (C), or                                   !
-!   !       Subproblem not solved (E) or                                   !
-!   !       Currently inside subproblem, in which case (-)                 !
+!   !       Subproblem not solved (E), or                                  !
+!   !       Currently inside subproblem or not Tensor-Newton model (-)     !
 !   !     * Note: dashes (-) in the positions of flags `S`, `2` and 'I'    !
 !   !       indicate information is not available.                         !
 !   ! * inn it: inner iteration cummulative counter                        !
@@ -3835,6 +3835,12 @@ contains
              exit
           end if
        end do
+       ! Account for the eval_Hp calls, every call to evaltensor_f implies
+       ! a call to eval_hp
+       If (w%tparams%eval_hp_provided) Then
+         inform%hp_eval = inform%hp_eval + tensor_inform%f_eval
+       End If
+
        call nlls_finalize(inner_workspace,w%tensor_options)
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
 
@@ -3847,6 +3853,9 @@ contains
 
         call evaltensor_f(inform%external_return, n, m, d, &
              w%model_tensor, w%tparams)
+        If (w%tparams%eval_hp_provided) Then
+          inform%hp_eval = inform%hp_eval + 1
+        End If
         If (inform%external_return/=0) Then
           inform%status = NLLS_ERROR_EVALUATION
           inform%external_name = 'evaltensor_f'

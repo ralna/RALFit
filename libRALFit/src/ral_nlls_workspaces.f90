@@ -347,12 +347,12 @@ module ral_nlls_workspaces
 !    descent tests: 2? 3? 5? Ignored when proj(x)==x
      Integer       :: box_max_ntrfail = 2
 !    Number of consecutive times quadratic model matches f(x_k+1)
-!    required before setting initial alpha step for PG step equal 
+!    required before setting initial alpha step for PG step equal
 !    to scale_alpha*alpha_k-1
      Integer       :: box_quad_match = 1
 !    Initial step scale (if quad_i >= box_quad_i)
      Real(Kind=wp) :: box_alpha_scale = 1.0_wp
-!    Scaling factor to use when updating Delta from LS/PG step 
+!    Scaling factor to use when updating Delta from LS/PG step
      Real(Kind=wp) :: box_Delta_scale = 2.0_wp
      Real(Kind=wp) :: box_tau_wolfe = 0.3_wp
      Real(Kind=wp) :: box_tau_tr_step = 0.3_wp
@@ -409,8 +409,14 @@ module ral_nlls_workspaces
      INTEGER :: g_eval = 0
 
 !  the total number of evaluations of the Hessian of the objective function
+!  using eval_hf
 
      INTEGER :: h_eval = 0
+
+!  the total number of evaluations of the Hessian of the objective function
+!  using eval_hp
+
+     INTEGER :: hp_eval = 0
 
 !  test on the size of f satisfied?
 

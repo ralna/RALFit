@@ -323,7 +323,7 @@
         Logical, Intent (In)           :: box
 
         Integer                        :: nrec, tot
-        Character (90)                 :: rec(20)
+        Character (90)                 :: rec(30)
 
         Continue
 
@@ -411,8 +411,11 @@
             Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
               inform%g_eval_pg, 100.0_wp*real(inform%g_eval_pg)/inform%g_eval
             nrec = nrec + 1
-            Write (rec(nrec),Fmt=99996) 'Hessian evaluations           ',      &
+            Write (rec(nrec),Fmt=99996) 'Hessian evaluations (eval_hf) ',      &
               inform%h_eval
+            nrec = nrec + 1
+            Write (rec(nrec),Fmt=99996) 'Hessian evaluations (eval_hp) ',      &
+              inform%hp_eval
             Call printmsg(2,.False.,options,nrec,rec)
           End If
         End If
