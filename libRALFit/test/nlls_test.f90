@@ -883,6 +883,7 @@ program nlls_test
      End if
      n = 100
      allocate(x(n))
+     x = 0.0_wp
      m = 3
      call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
