@@ -552,7 +552,7 @@ contains
        if (.not. options%exact_second_derivatives) then
           ! let's update g_old, which is needed for call to
           ! rank_one_update
-          w%g_old = w%g
+          w%g_old(:) = w%g
        end if
 
     end if ! end of first call
@@ -991,7 +991,7 @@ contains
     if (.not. options%exact_second_derivatives) then
        ! now let's update g_old, which is needed for
        ! call to rank_one_update
-       w%g_old = w%g
+       w%g_old(:) = w%g
     end if
 
     ! update the stats
@@ -1690,7 +1690,7 @@ contains
 
      alpha = norm2(g)**2 / norm2( w%Jg )**2
 
-     w%d_sd = alpha * g;
+     w%d_sd(:) = alpha * g;
 
      ! Solve the linear problem...
      select case (options%model)
@@ -1714,7 +1714,7 @@ contains
      else
        ! Dogleg step
         w%d_sd = alpha * w%d_sd
-        w%ghat = w%d_gn - w%d_sd
+        w%ghat(:) = w%d_gn - w%d_sd
         call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
         if ( inform%status /= 0 ) goto 100
         d = w%d_sd + beta * w%ghat
@@ -1820,7 +1820,7 @@ contains
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(w%y_hardcase)
         call matmult_outer( matmul(w%B,w%y_hardcase), size_hard(2), n, w%M1_small)
-        w%M0_small = A(:,:) + lam*w%B(:,:) + w%M1_small
+        w%M0_small(:,:) = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model)
         case (1)
@@ -2077,7 +2077,7 @@ contains
            goto 100
         end if
 
-        w%q = d ! w%q = R'\d
+        w%q(:) = d ! w%q = R'\d
         CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, &
              1, 1.0_wp, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
 
@@ -2299,7 +2299,7 @@ contains
         end if
 
         if (region .ne. 1 ) then ! in F
-           w%q = d ! w%q = R'\d
+           w%q(:) = d ! w%q = R'\d
            CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, &
                 1, 1.0_wp, w%LtL, n, w%q, n )
            nq = norm2(w%q)
@@ -3082,8 +3082,8 @@ contains
 
        real(wp) :: yts, alpha, dSks
 
-       w%y       = w%g_old   - w%g
-       w%y_sharp = w%g_mixed - w%g
+       w%y(:)       = w%g_old   - w%g
+       w%y_sharp(:) = w%g_mixed - w%g
 
        yts = dot_product(w%d,w%y)
        if ( abs(yts) < 10.0_wp * epsmch ) then
@@ -3093,7 +3093,7 @@ contains
 
        call mult_J(hf,n,n,w%d,w%Sks) ! hfs = S_k * d
 
-       w%ysharpSks = w%y_sharp - w%Sks
+       w%ysharpSks(:) = w%y_sharp - w%Sks
 
        ! now, let's scale hd (Nocedal and Wright, Section 10.2)
        dSks = abs(dot_product(w%d,w%Sks))
