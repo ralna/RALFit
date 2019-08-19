@@ -1134,8 +1134,8 @@ contains
     if (bad_allocate) then
        if (allocated(inform%resvec)) deallocate(inform%resvec ,stat=ierr_dummy)
        if (allocated(inform%gradvec)) deallocate(inform%gradvec ,stat=ierr_dummy)
-       if (allocated(inform%smallest_sv)) deallocate(inform%smallest_sv ,stat=ierr_dummy)
-       if (allocated(inform%largest_sv)) deallocate(inform%largest_sv ,stat=ierr_dummy)
+!      if (allocated(inform%smallest_sv)) deallocate(inform%smallest_sv ,stat=ierr_dummy)
+!      if (allocated(inform%largest_sv)) deallocate(inform%largest_sv ,stat=ierr_dummy)
        inform%status = NLLS_ERROR_ALLOCATION
        inform%bad_alloc = 'nlls_iterate'
     end if

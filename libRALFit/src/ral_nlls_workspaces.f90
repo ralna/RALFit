@@ -440,11 +440,11 @@ module ral_nlls_workspaces
 
 !  vector of smallest singular values
 
-     real(wp), allocatable :: smallest_sv(:)
+!    real(wp), allocatable :: smallest_sv(:)
 
 !  vector of largest singular values
 
-     real(wp), allocatable :: largest_sv(:)
+!    real(wp), allocatable :: largest_sv(:)
 
 !  the value of the objective function at the best estimate of the solution
 !   determined by NLLS_solve
@@ -683,7 +683,7 @@ module ral_nlls_workspaces
      real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
-     real(wp), allocatable :: largest_sv(:), smallest_sv(:)
+!    real(wp), allocatable :: largest_sv(:), smallest_sv(:)
      type ( calculate_step_work ) :: calculate_step_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
@@ -883,8 +883,8 @@ contains
     if(allocated(workspace%resvec)) deallocate(workspace%resvec, stat=ierr_dummy)
     if(allocated(workspace%gradvec)) deallocate(workspace%gradvec, stat=ierr_dummy)
 
-    if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv, stat=ierr_dummy)
-    if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv, stat=ierr_dummy)
+!   if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv, stat=ierr_dummy)
+!   if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv, stat=ierr_dummy)
 
     if(allocated(workspace%fNewton)) deallocate(workspace%fNewton, stat=ierr_dummy )
     if(allocated(workspace%JNewton)) deallocate(workspace%JNewton, stat=ierr_dummy )
