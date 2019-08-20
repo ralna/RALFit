@@ -232,7 +232,7 @@ bux(6) = 10.0_wp !! working good
     Write(*,*) 'No bounds or all bound where -/+infinity'
   End If
 99999  Format (5X,3(Es13.6e2,2X))
-  options%print_level = 1
+  options%print_level = 5
   options%exact_second_derivatives = .false. !.true.
 !  options%model = 1 ! GN
 !  options%model = 2 ! (Quasi-)Newton
@@ -257,6 +257,14 @@ bux(6) = 10.0_wp !! working good
 !   options%box_tr_test_step = .False. !.True.
 !   options%box_wolfe_test_step = .True.
 !   options%box_max_ntrfail = 10
+
+! Force PG
+!options%box_gamma = 0.0_wp
+!options%box_tr_test_step = .False.
+!options%box_wolfe_test_step = .False.
+!options%box_max_ntrfail = 0
+
+
 
   call cpu_time(tic)
   call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
