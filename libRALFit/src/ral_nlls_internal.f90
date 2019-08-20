@@ -4550,18 +4550,18 @@ contains
           End If
           If (present(weights)) Then
             Call nmls_pg(m=m,                                                  &
-              fnew=w%Fnew,n=n,x=X,fdx=params%pdir,normFnew=normFnew,          &
+              fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
               Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
               options=options,alpha=alpha,ierr=ierr,weights=weights)
           Else
             Call nmls_pg(m=m,                                                  &
-              fnew=w%Fnew,n=n,x=X,fdx=params%pdir,normFnew=normFnew,          &
+              fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
               Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
               options=options,alpha=alpha,ierr=ierr)
           End If
           If (ierr==0 .or. ierr==-2) Then
 !           Update w%g JF
-            if (.not. options%exact_second_derivatives) then 
+            if (.not. options%exact_second_derivatives) then
               ! save the value of g_mixed, which is needed for
               ! call to rank_one_update
               ! g_mixed = -J_k^T r_{k+1}
@@ -4598,7 +4598,7 @@ contains
 
       Subroutine nmls_pg(m,fnew,n,x,fdx,normfnew,xnew,normx,params,       &
         eval_f,inform,options,alpha,ierr,weights)
-!       Assumes fdx = projected gradient !!!
+!       Assumes fdx is actually -fdx !!!
         Use nag_export_mod
         Use ral_nlls_workspaces
         Implicit None
@@ -4626,6 +4626,11 @@ contains
         If (alpha/=alpha .Or. alpha<1.0E-10_wp .Or. alpha>1.0_wp) Then
           ierr = 200
         End If
+        pi0 = -dot_product(fdx,params%pdir)
+        If (pi0>=0.0_wp) Then
+          ierr = 330
+          Go To 100
+        End If
         ierr = 0
 !       f0 = 0.5_wp * normF**2
         f0 = 0.5_wp*maxval(params%normfref(1:params%nFref))**2
@@ -4640,7 +4645,7 @@ contains
           Call Printmsg(5,.False.,options,4,rec)
         End If
 armijo: Do
-          xnew(1:n) = x(1:n) - alpha*fdx(1:n)
+          xnew(1:n) = x(1:n) + alpha*params%pdir(1:n)
           evalok = .True.
 !         ======================================================================
           Call eval_f(inform%external_return,n,m,xnew,fnew,params)
