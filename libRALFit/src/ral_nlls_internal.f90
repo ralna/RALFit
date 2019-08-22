@@ -811,11 +811,11 @@ contains
       End If
      Else If (buildmsg(3, .False., options).And.it_type=='R') Then
 !     Level 3: Same as level 2 but long banner version
-      If (mod(inform%iter, options%print_header)==0) Then
-        Write(rec(1), Fmt=8000)
-        Write(rec(2), Fmt=9000)
-        Write(rec(3), Fmt=8000)
-        Call printmsg(3, .False., options, 3, rec)
+        If (mod(w%iter, options%print_header)==0) Then
+           Write(rec(1), Fmt=8000)
+           Write(rec(2), Fmt=9000)
+           Write(rec(3), Fmt=8000)
+           Call printmsg(3, .False., options, 3, rec)
       End If
     End If
     If (buildmsg(2, .True., options).And.it_type == 'R') Then
