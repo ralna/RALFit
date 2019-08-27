@@ -882,7 +882,6 @@ contains
           end if
         End If
 
-        ! TODO guarantee to have \nabla f(xk) !!!
         If (.Not. takestep) Then
           If (present(weights)) Then
             Call linesearch_steps(n,m,success,tau,X,normX,normFnew,normJFnew,eval_F,   &
@@ -3361,10 +3360,10 @@ contains
        ! reset g
        if (.not. options%exact_second_derivatives) then
           ! this is already saved...
-          w%g = w%g_old
+          w%g(:) = w%g_old
        else
           call mult_Jt(w%J,n,m,w%f,w%g,options)
-          w%g = -w%g
+          w%g(:) = -w%g
        end if
 
 100    continue
@@ -4282,7 +4281,6 @@ contains
             inform%f_eval = inform%f_eval + 1
             inform%f_eval_ls = inform%f_eval_ls + 1
             If (inform%external_return/=0) Then
-!             TODO recovery?
               iretcd = 166
               Go To 100
             Else
@@ -4306,7 +4304,6 @@ contains
             inform%f_eval = inform%f_eval + 1
             inform%f_eval_ls = inform%f_eval_ls + 1
             If (inform%external_return/=0) Then
-!             TODO recovery?
               iretcd = 165
               Go To 100
             Else
@@ -4433,8 +4430,7 @@ contains
         alpn = alpha
         ierr = 0
         stepmx = 1.0E3_wp*max(w%norm_2_d,1.0_wp)
-!       TODO  steptl = 1.0e3_wp * sqrt(x02ajf()); 
-!       extend the life of dennis-schnabel LS by allowing smaller steps
+!       extend the life of Dennis-Schnabel LS by allowing smaller steps
         steptl = 1.05e-8_wp ! this parameter determines how small
 !       can the step be before giving up, set from 1e3 to 1.0
         f0 = 0.5_wp*w%normf**2
@@ -4588,7 +4584,6 @@ contains
             if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
             normJFnew = norm2(w%g)
           Else
-!           TODO add recovery mechanism
             inform%status = NLLS_ERROR_PG_STEP
             Go To 100
           End If

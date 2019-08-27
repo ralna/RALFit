@@ -21,7 +21,6 @@ contains
     real(wp), dimension(*), intent(out) :: r
     class(params_base_type), intent(inout) :: params
     
-!Write(*,*) 'In eval_r, x=',x(1:n)
     select type(params)
     type is(params_type)
        r(1:m) = params%y(:) &
@@ -29,7 +28,6 @@ contains
             - x(3)*exp(-x(4)*params%t(:)) &
             - x(5)*exp(-x(6)*params%t(:)) 
       status = 0 ! success
-!Write(*,*) 'Out eval_r, r=',r(1:m)
       return
     Class Default
       stop 'evalr: ERROR do not know how to handle this class...'
@@ -56,16 +54,7 @@ contains
          J(3*m+1:4*m) = +params%t(1:m) * x(3) * exp(-x(4)*params%t(1:m))! J_i4
          J(4*m+1:5*m) = -exp(-x(6)*params%t(1:m))                     ! J_i5
          J(5*m+1:6*m) = +params%t(1:m) * x(5) * exp(-x(6)*params%t(1:m))! J_i6
-
-!          Do r = 1, m
-!           Do c = 1, n
-!             Write(*,'(Es9.2e2,1X)',advance='no') J(n*(r-1)+c)
-!           End Do
-!           Write(*,*) ''
-!          End Do
-
     end select
-
 
     status = 0 ! Success
   end subroutine eval_J
@@ -176,45 +165,14 @@ program lanczos_box
  
   ! Add the box bound
   Allocate(blx(n),bux(n),xnew(n), d(n))
-! TEST ONE  
   blx(1:n) = -1.0e20_wp
   bux(1:n) = +1.0e20_wp
-!   blx(1:n) = 0.0e20_wp
-!   bux(1:n) = 0.0e20_wp
-! TEST TWO  
-!  blx(1:n) = -1.0_wp
-!  bux(1:n) = +1.0e20_wp
-! TEST THREE  
-!  blx(1:n) = -1.0_wp
-!  bux(1:n) = +1.0_wp
-blx(1) = 0.59_wp!44
-bux(1) = 1.445_wp
-blx(5) = -3.9e-1_wp
-bux(5) = -0.200_wp
-! ------------------
-bux(6) = 10.0_wp !! working good
-! bux(6) = 11.0_wp !! fast !! 45 iterations 
-! optimum at x =    0.6889229829244405   1.8735055049705871   2.0682924682678787
-! 4.6402277568643573  -0.2444283933594384   1.8736741088671192
-! 2.1732349926983754E-06
-! bux(6) = 12.0_wp !! stagnation !! 43882 iterations
-! optimum at x =    0.5900000000000000   2.0808044760419366   2.3127303035245053
-! 5.0477989247787995  -0.3900000000000000   6.3782210775222410
-! 6.4906367799130378E-06
-
-! TEST four fail  
-!   blx(1:n) = -1.0_wp
-!   bux(1:n) = -1.1_wp
-
-!   blx(1) = 0.087_wp
-!   blx(2) = 0.955_wp
-!   blx(3) = 0.85_wp
-!   blx(4) = 2.96_wp
-!   blx(5) = 1.59_wp
-!   blx(6) = 4.99_wp
-!   iusrbox = 1
-
-
+  blx(1) = 0.59_wp
+  bux(1) = 1.445_wp
+  ! bux(3) = 2.0_wp
+  blx(5) = -3.9e-1_wp
+  bux(5) = -0.200_wp
+  bux(6) = 10.0_wp
 
   Call nlls_setup_bounds(params, n, blx, bux, options, inform)
   if (inform%status/=0) then
@@ -222,49 +180,15 @@ bux(6) = 10.0_wp !! working good
     stop
   End if
 
-  Write(*,*) 'Box description (x0 is not proj)'
-  Write(*,*) 'iusrbox = ', params%iusrbox
-  if (params%iusrbox/=0) Then
-    Do i = 1, n
-      Write(*,Fmt=99999) blx(i), x(i), bux(i)
-    End Do
-  else
-    Write(*,*) 'No bounds or all bound where -/+infinity'
-  End If
-99999  Format (5X,3(Es13.6e2,2X))
-  options%print_level = 5
-  options%exact_second_derivatives = .false. !.true.
-!  options%model = 1 ! GN
-!  options%model = 2 ! (Quasi-)Newton
-  options%model = 3 ! Hybrid
-!  options%model = 4 ! Newton-tensor
-  options%type_of_method = 1 ! TR
-!  options%type_of_method = 2 ! Regularization
-!  options%nlls_method = 1 ! Powell's dogleg method
-!  options%nlls_method = 2 ! Adachi-Iwata-Nakatsukasa-Takeda method
-  options%nlls_method = 3 ! Moré-Sorensen method
-!  options%nlls_method = 4 ! Galahan (DTRS:type_of_method=1, DRQS:type_of_method=2)
-!  options%use_ews_subproblem = .true.
-!  options%regularization_term = 1.0e-2
-!  options%regularization_power = 2.0
-!  options%reg_order = -1.0
-!  options%inner_method = 1 ! passed in as a base reg term 
-  options%inner_method = 2 ! expanded NLLS is solved
-!  options%inner_method = 3 ! implicit recursive call
+  options%print_level = 1
+  options%maxit = 1000
+  options%exact_second_derivatives = .false.
+  options%model = 3
+  options%type_of_method = 1
+  options%nlls_method = 3
+  options%inner_method = 2
   options%print_options = .True.
-  options%maxit = 2000000
   options%box_linesearch_type = 1
-!   options%box_tr_test_step = .False. !.True.
-!   options%box_wolfe_test_step = .True.
-!   options%box_max_ntrfail = 10
-
-! Force PG
-!options%box_gamma = 0.0_wp
-!options%box_tr_test_step = .False.
-!options%box_wolfe_test_step = .False.
-!options%box_max_ntrfail = 0
-
-
 
   call cpu_time(tic)
   call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
@@ -273,23 +197,31 @@ bux(6) = 10.0_wp !! working good
      stop
   endif
   call cpu_time(toc)
+
   Write(*,*) 'Solution: '
+  Write(*,Fmt=99998) 'idx', 'low bnd', 'x', 'upp bnd'
   if (params%iusrbox/=0) Then
     Do i = 1, n
-      Write(*,Fmt=99999) blx(i), x(i), bux(i)
+      Write(*,Fmt=99999) i, blx(i), x(i), bux(i)
     End Do
   else
     Do i = 1, n
-      Write(*,Fmt=99999) -1.0e-20_wp, x(i), 1.0e20_wp
+      Write(*,Fmt=99997) i, x(i)
     End Do
   End If
+
   ! Print result
+  print *, ""
   print *, "Objective Value at solution    = ", inform%obj
   print *, "Objective Gradient at solution = ", inform%norm_g
-  print *, "Found a local optimum at x = ", x
   print *, "Took ", inform%iter, " iterations (LS:",inform%ls_step_iter,' PG:',inform%pg_step_iter,')'
   print *, "     ", inform%f_eval, " function evaluations (LS:",inform%f_eval_ls,' PG:',inform%f_eval_pg,')'
   print *, "     ", inform%g_eval, " gradient evaluations (LS:",inform%g_eval_ls,' PG:',inform%g_eval_pg,')'
-  print *, "     ", inform%h_eval, " hessian evaluations"
-! print *, "     ", toc-tic, " seconds"
+  print *, "     ", inform%h_eval, " hessian (eval Hf) evaluations"
+  print *, "     ", inform%hp_eval, " hessian (eval_HP) evaluations"
+  print *, "     ", toc-tic, " seconds"
+
+99999  Format (5X,I3,1X,3(Es13.6e2,2X))
+99998  Format (5X,A3,1X,3(A13,2X))
+99997  Format (5X,I3,16X,Es13.6e2)
 end program lanczos_box
