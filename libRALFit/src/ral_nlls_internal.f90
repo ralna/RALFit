@@ -1152,7 +1152,7 @@ contains
 
              if (buildmsg(5,.False.,options)) then
                 Write(rec(1), Fmt=3040)
-                Call printmsg(3,.False.,options,1,rec)
+                Call printmsg(5,.False.,options,1,rec)
              end if
           end if
        
