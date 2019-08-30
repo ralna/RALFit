@@ -313,8 +313,8 @@ contains
        inform%f_eval = inform%f_eval + 1
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_F'
-         inform%external_return = 2511
-         inform%status = NLLS_ERROR_EVALUATION
+         inform%external_return = 2101
+         inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
        if ( present(weights)) then
@@ -327,8 +327,8 @@ contains
        inform%g_eval = inform%g_eval + 1
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_J'
-         inform%external_return = 2512
-         inform%status = NLLS_ERROR_EVALUATION
+         inform%external_return = 2102
+         inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
        if ( present(weights) ) then
@@ -359,6 +359,8 @@ contains
 
        If ( (log(w%normF)>100.0_wp) .or. (w%normF/=w%normF) ) Then
          ! Initial guess x0 is not usable
+         inform%external_name = 'eval_F'
+         inform%external_return = 2101
          inform%status = NLLS_ERROR_INITIAL_GUESS
          Go To 100
        End If
@@ -375,6 +377,8 @@ contains
 
        If ( (log(w%normJF)>100.0_wp) .or. (w%normJF/=w%normJF) ) Then
          ! Initial guess x0 is not usable
+         inform%external_name = 'eval_J'
+         inform%external_return = 2102
          inform%status = NLLS_ERROR_INITIAL_GUESS
          Go To 100
        End If
@@ -488,8 +492,8 @@ contains
              inform%h_eval = inform%h_eval + 1
              If (inform%external_return /= 0) Then
                inform%external_name = 'eval_HF'
-               inform%external_return = 2513
-               inform%status = NLLS_ERROR_EVALUATION
+               inform%external_return = 2103
+               inform%status = NLLS_ERROR_INITIAL_GUESS
                goto 100
              End If
           else
