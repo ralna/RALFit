@@ -125,6 +125,11 @@ module ral_nlls_workspaces
 
      INTEGER :: nlls_method = 4
 
+!   allow the algorithm to use a different subproblem solver if one fails
+
+     LOGICAL :: allow_fallback_method = .true.
+
+     
 !  which linear least squares solver should we use?
 
      INTEGER :: lls_solver = 1
@@ -692,6 +697,9 @@ module ral_nlls_workspaces
   end type NLLS_workspace
 
   public :: setup_workspaces, remove_workspaces
+  public :: setup_workspace_dogleg, setup_workspace_AINT_tr
+  public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
+  public :: setup_workspace_regularization_solver
 
 contains
 
@@ -1097,7 +1105,7 @@ contains
 
   recursive subroutine remove_workspace_calculate_step(w,options,tenJ, inner_workspace)
     implicit none
-    type( calculate_step_work ), intent(out) :: w
+    type( calculate_step_work ), intent(inout) :: w
     type( nlls_options ), intent(in) :: options
     type( tenJ_type), Intent(inout) :: tenJ
     Type( NLLS_workspace), Intent(InOut) :: inner_workspace
@@ -1117,28 +1125,23 @@ contains
             w%solve_newton_tensor_ws, &
             options, tenJ, inner_workspace)
     else
-       if (options%type_of_method == 1) then
-          select case (options%nlls_method)
-          case (1) ! use the dogleg method
-             call remove_workspace_dogleg(w%dogleg_ws, options)
-          case(2) ! use the AINT method
-             call remove_workspace_AINT_tr(w%AINT_tr_ws, options)
-          case(3) ! More-Sorensen
-             call remove_workspace_more_sorensen(&
-                  w%more_sorensen_ws,options)
-          case (4) ! dtrs (Galahad)
-             call remove_workspace_solve_galahad(&
-                  w%solve_galahad_ws, options)
-          end select
-       elseif (options%type_of_method == 2) then
-          select case (options%nlls_method)
-          case (3) ! regularization_solver
-             call remove_workspace_regularization_solver(&
-                  w%regularization_solver_ws, options)
-          case (4) ! dtrs (Galahad)
-             call remove_workspace_solve_galahad(&
-                  w%solve_galahad_ws, options)
-          end select
+       if (w%dogleg_ws%allocated) then
+          call remove_workspace_dogleg(w%dogleg_ws, options)
+       end if
+       if (w%AINT_tr_ws%allocated) then
+          call remove_workspace_AINT_tr(w%AINT_tr_ws, options)
+       end if
+       if (w%more_sorensen_ws%allocated) then
+          call remove_workspace_more_sorensen(&
+               w%more_sorensen_ws,options)
+       end if
+       if (w%solve_galahad_ws%allocated) then
+          call remove_workspace_solve_galahad(&
+               w%solve_galahad_ws, options)
+       end if
+       if (w%regularization_solver_ws%allocated) then
+          call remove_workspace_regularization_solver(&
+               w%regularization_solver_ws, options)
        end if
     end if
     if (options%scale > 0) call remove_workspace_generate_scaling(w%generate_scaling_ws,options)

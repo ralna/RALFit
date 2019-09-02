@@ -85,14 +85,7 @@ int generic_test(int model, int method){
   double x[2] = { 2.5, 0.25 }; // Initial guess
   struct ral_nlls_inform inform;
   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, NULL);
-  if (method==1 && model > 1){
-    printf("%s \n", inform.error_message);
-    if (inform.status != -101){
-      printf("ral_nlls() returned with error flag %d (expected -101)",inform.status);
-      return -36;
-    }
-  }
-  else if (model == 0) {
+  if (model == 0) {
     printf("%s \n", inform.error_message);
     if (inform.status != -3){
       printf("ral_nlls() returned with error flag %d (expected -3)",inform.status);

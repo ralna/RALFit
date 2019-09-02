@@ -23,6 +23,7 @@ module ral_nlls_ciface
      integer(C_INT) :: model
      integer(C_INT) :: type_of_method
      integer(C_INT) :: nlls_method
+     logical(c_bool) :: allow_fallback_method
      integer(C_INT) :: lls_solver
      real(wp) :: stop_g_absolute
      real(wp) :: stop_g_relative
@@ -180,6 +181,7 @@ contains
     foptions%model = coptions%model
     foptions%type_of_method = coptions%type_of_method
     foptions%nlls_method = coptions%nlls_method
+    foptions%allow_fallback_method = coptions%allow_fallback_method
     foptions%lls_solver = coptions%lls_solver
     foptions%stop_g_absolute = coptions%stop_g_absolute
     foptions%stop_g_relative = coptions%stop_g_relative
@@ -355,6 +357,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%model = foptions%model
   coptions%type_of_method = foptions%type_of_method
   coptions%nlls_method = foptions%nlls_method
+  coptions%allow_fallback_method = foptions%allow_fallback_method
   coptions%lls_solver = foptions%lls_solver
   coptions%stop_g_absolute = foptions%stop_g_absolute
   coptions%stop_g_relative = foptions%stop_g_relative

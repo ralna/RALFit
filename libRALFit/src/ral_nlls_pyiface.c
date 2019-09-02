@@ -286,6 +286,22 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          options->nlls_method = (int) v;
          continue;
       }
+      // bool: allow_fallback_method
+      
+      if(strcmp(key_name, "allow_fallback_method")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	printf("%d\n",vint);
+	if (vint == 1){
+	  options->allow_fallback_method=true;
+	}else if (vint == 0){
+	  options->allow_fallback_method=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['allow_fallback_method'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
       if(strcmp(key_name, "lls_solver")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {

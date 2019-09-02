@@ -35,6 +35,7 @@ struct ral_nlls_options_d {
   int model; /* what model to use? */
   int type_of_method; /* what method to use? */
   int nlls_method; /* what nlls method to use? */
+  bool allow_fallback_method; /* switch nlls method if chosen one fails? */
   int lls_solver; /* which lls solver to use? */
   ral_nllspkgtype_d_ stop_g_absolute; /* absolute stopping tolerance for gradient*/
   ral_nllspkgtype_d_ stop_g_relative; /* relative stopping tolerance for gradient*/
