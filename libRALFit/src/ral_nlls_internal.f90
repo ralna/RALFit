@@ -719,7 +719,7 @@ contains
            call eval_J(eval_J_status, n, m, w%Xnew(1:n), w%J, params)
            inform%g_eval = inform%g_eval + 1
            If (eval_J_status /= 0) Then
-             rho = -1.0_wp ! set rho to trigger reduce trust-region
+             ! trigger reset_gradients
            else
              if ( present(weights) ) then
                ! set J -> WJ
@@ -734,29 +734,36 @@ contains
              normJFnew = norm2(w%g)
 
              if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
-               If (buildmsg(5,.False.,options)) Then
-                 Write(rec(1),Fmt=3120) normJFnew
-                 nrec=1
-                 Call Printmsg(5,.False.,options,nrec,rec)
-               End If
-               rho = -2.0_wp
-               ! this case should be trated the same as when rho is not satisfactory
-               num_successful_steps = 0
-               call reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
-               If (inform%external_return /= 0) goto 100
-             else
-               ! success!!
-               ! Post-pone updates (so to be able to call LS/PG steps if needed)
-               ! w%normJFold = w%normJF
-               ! w%normF = normFnew
-               ! w%normJF = normJFnew
-               num_successful_steps = num_successful_steps + 1
-               success = .true.
+               ! trigger reset_gradients
+               eval_J_status = 1
              end if
+           end if
+
+           If (eval_J_status/=0) Then
+           ! Jacobian either could not be avaluated or returned NaN of Infinity in one or
+           ! more entries, trigger reset_gradients and print a note.
+             If (buildmsg(5,.False.,options)) Then
+               Write(rec(1),Fmt=3120) normJFnew
+               nrec=1
+               Call Printmsg(5,.False.,options,nrec,rec)
+             End If
+             rho = -1.0_wp ! set rho to trigger reduce trust-region
+             ! this case should be trated the same as when rho is not satisfactory
+             num_successful_steps = 0
+             call reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
+             If (inform%external_return /= 0) goto 100
+           else
+             ! success!!
+             ! Post-pone updates (so to be able to call LS/PG steps if needed)
+             ! w%normJFold = w%normJF
+             ! w%normF = normFnew
+             ! w%normJF = normJFnew
+             num_successful_steps = num_successful_steps + 1
+             success = .true.
            end if
          end if
        end if
-       
+
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
