@@ -664,7 +664,7 @@ contains
        inform%f_eval = inform%f_eval + 1
 
        If (eval_f_status .ne. 0) Then
-          rho = -1.0_wp ! give a rho that will fail
+         rho = -1.0_wp
        Else
          if ( present(weights) ) then
            ! set f -> Wf
@@ -720,7 +720,7 @@ contains
            inform%g_eval = inform%g_eval + 1
            If (eval_J_status /= 0) Then
              ! trigger reset_gradients
-           else
+           Else
              if ( present(weights) ) then
                ! set J -> WJ
                call scale_J_by_weights(w%J,n,m,weights,options)
@@ -728,39 +728,40 @@ contains
 
              ! g = -J^Tf
              call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-             w%g = -w%g
+             w%g(:) = -w%g(:)
              if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
 
              normJFnew = norm2(w%g)
 
-             if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
-               ! trigger reset_gradients
-               eval_J_status = 1
-             end if
-           end if
-
-           If (eval_J_status/=0) Then
-           ! Jacobian either could not be avaluated or returned NaN of Infinity in one or
-           ! more entries, trigger reset_gradients and print a note.
-             If (buildmsg(5,.False.,options)) Then
-               Write(rec(1),Fmt=3120) normJFnew
-               nrec=1
-               Call Printmsg(5,.False.,options,nrec,rec)
+             If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
+!              trigger reset_gradients
+               eval_j_status = 1
              End If
-             rho = -1.0_wp ! set rho to trigger reduce trust-region
-             ! this case should be trated the same as when rho is not satisfactory
+           End If
+           If (eval_j_status/=0) Then
+!            Jacobian either could not be avaluated or returned NaN of Infinity in one or
+!            more entries, trigger reset_gradients and print a note.
+             If (buildmsg(5,.False.,options)) Then
+               Write (rec(1),Fmt=3120)
+               nrec = 1
+               Call printmsg(5,.False.,options,nrec,rec)
+             End If
+             rho = -1.0_wp
+!            this case should be trated the same as when rho is not satisfactory
              num_successful_steps = 0
-             call reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
-             If (inform%external_return /= 0) goto 100
-           else
-             ! success!!
-             ! Post-pone updates (so to be able to call LS/PG steps if needed)
-             ! w%normJFold = w%normJF
-             ! w%normF = normFnew
-             ! w%normJF = normJFnew
+             Call reset_gradients(n,m,x,options,inform,params,w,eval_j,weights)
+             If (inform%external_return/=0) Then
+               Go To 100
+             End If
+           Else
+!            success!!
+!            Post-pone updates (so to be able to call LS/PG steps if needed)
+!            w%normJFold = w%normJF
+!            w%normF = normFnew
+!            w%normJF = normJFnew
              num_successful_steps = num_successful_steps + 1
-             success = .true.
-           end if
+             success = .True.
+          end if
          end if
        end if
 
@@ -870,14 +871,12 @@ contains
               call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
               w%g_mixed = -w%g_mixed
           end if
-          ! evaluate J and hf at the new point
+          ! evaluate J
           call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
           inform%g_eval = inform%g_eval + 1
           If (inform%external_return /= 0) Then
-            inform%external_name = 'eval_J'
-            inform%external_return = 2512
-            inform%status = NLLS_ERROR_EVALUATION
-            goto 100
+!           Recover: force to take a PG step
+            takestep = .False.
           End If
           if ( present(weights) ) then
              ! set J -> WJ
@@ -1164,7 +1163,7 @@ contains
 9020 Format(I7,37X,1X,2(Es9.2e2,1X),A4,1X,I7)
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
-3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.')
+3120 Format('||J^Tf|| too large or not available. Reducing TR radius.')
   end subroutine nlls_iterate
 
 
@@ -3440,6 +3439,8 @@ contains
        real( wp ), intent(in), optional :: weights(:)
 
        integer :: i
+       real (wp) :: normjfnew
+
 
        call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
        inform%g_eval = inform%g_eval + 1
@@ -3461,6 +3462,13 @@ contains
           call mult_Jt(w%J,n,m,w%f,w%g,options)
           w%g(:) = -w%g
        end if
+
+       normjfnew = norm2(x=w%g)
+       If ((log(normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
+         inform%external_name = 'eval_J'
+         inform%external_return = 2512
+         inform%status = NLLS_ERROR_EVALUATION
+       End If
 
 100    continue
 
@@ -4546,48 +4554,55 @@ contains
           Go To 100
         End If
 
-          normfnew = sqrt(2.0_wp*fpls)
+        normfnew = sqrt(2.0_wp*fpls)
 
-          ! step seems to be good -- calculate the Jacobian
-          if (.not. options%exact_second_derivatives) then 
-             ! save the value of g_mixed, which is needed for
-             ! call to rank_one_update
-             ! g_mixed = -J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
-             w%g_mixed = -w%g_mixed
-          end if
+        ! step seems to be good -- calculate the Jacobian
+        if (.not. options%exact_second_derivatives) then 
+           ! save the value of g_mixed, which is needed for
+           ! call to rank_one_update
+           ! g_mixed = -J_k^T r_{k+1}
+           call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+           w%g_mixed = -w%g_mixed
+        end if
 
-          ! evaluate J and hf at the new point
-          call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
-          inform%g_eval = inform%g_eval + 1
-          inform%g_eval_ls = inform%g_eval_ls + 1
-          If (inform%external_return /= 0) Then
-            inform%external_name = 'eval_J'
-            inform%external_return = 2512
-            inform%status = NLLS_ERROR_EVALUATION
-            ierr = -90
-            goto 100
-          End If
-          if ( present(weights) ) then
-             ! set J -> WJ
-             call scale_J_by_weights(w%J,n,m,weights,options)
-          end if
+        ! evaluate J and hf at the new point
+        call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+        inform%g_eval = inform%g_eval + 1
+        inform%g_eval_ls = inform%g_eval_ls + 1
+        If (inform%external_return /= 0) Then
+          inform%external_name = 'eval_J'
+          inform%external_return = 2512
+          inform%status = NLLS_ERROR_EVALUATION
+          ierr = -90
+          goto 100
+        End If
+        if ( present(weights) ) then
+           ! set J -> WJ
+           call scale_J_by_weights(w%J,n,m,weights,options)
+        end if
 
-          If (options%exact_second_derivatives) Then
-!           Store the gradient at iter k prior to overwriting w%g with gk+1
-!           Only need to store if options%exact_second_derivatives=.TRUE.
-!           Otherwise w%g_old is available.
-            params%g(1:n) = w%g(1:n)
-          End If
+        If (options%exact_second_derivatives) Then
+!         Store the gradient at iter k prior to overwriting w%g with gk+1
+!         Only need to store if options%exact_second_derivatives=.TRUE.
+!         Otherwise w%g_old is available.
+          params%g(1:n) = w%g(1:n)
+        End If
 
-          ! g = -J^Tf
-          call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-          w%g = -w%g
-          if ( options%regularization > 0 ) Then
-            call update_regularized_gradient(w%g,w%Xnew,normX,options)
-          End If
+        ! g = -J^Tf
+        call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+        w%g = -w%g
+        if ( options%regularization > 0 ) Then
+          call update_regularized_gradient(w%g,w%Xnew,normX,options)
+        End If
 
-          normJFnew = norm2(w%g)
+        normJFnew = norm2(w%g)
+        If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
+          ! Initial guess x0 is not usable
+          inform%external_name = 'eval_J'
+          inform%external_return = 2512
+          inform%status = NLLS_ERROR_EVALUATION
+          ierr = -91
+        End If
 
 100     Continue
 
