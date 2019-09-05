@@ -600,6 +600,7 @@ module ral_nlls_workspaces
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
      real(wp), allocatable :: largest_sv(:), smallest_sv(:)
+     real(wp), allocatable :: Wf(:)
      type ( calculate_step_work ) :: calculate_step_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
@@ -718,6 +719,15 @@ contains
        End If
     end if
 
+    if( .not. allocated(workspace%Wf)) then
+       allocate(workspace%Wf(m), stat = inform%alloc_status)
+       If (inform%alloc_status /= 0) Then
+         inform%bad_alloc = 'setup_workspaces'
+         inform%status = NLLS_ERROR_ALLOCATION
+         goto 100
+       End If
+    end if
+
     if( .not. allocated(workspace%fnew)) then
        allocate(workspace%fnew(m), stat = inform%alloc_status)
        If (inform%alloc_status /= 0) Then
@@ -812,6 +822,7 @@ contains
 
     if(allocated(workspace%J)) deallocate(workspace%J, stat=ierr_dummy )
     if(allocated(workspace%f)) deallocate(workspace%f, stat=ierr_dummy )
+    if(allocated(workspace%Wf)) deallocate(workspace%Wf, stat=ierr_dummy )
     if(allocated(workspace%fnew)) deallocate(workspace%fnew, stat=ierr_dummy )
     if(allocated(workspace%hf)) deallocate(workspace%hf, stat=ierr_dummy )
     if(allocated(workspace%hf_temp)) deallocate(workspace%hf_temp, stat=ierr_dummy)
