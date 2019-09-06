@@ -1514,7 +1514,7 @@ contains
              end select ! nlls_method
           elseif (options%type_of_method == 2) then
              
-             select case (options%nlls_method)
+             select case (subproblem_method)
              case (3) ! home-rolled regularization solver
                 If (buildmsg(5,.False.,options)) Then
                    Write(rec(1), Fmt=3020) 'RALFit Solver'
