@@ -321,8 +321,20 @@ contains
           ! set f -> Wf
           w%f(1:m) = weights(1:m)*w%f(1:m)
        end if
-
-       ! and evaluate the jacobian
+       w%normf = norm2(x=w%f(1:m))
+       If ((log(w%normf)>100.0_wp) .Or. (w%normf/=w%normf)) Then
+         ! Initial guess x0 is not usable
+         inform%external_name = 'eval_F'
+         inform%external_return = 2101
+         inform%status = nlls_error_initial_guess
+         Go To 100
+       End If
+       If (options%regularization>0) Then
+         normx = norm2(x=x(1:n))
+         Call update_regularized_normf(normf=w%normf,normx=normx,    &
+           options=options)
+       End If
+!      and evaluate the jacobian
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
        If (inform%external_return /= 0) Then
@@ -350,21 +362,6 @@ contains
        else
           w%Delta = options%initial_radius
        end if
-
-       w%normF = norm2(w%f(1:m))
-       if (options%regularization > 0 ) then
-          normX = norm2(X(1:n))
-          call update_regularized_normF(w%normF,normX,options)
-       end if
-
-       If ( (log(w%normF)>100.0_wp) .or. (w%normF/=w%normF) ) Then
-         ! Initial guess x0 is not usable
-         inform%external_name = 'eval_F'
-         inform%external_return = 2101
-         inform%status = NLLS_ERROR_INITIAL_GUESS
-         Go To 100
-       End If
-
        ! Avoid NaN if F(x0)=0.0 is solution
        w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp)
 
@@ -665,6 +662,7 @@ contains
 
        If (eval_f_status .ne. 0) Then
          rho = -1.0_wp
+         num_successful_steps = 0
        Else
          if ( present(weights) ) then
            ! set f -> Wf
@@ -672,6 +670,13 @@ contains
          end if
          normFnew = norm2(w%fnew(1:m))
 
+         If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
+           rho = -1.0_wp
+           eval_f_status = 1
+           num_successful_steps = 0
+         End If
+       End If
+       If (eval_f_status==0) Then
          if (options%regularization > 0) then
            normX = norm2(w%Xnew)
            call update_regularized_normF(normFnew,normX,options)
@@ -798,25 +803,28 @@ contains
            ! tau          |  LS step                                  !
            ! ntrfail      |  LS step                                  !
            !----------------------------------------------------------!
-           If (normFnew <= options%box_gamma*w%normF) Then
-             ! Kanzow et al. descent condition
-             ! Take projected TR step
-             nlab = 1
-             takestep = .True.
-             Exit
-           ElseIf (success) Then
-             ! TR progress ok
-             ! Take projected TR step?
-             nlab = 0
-             takestep = options%box_tr_test_step .And. tau >= options%box_tau_tr_step
-             Exit
-           ElseIf (wolfe ) Then
-             ! Wolfe conditions met and projection ok
-             ! Take projected TR step?
-             nlab = 2
-             takestep = options%box_wolfe_test_step .And. tau>=options%box_tau_wolfe
-             Exit
-           ElseIf (tau <= options%box_tau_min) Then
+           If (eval_f_status==0) Then
+             If (normFnew <= options%box_gamma*w%normF) Then
+               ! Kanzow et al. descent condition
+               ! Take projected TR step
+               nlab = 1
+               takestep = .True.
+               Exit
+             ElseIf (success) Then
+               ! TR progress ok
+               ! Take projected TR step?
+               nlab = 0
+               takestep = options%box_tr_test_step .And. tau >= options%box_tau_tr_step
+               Exit
+             ElseIf (wolfe ) Then
+               ! Wolfe conditions met and projection ok
+               ! Take projected TR step?
+               nlab = 2
+               takestep = options%box_wolfe_test_step .And. tau>=options%box_tau_wolfe
+               Exit
+             End If
+           End If
+           If (tau <= options%box_tau_min) Then
              ! TR step is orthogonal to active bounds
              ! Don't take projected TR step and force a LS step
              nlab = 3
@@ -4752,6 +4760,7 @@ contains
 armijo: Do
           xnew(1:n) = x(1:n) + alpha*params%pdir(1:n)
           evalok = .True.
+          falpn = infinity
 !         ======================================================================
           Call eval_f(inform%external_return,n,m,xnew,fnew,params)
           inform%f_eval = inform%f_eval + 1
@@ -4764,13 +4773,18 @@ armijo: Do
               fnew(1:m) = weights(1:m)*fnew(1:m)
             End If
             normfnew = norm2(fnew(1:m))
+            If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
+              evalok = .False.
+            End If
+          End If
+          If (evalok) Then
             If (options%regularization>0) Then
               normx = norm2(xnew)
               Call update_regularized_normF(normfnew,normx,options)
             End If
+            falpn = 0.5_wp*normfnew**2
           End If
 !         ======================================================================
-          falpn = 0.5_wp*normfnew**2
           If (buildmsg(5,.False.,options)) Then
             Write (rec(2),Fmt=99997) alpha, falpn, pi0, evalok
           End If
