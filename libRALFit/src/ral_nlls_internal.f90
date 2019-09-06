@@ -3167,11 +3167,13 @@ contains
        real( wp ), intent(in), optional :: weights(:)
 
        integer :: i
+       real (wp) :: normjfnew
        
        call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
        inform%g_eval = inform%g_eval + 1
        If (inform%external_return /= 0) Then
           inform%external_name = 'eval_J'
+          inform%external_return = 2512
           inform%status = NLLS_ERROR_EVALUATION
           goto 100
        End If
@@ -3187,6 +3189,13 @@ contains
           call mult_Jt(w%J,n,m,w%f,w%g,options)
           w%g = -w%g
        end if
+
+       normjfnew = norm2(x=w%g)
+       If ((log(normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
+         inform%external_name = 'eval_J'
+         inform%external_return = 2512
+         inform%status = NLLS_ERROR_EVALUATION
+       End If
 
 100    continue
        
