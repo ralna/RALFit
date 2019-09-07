@@ -47,8 +47,7 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES    = -401
 
   ! Linesearch errors
-  Integer, Parameter, Public :: NLLS_ERROR_LS_STEP                  = -501
-  Integer, Parameter, Public :: NLLS_ERROR_PG_STEP                  = -502
+  Integer, Parameter, Public :: NLLS_ERROR_PG_STEP                  = -501
 
   ! Misc errors
   Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900

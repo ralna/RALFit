@@ -367,7 +367,7 @@ contains
 
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g,options)
-       w%g = -w%g
+       w%g(:) = -w%g(:)
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = norm2(w%g)
        w%normJFold = w%normJF
@@ -553,7 +553,7 @@ contains
        if (.not. options%exact_second_derivatives) then
           ! let's update g_old, which is needed for call to
           ! rank_one_update
-          w%g_old(:) = w%g
+          w%g_old(:) = w%g(:)
        end if
 
     end if ! end of first call
@@ -717,7 +717,7 @@ contains
              ! call to rank_one_update
              ! g_mixed = -J_k^T r_{k+1}
              call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
-             w%g_mixed = -w%g_mixed
+             w%g_mixed(:) = -w%g_mixed(:)
            end if
 
            ! evaluate J and hf at the new point
@@ -877,7 +877,7 @@ contains
           ! Note: if evalJ fails we recover by taking a PG step
           if (.not. options%exact_second_derivatives) then
               call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
-              w%g_mixed = -w%g_mixed
+              w%g_mixed(:) = -w%g_mixed(:)
           end if
           ! evaluate J
           call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
@@ -892,7 +892,7 @@ contains
           end if
           ! g = -J^Tf
           call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-          w%g = -w%g
+          w%g(:) = -w%g(:)
           if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
           normJFnew = norm2(w%g)
           if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
@@ -1009,7 +1009,7 @@ contains
     if (.not. options%exact_second_derivatives) then
        ! now let's update g_old, which is needed for
        ! call to rank_one_update
-       w%g_old(:) = w%g
+       w%g_old(:) = w%g(:)
     end if
 
     ! update the stats
@@ -1260,8 +1260,6 @@ contains
        inform%error_message = 'Combination of method/regularization options not yet implemented'
     elseif ( inform%status == NLLS_ERROR_BAD_BOX_BOUNDS ) then
        inform%error_message = 'Bad bound constraints (blx <= bux)'
-    elseif ( inform%status ==  NLLS_ERROR_LS_STEP ) then
-       inform%error_message = 'Linesearch in TR direction failed'
     elseif ( inform%status ==  NLLS_ERROR_PG_STEP ) then
        inform%error_message = 'Linesearch in projected gradient direction failed'
     elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then
@@ -4570,7 +4568,7 @@ contains
            ! call to rank_one_update
            ! g_mixed = -J_k^T r_{k+1}
            call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
-           w%g_mixed = -w%g_mixed
+           w%g_mixed(:) = -w%g_mixed(:)
         end if
 
         ! evaluate J and hf at the new point
@@ -4598,7 +4596,7 @@ contains
 
         ! g = -J^Tf
         call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-        w%g = -w%g
+        w%g(:) = -w%g(:)
         if ( options%regularization > 0 ) Then
           call update_regularized_gradient(w%g,w%Xnew,normX,options)
         End If
@@ -4680,7 +4678,7 @@ contains
               ! call to rank_one_update
               ! g_mixed = -J_k^T r_{k+1}
               call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
-              w%g_mixed = -w%g_mixed
+              w%g_mixed(:) = -w%g_mixed(:)
             end if
             ! evaluate J and hf at the new point
             call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
@@ -4698,12 +4696,16 @@ contains
             end if
             ! g = -J^Tf
             call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-            w%g = -w%g
+            w%g(:) = -w%g(:)
             if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
             normJFnew = norm2(w%g)
+            If ((log(normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
+              inform%external_name = 'eval_J'
+              inform%external_return = 2512
+              inform%status = nlls_error_evaluation
+            End If
           Else
             inform%status = NLLS_ERROR_PG_STEP
-            Go To 100
           End If
 
 100       Continue
