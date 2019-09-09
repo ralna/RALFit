@@ -1256,8 +1256,6 @@ contains
        inform%error_message = 'Unsupported value of inner_method passed in options'
     elseif ( inform%status ==  NLLS_ERROR_PRINT_LEVEL) then
        inform%error_message = 'Illegal value of print_level in options'
-    elseif ( inform%status ==  NLLS_ERROR_NOT_IMPLEMENTED) then
-       inform%error_message = 'Combination of method/regularization options not yet implemented'
     elseif ( inform%status == NLLS_ERROR_BAD_BOX_BOUNDS ) then
        inform%error_message = 'Bad bound constraints (blx <= bux)'
     elseif ( inform%status ==  NLLS_ERROR_PG_STEP ) then

@@ -51,7 +51,6 @@ module ral_nlls_workspaces
 
   ! Misc errors
   Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900
-  Integer, Parameter, Public :: NLLS_ERROR_NOT_IMPLEMENTED          = -950
   Integer, Parameter, Public :: NLLS_ERROR_UNEXPECTED               = -999
 
     TYPE, PUBLIC :: NLLS_options

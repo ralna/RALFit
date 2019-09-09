@@ -114,6 +114,9 @@
       Write (adj,Fmt=99999) 'stop_s'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99998) adjustl(adj), options%stop_s
+      Write (adj,Fmt=99999) 'allow_fallback_method'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%allow_fallback_method
       Write (adj,Fmt=99999) 'relative_tr_radius'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%relative_tr_radius
