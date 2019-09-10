@@ -3048,7 +3048,7 @@ contains
        actual_reduction = ( 0.5_wp * (normf**2) ) - ( 0.5_wp * (normfnew**2) )
        predicted_reduction = ( ( 0.5_wp * (normf**2) ) - md )
 
-       tol = 10.0_wp * epsmch
+       tol = 100.0_wp * epsmch
 
        if ( abs(actual_reduction) < tol ) then
           rho = 1.0_wp
@@ -3324,7 +3324,10 @@ contains
        real(wp), intent(in) :: normF, normJf, normF0, normJF0, norm_2_d
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       Character(Len=8), Parameter :: labels(3) = (/'||f||   ', 'gradient', 'step    '/)
+       Character(Len=60), Parameter :: labels(3) = (/ &
+         'Terminated, found point with small ||f|| at iteration  ', &
+         'Converged, found point with small gradient at iteration', &
+         'Terminated, small step size taken at iteration         '/)
        Integer :: nlabel
        Character(Len=80) :: rec(1)
 
@@ -3350,10 +3353,9 @@ contains
 !     Pretty print results
       if ((inform%convergence_normf == 1 .Or. inform%convergence_normg == 1   &
          .Or. inform%convergence_norms == 1).And.buildmsg(5,.false.,options)) Then
-        write(rec(1),Fmt=99999) 'Converged (',Trim(labels(nlabel)),   &
-          ' test) at iteration', inform%iter
+        write(rec(1),Fmt=99999) Trim(labels(nlabel)), inform%iter
         Call Printmsg(5,.false.,options,1,rec)
-99999 Format (3A,1X,I0)
+99999 Format (A,1X,I0)
       End If
      end subroutine test_convergence
 
