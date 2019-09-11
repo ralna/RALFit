@@ -711,8 +711,9 @@ contains
     type( NLLS_workspace ), intent(inout) :: workspace
     type( nlls_options ), intent(in) :: options
     integer, intent(in) :: n,m
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     if (.not. allocated(workspace%y)) then
        allocate(workspace%y(n), stat = inform%alloc_status)
        If (inform%alloc_status /= 0) Then
@@ -918,11 +919,12 @@ contains
     integer, intent(in) :: n, m
     type( solve_newton_tensor_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
     type( tenJ_type ), intent(InOut) :: tenJ
     type( NLLS_workspace ), intent(InOut) :: inner_workspace
     integer :: ierr_dummy
 
+    inform%status = 0
     allocate(w%model_tensor(m),w%tparams%f(m),w%tparams%x(n),w%tparams%J(n*m), &
       w%tparams%Hi(n,n,m), tenJ%Hs(n,m), tenJ%Js(m),tenJ%H(n,n),tenJ%stHs(m),  &
       stat=inform%alloc_status)
@@ -1029,10 +1031,11 @@ contains
     integer, intent(in) :: n, m
     type( calculate_step_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
     type( tenJ_type ), intent(InOut) :: tenJ
     type( NLLS_workspace ), intent(InOut) :: inner_workspace
 
+    inform%status = 0
     allocate(w%A(n,n), w%v(n),w%extra_scale(n),w%scale(n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = 'setup_workspace_calculate_step'
@@ -1152,8 +1155,9 @@ contains
     integer, intent(in) :: n, m
     type( dogleg_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%d_sd(n),w%d_gn(n),w%ghat(n),w%Jg(m),stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = 'setup_workspace_dogleg'
@@ -1199,9 +1203,10 @@ contains
     integer, intent(in) :: n, m
     type( solve_LLS_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
     integer :: lwork
 
+    inform%status = 0
     lwork = max(1, min(m,n) + max(min(m,n), 1)*4)
     allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(n*m), stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
@@ -1231,8 +1236,9 @@ contains
     integer, intent(in) :: n, m
     type( evaluate_model_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate( w%Jd(m),w%dH(n**2),w%dHd(m),w%Hd(n), stat = inform%alloc_status )
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_evaluate_model(w,options)
@@ -1261,8 +1267,9 @@ contains
     integer, intent(in) :: n, m
     type( AINT_tr_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%B(n,n),w%p0(n),w%p1(n),w%M0(2*n,2*n),w%M1(2*n,2*n),w%M0_small(n,n),&
       w%M1_small(n,n),w%y(2*n),w%gtg(n,n),w%q(n),w%LtL(n,n),w%y_hardcase(n,2), &
       stat = inform%alloc_status)
@@ -1324,12 +1331,13 @@ contains
     integer, intent(in) :: n, m
     type( min_eig_symm_work) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
     real(wp), allocatable :: workquery(:)
     integer :: lwork, eigsout, ierr_dummy
     Real(Kind=wp) :: w_dummy(1), z_dummy(1,1)
 
+    inform%status = 0
     allocate(w%A(n,n),workquery(1),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1426,11 +1434,12 @@ contains
     integer, intent(in) :: n, m
     type( max_eig_work) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform), intent(out) :: inform
+    type( nlls_inform), intent(inout) :: inform
     real(wp), allocatable :: workquery(:)
     integer :: lwork, ierr_dummy
     Real(Kind=wp) :: A_dummy(1,1), B_dummy(1,1), vl_dummy(1,1), vr_dummy(1,1)
 
+    inform%status = 0
     allocate( w%alphaR(2*n),w%alphaI(2*n),w%beta(2*n),w%vr(2*n,2*n),           &
       w%ew_array(2*n),workquery(1),w%nullindex(2*n),w%vecisreal(2*n),          &
       stat=inform%alloc_status)
@@ -1500,8 +1509,9 @@ contains
     integer, intent(in) :: n, m
     type( solve_general_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform), intent(out) :: inform
+    type( nlls_inform), intent(inout) :: inform
 
+    inform%status = 0
     allocate( w%A(n,n),w%ipiv(n),stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_solve_general(w,options)
@@ -1529,8 +1539,9 @@ contains
     integer, intent(in) :: n,m
     type( solve_galahad_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%ev(n,n),w%v_trans(n),w%ew(n),w%d_trans(n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1571,8 +1582,9 @@ contains
     integer, intent(in) :: n,m
     type ( regularization_solver_work ) :: w
     type ( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%LtL(n,n),w%AplusSigma(n,n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_regularization_solver(w,options)
@@ -1600,12 +1612,13 @@ contains
     integer, intent(in) :: n,m
     type( all_eig_symm_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
     real(wp), allocatable :: workquery(:)
     real(wp) :: A_dummy(1)
     integer :: lwork, ierr_dummy
 
+    inform%status = 0
     If (allocated(w%ew)) Deallocate(w%ew, stat=ierr_dummy)
     allocate(workquery(1),w%ew(n), stat = inform%alloc_status)
     If (inform%alloc_status /= 0 ) Then
@@ -1658,8 +1671,9 @@ contains
     integer, intent(in) :: n,m
     type( more_sorensen_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%LtL(n,n),w%q(n),w%y1(n),w%AplusSigma(n,n),w%norm_work(n),       &
       stat = inform%alloc_status)
     if (inform%alloc_status /= 0) Then
@@ -1701,8 +1715,9 @@ contains
     integer, intent(in) :: n,m
     type( generate_scaling_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     If (options%scale==4) Then
       allocate(w%tempvec(n),w%diag(n),w%ev(n,n),stat=inform%alloc_status)
     Else
