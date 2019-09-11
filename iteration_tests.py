@@ -77,8 +77,9 @@ def main():
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
                          'formats' : ['U10',int]})
 
-    if args.cr:
-        no_tests_displayed = 2 * no_tests;
+    no_tests_displayed = no_tests
+#    if args.cr:
+#        no_tests_displayed = 2 * no_tests;
     
     data = [None for i in range(no_tests_displayed)]
     metadata = [None for i in range(no_tests_displayed)]
