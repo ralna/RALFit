@@ -97,26 +97,28 @@ def main():
                      # then do not collect inner data (maybe fix)
 
     def get_data(filename):
+        # this takes a filename, and outputs:
+        # data :: an array containing details from filename
+        # metadata :: the metadata from filename
         try:
-            data_returned = np.genfromtxt("data/"+filename, dtype = info)
+            data = np.genfromtxt("data/"+filename, dtype = info)
         except ValueError:
             # these are results that don't include inner iterations
             # (i.e. from gsl)
             # only in this case, don't look for inner iterations
-            data_returned = np.genfromtxt("data/"+filename, dtype = info_noinner)
+            data = np.genfromtxt("data/"+filename, dtype = info_noinner)
             InnerResults = 0
             # we want to put this back into a file that *does* have inner iterations,
             # so that the performance profiles work below...
             add_inner_information(args.control_files[j],data[j])
-        metadata_returned = np.genfromtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
-        return data_returned, metadata_returned
+        metadata = np.genfromtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
+        return data,metadata
+    
     for j in range(no_tests):
         data_index = j
         [data[data_index],metadata[data_index]] = get_data(args.control_files[j]+".out")
         if "gsl" in args.control_files[j].lower(): # == "gsl":
-            too_many_its[j] = -2
-        
-   
+            too_many_its[j] = -2         
         
     no_probs = len(data[0]['res'])
 
