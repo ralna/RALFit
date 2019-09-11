@@ -1159,19 +1159,25 @@ contains
        num_methods_tried = 0
 
        do while (.not. subproblem_success)
-          
+
           if  (num_methods_tried>0) then
              ! If we're using a method for the second time, or
-             ! we're not allowing a fallback, then bail...
-             if ( (subproblem_method == options%nlls_method) .or. & 
-                  (.not. options%allow_fallback_method)) Go To 100
+             ! we're not allowing a fallback, then bail with an
+             ! appropiate exit code
+             if ( (subproblem_method == options%nlls_method) .or. &
+                  (.not. options%allow_fallback_method)) Then
+                  ! Force no progress error if fall-back was tried otherwise
+                  ! keep existing error status
+                  If (options%allow_fallback_method) inform%status = nlls_error_x_no_progress
+                  Go To 100
+                End If
 
              if (buildmsg(5,.False.,options)) then
                 Write(rec(1), Fmt=3040)
                 Call printmsg(5,.False.,options,1,rec)
              end if
           end if
-       
+
           if ( options%type_of_method == 1) then
 
              select case (subproblem_method)
@@ -3044,11 +3050,15 @@ contains
      end subroutine update_trust_region_radius
 
      subroutine test_convergence(normF,normJF,normF0,normJF0,norm_2_d,options,inform)
+       ! Assumes normF0 is not zero
        Implicit None
        real(wp), intent(in) :: normF, normJf, normF0, normJF0, norm_2_d
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       Character(Len=8), Parameter :: labels(3) = (/'||f||   ', 'gradient', 'step    '/)
+       Character(Len=60), Parameter :: labels(3) = (/ &
+         'Terminated, found point with small ||f|| at iteration  ', &
+         'Converged, found point with small gradient at iteration', &
+         'Terminated, small step size taken at iteration         '/)
        Integer :: nlabel
        Character(Len=80) :: rec(1)
 
@@ -3074,10 +3084,9 @@ contains
 !     Pretty print results
       if ((inform%convergence_normf == 1 .Or. inform%convergence_normg == 1   &
          .Or. inform%convergence_norms == 1).And.buildmsg(5,.false.,options)) Then
-        write(rec(1),Fmt=99999) 'Converged (',Trim(labels(nlabel)),   &
-          ' test) at iteration', inform%iter
+        write(rec(1),Fmt=99999) Trim(labels(nlabel)), inform%iter
         Call Printmsg(5,.false.,options,1,rec)
-99999 Format (3A,1X,I0)
+99999 Format (A,1X,I0)
       End If
      end subroutine test_convergence
 
@@ -3156,7 +3165,7 @@ contains
      end subroutine scale_J_by_weights
 
      subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
-
+       Implicit None
        integer, intent(in) :: n, m
        real(wp), intent(in) :: X(:)
        type( nlls_options ), intent(in) :: options

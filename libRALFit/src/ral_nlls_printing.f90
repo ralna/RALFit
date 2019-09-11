@@ -281,11 +281,18 @@
      Else
         If (buildmsg(1,.False.,options)) Then
           nrec = 1
-          Write(rec(nrec), Fmt=99998) 'converged, an optimal solution was found'
+          if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1) Then
+            Write (rec(nrec),Fmt=99998)                                      &
+              'converged, an optimal solution was found'
+          Else
+            Write (rec(nrec),Fmt=99998)                                      &
+              'terminated, small step size taken'
+          End If
           nrec = nrec + 1
-          Write(rec(nrec), Fmt=60000)
+          Write (rec(nrec),Fmt=60000)
           nrec = nrec + 1
-          Write(rec(nrec), Fmt=99997) 'Norm of error                 ', inform%obj
+          Write (rec(nrec),Fmt=99997) 'Norm of error                 ',      &
+            inform%obj
           Call printmsg(1,.False.,options,nrec,rec)
         End If
         If (buildmsg(2,.False.,options)) Then
