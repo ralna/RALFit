@@ -8,8 +8,13 @@
                                        --maxit 5000 \
                                        --exact_second_derivatives T \
                                        --output_progress_vectors T
+./generate_control_file.py GaussNewton_reg -b GaussNewton --type_of_method 2 
 ./generate_control_file.py Newton -b GaussNewton --model 2
+./generate_control_file.py Newton_reg -b Newton --type_of_method 2 \
+			                        --nlls_method 4
 ./generate_control_file.py Hybrid -b GaussNewton --model 3
+./generate_control_file.py Hybrid_reg -b Hybrid --type_of_method 2 \
+			                        --nlls_method 4
 
 # Newton-Tensor models
 ./generate_control_file.py NewtonTen2 \
