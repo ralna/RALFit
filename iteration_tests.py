@@ -77,37 +77,44 @@ def main():
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
                          'formats' : ['U10',int]})
 
-    data = [None for i in range(no_tests)]
-    metadata = [None for i in range(no_tests)]
-    clear_best = np.zeros(no_tests, dtype = np.int)
-    best = np.zeros(no_tests,dtype = np.int)
-    too_many_its = np.zeros(no_tests, dtype = np.int)
-    local_iterates = np.zeros(no_tests, dtype = np.int)
-    local_inner_it = np.zeros(no_tests,dtype = np.int)
-    average_iterates = np.zeros(no_tests, dtype = np.int)
-    average_funeval = np.zeros(no_tests, dtype = np.int)
-    average_inner = np.zeros(no_tests,dtype = np.int)
-    no_failures = np.zeros(no_tests, dtype = np.int)
+    if args.cr:
+        no_tests_displayed = 2 * no_tests;
+    
+    data = [None for i in range(no_tests_displayed)]
+    metadata = [None for i in range(no_tests_displayed)]
+    clear_best = np.zeros(no_tests_displayed, dtype = np.int)
+    best = np.zeros(no_tests_displayed,dtype = np.int)
+    too_many_its = -np.ones(no_tests_displayed, dtype = np.int)
+    local_iterates = np.zeros(no_tests_displayed, dtype = np.int)
+    local_inner_it = np.zeros(no_tests_displayed,dtype = np.int)
+    average_iterates = np.zeros(no_tests_displayed, dtype = np.int)
+    average_funeval = np.zeros(no_tests_displayed, dtype = np.int)
+    average_inner = np.zeros(no_tests_displayed,dtype = np.int)
+    no_failures = np.zeros(no_tests_displayed, dtype = np.int)
 
     InnerResults = 1 # if gsl (or another method with no inners) is present, 
                      # then do not collect inner data (maybe fix)
-    for j in range(no_tests):
+
+    def get_data(filename):
         try:
-            data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info)
+            data_returned = np.genfromtxt("data/"+filename, dtype = info)
         except ValueError:
             # these are results that don't include inner iterations
             # (i.e. from gsl)
             # only in this case, don't look for inner iterations
-            data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
+            data_returned = np.genfromtxt("data/"+filename, dtype = info_noinner)
             InnerResults = 0
             # we want to put this back into a file that *does* have inner iterations,
             # so that the performance profiles work below...
             add_inner_information(args.control_files[j],data[j])
-        metadata[j] = np.genfromtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
+        metadata_returned = np.genfromtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
+        return data_returned, metadata_returned
+    for j in range(no_tests):
+        data_index = j
+        [data[data_index],metadata[data_index]] = get_data(args.control_files[j]+".out")
         if "gsl" in args.control_files[j].lower(): # == "gsl":
             too_many_its[j] = -2
-        else:
-            too_many_its[j] = -1
+        
    
         
     no_probs = len(data[0]['res'])
