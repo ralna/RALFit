@@ -156,10 +156,6 @@ def main():
         for j in range(no_tests):
             data[j]['solve_time'][:] = sum_times[j][:]/no_runs
             print("final solve time = {}".format(data[j]['solve_time'][:]))
-        
-            
-            
-
             
     all_iterates = [data[j]['iter'] for j in range(no_tests)]
     all_func = [data[j]['func'] for j in range(no_tests)]
@@ -203,6 +199,7 @@ def main():
     for i in range(0,no_probs):     
         for j in range (0,no_tests):
             if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
+                # if failed, then overwrite with default numbers
                 all_iterates[j][i] = -9999 
                 failure[i][j] = 1 
                 normalized_iterates[j][i] = 9999
@@ -213,6 +210,7 @@ def main():
                 no_failures[j] += 1
                 if (failure[i][j] != 1):
                     failure[i][j] = 2
+                    # set the values in a failure to be negative
                     normalized_iterates[j][i] = -normalized_iterates[j][i]
                     normalized_func[j][i] = -normalized_func[j][i]
                     normalized_inner[j][i] = -normalized_inner[j][i]
