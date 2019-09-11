@@ -1307,7 +1307,6 @@ contains
     Character(Len=100) :: rec(1)
     integer :: num_methods_tried, subproblem_method
     logical :: subproblem_success
-        
 
     if (.not. w%allocated) then
       inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -1429,19 +1428,25 @@ contains
        num_methods_tried = 0
 
        do while (.not. subproblem_success)
-          
+
           if  (num_methods_tried>0) then
              ! If we're using a method for the second time, or
-             ! we're not allowing a fallback, then bail...
-             if ( (subproblem_method == options%nlls_method) .or. & 
-                  (.not. options%allow_fallback_method)) Go To 100
+             ! we're not allowing a fallback, then bail with an
+             ! appropiate exit code
+             if ( (subproblem_method == options%nlls_method) .or. &
+                  (.not. options%allow_fallback_method)) Then
+                  ! Force no progress error if fall-back was tried otherwise
+                  ! keep existing error status
+                  If (options%allow_fallback_method) inform%status = nlls_error_x_no_progress
+                  Go To 100
+                End If
 
              if (buildmsg(5,.False.,options)) then
                 Write(rec(1), Fmt=3040)
                 Call printmsg(5,.False.,options,1,rec)
              end if
           end if
-       
+
           if ( options%type_of_method == 1) then
 
              select case (subproblem_method)
