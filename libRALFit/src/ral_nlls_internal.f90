@@ -3053,7 +3053,7 @@ contains
        actual_reduction = ( 0.5_wp * (normf**2) ) - ( 0.5_wp * (normfnew**2) )
        predicted_reduction = ( ( 0.5_wp * (normf**2) ) - md )
 
-       tol = 100.0_wp * epsmch
+       tol = 10.0_wp * epsmch
 
        if ( abs(actual_reduction) < tol ) then
           rho = 1.0_wp
