@@ -35,6 +35,10 @@ def main():
                         "-no_performance_profile",
                         action="store_true",
                         help="if present, do not display the performance profile")
+    parser.add_argument("-cr",
+                        "-check_with_reference",
+                        action="store_true",
+                        help="if present, also display the reference data, labeled <problem>.reg")
     args = parser.parse_args()
     no_tests = len(args.control_files)
     compute_results = not args.reuse_data
