@@ -1070,27 +1070,30 @@ contains
         Write(rec(3), Fmt=8002)
         Call printmsg(2, .True., options, 3, rec)
       End If
-    Else If (buildmsg(5, .False., options)) Then
+    End If
+    If (buildmsg(5, .False., options)) Then
 !       Level 5: Always print banner
         Write(rec(1), Fmt=8000)
         Write(rec(2), Fmt=9000)
         Write(rec(3), Fmt=8000)
         Call printmsg(5, .False., options, 3, rec)
-    Else If (buildmsg(4, .False., options)) Then
+    End If
+    If (buildmsg(4, .True., options)) Then
 !     Level 4: Print banner every k-th including inner iteration
       If (mod(prncnt, options%print_header)==0) Then
         Write(rec(1), Fmt=8000)
         Write(rec(2), Fmt=9000)
         Write(rec(3), Fmt=8000)
-        Call printmsg(4, .False., options, 3, rec)
+        Call printmsg(4, .True., options, 3, rec)
       End If
-     Else If (buildmsg(3, .False., options).And.it_type=='R') Then
+    End If
+    If (buildmsg(3, .True., options).And.it_type=='R') Then
 !     Level 3: Same as level 2 but long banner version
-      If (mod(w%iter, options%print_header)==0) Then
+      If (mod(inform%iter, options%print_header)==0) Then
         Write(rec(1), Fmt=8000)
         Write(rec(2), Fmt=9000)
         Write(rec(3), Fmt=8000)
-        Call printmsg(3, .False., options, 3, rec)
+        Call printmsg(3, .True., options, 3, rec)
       End If
     End If
     If (buildmsg(2, .True., options).And.it_type == 'R') Then
@@ -1098,23 +1101,23 @@ contains
         inform%scaled_g
       nrec = 1
       Call printmsg(2, .True., options, nrec, rec)
-    ElseIf (buildmsg(3, .False., options)) Then
-      If (it_type=='R') Then
+    End If
+    If (buildmsg(3, .True., options) .And. it_type=='R') Then
         Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
           inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
           inform%inner_iter, inform%step, looplab(nlab), lslab(lstype), tau
         nrec = 1
-        Call printmsg(3, .False., options, nrec, rec)
-      Else
-        If (buildmsg(4, .False., options)) Then
-          Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,      &
-            inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,     &
-            inform%step, looplab(nlab), lslab(lstype), tau
-          nrec = 1
-          Call printmsg(4, .False., options, nrec, rec)
-        End If
-      End If
+        Call printmsg(3, .True., options, nrec, rec)
     End If
+    If (buildmsg(4, .False., options)) Then
+      Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,      &
+        inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,     &
+        inform%step, looplab(nlab), lslab(lstype), tau
+      nrec = 1
+      Call printmsg(4, .False., options, nrec, rec)
+    End If
+
+
 
     !++++++++++++++++++!
     ! Test convergence !
@@ -3230,8 +3233,8 @@ contains
        type( nlls_workspace ), intent(inout) :: w
        Integer :: nrec
        Character(Len=80) :: rec(1)
-       Logical :: prnt3
-       prnt3 = buildmsg(5,.false.,options)
+       Logical :: prnt
+       prnt = buildmsg(5,.false.,options)
        nrec = 0
 
        select case(options%tr_update_strategy)
@@ -3239,11 +3242,11 @@ contains
           if (rho < options%eta_success_but_reduce) then
              ! unsuccessful....reduce Delta
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
-             If (prnt3) Write(rec(1), Fmt=3010) w%Delta
+             If (prnt) Write(rec(1), Fmt=3010) w%Delta
              nrec=1
           else if (rho < options%eta_very_successful) then
              ! doing ok...retain status quo
-             If (prnt3) Write(rec(1), Fmt=3020) w%Delta
+             If (prnt) Write(rec(1), Fmt=3020) w%Delta
              nrec=1
           else if (rho < options%eta_too_successful ) then
              ! more than very successful -- increase delta
@@ -3265,17 +3268,17 @@ contains
                 inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
                 Go To 100
              end select
-             If (prnt3) Write(rec(1), Fmt=3030) w%Delta
+             If (prnt) Write(rec(1), Fmt=3030) w%Delta
              nrec=1
           else if (rho < HUGE(wp)) then
-             If (prnt3) Write(rec(1), Fmt=3040) w%Delta
+             If (prnt) Write(rec(1), Fmt=3040) w%Delta
              nrec=1
              ! too successful...accept step, but don't change w%Delta
           else
              ! just incase (NaNs, rho too big, and the like...)
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -1.0_wp ! set to be negative, so that the logic works....
-             If (prnt3) Write(rec(1), Fmt=3050) w%Delta
+             If (prnt) Write(rec(1), Fmt=3050) w%Delta
              nrec=1
           end if
        case(2) ! Continuous method
@@ -3283,25 +3286,25 @@ contains
           ! http://www2.imm.dtu.dk/documents/ftp/tr99/tr05_99.pdf
           if (rho >= options%eta_too_successful) then
              ! too successful....accept step, but don't change w%Delta
-             If (prnt3) Write(rec(1), Fmt=3040) w%Delta
+             If (prnt) Write(rec(1), Fmt=3040) w%Delta
              nrec=1
           else if (rho > options%eta_successful) then
              w%Delta = w%Delta * min(options%radius_increase, &
                   max(options%radius_reduce, &
                   1 - ( (options%radius_increase - 1) * ((1 - 2*rho)**w%tr_p)) ))
              w%tr_nu = options%radius_reduce
-             If (prnt3) Write(rec(1), Fmt=3060) w%Delta
+             If (prnt) Write(rec(1), Fmt=3060) w%Delta
              nrec=1
           else if ( rho <= options%eta_successful ) then
              w%Delta = w%Delta * w%tr_nu
              w%tr_nu =  w%tr_nu * 0.5_wp
-             If (prnt3) Write(rec(1), Fmt=3010) w%Delta
+             If (prnt) Write(rec(1), Fmt=3010) w%Delta
              nrec=1
           else
              ! just incase (NaNs and the like...)
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -1.0_wp ! set to be negative, so that the logic works....
-             If (prnt3) Write(rec(1), Fmt=3050) w%Delta
+             If (prnt) Write(rec(1), Fmt=3050) w%Delta
              nrec=1
           end if
        case default
@@ -3311,8 +3314,8 @@ contains
 
 100    Continue
 
-       If (nrec>0.and.prnt3) Then
-         Call Printmsg(3,.False.,options,nrec,rec)
+       If (nrec>0.and.prnt) Then
+         Call Printmsg(5,.False.,options,nrec,rec)
        End If
 
 3010   FORMAT('Unsuccessful step -- decreasing Delta to', ES12.4)
