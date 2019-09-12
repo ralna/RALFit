@@ -1110,14 +1110,18 @@ contains
         Call printmsg(3, .True., options, nrec, rec)
     End If
     If (buildmsg(4, .False., options)) Then
-      Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,      &
-        inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,     &
-        inform%step, looplab(nlab), lslab(lstype), tau
+      If (it_type /= 'R') Then
+        Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,      &
+          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,     &
+          inform%step, looplab(nlab), lslab(lstype), tau
+      Else
+        Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
+          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
+          inform%inner_iter, inform%step, looplab(nlab), lslab(lstype), tau
+      End If
       nrec = 1
       Call printmsg(4, .False., options, nrec, rec)
     End If
-
-
 
     !++++++++++++++++++!
     ! Test convergence !
