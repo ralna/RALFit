@@ -10,6 +10,11 @@ module ral_nlls_workspaces
 
   Integer, Parameter, Public          :: wp = kind(1.0d0)
   Real (Kind = wp), Parameter, Public :: epsmch = epsilon(1.0_wp)
+  Real (Kind = wp), Parameter, Public :: toltm4= epsmch**(0.25_wp)
+  Real (Kind = wp), Parameter, Public :: toltm8 = sqrt(epsmch)
+  Real (Kind = wp), Parameter, Public :: toltm10 = sqrt(epsmch)/100.0_wp
+  Real (Kind = wp), Parameter, Public :: toltm12= epsmch**(0.75_wp)
+  Real (Kind = wp), Parameter, Public :: cmptol = toltm4/10.0_wp
   Real (Kind = wp), Parameter, Public :: infinity = HUGE(1.0_wp)
   INTEGER, PARAMETER, public          :: history_max = 100
 

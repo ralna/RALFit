@@ -32,9 +32,7 @@ contains
     Class Default
       stop 'evalr: ERROR do not know how to handle this class...'
     end select
-
     status = -1 ! fail
-    
   end subroutine eval_r
 
   subroutine eval_J(status, n, m, x, J, params)
@@ -43,57 +41,60 @@ contains
     integer, intent(in) :: m
     real(wp), dimension(*), intent(in) :: x
     real(wp), dimension(*), intent(out) :: J
-    class(params_base_type), intent(inout) :: params
+  class(params_base_type), intent(inout) :: params
     Integer :: r, c
 
     select type(params)
     type is(params_type)
-         J(    1:  m) = -exp(-x(2)*params%t(1:m))                     ! J_i1
-         J(  m+1:2*m) = params%t(1:m) * x(1) * exp(-x(2)*params%t(1:m))! J_i2
-         J(2*m+1:3*m) = -exp(-x(4)*params%t(1:m))                     ! J_i3
-         J(3*m+1:4*m) = +params%t(1:m) * x(3) * exp(-x(4)*params%t(1:m))! J_i4
-         J(4*m+1:5*m) = -exp(-x(6)*params%t(1:m))                     ! J_i5
-         J(5*m+1:6*m) = +params%t(1:m) * x(5) * exp(-x(6)*params%t(1:m))! J_i6
+      J(    1:  m) = -exp(-x(2)*params%t(1:m))                       ! J_i1
+      J(  m+1:2*m) = params%t(1:m) * x(1) * exp(-x(2)*params%t(1:m)) ! J_i2
+      J(2*m+1:3*m) = -exp(-x(4)*params%t(1:m))                       ! J_i3
+      J(3*m+1:4*m) = +params%t(1:m) * x(3) * exp(-x(4)*params%t(1:m))! J_i4
+      J(4*m+1:5*m) = -exp(-x(6)*params%t(1:m))                       ! J_i5
+      J(5*m+1:6*m) = +params%t(1:m) * x(5) * exp(-x(6)*params%t(1:m))! J_i6
+      status = 0 ! success
+      return
+    Class Default
+      stop 'evalr: ERROR do not know how to handle this class...'
     end select
-
-    status = 0 ! Success
+    status = -1 ! fail
   end subroutine eval_J
 
   subroutine eval_HF(status, n, m, x, r, HF, params)
-      integer, intent(out) :: status
-      integer, intent(in) :: n
-      integer, intent(in) :: m
-      real(wp), dimension(*), intent(in) :: x
-      real(wp), dimension(*), intent(in) :: r
-      real(wp), dimension(*), intent(out) :: HF
-      class(params_base_type), intent(inout) :: params
+    integer, intent(out) :: status
+    integer, intent(in) :: n
+    integer, intent(in) :: m
+    real(wp), dimension(*), intent(in) :: x
+    real(wp), dimension(*), intent(in) :: r
+    real(wp), dimension(*), intent(out) :: HF
+  class(params_base_type), intent(inout) :: params
 
-      HF(1:n*n) = 0
-      select type(params)
-      type is(params_type)
-         HF(    2) = sum( r(1:m) * params%t(1:m) * exp(-x(2)*params%t(1:m)))  ! H_21
-         HF(1*n+1) = HF(2)                                                     ! H_12
-         HF(1*n+2) = sum(-r(1:m) * (params%t(1:m)**2) * x(1) * exp(-x(2)*params%t(1:m)))! H_22
-         HF(2*n+4) = sum( r(1:m) * params%t(1:m) * exp(-x(4)*params%t(1:m)))  ! H_43
-         HF(3*n+3) = HF(2*n+4)                                                 ! H_34
-         HF(3*n+4) = sum(-r(1:m) * (params%t(1:m)**2) * x(3) * exp(-x(4)*params%t(1:m)))! H_44
-         HF(4*n+6) = sum( r(1:m) * params%t(1:m) * exp(-x(6)*params%t(1:m)))  ! H_65
-         HF(5*n+5) = HF(4*n + 6)                                                     ! H_56
-         HF(5*n+6) = sum(-r(1:m) * (params%t(1:m)**2) * x(5) * exp(-x(6)*params%t(1:m)))! H_66
-      end select
-
-      status = 0 ! Success
-   end subroutine eval_HF
-    
+    HF(1:n*n) = 0
+    select type(params)
+    type is(params_type)
+      HF(    2) = sum( r(1:m) * params%t(1:m) * exp(-x(2)*params%t(1:m)))            ! H_21
+      HF(1*n+1) = HF(2)                                                              ! H_12
+      HF(1*n+2) = sum(-r(1:m) * (params%t(1:m)**2) * x(1) * exp(-x(2)*params%t(1:m)))! H_22
+      HF(2*n+4) = sum( r(1:m) * params%t(1:m) * exp(-x(4)*params%t(1:m)))            ! H_43
+      HF(3*n+3) = HF(2*n+4)                                                          ! H_34
+      HF(3*n+4) = sum(-r(1:m) * (params%t(1:m)**2) * x(3) * exp(-x(4)*params%t(1:m)))! H_44
+      HF(4*n+6) = sum( r(1:m) * params%t(1:m) * exp(-x(6)*params%t(1:m)))            ! H_65
+      HF(5*n+5) = HF(4*n + 6)                                                        ! H_56
+      HF(5*n+6) = sum(-r(1:m) * (params%t(1:m)**2) * x(5) * exp(-x(6)*params%t(1:m)))! H_66
+      status = 0 ! success
+      return
+    Class Default
+      stop 'evalr: ERROR do not know how to handle this class...'
+    end select
+    status = -1 ! fail
+  end subroutine eval_HF
   
 end module lanczos_box_module
 
-
 program lanczos_box
-
   use lanczos_box_module
-  
   implicit none
+
 
   type(nlls_options) :: options
   type(nlls_inform) :: inform
@@ -157,22 +158,19 @@ program lanczos_box
                    0.0698E+00, &
                    0.0624E+00 /)
 
-  ! call fitting routine
   n = 6
   allocate(x(n))
   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
-  x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 2
  
-  ! Add the box bound
-  Allocate(blx(n),bux(n),xnew(n), d(n))
-  blx(1:n) = -1.0e20_wp
-  bux(1:n) = +1.0e20_wp
-  blx(1) = 0.59_wp
-  bux(1) = 1.445_wp
-  ! bux(3) = 2.0_wp
-  blx(5) = -3.9e-1_wp
-  bux(5) = -0.200_wp
-  bux(6) = 10.0_wp
+  ! Add bounds on the variables
+  Allocate(blx(n),bux(n),xnew(n),d(n))
+  blx(1:n) = -1.0e20
+  bux(1:n) = +1.0e20
+  blx(1) = 0.59
+  bux(1) = 1.445
+  blx(5) = -3.9e-1
+  bux(5) = -0.2
+  bux(6) = 10.0
 
   Call nlls_setup_bounds(params, n, blx, bux, options, inform)
   if (inform%status/=0) then
@@ -181,7 +179,7 @@ program lanczos_box
   End if
 
   options%print_level = 1
-  options%maxit = 1000
+  options%maxit = 100
   options%exact_second_derivatives = .false.
   options%model = 3
   options%type_of_method = 1
@@ -190,6 +188,7 @@ program lanczos_box
   options%print_options = .True.
   options%box_linesearch_type = 1
 
+  ! call fitting routine
   call cpu_time(tic)
   call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
   if(inform%status.ne.0) then
@@ -198,6 +197,7 @@ program lanczos_box
   endif
   call cpu_time(toc)
 
+  ! Print result
   Write(*,*) 'Solution: '
   Write(*,Fmt=99998) 'idx', 'low bnd', 'x', 'upp bnd'
   if (params%iusrbox/=0) Then
@@ -209,8 +209,6 @@ program lanczos_box
       Write(*,Fmt=99997) i, x(i)
     End Do
   End If
-
-  ! Print result
   print *, ""
   print *, "Objective Value at solution    = ", inform%obj
   print *, "Objective Gradient at solution = ", inform%norm_g

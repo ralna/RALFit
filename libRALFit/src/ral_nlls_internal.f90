@@ -250,9 +250,10 @@ contains
     Character(Len=5), Parameter :: looplab(0:4) = (/'TR Ok', 'gamma', 'Wolfe', &
       'PrBad', 'MaxIt'/)
     Character(Len=2), Parameter  :: lslab(0:3) = (/'  ', 'LS', 'PG', 'BO'/)
-    Real(Kind=wp) :: tau, gtd_new
+    Real(Kind=wp) :: tau, gtd_new, pgtd, wgtd
     Logical       :: takestep, wolfe
     Integer       :: ntrfail, nlab, lstype
+    ! todo: make max_tr_decrease a control variable
     max_tr_decrease = 100
     bad_allocate = .false.
     num_successful_steps = 0
@@ -265,12 +266,11 @@ contains
     ! inn_flag: status flag for the success of inner it convergence
     ! Three-state '-' Not in inner iteration, 'C' Converged, 'E' not convErged
     inn_flag = '-'
-    ! todo: make max_tr_decrease a control variable
-    ! By default take TR step
     tau = 1.0_wp
     nlab = 0
     lstype = 0
     ntrfail = 0
+    ! By default take TR step
     takestep = .True.
     ! Perform a single iteration of the RAL_NLLS loop
     if (w%first_call == 1) then
@@ -637,7 +637,7 @@ contains
            ! * w%norm_2_d is the norm of the unprojected trust region step.
            ! if tau << 1 then the TR step is orthogonal to the active constraints
            tau = w%norm_2_d / tau
-           If (tau - 1.0_wp > 1.0e-5_wp) Then ! TODO move to constants wrt to macheps
+           If (tau - 1.0_wp > cmptol) Then
              inform%status = NLLS_ERROR_UNEXPECTED
              Go To 100
            End If
@@ -924,9 +924,11 @@ contains
 !       Update quadratic model hit counter (used in LS/PG steps)
 !       Quadratic model Mk(step) is fitted using f(X_k), f'(X_k)^Tdir and
 !       f'(X_k+1), and is used to approximate f(X_k+1), if approximation is good
-!       quad_i counter is incremented. ! TODO replace these dot_products
-        If (abs(w%normF+(w%norm_2_d)*(dot_product(params%g,w%d)+                          &
-            dot_product(w%g,w%d)/2.0_wp) - normFnew) <= options%box_quad_model_descent) Then
+!       quad_i counter is incremented.
+        pgtd = dot_product(params%g,w%d)
+        wgtd = dot_product(w%g,w%d)
+        If (abs(w%normF+w%norm_2_d*(pgtd+wgtd/2.0_wp)-normFnew) <=             &
+          options%box_quad_model_descent) Then
           params%quad_i = params%quad_i + 1
         Else
           params%quad_i = 0
@@ -934,10 +936,9 @@ contains
 !       Print statistics
         If (buildmsg(5, .False., options)) Then
           Write(rec(1), Fmt=99999)
-          Write(rec(2), Fmt=99998) params%quad_q, params%quad_c,params%quad_i,            &
-            abs(w%normF+(w%norm_2_d)*(dot_product(params%g,w%d)+                          &
-            dot_product(w%g,w%d)/2.0_wp)- normFnew),                                      &
-            100.0_wp*Real(params%nFref,Kind=wp)/Real(options%box_nFref_max,Kind=wp),      &
+          Write(rec(2), Fmt=99998) params%quad_q, params%quad_c,params%quad_i, &
+            abs(w%normF+w%norm_2_d*(pgtd+wgtd/2.0_wp)-normFnew),               &
+            100.0_wp*Real(params%nFref,Kind=wp)/Real(options%box_nFref_max,Kind=wp),&
             maxval(params%normFref(1:params%nFref)),inform%ls_step_iter,inform%pg_step_iter
           Call printmsg(5, .False., options, 2, rec)
         End If
@@ -1869,7 +1870,7 @@ contains
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
 
-     tau = 1.0e-4_wp
+     tau = 1.0e-4_wp ! toltm4
      obj_p0 = HUGE(wp)
 
      ! The code finds
@@ -4208,6 +4209,7 @@ contains
 !               otherwise => PG step                    !
 !     ++++++++++++++++++++++++++++++++++++++++++++++++++!
       Implicit None
+      Real(Kind=wp), Parameter         :: minstep = sqrt(epsmch)/100.0_wp
       Integer, Intent (In)             :: n, m, nlab
       Logical, Intent (In)             :: success
       Real (Kind=wp), Intent (InOut)   :: x(n)
@@ -4259,7 +4261,7 @@ contains
             End If
           Case (2)
             If (params%quad_i>=options%box_quad_match) Then
-              alpha = max(min(1.0E+10_wp,0.5_wp*options%box_alpha_scale*inform%step/w%norm_2_d),1.0E-10_wp)
+              alpha = max(min(1.0E+10_wp,0.5_wp*options%box_alpha_scale*inform%step/w%norm_2_d),minstep)
 !             alpha = 0.5_wp
             Else
 !             alpha = 1.0/hz_psi2
@@ -4552,7 +4554,7 @@ contains
         ierr = 0
         stepmx = 1.0E3_wp*max(w%norm_2_d,1.0_wp)
 !       extend the life of Dennis-Schnabel LS by allowing smaller steps
-        steptl = 1.05e-8_wp ! this parameter determines how small
+        steptl = sqrt(epsmch) ! this parameter determines how small
 !       can the step be before giving up, set from 1e3 to 1.0
         f0 = 0.5_wp*w%normf**2
         If (present(weights)) Then
@@ -4729,6 +4731,7 @@ contains
         Use nag_export_mod
         Use ral_nlls_workspaces
         Implicit None
+        Real(Kind=wp), Parameter        :: smallstep = sqrt(epsmch)/100.0_wp
         Integer, Intent (In)           :: n, m
         Integer, Intent (Inout)        :: ierr
         Real (Kind=wp), Intent (In)    :: x(n), fdx(n)
@@ -4739,8 +4742,8 @@ contains
         Type (nlls_options), Intent (In) :: options
         Real (Kind=wp), Intent (In), Dimension (m), Optional :: weights
         Procedure (eval_f_type)        :: eval_f
-        Real (Kind=wp), Parameter      :: npg_delta = 1.0E-4_wp
-        Real (Kind=wp), Parameter      :: npg_mu1 = 1.0E-4_wp
+        Real (Kind=wp), Parameter      :: npg_delta = epsmch**0.25_wp
+        Real (Kind=wp), Parameter      :: npg_mu1 = epsmch**0.25_wp
         Real (Kind=wp), Parameter      :: npg_mu2 = 0.8_wp
 
         Integer                        :: iflag, ils(nps_ils_len), nlab
@@ -4750,7 +4753,7 @@ contains
         Character (Len=80)             :: rec(4)
         Character(Len=5)               :: lab(0:2)=(/'  Ok ','evalf', 'error'/)
         Continue
-        If (alpha/=alpha .Or. alpha<1.0E-10_wp .Or. alpha>1.0_wp) Then
+        If (alpha/=alpha .Or. alpha<smallstep .Or. alpha>1.0_wp) Then
           ierr = 200
         End If
         pi0 = -dot_product(fdx,params%pdir)
@@ -4816,7 +4819,7 @@ armijo: Do
           Else If (iflag==1) Then
             Cycle armijo
           Else If (iflag==-2) Then
-!           TODO for now fail...
+!           Unseccessful step, bail
             ierr = -2
             Exit armijo
           Else
