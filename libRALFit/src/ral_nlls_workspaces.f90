@@ -10,6 +10,11 @@ module ral_nlls_workspaces
 
   Integer, Parameter, Public          :: wp = kind(1.0d0)
   Real (Kind = wp), Parameter, Public :: epsmch = epsilon(1.0_wp)
+  Real (Kind = wp), Parameter, Public :: toltm4= epsmch**(0.25_wp)
+  Real (Kind = wp), Parameter, Public :: toltm8 = sqrt(epsmch)
+  Real (Kind = wp), Parameter, Public :: toltm10 = sqrt(epsmch)/100.0_wp
+  Real (Kind = wp), Parameter, Public :: toltm12= epsmch**(0.75_wp)
+  Real (Kind = wp), Parameter, Public :: cmptol = toltm4/10.0_wp
   Real (Kind = wp), Parameter, Public :: infinity = HUGE(1.0_wp)
   INTEGER, PARAMETER, public          :: history_max = 100
 
@@ -29,6 +34,9 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_WORKSPACE_ERROR          =  -13
   Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_TYPE_METHOD  =  -14
   Integer, Parameter, Public :: NLLS_ERROR_WRONG_INNER_METHOD       =  -15
+  Integer, Parameter, Public :: NLLS_ERROR_INITIAL_GUESS            =  -16
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -17
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -18
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -43,9 +51,11 @@ module ral_nlls_workspaces
   ! Tensor model errors
   Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES    = -401
 
+  ! Linesearch errors
+  Integer, Parameter, Public :: NLLS_ERROR_PG_STEP                  = -501
+
   ! Misc errors
   Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900
-  Integer, Parameter, Public :: NLLS_ERROR_NOT_IMPLEMENTED          = -950
   Integer, Parameter, Public :: NLLS_ERROR_UNEXPECTED               = -999
 
     TYPE, PUBLIC :: NLLS_options
@@ -252,7 +262,7 @@ module ral_nlls_workspaces
 !   scale the variables?
 !   0 - no scaling
 !   1 - use the scaling in GSL (W s.t. W_ii = ||J(i,:)||_2^2)
-!       tiny values get set to 1.0_wp
+!       tiny values get set to one
 !   2 - scale using the approx to the Hessian (W s.t. W = ||H(i,:)||_2^2
      INTEGER :: scale = 1
      REAL(wp) :: scale_max = 1.0e11_wp
@@ -307,6 +317,56 @@ module ral_nlls_workspaces
      ! C or Fortran storage of Jacobian?
      logical :: Fortran_Jacobian = .true.
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! B O X   B O U N D   O P T I O N S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!    Memory size for the non-monotone linesearch
+     Integer :: box_nFref_max = 4
+!    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
+     Real(Kind=wp) :: box_gamma = 0.99995_wp
+     Real(Kind=wp) :: box_decmin = 2.0_wp * 1.0e-16_wp ! macheps
+!    Magic number to consider box bound (+/-) infinity
+     Real(Kind=wp) :: box_bigbnd = 1.0e20_wp
+!    Wolfe descent condition (0<\sigma1<1/2), curvature condition (0<\sigma2)
+     Real(Kind=wp) :: box_wolfe_descent = 1.0e-4_wp
+     Real(Kind=wp) :: box_wolfe_curvature = 0.9_wp
+!    Tolerance to consider projected dir a descent direction
+!    See LS STEP Section 4 p392 Kanzow 2014
+     Real(Kind=wp) :: box_kanzow_power = 2.1_wp
+!    sqrt(mcheps)
+     Real(Kind=wp) :: box_kanzow_descent = 1.0e-8_wp
+!    sqrt(mcheps)
+     Real(Kind=wp) :: box_quad_model_descent = 1.0e-8_wp
+!    Take projected TR step when TR test is Ok?
+!    True  => take step
+!    False => force a LS or PG step
+     Logical       :: box_tr_test_step = .True.
+!    Take projected  TR step when Wolfe test is Ok?
+!    True  => take step
+!    False => force a LS or PG step
+     Logical       :: box_wolfe_test_step = .True.
+!    Threshold to determine if the projection of TR direction
+!    is too severe 0<tau_min<1
+     Real(Kind=wp) :: box_tau_min = 0.25_wp
+!    tau >= tau_descent in order to test for descent
+     Real(Kind=wp) :: box_tau_descent = 1.0e-4_wp
+!    Max times TR iterations can fail without passing the various
+!    descent tests: 2? 3? 5? Ignored when proj(x)==x
+     Integer       :: box_max_ntrfail = 2
+!    Number of consecutive times quadratic model matches f(x_k+1)
+!    required before setting initial alpha step for PG step equal
+!    to scale_alpha*alpha_k-1
+     Integer       :: box_quad_match = 1
+!    Initial step scale (if quad_i >= box_quad_i)
+     Real(Kind=wp) :: box_alpha_scale = 1.0_wp
+!    Scaling factor to use when updating Delta from LS/PG step
+     Real(Kind=wp) :: box_Delta_scale = 2.0_wp
+     Real(Kind=wp) :: box_tau_wolfe = 0.3_wp
+     Real(Kind=wp) :: box_tau_tr_step = 0.3_wp
+     Integer       :: box_ls_step_maxit = 20
+!    LS type: 1 => Dennis-Schnable; 2 => Hager-Zhang
+     Integer       :: box_linesearch_type = 1
   END TYPE nlls_options
 
 !  - - - - - - - - - - - - - - - - - - - - - - -
@@ -357,8 +417,14 @@ module ral_nlls_workspaces
      INTEGER :: g_eval = 0
 
 !  the total number of evaluations of the Hessian of the objective function
+!  using eval_hf
 
      INTEGER :: h_eval = 0
+
+!  the total number of evaluations of the Hessian of the objective function
+!  using eval_hp
+
+     INTEGER :: hp_eval = 0
 
 !  test on the size of f satisfied?
 
@@ -382,23 +448,24 @@ module ral_nlls_workspaces
 
 !  vector of smallest singular values
 
-     real(wp), allocatable :: smallest_sv(:)
+!    real(wp), allocatable :: smallest_sv(:)
 
 !  vector of largest singular values
 
-     real(wp), allocatable :: largest_sv(:)
+!    real(wp), allocatable :: largest_sv(:)
 
 !  the value of the objective function at the best estimate of the solution
 !   determined by NLLS_solve
 
      REAL ( KIND = wp ) :: obj = infinity
 
-!  the norm of the gradient of the objective function at the best estimate
-!   of the solution determined by NLLS_solve
+!  the norm of the gradient or projected gradient of the objective function 
+!  at the current best estimate of the solution determined by NLLS_solve
 
      REAL ( KIND = wp ) :: norm_g = infinity
 
-! the norm of the gradient, scaled by the norm of the residual
+! the norm of the gradient (or projected gradient), scaled by the norm of 
+! the residual
 
      REAL ( KIND = wp ) :: scaled_g = infinity
 
@@ -411,13 +478,38 @@ module ral_nlls_workspaces
      CHARACTER ( LEN = 80 ) :: external_name = REPEAT( ' ', 80 )
 
 ! Step size of last iteration (w%normd)
-     Real(Kind=wp) :: step = 1.0e10_wp
+     Real(Kind=wp) :: step = infinity
+
+! LS Step iterations
+     Integer :: ls_step_iter = 0
+     Integer :: f_eval_ls = 0
+     Integer :: g_eval_ls = 0
+! PG Step iterations
+     Integer :: pg_step_iter = 0
+     Integer :: f_eval_pg = 0
+     Integer :: g_eval_pg = 0
 
   END TYPE nlls_inform
 
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
+
+  Type, Public, Extends(params_base_type) :: params_box_type
+    ! See if problem has box bounds
+    Integer :: iusrbox = 0
+    Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
+    ! projection changed the direction? d /= P(d)?
+    Logical :: prjchd = .false.
+    ! Convergence metrics
+    Real(Kind=wp) :: normPD, gtd
+    ! Memory for HZLS (LS)
+    Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
+    ! Consecutive times quadratic model is accurate
+    Integer       :: quad_i = 0
+    ! Memory for nonmonotone LS
+    Integer       :: nFref = 0
+  End Type params_box_type
 
   abstract interface
      subroutine eval_hf_type(status, n, m, x, f, h, params)
@@ -599,7 +691,7 @@ module ral_nlls_workspaces
      real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
-     real(wp), allocatable :: largest_sv(:), smallest_sv(:)
+!    real(wp), allocatable :: largest_sv(:), smallest_sv(:)
      type ( calculate_step_work ) :: calculate_step_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
@@ -624,8 +716,9 @@ contains
     type( NLLS_workspace ), intent(inout) :: workspace
     type( nlls_options ), intent(in) :: options
     integer, intent(in) :: n,m
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     if (.not. allocated(workspace%y)) then
        allocate(workspace%y(n), stat = inform%alloc_status)
        If (inform%alloc_status /= 0) Then
@@ -773,7 +866,6 @@ contains
          goto 100
        End If
     end if
-
     call setup_workspace_calculate_step(n,m,workspace%calculate_step_ws, &
          options, inform, workspace%tenJ, workspace%iw_ptr)
     if (inform%status/=0) goto 100
@@ -803,8 +895,8 @@ contains
     if(allocated(workspace%resvec)) deallocate(workspace%resvec, stat=ierr_dummy)
     if(allocated(workspace%gradvec)) deallocate(workspace%gradvec, stat=ierr_dummy)
 
-    if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv, stat=ierr_dummy)
-    if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv, stat=ierr_dummy)
+!   if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv, stat=ierr_dummy)
+!   if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv, stat=ierr_dummy)
 
     if(allocated(workspace%fNewton)) deallocate(workspace%fNewton, stat=ierr_dummy )
     if(allocated(workspace%JNewton)) deallocate(workspace%JNewton, stat=ierr_dummy )
@@ -832,11 +924,12 @@ contains
     integer, intent(in) :: n, m
     type( solve_newton_tensor_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
     type( tenJ_type ), intent(InOut) :: tenJ
     type( NLLS_workspace ), intent(InOut) :: inner_workspace
     integer :: ierr_dummy
 
+    inform%status = 0
     allocate(w%model_tensor(m),w%tparams%f(m),w%tparams%x(n),w%tparams%J(n*m), &
       w%tparams%Hi(n,n,m), tenJ%Hs(n,m), tenJ%Js(m),tenJ%H(n,n),tenJ%stHs(m),  &
       stat=inform%alloc_status)
@@ -855,7 +948,6 @@ contains
     w%tensor_options%maxit = 100
     w%tensor_options%reg_order = -1.0_wp
     w%tensor_options%output_progress_vectors = .false.
-
     select case (options%inner_method)
     case (1)
        w%tensor_options%type_of_method = 2
@@ -944,10 +1036,11 @@ contains
     integer, intent(in) :: n, m
     type( calculate_step_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
     type( tenJ_type ), intent(InOut) :: tenJ
     type( NLLS_workspace ), intent(InOut) :: inner_workspace
 
+    inform%status = 0
     allocate(w%A(n,n), w%v(n),w%extra_scale(n),w%scale(n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = 'setup_workspace_calculate_step'
@@ -1067,8 +1160,9 @@ contains
     integer, intent(in) :: n, m
     type( dogleg_work ), intent(out) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%d_sd(n),w%d_gn(n),w%ghat(n),w%Jg(m),stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = 'setup_workspace_dogleg'
@@ -1114,9 +1208,10 @@ contains
     integer, intent(in) :: n, m
     type( solve_LLS_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
     integer :: lwork
 
+    inform%status = 0
     lwork = max(1, min(m,n) + max(min(m,n), 1)*4)
     allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(n*m), stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
@@ -1146,8 +1241,9 @@ contains
     integer, intent(in) :: n, m
     type( evaluate_model_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate( w%Jd(m),w%dH(n**2),w%dHd(m),w%Hd(n), stat = inform%alloc_status )
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_evaluate_model(w,options)
@@ -1176,8 +1272,9 @@ contains
     integer, intent(in) :: n, m
     type( AINT_tr_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%B(n,n),w%p0(n),w%p1(n),w%M0(2*n,2*n),w%M1(2*n,2*n),w%M0_small(n,n),&
       w%M1_small(n,n),w%y(2*n),w%gtg(n,n),w%q(n),w%LtL(n,n),w%y_hardcase(n,2), &
       stat = inform%alloc_status)
@@ -1239,12 +1336,13 @@ contains
     integer, intent(in) :: n, m
     type( min_eig_symm_work) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
     real(wp), allocatable :: workquery(:)
     integer :: lwork, eigsout, ierr_dummy
     Real(Kind=wp) :: w_dummy(1), z_dummy(1,1)
 
+    inform%status = 0
     allocate(w%A(n,n),workquery(1),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1341,11 +1439,12 @@ contains
     integer, intent(in) :: n, m
     type( max_eig_work) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform), intent(out) :: inform
+    type( nlls_inform), intent(inout) :: inform
     real(wp), allocatable :: workquery(:)
     integer :: lwork, ierr_dummy
     Real(Kind=wp) :: A_dummy(1,1), B_dummy(1,1), vl_dummy(1,1), vr_dummy(1,1)
 
+    inform%status = 0
     allocate( w%alphaR(2*n),w%alphaI(2*n),w%beta(2*n),w%vr(2*n,2*n),           &
       w%ew_array(2*n),workquery(1),w%nullindex(2*n),w%vecisreal(2*n),          &
       stat=inform%alloc_status)
@@ -1415,8 +1514,9 @@ contains
     integer, intent(in) :: n, m
     type( solve_general_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform), intent(out) :: inform
+    type( nlls_inform), intent(inout) :: inform
 
+    inform%status = 0
     allocate( w%A(n,n),w%ipiv(n),stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_solve_general(w,options)
@@ -1444,8 +1544,9 @@ contains
     integer, intent(in) :: n,m
     type( solve_galahad_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%ev(n,n),w%v_trans(n),w%ew(n),w%d_trans(n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1486,8 +1587,9 @@ contains
     integer, intent(in) :: n,m
     type ( regularization_solver_work ) :: w
     type ( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%LtL(n,n),w%AplusSigma(n,n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_regularization_solver(w,options)
@@ -1515,12 +1617,13 @@ contains
     integer, intent(in) :: n,m
     type( all_eig_symm_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
     real(wp), allocatable :: workquery(:)
     real(wp) :: A_dummy(1)
     integer :: lwork, ierr_dummy
 
+    inform%status = 0
     If (allocated(w%ew)) Deallocate(w%ew, stat=ierr_dummy)
     allocate(workquery(1),w%ew(n), stat = inform%alloc_status)
     If (inform%alloc_status /= 0 ) Then
@@ -1573,8 +1676,9 @@ contains
     integer, intent(in) :: n,m
     type( more_sorensen_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     allocate(w%LtL(n,n),w%q(n),w%y1(n),w%AplusSigma(n,n),w%norm_work(n),       &
       stat = inform%alloc_status)
     if (inform%alloc_status /= 0) Then
@@ -1616,8 +1720,9 @@ contains
     integer, intent(in) :: n,m
     type( generate_scaling_work ) :: w
     type( nlls_options ), intent(in) :: options
-    type( nlls_inform ), intent(out) :: inform
+    type( nlls_inform ), intent(inout) :: inform
 
+    inform%status = 0
     If (options%scale==4) Then
       allocate(w%tempvec(n),w%diag(n),w%ev(n,n),stat=inform%alloc_status)
     Else

@@ -2349,6 +2349,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! let's check the workspace errors 
      ! first, let's do the main workspace...
      allocate(X(n))
+     X = 1.0_wp
      options%setup_workspaces = .false.
      call nlls_solve(n, m, X,                   &
                     eval_F, eval_J, eval_H, params, &

@@ -49,6 +49,8 @@ module ral_nlls_ciface
      real(wp) :: hybrid_switch
      logical(c_bool) :: exact_second_derivatives
      logical(c_bool) :: subproblem_eig_fact
+     logical(c_bool) :: use_ews_subproblem
+     logical(c_bool) :: force_min_eig_symm
      integer(C_INT) :: scale
      real(wp) :: scale_max
      real(wp) :: scale_min
@@ -68,6 +70,26 @@ module ral_nlls_ciface
      logical(c_bool) :: output_progress_vectors
      logical(c_bool) :: update_lower_order
      logical(c_bool) :: Fortran_Jacobian
+
+     integer(c_int) :: box_nFref_max
+     real(wp) :: box_gamma
+     real(wp) :: box_decmin
+     real(wp) :: box_bigbnd
+     real(wp) :: box_wolfe_descent
+     real(wp) :: box_wolfe_curvature
+     real(wp) :: box_kanzow_power
+     real(wp) :: box_kanzow_descent
+     real(wp) :: box_quad_model_descent
+     Logical(c_bool):: box_tr_test_step
+     Logical(c_bool):: box_wolfe_test_step
+     real(wp) :: box_tau_descent
+     integer(c_int):: box_max_ntrfail
+     integer(c_int):: box_quad_match
+     real(wp) :: box_alpha_scale
+     real(wp) :: box_Delta_scale
+     real(wp) :: box_tau_min
+     integer(c_int):: box_ls_step_maxit
+     integer(c_int):: box_linesearch_type
   end type nlls_options
 
   type, bind(C) :: nlls_inform
@@ -77,6 +99,7 @@ module ral_nlls_ciface
      character( kind = c_char), dimension(81) :: bad_alloc
      integer(C_INT) :: iter
      integer(C_INT) :: inner_iter
+     LOGICAL(c_bool) :: inner_iter_success
      integer(C_INT) :: f_eval
      integer(C_INT) :: g_eval
      integer(C_INT) :: h_eval
@@ -91,6 +114,12 @@ module ral_nlls_ciface
      integer(C_INT) :: external_return
      character( kind = c_char), dimension(81) :: external_name
      real(wp) :: step
+     Integer(c_int) :: ls_step_iter
+     Integer(c_int) :: f_eval_ls
+     Integer(c_int) :: g_eval_ls
+     Integer(c_int) :: pg_step_iter
+     Integer(c_int) :: f_eval_pg
+     Integer(c_int) :: g_eval_pg
   end type nlls_inform
 
   abstract interface
@@ -196,6 +225,26 @@ contains
     foptions%inner_method = coptions%inner_method
     foptions%output_progress_vectors = coptions%output_progress_vectors
     foptions%Fortran_Jacobian = coptions%Fortran_Jacobian
+    foptions%box_nFref_max = coptions%box_nFref_max 
+    foptions%box_gamma = coptions%box_gamma
+    foptions%box_decmin = coptions%box_decmin
+    foptions%box_bigbnd = coptions%box_bigbnd
+    foptions%box_wolfe_descent = coptions%box_wolfe_descent
+    foptions%box_wolfe_curvature = coptions%box_wolfe_curvature
+    foptions%box_kanzow_power = coptions%box_kanzow_power
+    foptions%box_kanzow_descent = coptions%box_kanzow_descent
+    foptions%box_quad_model_descent = coptions%box_quad_model_descent
+    foptions%box_tr_test_step = coptions%box_tr_test_step
+    foptions%box_wolfe_test_step = coptions%box_wolfe_test_step
+    foptions%box_tau_descent = coptions%box_tau_descent
+    foptions%box_max_ntrfail = coptions%box_max_ntrfail
+    foptions%box_quad_match = coptions%box_quad_match
+    foptions%box_alpha_scale = coptions%box_alpha_scale
+    foptions%box_Delta_scale = coptions%box_Delta_scale
+    foptions%box_tau_min = coptions%box_tau_min
+    foptions%box_ls_step_maxit = coptions%box_ls_step_maxit
+    foptions%box_linesearch_type = coptions%box_linesearch_type
+
   end subroutine copy_options_in
 
   subroutine copy_info_out(finfo,cinfo)
@@ -236,6 +285,13 @@ contains
        cinfo%external_name(i) = finfo%external_name(i:i)
     end do
     cinfo%external_name(len(finfo%external_name) + 1) = C_NULL_CHAR
+    cinfo%step = finfo%step
+    cinfo%ls_step_iter = finfo%ls_step_iter
+    cinfo%f_eval_ls = finfo%f_eval_ls
+    cinfo%g_eval_ls = finfo%g_eval_ls
+    cinfo%pg_step_iter = finfo%pg_step_iter
+    cinfo%f_eval_pg = finfo%f_eval_pg
+    cinfo%g_eval_pg = finfo%g_eval_pg
 
   end subroutine copy_info_out
 
@@ -345,6 +401,27 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%output_progress_vectors = foptions%output_progress_vectors
   coptions%update_lower_order = foptions%update_lower_order
   coptions%Fortran_Jacobian = foptions%Fortran_Jacobian
+
+  coptions%box_nFref_max = foptions%box_nFref_max 
+  coptions%box_gamma = foptions%box_gamma
+  coptions%box_decmin = foptions%box_decmin
+  coptions%box_bigbnd = foptions%box_bigbnd
+  coptions%box_wolfe_descent = foptions%box_wolfe_descent
+  coptions%box_wolfe_curvature = foptions%box_wolfe_curvature
+  coptions%box_kanzow_power = foptions%box_kanzow_power
+  coptions%box_kanzow_descent = foptions%box_kanzow_descent
+  coptions%box_quad_model_descent = foptions%box_quad_model_descent
+  coptions%box_tr_test_step = foptions%box_tr_test_step
+  coptions%box_wolfe_test_step = foptions%box_wolfe_test_step
+  coptions%box_tau_descent = foptions%box_tau_descent
+  coptions%box_max_ntrfail = foptions%box_max_ntrfail
+  coptions%box_quad_match = foptions%box_quad_match
+  coptions%box_alpha_scale = foptions%box_alpha_scale
+  coptions%box_Delta_scale = foptions%box_Delta_scale
+  coptions%box_tau_min = foptions%box_tau_min
+  coptions%box_ls_step_maxit = foptions%box_ls_step_maxit
+  coptions%box_linesearch_type = foptions%box_linesearch_type
+
 end subroutine ral_nlls_default_options_d
 
 subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights) bind(C)

@@ -6,6 +6,8 @@ add_library (ral_nlls SHARED
 	ral_nlls_ciface.f90
 	ral_nlls_workspaces.f90
 	ral_nlls_printing.f90
+  ral_nlls_bounds.f90
+  nag_export_mod.f90
 	) 
 
 target_link_libraries(ral_nlls ${LIBS} m ${CMAKE_DL_LIBS})

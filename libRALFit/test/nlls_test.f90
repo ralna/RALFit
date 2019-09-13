@@ -18,7 +18,7 @@ program nlls_test
   integer :: m, n, i, no_errors_helpers, no_errors_main
   integer :: nlls_method, model, tr_update, inner_method
   logical :: test_all, test_subs
-  integer :: fails
+  integer :: fails, exp_status
 
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
@@ -30,7 +30,7 @@ program nlls_test
   
   test_all = .true.
   test_subs = .true.
-
+  exp_status = 0
   no_errors_main = 0
 
   if (test_all) then
@@ -690,6 +690,7 @@ program nlls_test
            call print_line(options%out)
            write(options%out,*) "Error in eval_F"
            call print_line(options%out)
+           exp_status = NLLS_ERROR_INITIAL_GUESS
 
            call nlls_solve(n, m, X,                         &
                 eval_F_error, eval_J, eval_H, params,  &
@@ -698,6 +699,7 @@ program nlls_test
            call print_line(options%out)
            write(options%out,*) "Error in eval_J"
            call print_line(options%out)
+           exp_status = NLLS_ERROR_INITIAL_GUESS
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J_error, eval_H, params,  &
@@ -706,6 +708,7 @@ program nlls_test
            call print_line(options%out)
            write(options%out,*) "Error in eval_HF"
            call print_line(options%out)
+           exp_status = NLLS_ERROR_EVALUATION
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H_error, params,  &
@@ -716,6 +719,7 @@ program nlls_test
            write(options%out,*) "Error in eval_HF"
            write(options%out,*) "model = ", options%model
            call print_line(options%out)
+           exp_status = NLLS_ERROR_EVALUATION
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H_error, params,  &
@@ -725,13 +729,14 @@ program nlls_test
            write(options%out,*) "Error in eval_HF"
            write(options%out,*) "model = ", options%model
            call print_line(options%out)
+           exp_status = NLLS_ERROR_INITIAL_GUESS
 
            options%model = 4
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H_error, params,  &
                 options, status )
         end select
-        if ( status%status .ne. NLLS_ERROR_EVALUATION ) then 
+        if ( status%status .ne. exp_status ) then 
            write(*,*) 'Error: error return from eval_x not caught'
            no_errors_main = no_errors_main + 1
         end if
@@ -897,6 +902,7 @@ program nlls_test
      End if
      n = 100
      allocate(x(n))
+     x = 0.0_wp
      m = 3
      call  nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &

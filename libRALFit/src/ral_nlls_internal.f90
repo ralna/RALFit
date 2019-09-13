@@ -6,6 +6,7 @@ module ral_nlls_internal
   use RAL_NLLS_DRQS_double
   use ral_nlls_workspaces
   Use ral_nlls_printing
+  Use ral_nlls_bounds
 
   implicit none
 
@@ -136,6 +137,15 @@ contains
       Call print_options(options)
     End If
 
+!   Make initial point x0 feasible
+    Select Type(params)
+    Class Is(params_box_type)
+      If (params%iusrbox == 1) Then
+!       Project initial point to feasible box
+        Call box_proj(params, n, x)
+      End If
+    End Select
+
     main_loop: do i = 1,options%maxit
        if ( present(weights) ) then
           if ( present(eval_HP) ) then
@@ -189,11 +199,16 @@ contains
        call nlls_strerror(inform)
      End If
      If (buildmsg(1,.False.,options)) then
-       Call print_bye(options,inform)
+       Select Type(params)
+       Class Is(params_box_type)
+         Call print_bye(options,inform,.True.)
+       Class Default
+         Call print_bye(options,inform,.False.)
+       End Select
      End If
 
-6000 Format(1X,57('-'))
-6001 Format(2X,'RALFit: An unconstrained nonlinear least-squares solver')
+6000 Format(1X,58('-'))
+6001 Format(2X,'RALFit: A box-constrained nonlinear least-squares solver')
    END SUBROUTINE NLLS_SOLVE
 
 
@@ -230,10 +245,15 @@ contains
     integer :: num_successful_steps
     integer :: nrec, ierr_dummy
     integer :: eval_f_status, eval_J_status
-    Character(Len=100) :: rec(3)
+    Character(Len=220) :: rec(3)
     Character(Len=1) :: it_type, inn_flag
-
-!   thread-safe inits
+    Character(Len=5), Parameter :: looplab(0:4) = (/'TR Ok', 'gamma', 'Wolfe', &
+      'PrBad', 'MaxIt'/)
+    Character(Len=2), Parameter  :: lslab(0:3) = (/'  ', 'LS', 'PG', 'BO'/)
+    Real(Kind=wp) :: tau, gtd_new, pgtd, wgtd
+    Logical       :: takestep, wolfe
+    Integer       :: ntrfail, nlab, lstype
+    ! todo: make max_tr_decrease a control variable
     max_tr_decrease = 100
     bad_allocate = .false.
     num_successful_steps = 0
@@ -244,10 +264,14 @@ contains
       it_type = 'I'
     End Select
     ! inn_flag: status flag for the success of inner it convergence
-    ! Three-state '-' in inner iteration, 'C' Converged, 'E' not convErged
+    ! Three-state '-' Not in inner iteration, 'C' Converged, 'E' not convErged
     inn_flag = '-'
-    ! todo: make max_tr_decrease a control variable
-
+    tau = 1.0_wp
+    nlab = 0
+    lstype = 0
+    ntrfail = 0
+    ! By default take TR step
+    takestep = .True.
     ! Perform a single iteration of the RAL_NLLS loop
     if (w%first_call == 1) then
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
@@ -284,26 +308,39 @@ contains
        end if
 
        ! evaluate the residual
+       ! Note: Assumes X is x0 and is feasible
        call eval_F(inform%external_return, n, m, X, w%f, params)
        inform%f_eval = inform%f_eval + 1
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_F'
-         inform%status = NLLS_ERROR_EVALUATION
-         ! Fails at initial point -- bail out
+         inform%external_return = 2101
+         inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
        if ( present(weights)) then
           ! set f -> Wf
           w%f(1:m) = weights(1:m)*w%f(1:m)
        end if
-
-       ! and evaluate the jacobian
+       w%normf = norm2(x=w%f(1:m))
+       If ((log(w%normf)>100.0_wp) .Or. (w%normf/=w%normf)) Then
+         ! Initial guess x0 is not usable
+         inform%external_name = 'eval_F'
+         inform%external_return = 2101
+         inform%status = nlls_error_initial_guess
+         Go To 100
+       End If
+       If (options%regularization>0) Then
+         normx = norm2(x=x(1:n))
+         Call update_regularized_normf(normf=w%normf,normx=normx,    &
+           options=options)
+       End If
+!      and evaluate the jacobian
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_J'
-         inform%status = NLLS_ERROR_EVALUATION
-         ! Fails at initial point -- bail out
+         inform%external_return = 2102
+         inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
        if ( present(weights) ) then
@@ -325,26 +362,46 @@ contains
        else
           w%Delta = options%initial_radius
        end if
-
-       w%normF = norm2(w%f(1:m))
-       if (options%regularization > 0 ) then
-          normX = norm2(X(1:n))
-          call update_regularized_normF(w%normF,normX,options)
-       end if
-       w%normF0 = w%normF
+       ! Avoid NaN if F(x0)=0.0 is solution
+       w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp)
 
        !    g = -J^Tf
        call mult_Jt(w%J,n,m,w%f,w%g,options)
-       w%g = -w%g
+       w%g(:) = -w%g(:)
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = norm2(w%g)
-       w%normJF0 = w%normJF
        w%normJFold = w%normJF
+
+       If ( (log(w%normJF)>100.0_wp) .or. (w%normJF/=w%normJF) ) Then
+         ! Initial guess x0 is not usable
+         inform%external_name = 'eval_J'
+         inform%external_return = 2102
+         inform%status = NLLS_ERROR_INITIAL_GUESS
+         Go To 100
+       End If
 
        ! save some data
        inform%obj = 0.5_wp * ( w%normF**2 )
-       inform%norm_g = w%normJF
-       inform%scaled_g = w%normJF/w%normF
+       Select Type(params)
+       Class Is(params_box_type)
+         If (params%iusrbox==1) Then
+           ! store current merit, used to see how well a quadratic fits
+           ! Reference value used in LS Step
+           params%normFold = 2.0_wp * w%normF
+           ! Reference used in the nonmonotone ls in the PG Step
+           params%nFref = 1
+           params%normFref(1) = w%normF
+           Call box_projdir(params,n=n,x=X,dir=w%g,normg=w%normJF)
+           inform%norm_g = params%normPD
+         Else
+           ! box-bound in practice is non-existent...
+           inform%norm_g = w%normJF
+         End If
+       Class Default
+         inform%norm_g = w%normJF
+       End Select
+       w%normJF0 = inform%norm_g
+       inform%scaled_g = inform%norm_g / w%normF0
 
        ! if we need to output vectors of the history of the residual
        ! and gradient, the set the initial values
@@ -358,7 +415,7 @@ contains
        !++++++++++++++++++!
        ! Note: pretty printing was pushed into test_convergence
        ! norm_2_d is not yet available, test on step size is ignored
-       call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,1.0_wp,options,inform)
+       call test_convergence(w%normF,inform%norm_g,w%normF0,w%normJF0,1.0_wp,options,inform)
        if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1) Then
 !        Converged!
          Go To 100
@@ -386,12 +443,13 @@ contains
              end if
              inform%h_eval = inform%h_eval + 1
              If (inform%external_return /= 0) Then
-                inform%external_return = 0
-                call switch_to_gauss_newton(w,n,options)
-             else
-                if (options%regularization > 0) then
-                   call update_regularized_hessian(w%hf,X,n,options)
-                end if
+!              Trigger recovery
+               inform%external_return = 0
+               call switch_to_gauss_newton(w,n,options)
+             Else
+               if (options%regularization > 0) then
+                 call update_regularized_hessian(w%hf,X,n,options)
+               end if
              end If
           else
              ! S_0 = 0 (see Dennis, Gay and Welsch)
@@ -430,10 +488,10 @@ contains
              end if
              inform%h_eval = inform%h_eval + 1
              If (inform%external_return /= 0) Then
-                ! as we're in first_call, return to user
-                inform%external_name = 'eval_HF'
-                inform%status = NLLS_ERROR_EVALUATION
-                goto 100
+               inform%external_name = 'eval_HF'
+               inform%external_return = 2103
+               inform%status = NLLS_ERROR_INITIAL_GUESS
+               goto 100
              End If
           else
              ! no second derivatives in tensor model
@@ -445,7 +503,7 @@ contains
           goto 100
        end select
 
-       rho  = -1.0_wp ! intialize rho as a negative value
+       rho  = -1.0_wp ! initialize rho as a negative value
 
 !      @TAG:ITER0_BANNER
 !      The following section builds and prints the initial
@@ -495,7 +553,7 @@ contains
        if (.not. options%exact_second_derivatives) then
           ! let's update g_old, which is needed for call to
           ! rank_one_update
-          w%g_old = w%g
+          w%g_old(:) = w%g(:)
        end if
 
     end if ! end of first call
@@ -556,6 +614,46 @@ contains
          inn_flag = merge('C', 'E', inform%inner_iter_success)
        End If
 
+       !+++++++++++++++++++++++++++++++++++++++++++!
+       ! Calculate the projection effect           !
+       !    tau = |P(x+d) - x|/|d|                 !
+       ! if close to 1 then d is encouraged        !
+       !+++++++++++++++++++++++++++++++++++++++++++!
+       Select type(params)
+       Class is(params_box_type)
+         If (params%iusrbox==1) Then
+!          Project candidate: w%Xnew <- P(X + w%d) = P(w%Xnew)
+           tau = norm2(w%Xnew-X)
+           Call box_proj(params=params,n=n, x=X, xnew=w%Xnew, dir=w%d)
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           !!!    Update d = P(X+d)-X  !!!
+           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           If (params%prjchd) Then
+             w%d(1:n) = w%Xnew(1:n)-X(1:n)
+             w%norm_2_d = norm2(w%d)
+           End If
+           ! tau = |P(X+d)-X| / |d|. At this point:
+           ! * w%d=P(X+d)-X is the projected trust region step, while
+           ! * w%norm_2_d is the norm of the unprojected trust region step.
+           ! if tau << 1 then the TR step is orthogonal to the active constraints
+           tau = w%norm_2_d / tau
+           If (tau - 1.0_wp > cmptol) Then
+             inform%status = NLLS_ERROR_UNEXPECTED
+             Go To 100
+           End If
+           ! fix rounding error
+           tau = max(0.0_wp, min(1.0_wp, tau))
+           If (no_reductions==1) Then
+!            gtd = g(x)^T (P(x+d)-x)
+             params%gtd = 0.0_wp
+             Do i = 1, n
+              params%gtd = params%gtd + w%g(i)*w%d(i)
+              params%g(i) = w%g(i)
+             End Do
+           End If
+         End If
+       End Select
+
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
@@ -563,118 +661,185 @@ contains
        inform%f_eval = inform%f_eval + 1
 
        If (eval_f_status .ne. 0) Then
-          rho = -1.0_wp ! give a rho that will fail
-          num_successful_steps = 0
-       else
-          if ( present(weights) ) then
-             ! set f -> Wf
-             w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
-          end if
-          normFnew = norm2(w%fnew(1:m))
+         rho = -1.0_wp
+         num_successful_steps = 0
+       Else
+         if ( present(weights) ) then
+           ! set f -> Wf
+           w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
+         end if
+         normFnew = norm2(w%fnew(1:m))
 
-          If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
-            rho = -1.0_wp
-            eval_f_status = 1
-            num_successful_steps = 0
-          End If
-          
-          if (options%regularization > 0) then
-             normX = norm2(w%Xnew)
-             call update_regularized_normF(normFnew,normX,options)
-          end if
-          
-          !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
-          ! Calculate the quantity                                   !
-          !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
-          !         --------------------------   ------------------- !
-          !             m_k(0)  - m_k(d)         predicted_reduction !
-          !                                                          !
-          ! if model is good, rho should be close to one             !
-          !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          call calculate_rho(w%normF,normFnew,md,rho,options)
-          if ( (rho > HUGE(wp)) .or. &
-               (rho .ne. rho) .or. &
-               (rho .le. options%eta_successful) ) then
-             ! rho is either very large, NaN, or unsuccessful
-             num_successful_steps = 0
-             if ( (w%use_second_derivatives) .and.  &
-                  (options%model == 3) .and. &
-                  (no_reductions==1) ) then
-                ! recalculate rho based on the approx GN model
-                ! (i.e. the Gauss-Newton model evaluated at the Quasi-Newton step)
-                call calculate_rho(w%normF,normFnew,md_gn,rho_gn,options)
-                if (rho_gn > options%eta_successful) then
-                   ! don't trust this model -- switch to GN
-                   ! (See Dennis, Gay and Walsh (1981), Section 5)
-                   call switch_to_gauss_newton(w,n,options)
-                   w%hf_temp(:) = 0.0_wp
-                   cycle
-                end if
+         If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
+           rho = -1.0_wp
+           eval_f_status = 1
+           num_successful_steps = 0
+         End If
+       End If
+       If (eval_f_status==0) Then
+         if (options%regularization > 0) then
+           normX = norm2(w%Xnew)
+           call update_regularized_normF(normFnew,normX,options)
+         end if
+
+         !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+         ! Calculate the quantity                                   !
+         !   rho = 0.5||f||^2 - 0.5||fnew||^2 =   actual_reduction  !
+         !         --------------------------   ------------------- !
+         !             m_k(0)  - m_k(d)         predicted_reduction !
+         !                                                          !
+         ! if model is good, rho should be close to one             !
+         !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+         call calculate_rho(w%normF,normFnew,md,rho,options)
+         if ( (rho > HUGE(wp)) .or. &
+           (rho .ne. rho) .or. &
+           (rho .le. options%eta_successful) ) then
+           ! rho is either very large, NaN, or unsuccessful
+           num_successful_steps = 0
+           if ( (w%use_second_derivatives) .and.  &
+             (options%model == 3) .and. &
+             (no_reductions==1) ) then
+             ! recalculate rho based on the approx GN model
+             ! (i.e. the Gauss-Newton model evaluated at the Quasi-Newton step)
+             call calculate_rho(w%normF,normFnew,md_gn,rho_gn,options)
+             if (rho_gn > options%eta_successful) then
+               ! don't trust this model -- switch to GN
+               ! (See Dennis, Gay and Walsh (1981), Section 5)
+               call switch_to_gauss_newton(w,n,options)
+               w%hf_temp(:) = 0.0_wp
+               cycle
              end if
-          else
-             ! rho seems to be good -- calculate the Jacobian
-             if (.not. options%exact_second_derivatives) then
-                ! save the value of g_mixed, which is needed for
-                ! call to rank_one_update
-                ! g_mixed = -J_k^T r_{k+1}
-                call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
-                w%g_mixed = -w%g_mixed
+           end if
+         else
+           ! rho seems to be good -- calculate the Jacobian
+           if (.not. options%exact_second_derivatives) then
+             ! save the value of g_mixed, which is needed for
+             ! call to rank_one_update
+             ! g_mixed = -J_k^T r_{k+1}
+             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+             w%g_mixed(:) = -w%g_mixed(:)
+           end if
+
+           ! evaluate J and hf at the new point
+           call eval_J(eval_J_status, n, m, w%Xnew(1:n), w%J, params)
+           inform%g_eval = inform%g_eval + 1
+           If (eval_J_status /= 0) Then
+             ! trigger reset_gradients
+           Else
+             if ( present(weights) ) then
+               ! set J -> WJ
+               call scale_J_by_weights(w%J,n,m,weights,options)
              end if
 
-             ! evaluate J and hf at the new point
-             call eval_J(eval_J_status, n, m, w%Xnew(1:n), w%J, params)
-             inform%g_eval = inform%g_eval + 1
-             If (eval_J_status /= 0) Then
-               ! trigger reset_gradients
-             Else
-               if ( present(weights) ) then
-                 ! set J -> WJ
-                 call scale_J_by_weights(w%J,n,m,weights,options)
-               end if
+             ! g = -J^Tf
+             call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+             w%g(:) = -w%g(:)
+             if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
 
-               ! g = -J^Tf
-               call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-               w%g(:) = -w%g(:)
-               if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
+             normJFnew = norm2(w%g)
 
-               normJFnew = norm2(w%g)
-
-               If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
-                 !              trigger reset_gradients
-                 eval_j_status = 1
-               End If
+             If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
+!              trigger reset_gradients
+               eval_j_status = 1
              End If
-             If (eval_j_status/=0) Then
-!              Jacobian either could not be avaluated or returned NaN of Infinity in one or
-!              more entries, trigger reset_gradients and print a note.
-               If (buildmsg(5,.False.,options)) Then
-                 Write (rec(1),Fmt=3120)
-                 nrec = 1
-                 Call printmsg(5,.False.,options,nrec,rec)
-               End If
-               rho = -1.0_wp
-!              this case should be trated the same as when rho is not satisfactory
-               num_successful_steps = 0
-               Call reset_gradients(n,m,x,options,inform,params,w,eval_j,weights)
-               If (inform%external_return/=0) Then
-                 Go To 100
-               End If
-             Else
-!              success!!
-               w%normJFold = w%normJF
-               w%normF = normFnew
-               w%normJF = normJFnew
-               num_successful_steps = num_successful_steps + 1
-               success = .True.
-             end if
+           End If
+           If (eval_j_status/=0) Then
+!            Jacobian either could not be avaluated or returned NaN of Infinity in one or
+!            more entries, trigger reset_gradients and print a note.
+             If (buildmsg(5,.False.,options)) Then
+               Write (rec(1),Fmt=3120)
+               nrec = 1
+               Call printmsg(5,.False.,options,nrec,rec)
+             End If
+             rho = -1.0_wp
+!            this case should be trated the same as when rho is not satisfactory
+             num_successful_steps = 0
+             Call reset_gradients(n,m,x,options,inform,params,w,eval_j,weights)
+             If (inform%external_return/=0) Then
+               Go To 100
+             End If
+           Else
+!            success!!
+!            Post-pone updates (so to be able to call LS/PG steps if needed)
+!            w%normJFold = w%normJF
+!            w%normF = normFnew
+!            w%normJF = normJFnew
+             num_successful_steps = num_successful_steps + 1
+             success = .True.
           end if
+         end if
        end if
-       
+
        !++++++++++++++++++++++!
        ! Update the TR radius !
        !++++++++++++++++++++++!
        call update_trust_region_radius(rho,options,inform,w)
        if (inform%status /= 0) goto 100
+
+       Select type(params)
+       Class is(params_box_type)
+         ! Only run the box logic if the projected TR step differs from
+         ! the unconstrained step
+         If (params%prjchd) Then
+           If (success) Then
+!            gtd_new = g(P(x+d)-x)^T (P(x+d)-x)
+             gtd_new = dot_product(w%g(1:n), w%d(1:n))
+!            Wolfe descent conditions
+             wolfe = normFnew <= w%normF + options%box_wolfe_descent * params%gtd
+             wolfe = wolfe .And. gtd_new <= options%box_wolfe_curvature * params%gtd
+           Else
+             wolfe = .False.
+           End If
+           !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+           ! Box-bounds action table                                  !
+           !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
+           ! Test type    |  Action                                   !
+           !--------------+-------------------------------------------!
+           ! Kanzow       |  TR step                                  !
+           ! TR           |  TR/LS step: option%box_test_tr_step &&   !
+           !              |              tau>=options%box_tau_tr_step !
+           ! Wolfe+tau    |  TR/LS step: option%box_test_wolfe_step &&!
+           !              |              tau>=options%box_tau_wolfe   !
+           ! tau          |  LS step                                  !
+           ! ntrfail      |  LS step                                  !
+           !----------------------------------------------------------!
+           If (eval_f_status==0) Then
+             If (normFnew <= options%box_gamma*w%normF) Then
+               ! Kanzow et al. descent condition
+               ! Take projected TR step
+               nlab = 1
+               takestep = .True.
+               Exit
+             ElseIf (success) Then
+               ! TR progress ok
+               ! Take projected TR step?
+               nlab = 0
+               takestep = options%box_tr_test_step .And. tau >= options%box_tau_tr_step
+               Exit
+             ElseIf (wolfe ) Then
+               ! Wolfe conditions met and projection ok
+               ! Take projected TR step?
+               nlab = 2
+               takestep = options%box_wolfe_test_step .And. tau>=options%box_tau_wolfe
+               Exit
+             End If
+           End If
+           If (tau <= options%box_tau_min) Then
+             ! TR step is orthogonal to active bounds
+             ! Don't take projected TR step and force a LS step
+             nlab = 3
+             takestep = .False.
+             Exit
+           ElseIf (ntrfail >= options%box_max_ntrfail) Then
+             ! Too many TR steps failed
+             ! Don't take projected TR step and force a LS step
+             nlab = 4
+             takestep = .False.
+             Exit
+           End If
+           ntrfail = ntrfail + 1
+         End If
+       End Select
 
        if (.not. success) then
           If (buildmsg(3, .False., options)) Then
@@ -685,7 +850,7 @@ contains
               Call printmsg(3, .False., options, nrec, rec)
             Else
               If (buildmsg(4, .False., options)) Then
-                Write(rec(1),Fmt=9020) inform%iter, w%Delta, rho,                &
+                Write(rec(1),Fmt=9020) inform%iter, w%Delta, rho,              &
                   'U'//second//it_type//inn_flag
                 nrec = 1
                 Call printmsg(4, .False., options, nrec, rec)
@@ -701,9 +866,92 @@ contains
 !            goto 100
 !         end if
        end if
-    end do ! successful step found
+    end do
+
+    Select Type(params)
+    Class Is(params_box_type)
+      If (params%iusrbox==1) Then
+        If (takestep .And. .Not. success) Then
+          ! We need to take the projected TR step but
+          ! gradient is not available
+          ! Note: if evalJ fails we recover by taking a PG step
+          if (.not. options%exact_second_derivatives) then
+              call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+              w%g_mixed(:) = -w%g_mixed(:)
+          end if
+          ! evaluate J
+          call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+          inform%g_eval = inform%g_eval + 1
+          If (inform%external_return /= 0) Then
+!           Recover: force to take a PG step
+            takestep = .False.
+          End If
+          if ( present(weights) ) then
+             ! set J -> WJ
+             call scale_J_by_weights(w%J,n,m,weights,options)
+          end if
+          ! g = -J^Tf
+          call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+          w%g(:) = -w%g(:)
+          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
+          normJFnew = norm2(w%g)
+          if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
+            ! Recover: force to take a PG step
+            takestep = .False.
+          end if
+        End If
+
+        If (.Not. takestep) Then
+          If (present(weights)) Then
+            Call linesearch_steps(n,m,success,tau,X,normX,normFnew,normJFnew,eval_F,   &
+              eval_J,lstype,nlab,w,params,options,inform,weights)
+          Else
+            Call linesearch_steps(n,m,success,tau,X,normX,normFnew,normJFnew,eval_F,   &
+              eval_J,lstype,nlab,w,params,options,inform)
+          End If
+          If (inform%status/=0) Then
+            goto 100
+          End If
+        End If
+
+        ! update LS metrics if actual box is finite
+        params%normFold = w%normF
+        params%nFref = max(1, min(params%nFref + 1, options%box_nFref_max))
+        params%normFref(1:params%nFref) = (/normFnew, params%normFref(1:params%nFref-1)/)
+!       Update moving averages (used by HZLS in LS STEP)
+        params%quad_q = 1.0_wp + params%quad_q*0.7_wp
+        params%quad_c = params%quad_c + (0.5_wp*normFnew**2-params%quad_c)/params%quad_q
+!       Update quadratic model hit counter (used in LS/PG steps)
+!       Quadratic model Mk(step) is fitted using f(X_k), f'(X_k)^Tdir and
+!       f'(X_k+1), and is used to approximate f(X_k+1), if approximation is good
+!       quad_i counter is incremented.
+        pgtd = dot_product(params%g,w%d)
+        wgtd = dot_product(w%g,w%d)
+        If (abs(w%normF+w%norm_2_d*(pgtd+wgtd/2.0_wp)-normFnew) <=             &
+          options%box_quad_model_descent) Then
+          params%quad_i = params%quad_i + 1
+        Else
+          params%quad_i = 0
+        End If
+!       Print statistics
+        If (buildmsg(5, .False., options)) Then
+          Write(rec(1), Fmt=99999)
+          Write(rec(2), Fmt=99998) params%quad_q, params%quad_c,params%quad_i, &
+            abs(w%normF+w%norm_2_d*(pgtd+wgtd/2.0_wp)-normFnew),               &
+            100.0_wp*Real(params%nFref,Kind=wp)/Real(options%box_nFref_max,Kind=wp),&
+            maxval(params%normFref(1:params%nFref)),inform%ls_step_iter,inform%pg_step_iter
+          Call printmsg(5, .False., options, 2, rec)
+        End If
+      End If
+    End Select
+99999 Format ('      Q |      C |QuadCnt| QuadErr|Nm mem%|   Nm Ref   | LS it| PG it')
+99998 Format (2(Es8.2e2,1X),I7,1X,Es8.2e2,2X,F5.1,2X,Es12.4e2,1X,I6,1X,I6)
 
     ! if we reach here, a successful step has been found
+    w%normJFold = w%normJF
+    w%normF = normFnew
+    w%normJF = normJFnew
+
     ! update X and f
     X(1:n) = w%Xnew(1:n)
     w%f(1:m) = w%fnew(1:m)
@@ -753,6 +1001,7 @@ contains
        end if
        If (inform%external_return /= 0) Then
          inform%external_name = 'eval_HF'
+         inform%external_return = 2513
          inform%status = NLLS_ERROR_EVALUATION
          goto 100
        End If
@@ -761,13 +1010,23 @@ contains
     if (.not. options%exact_second_derivatives) then
        ! now let's update g_old, which is needed for
        ! call to rank_one_update
-       w%g_old = w%g
+       w%g_old(:) = w%g(:)
     end if
 
     ! update the stats
     inform%obj = 0.5_wp*(w%normF**2)
-    inform%norm_g = w%normJF
-    inform%scaled_g = w%normJF/w%normF
+    Select Type(params)
+    Class Is(params_box_type)
+      If (params%iusrbox==1) Then
+        Call box_projdir(params,n=n,x=X,dir=w%g,normg=w%normJF)
+        inform%norm_g = params%normPD
+      Else
+        inform%norm_g = w%normJF
+      End If
+    Class Default
+      inform%norm_g = w%normJF
+    End Select
+    inform%scaled_g = inform%norm_g/merge(1.0_wp, w%normF, w%normF==0.0_wp)
     inform%step = w%norm_2_d
     if (options%output_progress_vectors) then
        w%resvec (w%iter + 1) = inform%obj
@@ -787,12 +1046,13 @@ contains
 !   ! * rho: quantity: actual_reduction / predicted_reduction              !
 !   ! * S2IF: flags:                                                       !
 !   !     * S=TR iteration was successful (S) or unsuccessful (U)          !
-!   !     * 2=iteration used 2nd order information (Y) or not (N)          !
+!   !     * 2=iteration used 2nd order information:                        !
+!   !         Y(es), (N)o, (T)ensor, (A)pproximate                         !
 !   !     * I=iteration type: regular (R) or inner (I)                     !
 !   !     * F=exit flag from inner solver. Has three states:               !
 !   !       Subproblem converged (C), or                                   !
-!   !       Subproblem not solved (E) or                                   !
-!   !       Currently inside subproblem, in which case (-)                 !
+!   !       Subproblem not solved (E), or                                  !
+!   !       Currently inside subproblem or not Tensor-Newton model (-)     !
 !   !     * Note: dashes (-) in the positions of flags `S`, `2` and 'I'    !
 !   !       indicate information is not available.                         !
 !   ! * inn it: inner iteration cummulative counter                        !
@@ -811,27 +1071,30 @@ contains
         Write(rec(3), Fmt=8002)
         Call printmsg(2, .True., options, 3, rec)
       End If
-    Else If (buildmsg(5, .False., options)) Then
+    End If
+    If (buildmsg(5, .False., options)) Then
 !       Level 5: Always print banner
         Write(rec(1), Fmt=8000)
         Write(rec(2), Fmt=9000)
         Write(rec(3), Fmt=8000)
         Call printmsg(5, .False., options, 3, rec)
-    Else If (buildmsg(4, .False., options)) Then
+    End If
+    If (buildmsg(4, .True., options)) Then
 !     Level 4: Print banner every k-th including inner iteration
       If (mod(prncnt, options%print_header)==0) Then
         Write(rec(1), Fmt=8000)
         Write(rec(2), Fmt=9000)
         Write(rec(3), Fmt=8000)
-        Call printmsg(4, .False., options, 3, rec)
+        Call printmsg(4, .True., options, 3, rec)
       End If
-     Else If (buildmsg(3, .False., options).And.it_type=='R') Then
+    End If
+    If (buildmsg(3, .True., options).And.it_type=='R') Then
 !     Level 3: Same as level 2 but long banner version
-        If (mod(w%iter, options%print_header)==0) Then
-           Write(rec(1), Fmt=8000)
-           Write(rec(2), Fmt=9000)
-           Write(rec(3), Fmt=8000)
-           Call printmsg(3, .False., options, 3, rec)
+      If (mod(prncnt, options%print_header)==0) Then
+        Write(rec(1), Fmt=8000)
+        Write(rec(2), Fmt=9000)
+        Write(rec(3), Fmt=8000)
+        Call printmsg(3, .True., options, 3, rec)
       End If
     End If
     If (buildmsg(2, .True., options).And.it_type == 'R') Then
@@ -839,29 +1102,33 @@ contains
         inform%scaled_g
       nrec = 1
       Call printmsg(2, .True., options, nrec, rec)
-    ElseIf (buildmsg(3, .False., options)) Then
-      If (it_type=='R') Then
+    End If
+    If (buildmsg(3, .True., options) .And. it_type=='R') Then
         Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
           inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
-          inform%inner_iter, inform%step
+          inform%inner_iter, inform%step, looplab(nlab), lslab(lstype), tau
         nrec = 1
-        Call printmsg(3, .False., options, nrec, rec)
+        Call printmsg(3, .True., options, nrec, rec)
+    End If
+    If (buildmsg(4, .False., options)) Then
+      If (it_type /= 'R') Then
+        Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,      &
+          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,     &
+          inform%step, looplab(nlab), lslab(lstype), tau
       Else
-        If (buildmsg(4, .False., options)) Then
-          Write(rec(1), Fmt=9011) inform%iter, inform%obj, inform%norm_g,        &
-            inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
-            inform%step
-          nrec = 1
-          Call printmsg(4, .False., options, nrec, rec)
-        End If
+        Write(rec(1), Fmt=9010) inform%iter, inform%obj, inform%norm_g,        &
+          inform%scaled_g, w%Delta, rho, 'S'//second//it_type//inn_flag,       &
+          inform%inner_iter, inform%step, looplab(nlab), lslab(lstype), tau
       End If
+      nrec = 1
+      Call printmsg(4, .False., options, nrec, rec)
     End If
 
     !++++++++++++++++++!
     ! Test convergence !
     !++++++++++++++++++!
     ! Note: pretty printing was pushed into test_convergence
-    call test_convergence(w%normF,w%normJF,w%normF0,w%normJF0,w%norm_2_d,options,inform)
+    call test_convergence(w%normF,inform%norm_g,w%normF0,w%normJF0,w%norm_2_d,options,inform)
     if (inform%convergence_normf == 1 .Or. inform%convergence_normg == 1       &
           .Or. inform%convergence_norms == 1) Then
 !      Converged!
@@ -893,20 +1160,21 @@ contains
     if (bad_allocate) then
        if (allocated(inform%resvec)) deallocate(inform%resvec ,stat=ierr_dummy)
        if (allocated(inform%gradvec)) deallocate(inform%gradvec ,stat=ierr_dummy)
-       if (allocated(inform%smallest_sv)) deallocate(inform%smallest_sv ,stat=ierr_dummy)
-       if (allocated(inform%largest_sv)) deallocate(inform%largest_sv ,stat=ierr_dummy)
+!      if (allocated(inform%smallest_sv)) deallocate(inform%smallest_sv ,stat=ierr_dummy)
+!      if (allocated(inform%largest_sv)) deallocate(inform%largest_sv ,stat=ierr_dummy)
        inform%status = NLLS_ERROR_ALLOCATION
        inform%bad_alloc = 'nlls_iterate'
     end if
 
-8000 Format(85('-'))
-9000 Format(1X,' Iter |  error   |    grad    |  rel grad  |  Delta  |   rho   |S2IF| inn it|  step')
+8000 Format(99('-'))
+9000 Format(1X,' Iter |   error  |   optim    |  rel optim |  Delta  |   rho   |&
+            &S2IF| inn it|  step | loop|LS| tau')
 8002 Format(44('-'))
-9002 Format(1X,' Iter |  error   |    grad    |  rel grad')
+9002 Format(1X,' Iter |   error  |   optim    |  rel optim')
 !    Successfull iteration Regular iteration
-9010 Format(I7,1X,Es10.4e2,2(1X,Es12.5e2),1X,2(Es9.2e2,1X),A4,1X,I7,1X,Es7.1e2)
+9010 Format(I7,1X,Es10.4e2,2(1X,Es12.5e2),1X,2(Es9.2e2,1X),A4,1X,I7,1X,Es7.1e2,1X,A5,1X,A2,1X,F4.2)
 !    Successfull iteration Internal iteration
-9011 Format(I7,1X,Es10.4e2,2(1X,Es12.5e2),1X,2(Es9.2e2,1X),A4,1X,7X,1X,Es7.1e2)
+9011 Format(I7,1X,Es10.4e2,2(1X,Es12.5e2),1X,2(Es9.2e2,1X),A4,1X,7X,1X,Es7.1e2,1X,A5,1X,A2,1X,F4.2)
 !    Unsuccessfull iteration partial information
 9020 Format(I7,37X,1X,2(Es9.2e2,1X),A4,1X,I7)
 ! print level > 2
@@ -945,6 +1213,8 @@ contains
 
     if ( inform%status == NLLS_ERROR_MAXITS ) then
        inform%error_message = 'Maximum number of iterations reached'
+    elseif ( inform%status == NLLS_ERROR_INITIAL_GUESS ) then
+       inform%error_message = 'Initial iterate x0 is not usable as starting point'
     elseif ( inform%status == NLLS_ERROR_EVALUATION ) then
        write(inform%error_message,Fmt=5004) &
             'Error code from user-supplied subroutine',trim(inform%external_name), &
@@ -994,8 +1264,12 @@ contains
        inform%error_message = 'Unsupported value of inner_method passed in options'
     elseif ( inform%status ==  NLLS_ERROR_PRINT_LEVEL) then
        inform%error_message = 'Illegal value of print_level in options'
-    elseif ( inform%status ==  NLLS_ERROR_NOT_IMPLEMENTED) then
-       inform%error_message = 'Combination of method/regularization options not yet implemented'
+    elseif ( inform%status == NLLS_ERROR_BAD_BOX_BOUNDS ) then
+       inform%error_message = 'Bad bound constraints (blx <= bux)'
+    elseif ( inform%status ==  NLLS_ERROR_PG_STEP ) then
+       inform%error_message = 'Linesearch in projected gradient direction failed'
+    elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then
+       inform%error_message = 'Unsupported value of linesearch type (box_linesearch_type)'
     elseif ( inform%status ==  NLLS_ERROR_UNEXPECTED) then
        inform%error_message = 'Unexpected error occured'
     else
@@ -1038,10 +1312,9 @@ contains
     integer :: i, jj
     logical :: scaling_used
     real(wp) :: normx
-    Character(Len=85) :: rec(1)
+    Character(Len=100) :: rec(1)
     integer :: num_methods_tried, subproblem_method
     logical :: subproblem_success
-        
 
     if (.not. w%allocated) then
       inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -1053,6 +1326,7 @@ contains
     w%scale = 1.0_wp
 
     norm_2_d = 1.0e10_wp ! set norm_2_d so that it can't be undefined later
+    norm_S_d = 1.0e10_wp ! set norm_S_d so that it can't be undefined later
 
     if ( options%model == 4 ) then
        ! tensor model -- call ral_nlls again
@@ -1063,6 +1337,9 @@ contains
        If (buildmsg(4, .False., options)) Then
          Write(rec(1), Fmt=8000)
          Call printmsg(4, .False., options, 1, rec)
+       End If
+       If (inform%status/=0) Then
+         Go To 100
        End If
        norm_2_d = norm2(d(1:n)) ! ||d||_D
        Xnew = X + d
@@ -1159,19 +1436,25 @@ contains
        num_methods_tried = 0
 
        do while (.not. subproblem_success)
-          
+
           if  (num_methods_tried>0) then
              ! If we're using a method for the second time, or
-             ! we're not allowing a fallback, then bail...
-             if ( (subproblem_method == options%nlls_method) .or. & 
-                  (.not. options%allow_fallback_method)) Go To 100
+             ! we're not allowing a fallback, then bail with an
+             ! appropiate exit code
+             if ( (subproblem_method == options%nlls_method) .or. &
+                  (.not. options%allow_fallback_method)) Then
+                  ! Force no progress error if fall-back was tried otherwise
+                  ! keep existing error status
+                  If (options%allow_fallback_method) inform%status = nlls_error_x_no_progress
+                  Go To 100
+                End If
 
              if (buildmsg(5,.False.,options)) then
                 Write(rec(1), Fmt=3040)
                 Call printmsg(5,.False.,options,1,rec)
              end if
           end if
-       
+
           if ( options%type_of_method == 1) then
 
              select case (subproblem_method)
@@ -1298,11 +1581,13 @@ contains
        
         ! reverse the scaling on the step
         if ( (scaling_used) ) then
+           ! recalculate ||d||
+           norm_2_d = 0.0_wp
            do i = 1, n
               d(i) = d(i) / w%scale(i)
+              norm_2_d = norm_2_d + d(i)**2
            end do
-           ! recalculate ||d||
-           norm_2_d = norm2(d)
+           norm_2_d = sqrt(norm_2_d)
         else
            norm_2_d = norm_S_d
         end if
@@ -1339,7 +1624,7 @@ contains
 3020 FORMAT('*** Solving the regularized subproblem using ',A,' ***')
 3030 FORMAT('*** Error or Subproblem solution NOT found ***')
 3040 FORMAT('*** Subproblem solution not found.  Trying next method ***')
-8000 Format(85('-'))
+8000 Format(99('-'))
 
    END SUBROUTINE calculate_step
 
@@ -1515,7 +1800,7 @@ contains
 
      alpha = norm2(g)**2 / norm2( w%Jg )**2
 
-     w%d_sd = alpha * g;
+     w%d_sd(:) = alpha * g;
 
      ! Solve the linear problem...
      select case (options%model)
@@ -1539,7 +1824,7 @@ contains
      else
        ! Dogleg step
         w%d_sd = alpha * w%d_sd
-        w%ghat = w%d_gn - w%d_sd
+        w%ghat(:) = w%d_gn - w%d_sd
         call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
         if ( inform%status /= 0 ) goto 100
         d = w%d_sd + beta * w%ghat
@@ -1585,7 +1870,7 @@ contains
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
 
-     tau = 1.0e-4_wp
+     tau = 1.0e-4_wp ! toltm4
      obj_p0 = HUGE(wp)
 
      ! The code finds
@@ -1645,7 +1930,7 @@ contains
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(w%y_hardcase)
         call matmult_outer( matmul(w%B,w%y_hardcase), size_hard(2), n, w%M1_small)
-        w%M0_small = A(:,:) + lam*w%B(:,:) + w%M1_small
+        w%M0_small(:,:) = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model)
         case (1)
@@ -1902,7 +2187,7 @@ contains
            goto 100
         end if
 
-        w%q = d ! w%q = R'\d
+        w%q(:) = d ! w%q = R'\d
         CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, &
              1, 1.0_wp, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
 
@@ -2124,7 +2409,7 @@ contains
         end if
 
         if (region .ne. 1 ) then ! in F
-           w%q = d ! w%q = R'\d
+           w%q(:) = d ! w%q = R'\d
            CALL DTRSM( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, &
                 1, 1.0_wp, w%LtL, n, w%q, n )
            nq = norm2(w%q)
@@ -2819,11 +3104,11 @@ contains
           end if
           inform%h_eval = inform%h_eval + 1
           If (inform%external_return /= 0) Then
-             inform%external_name = 'eval_HF'
-             inform%status = NLLS_ERROR_EVALUATION
-             return
+            inform%external_name = 'eval_HF'
+            inform%external_return = 2513
+            inform%status = NLLS_ERROR_EVALUATION
+            Go To 100
           End If
-
        else
           ! use the rank-one approximation...
           call rank_one_update(w%hf,w,n,options)
@@ -2833,6 +3118,9 @@ contains
        if (options%regularization > 0) then
           call update_regularized_hessian(w%hf,X,n,options)
        end if
+
+100    Continue
+
      end subroutine apply_second_order_info
 
      subroutine update_regularized_normF(normF,normX,options)
@@ -2904,8 +3192,8 @@ contains
 
        real(wp) :: yts, alpha, dSks
 
-       w%y       = w%g_old   - w%g
-       w%y_sharp = w%g_mixed - w%g
+       w%y(:)       = w%g_old   - w%g
+       w%y_sharp(:) = w%g_mixed - w%g
 
        yts = dot_product(w%d,w%y)
        if ( abs(yts) < 10.0_wp * epsmch ) then
@@ -2915,7 +3203,7 @@ contains
 
        call mult_J(hf,n,n,w%d,w%Sks) ! hfs = S_k * d
 
-       w%ysharpSks = w%y_sharp - w%Sks
+       w%ysharpSks(:) = w%y_sharp - w%Sks
 
        ! now, let's scale hd (Nocedal and Wright, Section 10.2)
        dSks = abs(dot_product(w%d,w%Sks))
@@ -2950,8 +3238,8 @@ contains
        type( nlls_workspace ), intent(inout) :: w
        Integer :: nrec
        Character(Len=80) :: rec(1)
-       Logical :: prnt3
-       prnt3 = buildmsg(5,.false.,options)
+       Logical :: prnt
+       prnt = buildmsg(5,.false.,options)
        nrec = 0
 
        select case(options%tr_update_strategy)
@@ -2959,11 +3247,11 @@ contains
           if (rho < options%eta_success_but_reduce) then
              ! unsuccessful....reduce Delta
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
-             If (prnt3) Write(rec(1), Fmt=3010) w%Delta
+             If (prnt) Write(rec(1), Fmt=3010) w%Delta
              nrec=1
           else if (rho < options%eta_very_successful) then
              ! doing ok...retain status quo
-             If (prnt3) Write(rec(1), Fmt=3020) w%Delta
+             If (prnt) Write(rec(1), Fmt=3020) w%Delta
              nrec=1
           else if (rho < options%eta_too_successful ) then
              ! more than very successful -- increase delta
@@ -2985,17 +3273,17 @@ contains
                 inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
                 Go To 100
              end select
-             If (prnt3) Write(rec(1), Fmt=3030) w%Delta
+             If (prnt) Write(rec(1), Fmt=3030) w%Delta
              nrec=1
           else if (rho < HUGE(wp)) then
-             If (prnt3) Write(rec(1), Fmt=3040) w%Delta
+             If (prnt) Write(rec(1), Fmt=3040) w%Delta
              nrec=1
              ! too successful...accept step, but don't change w%Delta
           else
              ! just incase (NaNs, rho too big, and the like...)
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -1.0_wp ! set to be negative, so that the logic works....
-             If (prnt3) Write(rec(1), Fmt=3050) w%Delta
+             If (prnt) Write(rec(1), Fmt=3050) w%Delta
              nrec=1
           end if
        case(2) ! Continuous method
@@ -3003,25 +3291,25 @@ contains
           ! http://www2.imm.dtu.dk/documents/ftp/tr99/tr05_99.pdf
           if (rho >= options%eta_too_successful) then
              ! too successful....accept step, but don't change w%Delta
-             If (prnt3) Write(rec(1), Fmt=3040) w%Delta
+             If (prnt) Write(rec(1), Fmt=3040) w%Delta
              nrec=1
           else if (rho > options%eta_successful) then
              w%Delta = w%Delta * min(options%radius_increase, &
                   max(options%radius_reduce, &
                   1 - ( (options%radius_increase - 1) * ((1 - 2*rho)**w%tr_p)) ))
              w%tr_nu = options%radius_reduce
-             If (prnt3) Write(rec(1), Fmt=3060) w%Delta
+             If (prnt) Write(rec(1), Fmt=3060) w%Delta
              nrec=1
           else if ( rho <= options%eta_successful ) then
              w%Delta = w%Delta * w%tr_nu
              w%tr_nu =  w%tr_nu * 0.5_wp
-             If (prnt3) Write(rec(1), Fmt=3010) w%Delta
+             If (prnt) Write(rec(1), Fmt=3010) w%Delta
              nrec=1
           else
              ! just incase (NaNs and the like...)
              w%Delta = max( options%radius_reduce, options%radius_reduce_max) * w%Delta
              rho = -1.0_wp ! set to be negative, so that the logic works....
-             If (prnt3) Write(rec(1), Fmt=3050) w%Delta
+             If (prnt) Write(rec(1), Fmt=3050) w%Delta
              nrec=1
           end if
        case default
@@ -3031,8 +3319,8 @@ contains
 
 100    Continue
 
-       If (nrec>0.and.prnt3) Then
-         Call Printmsg(3,.False.,options,nrec,rec)
+       If (nrec>0.and.prnt) Then
+         Call Printmsg(5,.False.,options,nrec,rec)
        End If
 
 3010   FORMAT('Unsuccessful step -- decreasing Delta to', ES12.4)
@@ -3044,11 +3332,15 @@ contains
      end subroutine update_trust_region_radius
 
      subroutine test_convergence(normF,normJF,normF0,normJF0,norm_2_d,options,inform)
+       ! Assumes normF0 is not zero
        Implicit None
        real(wp), intent(in) :: normF, normJf, normF0, normJF0, norm_2_d
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       Character(Len=8), Parameter :: labels(3) = (/'||f||   ', 'gradient', 'step    '/)
+       Character(Len=60), Parameter :: labels(3) = (/ &
+         'Terminated, found point with small ||f|| at iteration  ', &
+         'Converged, found point with small gradient at iteration', &
+         'Terminated, small step size taken at iteration         '/)
        Integer :: nlabel
        Character(Len=80) :: rec(1)
 
@@ -3074,10 +3366,9 @@ contains
 !     Pretty print results
       if ((inform%convergence_normf == 1 .Or. inform%convergence_normg == 1   &
          .Or. inform%convergence_norms == 1).And.buildmsg(5,.false.,options)) Then
-        write(rec(1),Fmt=99999) 'Converged (',Trim(labels(nlabel)),   &
-          ' test) at iteration', inform%iter
+        write(rec(1),Fmt=99999) Trim(labels(nlabel)), inform%iter
         Call Printmsg(5,.false.,options,1,rec)
-99999 Format (3A,1X,I0)
+99999 Format (A,1X,I0)
       End If
      end subroutine test_convergence
 
@@ -3156,7 +3447,7 @@ contains
      end subroutine scale_J_by_weights
 
      subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
-
+       Implicit None
        integer, intent(in) :: n, m
        real(wp), intent(in) :: X(:)
        type( nlls_options ), intent(in) :: options
@@ -3168,7 +3459,8 @@ contains
 
        integer :: i
        real (wp) :: normjfnew
-       
+
+
        call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
        inform%g_eval = inform%g_eval + 1
        If (inform%external_return /= 0) Then
@@ -3184,10 +3476,10 @@ contains
        ! reset g
        if (.not. options%exact_second_derivatives) then
           ! this is already saved...
-          w%g = w%g_old
+          w%g(:) = w%g_old
        else
           call mult_Jt(w%J,n,m,w%f,w%g,options)
-          w%g = -w%g
+          w%g(:) = -w%g
        end if
 
        normjfnew = norm2(x=w%g)
@@ -3198,7 +3490,7 @@ contains
        End If
 
 100    continue
-       
+
      end subroutine reset_gradients
 
 !     subroutine add_matrices3(A,B,n,C)
@@ -3611,6 +3903,8 @@ contains
        w%tparams%parent_params => params
        w%tparams%tenJ => tenJ
 
+       md = 0.0_wp
+
        if (.not. w%tparams%eval_hp_provided) then
           ! let's get all the Hi's...
           do i = 1,m
@@ -3663,14 +3957,34 @@ contains
              exit
           end if
        end do
+       ! Account for the eval_Hp calls, every call to evaltensor_f implies
+       ! a call to eval_hp
+       If (w%tparams%eval_hp_provided) Then
+         inform%hp_eval = inform%hp_eval + tensor_inform%f_eval
+       End If
+
        call nlls_finalize(inner_workspace,w%tensor_options)
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
 
+       If (inform%status/=0) Then
+         Go To 100
+       End If
+
         ! now we need to evaluate the model at the new point
         w%tparams%extra = 0
-        ! Does not fail
+
         call evaltensor_f(inform%external_return, n, m, d, &
              w%model_tensor, w%tparams)
+        If (w%tparams%eval_hp_provided) Then
+          inform%hp_eval = inform%hp_eval + 1
+        End If
+        If (inform%external_return/=0) Then
+          inform%status = NLLS_ERROR_EVALUATION
+          inform%external_name = 'evaltensor_f'
+          inform%external_return = 2515
+          Go To 100
+        End If
+
         md = 0.5_wp * norm2( w%model_tensor(1:m) )**2
         ! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
@@ -3729,16 +4043,17 @@ contains
        class( params_base_type ), intent(inout) :: params
        integer :: ii, status, compute_Hp
 
-       compute_Hp = 0 
-       
+       compute_Hp = 0
+
        select type(params)
        type is(tensor_params_type)
 
           ! if the user has provided a hp routine, then  try to use that
           if (params%eval_hp_provided) then
+             status = 0
              call params%eval_HP(status,n,params%m,params%x,s(1:n),params%tenJ%Hs,params%parent_params)
              ! if this fails, try our own routine to compute Hp
-             if (status .ne. 0) compute_Hp = 1
+             If (status .ne. 0) compute_Hp = 1
           else
              compute_Hp = 1
           end if
@@ -3812,7 +4127,7 @@ contains
        type is (tensor_params_type)
           params%tenJ%H(1:n,1:n) = 0.0_wp
           call params%eval_HF(status,n,params%m,params%x,f(1:m),HF(1:n**2),params%parent_params)
-          if (status .ne. 0) return
+          if (status /= 0) GoTo 100
 !!$          do ii = 1,params%m
 !!$             params%tenJ%H(1:n,1:n) = params%tenJ%H(1:n,1:n) + f(ii)*params%Hi(1:n,1:n,ii)
 !!$          end do
@@ -3833,6 +4148,7 @@ contains
              end do
           end if
        end select
+100    Continue
      end subroutine evaltensor_HF
 
      subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
@@ -3855,9 +4171,11 @@ contains
        else
           call eval_HF(inform%external_return, n, m, X, ei, Hi, params)
        end if
+       inform%h_eval = inform%h_eval + 1
        If (inform%external_return/=0) Then
-         inform%status = NLLS_ERROR_FROM_EXTERNAL
+         inform%status = NLLS_ERROR_EVALUATION
          inform%external_name = "eval_HF"
+         inform%external_return = 2513
        End iF
      end subroutine get_Hi
 
@@ -3872,16 +4190,667 @@ contains
          inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
        ElseIf (opt%print_level < 0 .Or. Opt%print_level > 5 ) Then
          inform%status = NLLS_ERROR_PRINT_LEVEL
-!      ElseIf (opt%model==4.And.opt%nlls_method==3.And.opt%type_of_method==2) Then
-!        If (opt%reg_order/=2.0_wp.And.opt%reg_order>0) Then
-!         This specific option combination is not yet implemented!
-!          inform%status = NLLS_ERROR_NOT_IMPLEMENTED
-!        End If
+       ElseIf (opt%box_linesearch_type<1 .Or. opt%box_linesearch_type>2) Then
+         inform%status = NLLS_ERROR_UNSUPPORTED_LINESEARCH
 !      ElseIf
 !        ...
        End If
 
-     End Subroutine
+     End Subroutine check_options
+
+!    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!    !!!!!               BOX-CONSTRAINTS RELATED ROUTINES                   !!!!
+!    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    Subroutine linesearch_steps(n,m,success,tau,x,normx,normfnew,normjfnew,eval_f, &
+      eval_j,lstype,nlab,w,params,options,inform,weights)
+!     ++++++++++++++++++++++++++++++++++++++++++++++++++!
+!     Linesearche_steps: performs a variety of LS       !
+!     if sk is of descent => LS step                    !
+!               otherwise => PG step                    !
+!     ++++++++++++++++++++++++++++++++++++++++++++++++++!
+      Implicit None
+      Real(Kind=wp), Parameter         :: minstep = sqrt(epsmch)/100.0_wp
+      Integer, Intent (In)             :: n, m, nlab
+      Logical, Intent (In)             :: success
+      Real (Kind=wp), Intent (InOut)   :: x(n)
+      Real (Kind=wp), Intent (In)      :: tau
+      Real (Kind=wp), Intent (Out)     :: normx, normfnew, normjfnew
+      Procedure (eval_f_type)          :: eval_f
+      Procedure (eval_j_type)          :: eval_j
+      Integer, Intent (Inout)          :: lstype
+      Class (params_base_type), Intent (Inout) :: params
+      Type (nlls_workspace), Intent (Inout) :: w
+      Type (nlls_options), Intent (In) :: options
+      Type (nlls_inform), Intent (Inout) :: inform
+      Real (Kind=wp), Intent (In), Dimension (m), Optional :: weights
+
+      Logical                          :: take_pg_step
+      Integer                          :: ierr
+      Real(Kind=wp)                    :: alpha
+      
+      Continue
+      
+      take_pg_step = .True.
+
+      Select Type (params)
+      Class Is (params_box_type)
+!       Box descent conditions were not met.
+!       lstype=1: search direction:=Xnew-X is of descent, so take LS step, or
+!       lstype=2: perform a Cauchy step (PG step)
+!       Make sure projection is NOT too orthogonal wrt the active constraints
+        If (-dot_product(params%g,w%d)<=-options%box_kanzow_descent*w%norm_2_d**  &
+          options%box_kanzow_power .And. tau>options%box_tau_descent) Then
+          lstype = 1
+!         Rescale search direction to match norm of gradient
+          w%d(1:n) = (w%normjf/w%norm_2_d)*w%d(1:n)
+          w%norm_2_d = norm2(w%d)
+          Select Case (options%box_linesearch_type)
+          Case (1)
+            alpha = 1.0_wp
+!           Dennis-Schnabel linesearch -----------------------------------------
+            If (present(weights)) Then
+              Call ls_step_ds(m=m,n=n,x=x,fdx=-params%g,normfnew=normfnew,     &
+                normjfnew=normjfnew,normx=normx,params=params,eval_f=eval_f,   &
+                eval_j=eval_j,inform=inform,options=options,w=w,alpha=alpha,   &
+                ierr=ierr,weights=weights)
+            Else
+              Call ls_step_ds(m=m,n=n,x=x,fdx=-params%g,normfnew=normfnew,     &
+                normjfnew=normjfnew,normx=normx,params=params,eval_f=eval_f,   &
+                eval_j=eval_j,inform=inform,options=options,w=w,alpha=alpha,   &
+                ierr=ierr)
+            End If
+          Case (2)
+            If (params%quad_i>=options%box_quad_match) Then
+              alpha = max(min(1.0E+10_wp,0.5_wp*options%box_alpha_scale*inform%step/w%norm_2_d),minstep)
+!             alpha = 0.5_wp
+            Else
+!             alpha = 1.0/hz_psi2
+              alpha = 0.5_wp
+            End If
+!           Hager-Zhang Linesearch ---------------------------------------------
+            If (present(weights)) Then
+              Call ls_step_hz(normf=w%normf,m=m,fnew=w%fnew,nvar=n,x=x,        &
+                fdx=params%g,dir=w%d,normfnew=normfnew,xnew=w%xnew,            &
+                normx=normx,params=params,eval_f=eval_f,inform=inform,         &
+                options=options,alpn=alpha,eval_j=eval_j,normjfnew=normjfnew,  &
+                ifail=ierr,w=w,weights=weights)
+            Else
+              Call ls_step_hz(normf=w%normf,m=m,fnew=w%fnew,nvar=n,x=x,        &
+                fdx=params%g,dir=w%d,normfnew=normfnew,xnew=w%xnew,            &
+                normx=normx,params=params,eval_f=eval_f,inform=inform,         &
+                options=options,alpn=alpha,eval_j=eval_j,normjfnew=normjfnew,  &
+                ifail=ierr,w=w)
+            End If
+          Case Default
+!           This should never happen
+            inform%status = nlls_error_unexpected
+            Go To 100
+          End Select
+          If (ierr==0) then
+            take_pg_step = .False.
+          Else If (inform%status/=0) Then
+            ! Unrecoverable error occured
+            Go To 100
+          End If
+        End If
+        If (take_pg_step) Then
+!         Nonmonotone Projected Gradient Linesearch ----------------------------
+          lstype = lstype + 2
+          If (present(weights)) Then
+            Call pg_step(m,n,x,normx,normfnew,normjfnew,eval_f,eval_j,params,  &
+              w,options,inform,weights)
+          Else
+            Call pg_step(m,n,x,normx,normfnew,normjfnew,eval_f,eval_j,params,  &
+              w,options,inform)
+          End If
+          If (inform%status/=0) Then
+            Go To 100
+          End If
+        End If
+!       Update LS/PG step data
+        w%d(1:n) = w%xnew(1:n) - x(1:n)
+        w%norm_2_d = norm2(w%d)
+!       ---------------------------------!
+!       Update TR radius with LS/PG step !
+!       ---------------------------------!
+        w%Delta = options%box_delta_scale*w%norm_2_d
+
+100     Continue
+
+      End Select
+
+    End Subroutine linesearch_steps
+
+!     ==========================================================================
+!     =================        LINE SEARCHES        ============================
+!     ==========================================================================
+
+!     Translated (with a few changes) from Schnabel, Koontz & Weiss uncmin.f,  v1.3
+!     Main changes include the addition of box projection and modification of the scaling
+!     logic since uncmin.f operates in the original (unscaled) variable space.
+      Recursive Subroutine lnsrch(n,m,x,f,g,p,alpha,sigma,xpls,fpls,eval_f,mxtake,   &
+        stepmx,steptl,fnew,inform,params,options,iretcd,weights,sx)
+        Use ral_nlls_workspaces
+        Implicit None
+
+        Integer, Intent (In)           :: n, m
+        Integer, Intent (Out)          :: iretcd
+        Real (Kind=wp), Intent (In)    :: f, g(n), p(n), sigma, stepmx,  &
+                                          steptl
+        Real (Kind=wp), Intent (Inout) :: x(n), xpls(n), fpls, fnew(m),alpha
+        Real (Kind=wp), Intent (In), Optional :: weights(n), sx(n)
+        Logical, Intent (Out)          :: mxtake
+        Class (params_box_type), Intent (InOut) :: params
+        Type (nlls_inform), Intent (Inout) :: inform
+        Type (nlls_options), Intent (In) :: options
+        Procedure (eval_f_type)        :: eval_f
+
+        Integer                        :: i, j, firstback
+        Real (Kind=wp)                 :: disc, a3, b, t1, t2, t3,             &
+                                          tlmbda, rmnlmb, scl, rln, sln, slp,  &
+                                          tmp1, tmp2, pfpls, plmbda, normfnew, &
+                                          normx
+        Character(Len=80)              :: rec(4)
+        Intrinsic                      :: huge, norm2, max, abs
+
+        Continue
+
+        firstback = 1
+        pfpls = 0.0_wp
+        plmbda = 0.0_wp
+        scl = 1.0_wp
+        mxtake = .False.
+        iretcd = 2
+        sln = norm2(scl*p)
+        If (sln>stepmx) Then
+!         newton step longer than maximum allowed
+          scl = stepmx/sln
+          sln = stepmx
+        End If
+        slp = 0.0_wp
+        rln = 0.0_wp
+        Do i = n, 1, -1
+          slp = slp + g(i)*scl*p(i) ! g^T * scl*p
+          tmp1 = max(abs(x(i)),1.0_wp)
+          tmp2 = abs(scl*p(i))/tmp1
+          If (rln<tmp2) Then
+            rln = tmp2
+          End If
+        End Do
+        If (slp >= 0.0_wp) Then
+          inform%status = NLLS_ERROR_UNEXPECTED
+          Go To 100
+        End If
+        rmnlmb = steptl/rln
+
+        If (buildmsg(5, .False., options)) Then
+          Write (rec(1),Fmt=99999)
+          Write (rec(2),Fmt=99996) 'Dennis-Schnabel Line Search'
+          Write (rec(3),Fmt=99998) 'It', 'alpn', 'fpls', 'pi', 'flag'
+          Write (rec(4),Fmt=99997) 0, 1.0E100_wp, f, slp, 0
+          Call printmsg(5, .False., options, 4, rec)
+        End If
+99999   Format (60('-'))
+99998   Format (A2,1X,A8,1X,A16,1X,A9,1X,A4)
+99997   Format (I2,1X,Es8.2e2,1X,Es16.8e2,1X,Es9.2e2,1X,I4)
+99996   Format (A)
+        Do j = 1, options%box_ls_step_maxit
+          ! xpls(i) = P(x(i) + alpha*scl*p(i))
+          Call box_proj(params, n, x, xpls, p, alpha*scl)
+
+!         evaluate function at new point */
+          If (.Not. present(sx)) Then
+            Call eval_f(inform%external_return,n,m,xpls,fnew,params)
+            inform%f_eval = inform%f_eval + 1
+            inform%f_eval_ls = inform%f_eval_ls + 1
+            If (inform%external_return/=0) Then
+              iretcd = 166
+              Go To 100
+            Else
+              If (present(weights)) Then
+!               set f -> Wf
+                fnew = weights*fnew
+              End If
+              normfnew = norm2(fnew)
+
+              If (options%regularization>0) Then
+                normx = norm2(xpls)
+                Call update_regularized_normf(normfnew,normx,options)
+              End If
+            End If
+          Else
+            Do i = 1, n
+              xpls(i) = sx(i)*xpls(i)
+            End Do
+
+            Call eval_f(inform%external_return,n,m,xpls,fnew,params)
+            inform%f_eval = inform%f_eval + 1
+            inform%f_eval_ls = inform%f_eval_ls + 1
+            If (inform%external_return/=0) Then
+              iretcd = 165
+              Go To 100
+            Else
+              If (present(weights)) Then
+!               set f -> Wf
+                fnew = weights*fnew
+              End If
+              normfnew = norm2(fnew)
+
+              If (options%regularization>0) Then
+                normx = norm2(xpls)
+                Call update_regularized_normf(normfnew,normx,options)
+              End If
+            End If
+
+            Do i = 1, n
+              xpls(i) = xpls(i)/sx(i)
+            End Do
+          End If
+
+          fpls = 0.5_wp*normfnew**2
+          If (buildmsg(5, .False., options)) Then
+            Write (rec(1),Fmt=99997) j, alpha, fpls, slp, 0
+            Call printmsg(5, .False., options, 1, rec)
+          End If
+
+
+          If (fpls<=f+slp*sigma*alpha) Then ! solution found */
+            iretcd = 0
+            If (alpha==1.0_wp .And. sln>stepmx*0.99_wp) Then
+              mxtake = .True.
+            End If
+            Go To 100
+          End If
+
+!         solution not (yet) found
+!         First find a point with a finite value
+
+          If (alpha<rmnlmb) Then
+!           no satisfactory xpls found sufficiently distinct from x
+            iretcd = 3
+            Go To 100
+          Else
+!           calculate new alpha */
+!           modifications to cover non-finite values */
+            If (inform%external_return/=0 .Or. fpls/=fpls .Or.                 &
+              abs(fpls)>huge(fpls)-1.0_wp) Then
+              alpha = alpha*0.1_wp
+              firstback = 1
+            Else
+              If (firstback/=0) Then ! /*	first backtrack: quadratic fit */
+                tlmbda = -alpha*slp/((fpls-f-slp)*2.0_wp)
+                firstback = 0
+              Else ! all subsequent backtracks: cubic fit */
+                t1 = fpls - f - alpha*slp
+                t2 = pfpls - f - plmbda*slp
+                t3 = 1.0_wp/(alpha-plmbda)
+                a3 = 3.0_wp*t3*(t1/(alpha*alpha)-t2/(plmbda*plmbda))
+                b = t3*(t2*alpha/(plmbda*plmbda)-t1*plmbda/(alpha*alpha))
+                disc = b*b - a3*slp
+                If (disc>b*b) Then
+!                 only one positive critical point, must be minimum */
+!                 tlmbda = (-b + ((a3 < 0)? -(LM_REAL)sqrt(disc): (LM_REAL)sqrt(disc))) /a3;
+!                 tlmbda = (-b + (merge( (a3 < 0), -sqrt(disc), sqrt(disc) ))) /a3
+                  tlmbda = (-b+(merge(-sqrt(disc),sqrt(disc),a3<0.0_wp)))/a3
+                Else
+!                 both critical points positive, first is minimum */
+!                 tlmbda = (-b + ((a3 < 0)? (LM_REAL)sqrt(disc): -(LM_REAL)sqrt(disc))) /a3;
+                  tlmbda = (-b+(merge(sqrt(disc),-sqrt(disc),a3<0.0_wp)))/a3
+                End If
+                If (tlmbda>alpha*0.5_wp) Then
+                  tlmbda = alpha*0.5_wp
+                End If
+              End If
+              plmbda = alpha
+              pfpls = fpls
+              If (tlmbda<alpha*0.1_wp) Then
+                alpha = alpha*0.1_wp
+              Else
+                alpha = tlmbda
+              End If
+            End If
+          End If
+        End Do
+
+        iretcd = 1
+
+100     Continue
+        inform%ls_step_iter = inform%ls_step_iter + j
+        If (buildmsg(5,.False.,options)) Then
+          Write (rec(1),Fmt=99999)
+          Call printmsg(5, .False., options, 1, rec)
+        End If
+      End Subroutine lnsrch
+
+      Subroutine ls_step_ds(m,n,x,fdx,normfnew,normJFnew,normx,params, &
+        eval_f,eval_J,inform,options,w,alpha,ierr,weights)
+
+        Use ral_nlls_workspaces
+
+        Implicit None
+        Integer, Intent (In)           :: n, m
+        Integer, Intent (Out)          :: ierr
+        Real (Kind=wp), Intent (InOut) :: x(n)
+        Real (Kind=wp), Intent (Out)   :: normfnew, normx, normJFnew
+        Real (Kind=wp), Intent (In)    :: alpha, fdx(n)
+        Class (params_box_type), Intent (InOut) :: params
+        Type (nlls_inform), Intent (Inout) :: inform
+        Type (nlls_options), Intent (In) :: options
+        Type (nlls_workspace), Intent(InOut) :: w
+        Real (Kind=wp), Intent (In), Dimension (m), Optional :: weights
+        Procedure (eval_f_type)        :: eval_f
+        Procedure (eval_j_type)        :: eval_j
+
+        Logical                        :: mxtake
+        Real (Kind=wp)                 :: alpn, f0, steptl, stepmx, fpls
+        Intrinsic                      :: norm2
+        Continue
+        ierr = 0
+        If (alpha/=alpha) Then
+          ierr = -99
+          Go To 100
+        End If
+        alpn = alpha
+        ierr = 0
+        stepmx = 1.0E3_wp*max(w%norm_2_d,1.0_wp)
+!       extend the life of Dennis-Schnabel LS by allowing smaller steps
+        steptl = sqrt(epsmch) ! this parameter determines how small
+!       can the step be before giving up, set from 1e3 to 1.0
+        f0 = 0.5_wp*w%normf**2
+        If (present(weights)) Then
+          Call lnsrch(n=n,m=m,x=x,f=f0,g=fdx,p=w%d,alpha=alpn,                 &
+            sigma=options%box_wolfe_descent,xpls=w%xnew,fpls=fpls,             &
+            eval_f=eval_f,mxtake=mxtake,stepmx=stepmx,steptl=steptl,           &
+            fnew=w%fnew,inform=inform,params=params,options=options,           &
+            iretcd=ierr,weights=weights)
+        Else
+          Call lnsrch(n=n,m=m,x=x,f=f0,g=fdx,p=w%d,alpha=alpn,                 &
+            sigma=options%box_wolfe_descent,xpls=w%xnew,fpls=fpls,             &
+            eval_f=eval_f,mxtake=mxtake,stepmx=stepmx,steptl=steptl,           &
+            fnew=w%fnew,inform=inform,params=params,options=options,           &
+            iretcd=ierr)
+        End If
+        If (ierr/=0) Then
+          Go To 100
+        End If
+
+        normfnew = sqrt(2.0_wp*fpls)
+
+        ! step seems to be good -- calculate the Jacobian
+        if (.not. options%exact_second_derivatives) then 
+           ! save the value of g_mixed, which is needed for
+           ! call to rank_one_update
+           ! g_mixed = -J_k^T r_{k+1}
+           call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+           w%g_mixed(:) = -w%g_mixed(:)
+        end if
+
+        ! evaluate J and hf at the new point
+        call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+        inform%g_eval = inform%g_eval + 1
+        inform%g_eval_ls = inform%g_eval_ls + 1
+        If (inform%external_return /= 0) Then
+          inform%external_name = 'eval_J'
+          inform%external_return = 2512
+          inform%status = NLLS_ERROR_EVALUATION
+          ierr = -90
+          goto 100
+        End If
+        if ( present(weights) ) then
+           ! set J -> WJ
+           call scale_J_by_weights(w%J,n,m,weights,options)
+        end if
+
+        If (options%exact_second_derivatives) Then
+!         Store the gradient at iter k prior to overwriting w%g with gk+1
+!         Only need to store if options%exact_second_derivatives=.TRUE.
+!         Otherwise w%g_old is available.
+          params%g(1:n) = w%g(1:n)
+        End If
+
+        ! g = -J^Tf
+        call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+        w%g(:) = -w%g(:)
+        if ( options%regularization > 0 ) Then
+          call update_regularized_gradient(w%g,w%Xnew,normX,options)
+        End If
+
+        normJFnew = norm2(w%g)
+        If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
+          ! Initial guess x0 is not usable
+          inform%external_name = 'eval_J'
+          inform%external_return = 2512
+          inform%status = NLLS_ERROR_EVALUATION
+          ierr = -91
+        End If
+
+100     Continue
+
+      End Subroutine ls_step_ds
+!-------------------------------------------------------------------------------
+      Subroutine ls_step_hz(normf,m,fnew,nvar,x,fdx,dir,normfnew,xnew,normx,params,  &
+        eval_f,inform,options,alpn,eval_j,normJFnew,ifail,w,weights,sx)
+        Use ral_nlls_workspaces
+        Implicit None
+        Integer, Intent (In)           :: nvar, m
+        Integer, Intent (Inout)        :: ifail
+        Real (Kind=wp), Intent (In)    :: normf,  fdx(nvar), dir(nvar)
+        Real (Kind=wp), Intent (Out)   :: normfnew, xnew(nvar), fnew(m), normx, normJFnew
+        Real (Kind=wp), Intent (Inout) :: x(nvar), alpn
+        Class (params_box_type), Intent (Inout) :: params
+        Type (nlls_inform), Intent (Inout) :: inform
+        Type (nlls_options), Intent (In) :: options
+        Type (nlls_workspace), Intent(InOut) :: w
+        Real (Kind=wp), Intent (In), Optional :: weights(m), sx(nvar)
+        Procedure (eval_f_type)        :: eval_f
+        Procedure (eval_j_type)        :: eval_j
+
+        inform%status = NLLS_ERROR_UNSUPPORTED_LINESEARCH
+        ifail = NLLS_ERROR_UNSUPPORTED_LINESEARCH
+      End Subroutine ls_step_hz
+
+      Subroutine pg_step(m, n, x, normX, normFnew, normJFnew, eval_F, eval_J,   &
+          params, w, options, inform, weights)
+        Implicit None
+        Integer, Intent(In) :: m, n
+        Real(Kind=wp), Intent(In) :: x(n)
+        Real(Kind=wp), Intent(Out) :: normX, normFnew, normJFnew
+        Procedure (eval_f_type)        :: eval_f
+        Procedure (eval_j_type)        :: eval_j
+        Class(params_box_type), Intent(InOut) :: params
+        Type(nlls_options), Intent(In) :: options
+        Type(nlls_workspace), Intent(InOut) :: w
+        Type(nlls_inform), Intent(InOut) :: inform
+        Real(Kind=wp), Intent(In), Dimension(m), Optional :: weights
+        Real(Kind=wp) :: alpha
+        Integer :: ierr
+
+        Continue
+          ! Calculate params%pdir
+          Call box_projdir(params, n=n, x=x, dir=w%g, normg=w%normJF, sigma=1.0_wp)
+          If (params%quad_i>=options%box_quad_match) Then
+            alpha = max(min(1.0_wp,options%box_alpha_scale*inform%step/params% &
+              normpd), 1.0e-10_wp)
+          Else
+            alpha = 1.0_wp
+          End If
+          If (present(weights)) Then
+            Call nmls_pg(m=m,                                                  &
+              fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
+              Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
+              options=options,alpha=alpha,ierr=ierr,weights=weights)
+          Else
+            Call nmls_pg(m=m,                                                  &
+              fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
+              Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
+              options=options,alpha=alpha,ierr=ierr)
+          End If
+          If (ierr==0 .or. ierr==-2) Then
+!           Update w%g JF
+            if (.not. options%exact_second_derivatives) then
+              ! save the value of g_mixed, which is needed for
+              ! call to rank_one_update
+              ! g_mixed = -J_k^T r_{k+1}
+              call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+              w%g_mixed(:) = -w%g_mixed(:)
+            end if
+            ! evaluate J and hf at the new point
+            call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+            inform%g_eval = inform%g_eval + 1
+            inform%g_eval_pg = inform%g_eval_pg + 1
+            If (inform%external_return /= 0) Then
+              inform%external_name = 'eval_J'
+              inform%external_return = 2512
+              inform%status = NLLS_ERROR_EVALUATION
+              goto 100
+            End If
+            if ( present(weights) ) then
+              ! set J -> WJ
+              call scale_J_by_weights(w%J,n,m,weights,options)
+            end if
+            ! g = -J^Tf
+            call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+            w%g(:) = -w%g(:)
+            if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
+            normJFnew = norm2(w%g)
+            If ((log(normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
+              inform%external_name = 'eval_J'
+              inform%external_return = 2512
+              inform%status = nlls_error_evaluation
+            End If
+          Else
+            inform%status = NLLS_ERROR_PG_STEP
+          End If
+
+100       Continue
+      End Subroutine pg_step
+
+      Subroutine nmls_pg(m,fnew,n,x,fdx,normfnew,xnew,normx,params,       &
+        eval_f,inform,options,alpha,ierr,weights)
+!       Assumes fdx is actually -fdx !!!
+        Use nag_export_mod
+        Use ral_nlls_workspaces
+        Implicit None
+        Real(Kind=wp), Parameter        :: smallstep = sqrt(epsmch)/100.0_wp
+        Integer, Intent (In)           :: n, m
+        Integer, Intent (Inout)        :: ierr
+        Real (Kind=wp), Intent (In)    :: x(n), fdx(n)
+        Real (Kind=wp), Intent (Out)   :: normfnew, xnew(n), fnew(m), normx
+        Real (Kind=wp), Intent (Inout) :: alpha
+        Class (params_box_type), Intent (Inout) :: params
+        Type (nlls_inform), Intent (Inout) :: inform
+        Type (nlls_options), Intent (In) :: options
+        Real (Kind=wp), Intent (In), Dimension (m), Optional :: weights
+        Procedure (eval_f_type)        :: eval_f
+        Real (Kind=wp), Parameter      :: npg_delta = epsmch**0.25_wp
+        Real (Kind=wp), Parameter      :: npg_mu1 = epsmch**0.25_wp
+        Real (Kind=wp), Parameter      :: npg_mu2 = 0.8_wp
+
+        Integer                        :: iflag, ils(nps_ils_len), nlab
+        Real (Kind=wp)                 :: rls(nps_rls_len), pi0, f0, falpn
+        Logical                        :: evalok
+        Intrinsic                      :: norm2
+        Character (Len=80)             :: rec(4)
+        Character(Len=5)               :: lab(0:2)=(/'  Ok ','evalf', 'error'/)
+        Continue
+        If (alpha/=alpha .Or. alpha<smallstep .Or. alpha>1.0_wp) Then
+          ierr = 200
+        End If
+        pi0 = -dot_product(fdx,params%pdir)
+        If (pi0>=0.0_wp) Then
+          ierr = 330
+          Go To 100
+        End If
+        ierr = 0
+!       f0 = 0.5_wp * normF**2
+        f0 = 0.5_wp*maxval(params%normfref(1:params%nFref))**2
+        Call e04rlpn(f0=f0,pi0=pi0,dirnrm=1.0_wp,alpn=alpha,maxalp=1.0_wp,     &
+          eta=npg_delta,mu1=npg_mu1,mu2=npg_mu2,maxit=50,ils=ils,rls=rls,      &
+          iflag=iflag)
+        If (buildmsg(5,.False.,options)) Then
+          Write (rec(1),Fmt=19999)
+          Write (rec(2),Fmt=19996)
+          Write (rec(3),Fmt=19997)
+          Write (rec(4),Fmt=99998) 0, '         ', f0, pi0, lab(1)
+          Call Printmsg(5,.False.,options,4,rec)
+        End If
+armijo: Do
+          xnew(1:n) = x(1:n) + alpha*params%pdir(1:n)
+          evalok = .True.
+          falpn = infinity
+!         ======================================================================
+          Call eval_f(inform%external_return,n,m,xnew,fnew,params)
+          inform%f_eval = inform%f_eval + 1
+          inform%f_eval_pg = inform%f_eval_pg + 1
+          If (inform%external_return/=0) Then
+            evalok = .False.
+          Else
+            If (present(weights)) Then
+!             set f -> Wf
+              fnew(1:m) = weights(1:m)*fnew(1:m)
+            End If
+            normfnew = norm2(fnew(1:m))
+            If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
+              evalok = .False.
+            End If
+          End If
+          If (evalok) Then
+            If (options%regularization>0) Then
+              normx = norm2(xnew)
+              Call update_regularized_normF(normfnew,normx,options)
+            End If
+            falpn = 0.5_wp*normfnew**2
+          End If
+!         ======================================================================
+          If (buildmsg(5,.False.,options)) Then
+            Write (rec(2),Fmt=99997) alpha, falpn, pi0, evalok
+          End If
+          Call e04rlln(armijo=.True.,evalok=evalok,alpn=alpha,falp=falpn,      &
+            ils=ils,rls=rls,iflag=iflag)
+            nlab=2
+            If (iflag==0) nlab=0
+            If (iflag==1.or.iflag==-2) nlab=1
+          If (buildmsg(5,.False.,options)) Then
+            Write (rec(1),Fmt=22222) ils(nps_ils_it),trim(rec(2)),lab(nlab)
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
+          If (iflag==0) Then
+            Exit armijo
+          Else If (iflag==1) Then
+            Cycle armijo
+          Else If (iflag==-2) Then
+!           Unseccessful step, bail
+            ierr = -2
+            Exit armijo
+          Else
+            ierr = 1
+            Exit armijo
+          End If
+        End Do armijo
+
+        inform%pg_step_iter = inform%pg_step_iter + ils(nps_ils_it)
+
+100     Continue
+
+        If (buildmsg(5,.False.,options)) Then
+          If (ierr/=0) Then
+            write(rec(1),Fmt=99996) ierr
+            Call Printmsg(5,.False.,options,1,rec)
+          End If
+          Write (rec(1),Fmt=19999)
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
+
+19999   Format (58('-'))
+19996   Format ('Projected Gradient Linesearch')
+19997   Format ('it      alpn   normF(new)         pi        eval  flag')
+22222   Format (I2,1X,A,2X,A5,5X,L1)
+99999   Format (I2,1X,Es9.2e2,1X,Es20.12e2,1X,Es9.2e2,1X,L1,1X,I4,4X)
+99998   Format (I2,1X,A9,1X,Es20.12e2,1X,Es9.2e2,1X,1X,4X,A5)
+99997   Format (Es9.2e2,1X,Es20.12e2,1X,Es9.2e2,3X,L1)
+99996   Format ('Linesearch exit code=',I0)
+
+      End Subroutine nmls_pg
 
    end module ral_nlls_internal
 
