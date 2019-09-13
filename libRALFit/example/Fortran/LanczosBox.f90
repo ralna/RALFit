@@ -100,7 +100,7 @@ program lanczos_box
   type(nlls_inform) :: inform
 
   integer :: m,n
-  real(wp), allocatable :: x(:), xnew(:), d(:), blx(:), bux(:)
+  real(wp), allocatable :: x(:), xnew(:), blx(:), bux(:)
   type(params_type) :: params
   integer :: i
   real(wp) :: tic, toc
@@ -163,7 +163,7 @@ program lanczos_box
   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
  
   ! Add bounds on the variables
-  Allocate(blx(n),bux(n),xnew(n),d(n))
+  Allocate(blx(n),bux(n),xnew(n))
   blx(1:n) = -1.0e20
   bux(1:n) = +1.0e20
   blx(1) = 0.59
