@@ -3824,7 +3824,6 @@ contains
        real( wp ) :: ei( m )
 
        ei = 0.0_wp
-       ! todo today!!!! finish here
        if ( present(weights) ) then
           ei(i) = weights(i)
        else 
