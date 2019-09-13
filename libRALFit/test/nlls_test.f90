@@ -12,7 +12,8 @@ program nlls_test
   type( NLLS_inform )  :: status
   type( NLLS_options ) :: options
   type( user_type ), target :: params
-  real(wp), allocatable :: w(:),x(:)
+  type( user_box_type ), target :: params_box
+  real(wp), allocatable :: w(:),x(:),blx(:),bux(:)
   real(wp), allocatable :: resvec(:)
   real(wp) :: resvec_error
   integer :: m, n, i, no_errors_helpers, no_errors_main
@@ -966,6 +967,66 @@ program nlls_test
      call solve_basic(X,params,options,status)
      if ( status%status .ne. NLLS_ERROR_BAD_TR_STRATEGY ) then 
         write(*,*) 'Error: unsupported TR strategy passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Test for initial point being a solution
+     ! Two cases:
+     ! 1. x is solution point
+     ! 2. x is active and projected gradient is zero
+     call generate_data_example(params_box)
+     call reset_default_options(options)
+     options%maxit = 2
+     options%print_level=0
+     x(:) = (/0.3199787042575630E+00, 0.2752509146444680E-01/)
+     call solve_basic(X,params_box,options,status,.True.)
+     if ( .Not. (status%status == 0 .And. status%iter == 0) ) then 
+        write(*,*) 'Error: x0 solution but not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+     Allocate(blx(n), bux(n))
+     blx(1:n) = -1.0
+     bux(1:n) = blx(1:n)
+     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
+     if (status%status/=0) then
+       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
+       stop
+     End if
+     call solve_basic(X,params_box,options,status)
+     if ( .Not. (status%status == 0 .And. status%iter == 0 .And.               &
+       status%norm_g==0.0) ) then 
+        write(*,*) 'Error: Proj grd at x0 is zero, but not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Unsupported Line Search
+     options%box_linesearch_type = 3
+     options%print_level = 5
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
+        write(*,*) 'Error: unsupported Linesearch type passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Unsupported Print Level
+     options%print_level = 7
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL ) then 
+        write(*,*) 'Error: unsupported print level passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Bad box constraints
+     blx(1:n) = 1.0
+     bux(1:n) = -blx(1:n)
+     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
+     if ( status%status /= NLLS_ERROR_BAD_BOX_BOUNDS ) then 
+        write(*,*) 'Error: Illegal box, but not caught'
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
