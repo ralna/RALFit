@@ -15,7 +15,8 @@ module example_module
   type, extends( params_box_type ) :: user_box_type
      real(wp), allocatable :: x_values(:)
      real(wp), allocatable :: y_values(:)
-     integer :: iter = 0 
+     integer :: iter = 0
+     integer :: n_iter = 1e6 
      integer :: m
   end type user_box_type
 
@@ -51,11 +52,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
             f(i) = params%y_values(i) - exp( ex )
           end do
        type is(user_box_type)
-          do i = 1,m
-            ! Avoid overflow
-            ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
-            f(i) = params%y_values(i) - exp( ex )
-          end do
+          params%iter = params%iter + 1
+          If (params%iter>=params%n_iter) Then
+            f(1:m) = 1.0e6
+          Else
+            do i = 1,m
+              ! Avoid overflow
+              ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+              f(i) = params%y_values(i) - exp( ex )
+            end do
+          End If
        Class Default
          Stop 'wrong class'
        end select

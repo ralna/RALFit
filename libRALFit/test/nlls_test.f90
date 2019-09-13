@@ -1019,6 +1019,7 @@ program nlls_test
         write(*,*) 'Error: unsupported print level passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
+     options%print_level = 0
      status%status = 0
 
      ! Bad box constraints
@@ -1031,6 +1032,75 @@ program nlls_test
      end if
      status%status = 0
 
+
+     ! Projected Gradient Linesearch recovery error after LS D-S failure
+     call reset_default_options(options)
+     x(1) = 1.3_wp
+     x(2) = -2.0_wp
+     blx(1:n) = (/1.2_wp,-10.0_wp/)
+     bux(1:n) = (/1.2_wp,10.0_wp/)
+     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
+     if (status%status/=0) then
+       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
+       stop
+     End if
+     params_box%iter = 0
+     params_box%n_iter = 9
+     call solve_basic(X,params_box,options,status,.True.)
+     if ( status%status /= NLLS_ERROR_PG_STEP ) then 
+        write(*,*) 'Error: PG step failed, but not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Line-search HZ supported but not yet available LINE SEARCH ERROR
+     call reset_default_options(options)
+     x(1) = 1.3_wp
+     x(2) = -2.0_wp
+     blx(1:n) = (/1.2_wp,-10.0_wp/)
+     bux(1:n) = (/1.2_wp,10.0_wp/)
+     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
+     if (status%status/=0) then
+       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
+       stop
+     End if
+     options%box_linesearch_type = 2
+     options%maxit = 4
+     params_box%iter = 0
+     params_box%n_iter = 4
+     call solve_basic(X,params_box,options,status,.True.)
+     if ( status%status /= NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
+        write(*,*) 'Error: HZLS unsupported, but not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Excersize Print Level logic, this is not a test
+     blx(1:n) = (/1.2_wp,-10.0_wp/)
+     bux(1:n) = (/1.2_wp,10.0_wp/)
+     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
+     if (status%status/=0) then
+       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
+       stop
+     End if
+     Do i = 1, 5
+       options%print_level = i
+       Write(options%out, '(80(''=''))')
+       Write(options%out, *) 'Excersizing Print Level = ', options%print_level
+       Write(options%out, '(80(''=''))')
+       Call reset_default_options(options)
+       options%print_header = 4
+       options%print_options = .True.
+       x(1) = 1.3_wp
+       x(2) = -2.0_wp
+       params_box%iter = 0
+       params_box%n_iter = 9
+       Call solve_basic(X,params_box,options,status,.True.)
+       status%status = 0
+     End Do
+     Write(options%out, '(80(''=''))')
+     options%print_level = 0
+
      if (no_errors_main == 0) then
         write(*,*) '*** All (main) tests passed successfully! ***'
      else
@@ -1040,6 +1110,7 @@ program nlls_test
      deallocate(model_to_test)
      deallocate(x)
      deallocate(params%x_values, params%y_values)
+     deallocate(params_box%x_values, params_box%y_values)
      
   end if
 
