@@ -334,6 +334,8 @@ contains
          Call update_regularized_normf(normf=w%normf,normx=normx,    &
            options=options)
        End If
+!      save objective
+       inform%obj = 0.5_wp * ( w%normF**2 )
 !      and evaluate the jacobian
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
@@ -381,7 +383,6 @@ contains
        End If
 
        ! save some data
-       inform%obj = 0.5_wp * ( w%normF**2 )
        Select Type(params)
        Class Is(params_box_type)
          If (params%iusrbox==1) Then
@@ -637,11 +638,7 @@ contains
            ! * w%norm_2_d is the norm of the unprojected trust region step.
            ! if tau << 1 then the TR step is orthogonal to the active constraints
            tau = w%norm_2_d / tau
-           If (tau - 1.0_wp > cmptol) Then
-             inform%status = NLLS_ERROR_UNEXPECTED
-             Go To 100
-           End If
-           ! fix rounding error
+           ! fix rounding & cancelation errors
            tau = max(0.0_wp, min(1.0_wp, tau))
            If (no_reductions==1) Then
 !            gtd = g(x)^T (P(x+d)-x)
