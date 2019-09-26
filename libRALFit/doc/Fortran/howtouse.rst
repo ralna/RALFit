@@ -25,6 +25,8 @@ The user can then call one of the procedures:
 |nlls_iterate| performs one iteration of the non-linear least squares
 solver.
 
+|nlls_setup_bounds| sets up a bound-constrained non-linear least squares problem.
+
 The calling sequences of these subroutines are outlined in :ref:`arg-lists`.
 
 
