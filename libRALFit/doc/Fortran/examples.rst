@@ -9,4 +9,4 @@ Examples
 
 This returns the following output:
 
-.. literalinclude:: ../../test/fortran_example_output.out
+.. literalinclude:: ../../test/nlls_fortran_example.output
