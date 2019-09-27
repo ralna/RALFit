@@ -104,7 +104,7 @@ To iterate once
    A call of this form allows the user to step through the solution process one
    iteration at a time.
 
-   **n**, **m**, **eval_F**, **eval_J**, **eval_HF**, **params**, **info**,
+   **n**, **m**, **eval_F**, **eval_J**, **eval_HF**, **params**, **inform**,
    **options** and **weights** are as in the desciption of |nlls_solve|.
 
    :p real X(n) [inout]: |iterate_X|
