@@ -134,7 +134,7 @@
 
 .. |box_ls_step_maxit| replace:: FIXME
 
-.. |box_linesearch_type| replace:: Linesearch type: 1 is Dennis-Schnabel, 2 is Hager-Zhang (FIXME - link to description)
+.. |box_linesearch_type| replace:: Linesearch type -- available options are:
 
 .. |hybrid_tol| replace:: if ``model=3``, specifies the value such that if  :math:`\|{\iter{\vJ}}^T \vW \vr(\vx_k) \|_2 < \mathtt{hybrid\_tol} * 0.5 \|\vr(\vx_k)\|_\vW^2` the method switches to a quasi-Newton method.
 

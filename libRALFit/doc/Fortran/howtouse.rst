@@ -464,6 +464,8 @@ The derived data type for holding options
 
    :f integer box_lineseach_type [default=1]|: |box_linesearch_type|
 
+					       .. include:: ../common/options_linesearch_type.txt
+
    **Other options**
 					     
    :f logical output_progress_vectors [default=false]: |output_progress_vectors|
