@@ -92,6 +92,50 @@
 
 .. |more_sorensen_tol| replace:: if ``nlls_method = 3``, specifies the tolerance to be used in the More-Sorensen method.
 
+.. |box_nFref_max| replace:: Memory size for the non-monotone linesearch.
+
+.. |box_gamma| replace:: Kanzow sufficient decrease ratio (see equtaion 25 in Kanzow [2004])
+
+.. |box_decmin| replace:: FIXME! macheps
+
+.. |box_bigbnd| replace:: Magic number to consider box bound (+/-) infinity
+
+.. |box_wolfe_descent| replace:: Wolfe descent condition :math:`0<\sigma_1<1/2`
+
+.. |box_wolfe_curvature| replace:: Wolfe curvature condition :math:`0<\sigma_2`
+
+.. |box_kanzow_power| replace:: Tolerance to consider projected direction a descent direction.  See LS STEP, Section 4, p392, Kanzow [2014]
+
+.. |box_kanzow_descent| replace:: FIXME! sqrt(mcheps)
+
+.. |box_quad_model_descent| replace:: FIXME! sqrt(mcheps)
+
+.. |box_tr_test_step| replace:: Take a projected trust region step when trust region test is OK?  If false, force a linesearch or projected gradient step.
+
+.. |box_wolfe_test_step| replace:: Take a project trust region step when Wolfe test is OK?  If false, force a linesearch or projected gradient step.
+
+.. |box_tau_min| replace:: Threshold to determine if the projection of the trust region direction is too severe (:math:0 < \tau_min 1)
+
+.. |box_tau_descent| replace:: :math:`\tau >=` ``tau_descent`` in order to test for descent
+
+.. |box_max_ntrfail| replace:: Max times trust region iterations can fail without passing the various descent tests. Ignored when :math:`\mathrm{proj}(x)==x`.
+
+.. |box_quad_match| replace:: Number of consecutive times quadratic model matches :math:`f(x_{k+1})` required before setting initial alpha step for projected gradient step equal to ``scale_alpha*alpha_k-1`` (FIXME)
+
+.. |box_alpha_scale| replace:: Initial step scale (if :math:`\mathrm{quad}_i >= \mathrm{box\_quad}_i`)
+
+.. |box_Delta_scale| replace:: Scaling factor to use when updating Delta from linesearch/project gradient step
+
+.. |box_tau_wolfe| replace:: FIXME
+
+.. |box_tau_tr_wolfe| replace:: FIXME
+
+.. |box_tau_tr_step| replace:: FIXME
+
+.. |box_ls_step_maxit| replace:: FIXME
+
+.. |box_linesearch_type| replace:: Linesearch type: 1 is Dennis-Schnabel, 2 is Hager-Zhang (FIXME - link to description)
+
 .. |hybrid_tol| replace:: if ``model=3``, specifies the value such that if  :math:`\|{\iter{\vJ}}^T \vW \vr(\vx_k) \|_2 < \mathtt{hybrid\_tol} * 0.5 \|\vr(\vx_k)\|_\vW^2` the method switches to a quasi-Newton method.
 
 .. |hybrid_switch_its| replace:: if ``model=3``, sets how many iterates in a row must the condition in the definition of ``hybrid_tol`` hold before a switch.

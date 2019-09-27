@@ -419,7 +419,51 @@ The derived data type for holding options
    :f real more_sorensen_tiny [default=10.0*eps]: |more_sorensen_tiny|
 
    :f real more_sorensen_tol [default=1e-3]: |more_sorensen_tol|
-						  
+
+   **Box Bound Options** These options are used if ``nlls_setup_bounds`` is called to set up box constraints.
+
+   :f integer box_nFref_max [default=4]: |box_nFref_max|
+
+   :f real box_gamma [default=0.9995]: |box_gamma|
+
+   :f real box_decmin [default=2.0e-16]: |box_decmin|
+
+   :f real box_bigbnd [default=1.0e20]: |box_bigbnd|
+
+   :f real box_wolfe_descent [default=1.0e-4]: |box_wolfe_descent|
+
+   :f real box_wolfe_curvature [default=0.9]: |box_wolfe_curvature|
+
+   :f real box_kanzow_power [default=2.1]: |box_kanzow_power|
+
+   :f real box_kanzow_descent [default=1.0e-8]: |box_kanzow_descent|
+
+   :f real box_quad_model_descent [default=1.0e-8]: |box_quad_model_descent|
+
+   :f logical box_tr_test_step [default=true]: |box_tr_test_step|
+
+   :f logical box_wolfe_test_step [default=true]: |box_wolfe_test_step|
+
+   :f real box_tau_min [default=0.25]|: |box_tau_min|
+
+   :f real box_tau_descent [default=1.0e-4]|: |box_tau_descent|
+
+   :f integer box_max_ntrfail [default=2]|: |box_max_ntrfail|
+
+   :f integer box_quad_match [default=1]|: |box_quad_match|
+
+   :f real box_alpha_scale [default=1.0]|: |box_alpha_scale|
+
+   :f real box_Delta_scale [default=2.0]|: |box_Delta_scale|
+
+   :f real box_tau_wolfe [default=0.3]|: |box_tau_wolfe|
+
+   :f real box_tau_tr_step [default=0.3]|: |box_tau_tr_step|
+
+   :f integer box_ls_step_maxit [default=20]|: |box_ls_step_maxit|
+
+   :f integer box_lineseach_type [default=1]|: |box_linesearch_type|
+
    **Other options**
 					     
    :f logical output_progress_vectors [default=false]: |output_progress_vectors|
