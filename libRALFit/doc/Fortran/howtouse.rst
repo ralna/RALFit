@@ -505,6 +505,8 @@ The derived data type for holding information
 
    :f integer h_eval: |h_eval|
 
+   :f intgeer hp_eval: |hp_eval|
+
    :f integer convergence_normf: |convergence_normf|
 
    :f integer convergence_normf: |convergence_normg|

@@ -12,7 +12,9 @@
 
 .. |g_eval| replace:: gives the total number of evaluations of the gradient of the objective function.
 
-.. |h_eval| replace:: gives the total number of evaluations of the Hessian of the objective function.
+.. |h_eval| replace:: gives the total number of evaluations of the Hessian of the objective function using ``eval_hf``.
+
+.. |hp_eval| replace:: gives the total number of evaluations of the Hessian of the objective function using ``eval_hp``.
 
 .. |convergence_normf| replace:: tells us if the test on the size of :math:`\vr` is satisfied.
 
