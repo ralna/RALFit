@@ -115,6 +115,20 @@ The user may use the components ``convergence_normf`` and
 ``convergence_normg`` and ``converge_norms`` in |nlls_inform| to determine whether the iteration has
 converged.
 
+To set up box constraints
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. f:subroutine:: nlls_setup_bounds(params,n,blx,bux,options,info)
+
+   A call of this form passes in information about box contraints that the solution should satisfy.
+
+   **n**, **params**, **options**, **info**  are as in the description of |nlls_solve|
+
+   :p real blx(n) [in]: is used to pass in lower bounds on the solution.
+
+   :p real bux(n) [in]: is used to pass in upper bounds on the solution.
+   
+
 .. _user-routines:
 
 User-supplied function evaluation routines
