@@ -272,7 +272,7 @@ minimum of the model with a regularization term added:
 .. math::
    :label: regsub
    
-   \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{p} \|\vs\|_B^p,
+   \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{q} \|\vs\|_B^q,
 
 At present, only one method of solving
 this subproblem is supported:
@@ -281,7 +281,7 @@ this subproblem is supported:
   this solves :eq:`regsub` by first
   converting the problem into the form
 
-  .. math:: \min_\vp \vw^T \vp + \frac{1}{2} \vp^T \vD \vp + \frac{1}{p}\|\vp\|_2^p,
+  .. math:: \min_\vp \vw^T \vp + \frac{1}{2} \vp^T \vD \vp + \frac{1}{q}\|\vp\|_2^q,
 
   where :math:`\vD` is a diagonal matrix. We do this by performing an
   eigen-decomposition of the Hessian in the model. Then, we call the
