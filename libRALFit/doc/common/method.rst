@@ -576,11 +576,25 @@ The formulation used will depend on the value of ``regularization`` in |nlls_opt
      \frac{\sigma}{2}\|\vx\|^{p-4}\left((\vx^T\vx)(\vs^T\vs) + (\vx^T\vs)^2\right)
 
 
+.. _bound-constraints:
+
+Bound constraints
+-----------------
+
+
+**RALFit** can solve the bound constrained problem to find :math:`\vx` that solves the non-linear least-squares problem
+
+  .. math::	   
+
+     \min_\vx \  F(\vx) := &\frac{1}{2}\| \vr(\vx) \|_{\vW}^2 + \frac{\sigma}{p}\| \vx\|_2^p, \\
+	   &s.t. \  \mathbf{l}_b \leq \vx \leq \mathbf{u}_b 
+	   
+FIXME: describe method   
 
 .. [1] Adachi, Satoru and Iwata, Satoru and Nakatsukasa, Yuji and Takeda, Akiko (2015). Solving the trust region subproblem by a generalized eigenvalue problem. Technical report, Mathematical Engineering, The University of Tokyo.
 .. [2] Conn, A. R., Gould, N. I., & Toint, P. L. (2000). Trust region methods. SIAM.
 .. [3] Gould, N. I., Orban, D., & Toint, P. L. (2003). GALAHAD, a library of thread-safe Fortran 90 packages for large-scale nonlinear optimization. ACM Transactions on Mathematical Software (TOMS), 29(4), 353-372.
 .. [4] Nocedal, J., & Wright, S. (2006). Numerical optimization. Springer Science & Business Media.
-.. [5] Nielsen, Hans Bruun (1999). Damping parameter in Marquadt's MEthod. 
+.. [5] Nielsen, Hans Bruun (1999). Damping parameter in Marquadt's Method. 
        Technical report TR IMM-REP-1999-05, Department of Mathematical Modelling, 
        Technical University of Denmark (http://www2.imm.dtu.dk/documents/ftp/tr99/tr05_99.pdf)
