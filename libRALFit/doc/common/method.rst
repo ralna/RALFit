@@ -410,10 +410,11 @@ The package supports two options:
 Incorporating the regularization term
 -------------------------------------
 
-If a non-zero regularization term is required in
-:eq:`lsq`, then this is handled by transforming the
-problem internally into a new non-linear least-squares problem. 
-The formulation used will depend on the value of ``regularization`` in |nlls_options|.
+If ``regularization = 0``, then no regularization is added.
+
+A non-zero regularization term can be used in :eq:`lsq` by setting ``regularization`` to be non-zero.
+This is done by transforming the problem internally into a new non-linear least-squares problem. 
+The formulation used will depend on the value of ``regularization`` in |nlls_options|, as described below.
 
 ``regularization = 1``
   **This is only supported if** :math:`\bf p = 2`.
