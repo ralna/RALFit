@@ -5,4 +5,4 @@
     * - 2
       - Hager-Zhang linesearch.
 
-For more information, see section FIXME
+For more information, see :ref:`bound-constraints`
