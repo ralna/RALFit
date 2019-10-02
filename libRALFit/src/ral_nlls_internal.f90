@@ -633,15 +633,13 @@ contains
              w%d(1:n) = w%Xnew(1:n)-X(1:n)
              w%norm_2_d = norm2(w%d)
            End If
-           ! tau = |P(X+d)-X| / |d|. At this point:
-           ! * w%d=P(X+d)-X is the projected trust region step, while
-           ! * w%norm_2_d is the norm of the unprojected trust region step.
+           ! tau = |P(X+d)-X| / |d|.
            ! if tau << 1 then the TR step is orthogonal to the active constraints
            tau = w%norm_2_d / tau
            ! fix rounding & cancelation errors
            tau = max(0.0_wp, min(1.0_wp, tau))
            If (no_reductions==1) Then
-!            gtd = g(x)^T (P(x+d)-x)
+!            gtd = -g(x)^T (P(x+d)-x)
              params%gtd = 0.0_wp
              Do i = 1, n
               params%gtd = params%gtd + w%g(i)*w%d(i)
@@ -778,12 +776,12 @@ contains
          ! Only run the box logic if the projected TR step differs from
          ! the unconstrained step
          If (params%prjchd) Then
-           If (success) Then
-!            gtd_new = g(P(x+d)-x)^T (P(x+d)-x)
+           If (success .And. params%gtd > toltm8) Then
+!            gtd_new = g(xnew)^T d (w%g is actually -g_k+1 !)
              gtd_new = dot_product(w%g(1:n), w%d(1:n))
 !            Wolfe descent conditions
-             wolfe = normFnew <= w%normF + options%box_wolfe_descent * params%gtd
-             wolfe = wolfe .And. gtd_new <= options%box_wolfe_curvature * params%gtd
+             wolfe = normFnew <= w%normF - options%box_wolfe_descent * params%gtd
+             wolfe = wolfe .And. gtd_new >= options%box_wolfe_curvature * params%gtd
            Else
              wolfe = .False.
            End If
@@ -807,18 +805,24 @@ contains
                nlab = 1
                takestep = .True.
                Exit
-             ElseIf (success) Then
+             End If
+             If (success) Then
                ! TR progress ok
                ! Take projected TR step?
                nlab = 0
                takestep = options%box_tr_test_step .And. tau >= options%box_tau_tr_step
-               Exit
-             ElseIf (wolfe ) Then
+               If (takestep) Then
+                 Exit
+               End If
+             End If
+             If (wolfe ) Then
                ! Wolfe conditions met and projection ok
                ! Take projected TR step?
                nlab = 2
                takestep = options%box_wolfe_test_step .And. tau>=options%box_tau_wolfe
-               Exit
+               If (takestep) Then
+                 Exit
+               End If
              End If
            End If
            If (tau <= options%box_tau_min) Then
