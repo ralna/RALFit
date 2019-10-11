@@ -3967,7 +3967,8 @@ contains
        call nlls_finalize(inner_workspace,w%tensor_options)
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
 
-       If (inform%status/=0) Then
+       If (tensor_inform%status/=0) Then
+         inform%status = tensor_inform%status
          Go To 100
        End If
 
