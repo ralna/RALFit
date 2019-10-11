@@ -325,7 +325,7 @@ module ral_nlls_workspaces
      Integer :: box_nFref_max = 4
 !    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
      Real(Kind=wp) :: box_gamma = 0.99995_wp
-     Real(Kind=wp) :: box_decmin = 2.0_wp * 1.0e-16_wp ! macheps
+     Real(Kind=wp) :: box_decmin = 2.0_wp * epsmch ! macheps
 !    Magic number to consider box bound (+/-) infinity
      Real(Kind=wp) :: box_bigbnd = 1.0e20_wp
 !    Wolfe descent condition (0<\sigma1<1/2), curvature condition (0<\sigma2)
@@ -335,7 +335,7 @@ module ral_nlls_workspaces
 !    See LS STEP Section 4 p392 Kanzow 2014
      Real(Kind=wp) :: box_kanzow_power = 2.1_wp
 !    sqrt(mcheps)
-     Real(Kind=wp) :: box_kanzow_descent = 1.0e-8_wp
+     Real(Kind=wp) :: box_kanzow_descent = toltm8 
 !    sqrt(mcheps)
      Real(Kind=wp) :: box_quad_model_descent = 1.0e-8_wp
 !    Take projected TR step when TR test is Ok?
@@ -365,7 +365,7 @@ module ral_nlls_workspaces
      Real(Kind=wp) :: box_tau_wolfe = 0.3_wp
      Real(Kind=wp) :: box_tau_tr_step = 0.3_wp
      Integer       :: box_ls_step_maxit = 20
-!    LS type: 1 => Dennis-Schnable; 2 => Hager-Zhang
+!    LS type: 1 => Dennis-Schnabel; 2 => Hager-Zhang
      Integer       :: box_linesearch_type = 1
   END TYPE nlls_options
 
@@ -445,14 +445,6 @@ module ral_nlls_workspaces
 !  vector of gradients
 
      real(wp), allocatable :: gradvec(:)
-
-!  vector of smallest singular values
-
-!    real(wp), allocatable :: smallest_sv(:)
-
-!  vector of largest singular values
-
-!    real(wp), allocatable :: largest_sv(:)
 
 !  the value of the objective function at the best estimate of the solution
 !   determined by NLLS_solve
@@ -691,7 +683,6 @@ module ral_nlls_workspaces
      real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
-!    real(wp), allocatable :: largest_sv(:), smallest_sv(:)
      type ( calculate_step_work ) :: calculate_step_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
@@ -894,9 +885,6 @@ contains
 
     if(allocated(workspace%resvec)) deallocate(workspace%resvec, stat=ierr_dummy)
     if(allocated(workspace%gradvec)) deallocate(workspace%gradvec, stat=ierr_dummy)
-
-!   if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv, stat=ierr_dummy)
-!   if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv, stat=ierr_dummy)
 
     if(allocated(workspace%fNewton)) deallocate(workspace%fNewton, stat=ierr_dummy )
     if(allocated(workspace%JNewton)) deallocate(workspace%JNewton, stat=ierr_dummy )
