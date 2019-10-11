@@ -325,7 +325,7 @@ module ral_nlls_workspaces
      Integer :: box_nFref_max = 4
 !    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
      Real(Kind=wp) :: box_gamma = 0.99995_wp
-     Real(Kind=wp) :: box_decmin = 2.0_wp * epsmch ! macheps
+     Real(Kind=wp) :: box_decmin = epsmch
 !    Magic number to consider box bound (+/-) infinity
      Real(Kind=wp) :: box_bigbnd = 1.0e20_wp
 !    Wolfe descent condition (0<\sigma1<1/2), curvature condition (0<\sigma2)
@@ -337,7 +337,7 @@ module ral_nlls_workspaces
 !    sqrt(mcheps)
      Real(Kind=wp) :: box_kanzow_descent = toltm8 
 !    sqrt(mcheps)
-     Real(Kind=wp) :: box_quad_model_descent = 1.0e-8_wp
+     Real(Kind=wp) :: box_quad_model_descent = toltm8
 !    Take projected TR step when TR test is Ok?
 !    True  => take step
 !    False => force a LS or PG step
