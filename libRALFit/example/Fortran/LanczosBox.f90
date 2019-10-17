@@ -164,12 +164,12 @@ program lanczos_box
  
   ! Add bounds on the variables
   Allocate(blx(n),bux(n),xnew(n))
-  blx(1:n) = -1.0e20
-  bux(1:n) = +1.0e20
-  blx(1) = 0.59
-  bux(1) = 1.445
-  blx(5) = -3.9e-1
-  bux(5) = -0.2
+  blx(1:n) = -1.0
+  bux(1:n) = +1.0e+20
+  blx(1) = 0.445
+  bux(1) = 1.0
+  blx(5) = -1.0
+  bux(5) = 1.0
   bux(6) = 10.0
 
   Call nlls_setup_bounds(params, n, blx, bux, options, inform)
@@ -178,15 +178,26 @@ program lanczos_box
     stop
   End if
 
-  options%print_level = 1
-  options%maxit = 100
-  options%exact_second_derivatives = .false.
+  options%print_level = 3
+  options%maxit = 500
+  options%exact_second_derivatives = .true.
   options%model = 3
-  options%type_of_method = 1
-  options%nlls_method = 3
-  options%inner_method = 2
+  options%type_of_method = 1 ! TR / Reg
+  options%inner_method = 1 ! Implicit / min / basereg
+  options%nlls_method = 1 ! Dogleg / AINT / More-Sorensen (LinSolve) / Galahad
+  options%reg_order = 2.0_wp
+  options%regularization = 1
   options%print_options = .True.
-  options%box_linesearch_type = 1
+  options%box_nFref_max = 4
+  options%box_tau_min = 0.2_wp
+  options%box_tau_descent = 1.0e-5_wp
+  options%box_max_ntrfail = 5
+  options%box_quad_match = 5
+  options%box_alpha_scale = 1.0_wp
+  options%box_Delta_scale = 2.0_wp
+  options%box_tau_wolfe = 0.3_wp
+  options%box_tau_tr_step = 0.3_wp
+  options%box_ls_step_maxit = 20
 
   ! call fitting routine
   call cpu_time(tic)
