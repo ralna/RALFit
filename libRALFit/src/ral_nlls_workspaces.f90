@@ -322,7 +322,7 @@ module ral_nlls_workspaces
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !    Memory size for the non-monotone linesearch
-     Integer :: box_nFref_max = 4
+     Integer :: box_nFref_max = 1
 !    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
      Real(Kind=wp) :: box_gamma = 0.99995_wp
      Real(Kind=wp) :: box_decmin = epsmch
@@ -348,16 +348,16 @@ module ral_nlls_workspaces
      Logical       :: box_wolfe_test_step = .True.
 !    Threshold to determine if the projection of TR direction
 !    is too severe 0<tau_min<1
-     Real(Kind=wp) :: box_tau_min = 0.25_wp
+     Real(Kind=wp) :: box_tau_min = 0.1_wp
 !    tau >= tau_descent in order to test for descent
-     Real(Kind=wp) :: box_tau_descent = 1.0e-4_wp
+     Real(Kind=wp) :: box_tau_descent = 1.0e-5_wp
 !    Max times TR iterations can fail without passing the various
 !    descent tests: 2? 3? 5? Ignored when proj(x)==x
      Integer       :: box_max_ntrfail = 2
 !    Number of consecutive times quadratic model matches f(x_k+1)
 !    required before setting initial alpha step for PG step equal
 !    to scale_alpha*alpha_k-1
-     Integer       :: box_quad_match = 1
+     Integer       :: box_quad_match = 2
 !    Initial step scale (if quad_i >= box_quad_i)
      Real(Kind=wp) :: box_alpha_scale = 1.0_wp
 !    Scaling factor to use when updating Delta from LS/PG step
