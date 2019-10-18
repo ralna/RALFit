@@ -160,7 +160,7 @@ program lanczos_box
 
   n = 6
   allocate(x(n))
-  x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
+  x = (/ 0.44, -0.2408, 2.598, 3.44, -6.199, 0.0977 /)
  
   ! Add bounds on the variables
   Allocate(blx(n),bux(n),xnew(n))
@@ -172,14 +172,8 @@ program lanczos_box
   bux(5) = 1.0
   bux(6) = 10.0
 
-  Call nlls_setup_bounds(params, n, blx, bux, options, inform)
-  if (inform%status/=0) then
-    Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', inform%status
-    stop
-  End if
-
-  options%print_level = 3
-  options%maxit = 500
+  options%print_level = 2
+  options%maxit = 1500
   options%exact_second_derivatives = .true.
   options%model = 3
   options%type_of_method = 1 ! TR / Reg
@@ -188,16 +182,23 @@ program lanczos_box
   options%reg_order = 2.0_wp
   options%regularization = 1
   options%print_options = .True.
-  options%box_nFref_max = 4
-  options%box_tau_min = 0.2_wp
+  options%box_tau_min = 0.1_wp
   options%box_tau_descent = 1.0e-5_wp
-  options%box_max_ntrfail = 5
+  options%box_max_ntrfail = 2
   options%box_quad_match = 5
   options%box_alpha_scale = 1.0_wp
   options%box_Delta_scale = 2.0_wp
   options%box_tau_wolfe = 0.3_wp
   options%box_tau_tr_step = 0.3_wp
   options%box_ls_step_maxit = 20
+
+  Call nlls_setup_bounds(params, n, blx, bux, options, inform)
+  if (inform%status/=0) then
+    Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', inform%status
+    stop
+  End if
+
+
 
   ! call fitting routine
   call cpu_time(tic)
