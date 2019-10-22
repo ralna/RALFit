@@ -3652,7 +3652,7 @@ contains
        real(wp), intent(in) :: A(:,:)
        integer, intent(in) :: n
        real(wp), intent(out) :: ew(:), ev(:,:)
-       type( all_eig_symm_work ) :: w
+       type( all_eig_symm_work ), Intent(inout) :: w
        type( nlls_inform ), intent(inout) :: inform
        integer :: lwork
 
