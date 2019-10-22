@@ -686,7 +686,7 @@ contains
          ! if model is good, rho should be close to one             !
          !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
          call calculate_rho(w%normF,normFnew,md,rho,options)
-         if ( (rho > HUGE(wp)) .or. &
+         if ( (rho >= infinity) .or. &
            (rho .ne. rho) .or. &
            (rho .le. options%eta_successful) ) then
            ! rho is either very large, NaN, or unsuccessful
@@ -1855,7 +1855,7 @@ contains
      real(wp), intent(out) :: normd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-     type( AINT_tr_work ) :: w
+     type( AINT_tr_work ), Intent(inout) :: w
 
      integer :: i, size_hard(2)
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
@@ -1871,8 +1871,8 @@ contains
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
 
-     tau = 1.0e-4_wp ! toltm4
-     obj_p0 = HUGE(wp)
+     tau = toltm4
+     obj_p0 = infinity
 
      ! The code finds
      !  min_p   v^T p + 0.5 * p^T A p
@@ -3276,7 +3276,7 @@ contains
              end select
              If (prnt) Write(rec(1), Fmt=3030) w%Delta
              nrec=1
-          else if (rho < HUGE(wp)) then
+          else if (rho < infinity) then
              If (prnt) Write(rec(1), Fmt=3040) w%Delta
              nrec=1
              ! too successful...accept step, but don't change w%Delta
@@ -4475,7 +4475,7 @@ contains
 !           calculate new alpha */
 !           modifications to cover non-finite values */
             If (inform%external_return/=0 .Or. fpls/=fpls .Or.                 &
-              abs(fpls)>huge(fpls)-1.0_wp) Then
+              abs(fpls)>=infinity-1.0_wp) Then
               alpha = alpha*0.1_wp
               firstback = 1
             Else
