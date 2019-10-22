@@ -1782,11 +1782,12 @@ contains
      real(wp), intent(out) :: normd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-     TYPE( dogleg_work ) :: w
+     TYPE( dogleg_work ), Intent(InOut) :: w
 
      real(wp) :: alpha, beta
      Integer :: nstep
-     Character(Len=20) :: steplabs(3) = (/'Gauss-Newton    ', 'Steepest Descent', 'Dogleg          '/)
+     Character(Len=20), Parameter :: steplabs(3) = (/'Gauss-Newton    ',       &
+       'Steepest Descent', 'Dogleg          '/)
      Character(Len=80) :: rec(1)
 
      nstep = 0
@@ -2014,7 +2015,7 @@ contains
      real(wp), intent(out) :: nd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-     type( more_sorensen_work ) :: w
+     type( more_sorensen_work ), intent(inout) :: w
 
      if (options%use_ews_subproblem) then
         call more_sorensen_ew(A,v,n,m,Delta,d,nd,options,inform,w)
@@ -2043,7 +2044,7 @@ contains
      real(wp), intent(out) :: nd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-     type( more_sorensen_work ) :: w
+     type( more_sorensen_work ), intent(inout) :: w
 
      real(wp) :: nq, epsilon
      real(wp) :: sigma, alpha, local_ms_shift, sigma_shift
@@ -2270,7 +2271,7 @@ contains
      real(wp), intent(out) :: nd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-     type( more_sorensen_work ) :: w
+     type( more_sorensen_work ), intent(inout) :: w
 
      real(wp) :: nq
      real(wp) :: sigma, alpha, sigma_shift
@@ -2722,7 +2723,7 @@ contains
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
      real(wp), intent(in) :: reg_order
-     type( solve_galahad_work ) :: w
+     type( solve_galahad_work ), intent(inout) :: w
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
@@ -2851,7 +2852,7 @@ contains
      real(wp), intent(out) :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
      real(wp), intent(in) :: reg_order
-     type( regularization_solver_work ) :: w
+     type( regularization_solver_work ), Intent(inout) :: w
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
 
@@ -2891,7 +2892,7 @@ contains
 
        character(1) :: trans = 'N'
        integer :: nrhs = 1, lwork, lda, ldb
-       type( solve_LLS_work ) :: w
+       type( solve_LLS_work ), Intent(inout) :: w
 
        If (.not. w%allocated) Then
          inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -2984,7 +2985,7 @@ contains
        real(wp), intent(out) :: md_gn
        TYPE( nlls_options ), INTENT( IN ) :: options
        TYPE( nlls_inform ), INTENT( INOUT ) :: inform
-       type( evaluate_model_work ) :: w
+       type( evaluate_model_work ), intent(inout) :: w
 
        real(wp) :: xtd, normx, p, sigma
        Character(Len=80) :: rec(1)
@@ -3085,7 +3086,7 @@ contains
 
      end subroutine calculate_rho
 
-     subroutine apply_second_order_info(n,m,X,w,eval_Hf,params,options,inform, &
+     Recursive subroutine apply_second_order_info(n,m,X,w,eval_Hf,params,options,inform, &
          weights)
        Implicit None
        integer, intent(in)  :: n, m
@@ -3447,7 +3448,7 @@ contains
        end if
      end subroutine scale_J_by_weights
 
-     subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
+     Recursive subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
        Implicit None
        integer, intent(in) :: n, m
        real(wp), intent(in) :: X(:)
@@ -3567,7 +3568,7 @@ contains
        REAL(wp), intent(out) :: x(:)
        integer, intent(in) :: n
        type( nlls_inform ), intent(inout) :: inform
-       type( solve_general_work ) :: w
+       type( solve_general_work ),Intent(inout) :: w
        ! wrapper for the lapack subroutine dposv
        ! NOTE: A would be destroyed
 
@@ -3686,7 +3687,7 @@ contains
        real(wp), intent(out) :: ew, ev(:)
        type( nlls_inform ), intent(inout) :: inform
        type( nlls_options ), INTENT( IN ) :: options
-       type( min_eig_symm_work ) :: w
+       type( min_eig_symm_work ), Intent(Inout) :: w
 
        real(wp) :: tol, dlamch
        integer :: lwork, eigsout, minindex(1)
@@ -3753,7 +3754,7 @@ contains
        real(wp), intent(inout), allocatable :: nullevs(:,:)
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       type( max_eig_work ) :: w
+       type( max_eig_work ),Intent(Inout) :: w
 
        integer :: lwork, maxindex(1), no_null, halfn
        real(wp):: tau
@@ -3860,7 +3861,7 @@ contains
 
 
      ! routines needed for the Newton tensor model
-     subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, &
+     Recursive subroutine solve_newton_tensor(J, f, eval_HF, X, n, m, Delta, &
                                     num_successful_steps, &
                                     d, md, params, options, inform, &
                                     w, tenJ, inner_workspace)
@@ -3875,7 +3876,7 @@ contains
        class( params_base_type ), target :: params
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       type( solve_newton_tensor_work ) :: w
+       type( solve_newton_tensor_work ), Intent(Inout) :: w
        type( tenJ_type ), intent(InOut), target :: tenJ
        type( NLLS_workspace ), Intent(InOut) :: inner_workspace
 
@@ -3993,7 +3994,7 @@ contains
 100   continue
      end subroutine solve_newton_tensor
 
-     subroutine evaltensor_f(status, n, m, s, f, params)
+     Recursive subroutine evaltensor_f(status, n, m, s, f, params)
        Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n
@@ -4038,7 +4039,7 @@ contains
        end select
      end subroutine evaltensor_f
 
-     subroutine calculate_sHs( n, m, s, params)
+     Recursive subroutine calculate_sHs( n, m, s, params)
        Implicit None
        integer, intent(in) :: n, m
        real(wp), dimension(*), intent(in) :: s
@@ -4071,7 +4072,7 @@ contains
        end select
      end subroutine calculate_sHs
 
-     subroutine evaltensor_J(status, n, m, s, J, params)
+     Recursive subroutine evaltensor_J(status, n, m, s, J, params)
        Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n
@@ -4112,7 +4113,7 @@ contains
        end select
      end subroutine evaltensor_J
 
-     subroutine evaltensor_HF(status, n, m, s, f, HF, params)
+     Recursive subroutine evaltensor_HF(status, n, m, s, f, HF, params)
        Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n
@@ -4153,7 +4154,7 @@ contains
 100    Continue
      end subroutine evaltensor_HF
 
-     subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
+     Recursive subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
        Implicit None
        integer, intent(in) :: n, m
        real(wp), intent(in) :: X(:)
@@ -4203,7 +4204,7 @@ contains
 !    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !    !!!!!               BOX-CONSTRAINTS RELATED ROUTINES                   !!!!
 !    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    Subroutine linesearch_steps(n,m,success,tau,x,normx,normfnew,normjfnew,eval_f, &
+    Recursive Subroutine linesearch_steps(n,m,success,tau,x,normx,normfnew,normjfnew,eval_f, &
       eval_j,lstype,nlab,w,params,options,inform,weights)
 !     ++++++++++++++++++++++++++++++++++++++++++++++++++!
 !     Linesearche_steps: performs a variety of LS       !
@@ -4524,7 +4525,7 @@ contains
         End If
       End Subroutine lnsrch
 
-      Subroutine ls_step_ds(m,n,x,fdx,normfnew,normJFnew,normx,params, &
+      Recursive Subroutine ls_step_ds(m,n,x,fdx,normfnew,normJFnew,normx,params, &
         eval_f,eval_J,inform,options,w,alpha,ierr,weights)
 
         Use ral_nlls_workspaces
@@ -4630,7 +4631,7 @@ contains
 
       End Subroutine ls_step_ds
 !-------------------------------------------------------------------------------
-      Subroutine ls_step_hz(normf,m,fnew,nvar,x,fdx,dir,normfnew,xnew,normx,params,  &
+      Recursive Subroutine ls_step_hz(normf,m,fnew,nvar,x,fdx,dir,normfnew,xnew,normx,params,  &
         eval_f,inform,options,alpn,eval_j,normJFnew,ifail,w,weights,sx)
         Use ral_nlls_workspaces
         Implicit None
@@ -4651,7 +4652,7 @@ contains
         ifail = NLLS_ERROR_UNSUPPORTED_LINESEARCH
       End Subroutine ls_step_hz
 
-      Subroutine pg_step(m, n, x, normX, normFnew, normJFnew, eval_F, eval_J,   &
+      Recursive Subroutine pg_step(m, n, x, normX, normFnew, normJFnew, eval_F, eval_J,   &
           params, w, options, inform, weights)
         Implicit None
         Integer, Intent(In) :: m, n
@@ -4727,7 +4728,7 @@ contains
 100       Continue
       End Subroutine pg_step
 
-      Subroutine nmls_pg(m,fnew,n,x,fdx,normfnew,xnew,normx,params,       &
+      Recursive Subroutine nmls_pg(m,fnew,n,x,fdx,normfnew,xnew,normx,params,       &
         eval_f,inform,options,alpha,ierr,weights)
 !       Assumes fdx is actually -fdx !!!
         Use nag_export_mod
