@@ -2890,8 +2890,9 @@ lp:  do i = 1, options%more_sorensen_maxits
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
        type(NLLS_inform), INTENT(INOUT) :: inform
 
-       character(1) :: trans = 'N'
-       integer :: nrhs = 1, lwork, lda, ldb
+       character(1), Parameter :: trans = 'N'
+       integer, Parameter :: nrhs = 1
+       integer :: lwork, lda, ldb
        type( solve_LLS_work ), Intent(inout) :: w
 
        If (.not. w%allocated) Then
