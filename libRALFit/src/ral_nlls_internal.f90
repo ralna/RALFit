@@ -4253,12 +4253,12 @@ lp:    do i = 1, w%tensor_options%maxit
             alpha = 1.0_wp
 !           Dennis-Schnabel linesearch -----------------------------------------
             If (present(weights)) Then
-              Call ls_step_ds(m=m,n=n,x=x,fdx=-params%g,normfnew=normfnew,     &
+              Call ls_step_ds(m=m,n=n,x=x,fdx=params%g,normfnew=normfnew,     &
                 normjfnew=normjfnew,normx=normx,params=params,eval_f=eval_f,   &
                 eval_j=eval_j,inform=inform,options=options,w=w,alpha=alpha,   &
                 ierr=ierr,weights=weights)
             Else
-              Call ls_step_ds(m=m,n=n,x=x,fdx=-params%g,normfnew=normfnew,     &
+              Call ls_step_ds(m=m,n=n,x=x,fdx=params%g,normfnew=normfnew,     &
                 normjfnew=normjfnew,normx=normx,params=params,eval_f=eval_f,   &
                 eval_j=eval_j,inform=inform,options=options,w=w,alpha=alpha,   &
                 ierr=ierr)
@@ -4374,7 +4374,9 @@ lp:    do i = 1, w%tensor_options%maxit
         slp = 0.0_wp
         rln = 0.0_wp
         Do i = n, 1, -1
-          slp = slp + g(i)*scl*p(i) ! g^T * scl*p
+!         RALFit is providing -g so we need to invert the dot produdct
+!         slp = slp + g(i)*scl*p(i) ! g^T * scl*p
+          slp = slp - g(i)*scl*p(i) ! g^T * scl*p
           tmp1 = max(abs(x(i)),1.0_wp)
           tmp2 = abs(scl*p(i))/tmp1
           If (rln<tmp2) Then
