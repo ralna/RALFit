@@ -548,6 +548,7 @@ module ral_nlls_workspaces
      REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
      REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
      REAL(wp), allocatable :: y_hardcase(:,:)
+     REAL(wp), allocatable :: By_hardcase(:,:)
   end type AINT_tr_work
 
   type, public :: dogleg_work ! workspace for subroutine dogleg
@@ -1189,9 +1190,10 @@ contains
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(out) :: inform
 
-    allocate(w%B(n,n),w%p0(n),w%p1(n),w%M0(2*n,2*n),w%M1(2*n,2*n),w%M0_small(n,n),&
-      w%M1_small(n,n),w%y(2*n),w%gtg(n,n),w%q(n),w%LtL(n,n),w%y_hardcase(n,2), &
-      stat = inform%alloc_status)
+    allocate(w%B(n,n),w%p0(n),w%p1(n),w%M0(2*n,2*n),w%M1(2*n,2*n),  &
+             w%M0_small(n,n),w%M1_small(n,n),w%y(2*n),w%gtg(n,n),   &
+             w%q(n),w%LtL(n,n),w%y_hardcase(n,2),w%By_hardcase(n,2),&
+             stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
       inform%bad_alloc = "setup_workspace_AINT_tr"
@@ -1234,6 +1236,7 @@ contains
     if(allocated( w%q )) deallocate(w%q,stat=ierr_dummy)
     if(allocated( w%LtL )) deallocate(w%LtL,stat=ierr_dummy)
     if(allocated( w%y_hardcase )) deallocate(w%y_hardcase,stat=ierr_dummy)
+    if(allocated( w%By_hardcase )) deallocate(w%By_hardcase,stat=ierr_dummy)
     ! setup space for max_eig
     call remove_workspace_max_eig(w%max_eig_ws,options)
     call remove_workspace_evaluate_model(w%evaluate_model_ws,options)

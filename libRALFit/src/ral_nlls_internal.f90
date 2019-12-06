@@ -1645,7 +1645,9 @@ contains
         End If
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(w%y_hardcase)
-        call matmult_outer( matmul(w%B,w%y_hardcase), size_hard(2), n, w%M1_small)
+
+        w%By_hardcase = matmul(w%B,w%y_hardcase)
+        call matmult_outer( w%By_hardcase, size_hard(2), n, w%M1_small)
         w%M0_small = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model)
