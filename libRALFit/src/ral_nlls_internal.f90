@@ -565,12 +565,19 @@ contains
 
        If (eval_f_status .ne. 0) Then
           rho = -1.0_wp ! give a rho that will fail
+          num_successful_steps = 0
        else
           if ( present(weights) ) then
              ! set f -> Wf
              w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
           end if
           normFnew = norm2(w%fnew(1:m))
+
+          If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
+            rho = -1.0_wp
+            eval_f_status = 1
+            num_successful_steps = 0
+          End If
           
           if (options%regularization > 0) then
              normX = norm2(w%Xnew)
@@ -619,38 +626,47 @@ contains
              call eval_J(eval_J_status, n, m, w%Xnew(1:n), w%J, params)
              inform%g_eval = inform%g_eval + 1
              If (eval_J_status /= 0) Then
-                rho = -1.0_wp ! set rho to trigger reduce trust-region
-             else
-                if ( present(weights) ) then
-                   ! set J -> WJ
-                   call scale_J_by_weights(w%J,n,m,weights,options)
-                end if
-                
-                ! g = -J^Tf
-                call mult_Jt(w%J,n,m,w%fnew,w%g,options)
-                w%g = -w%g
-                if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
-                
-                normJFnew = norm2(w%g)
-                
-                if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
-                   If (buildmsg(5,.False.,options)) Then
-                      Write(rec(1),Fmt=3120) normJFnew
-                      nrec=1
-                      Call Printmsg(5,.False.,options,nrec,rec)
-                   End If
-                   rho = -2.0_wp
-                   call reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
-                   If (inform%external_return /= 0) goto 100
-                else
-                   ! success!!
-                   w%normJFold = w%normJF
-                   w%normF = normFnew
-                   w%normJF = normJFnew
-                   
-                   num_successful_steps = num_successful_steps + 1
-                   success = .true.
-                end if
+               ! trigger reset_gradients
+             Else
+               if ( present(weights) ) then
+                 ! set J -> WJ
+                 call scale_J_by_weights(w%J,n,m,weights,options)
+               end if
+
+               ! g = -J^Tf
+               call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+               w%g(:) = -w%g(:)
+               if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
+
+               normJFnew = norm2(w%g)
+
+               If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
+                 !              trigger reset_gradients
+                 eval_j_status = 1
+               End If
+             End If
+             If (eval_j_status/=0) Then
+!              Jacobian either could not be avaluated or returned NaN of Infinity in one or
+!              more entries, trigger reset_gradients and print a note.
+               If (buildmsg(5,.False.,options)) Then
+                 Write (rec(1),Fmt=3120)
+                 nrec = 1
+                 Call printmsg(5,.False.,options,nrec,rec)
+               End If
+               rho = -1.0_wp
+!              this case should be trated the same as when rho is not satisfactory
+               num_successful_steps = 0
+               Call reset_gradients(n,m,x,options,inform,params,w,eval_j,weights)
+               If (inform%external_return/=0) Then
+                 Go To 100
+               End If
+             Else
+!              success!!
+               w%normJFold = w%normJF
+               w%normF = normFnew
+               w%normJF = normJFnew
+               num_successful_steps = num_successful_steps + 1
+               success = .True.
              end if
           end if
        end if
@@ -896,7 +912,7 @@ contains
 9020 Format(I7,37X,1X,2(Es9.2e2,1X),A4,1X,I7)
 ! print level > 2
 3110 FORMAT('Initial trust region radius taken as ', ES12.4)
-3120 FORMAT('||J^Tf|| = ', ES12.4, ': too large. Reducing TR radius.')
+3120 Format('||J^Tf|| too large or not available. Reducing TR radius.')
   end subroutine nlls_iterate
 
 
@@ -1233,7 +1249,7 @@ contains
              end select ! nlls_method
           elseif (options%type_of_method == 2) then
              
-             select case (options%nlls_method)
+             select case (subproblem_method)
              case (3) ! home-rolled regularization solver
                 If (buildmsg(5,.False.,options)) Then
                    Write(rec(1), Fmt=3020) 'RALFit Solver'
@@ -3152,11 +3168,13 @@ contains
        real( wp ), intent(in), optional :: weights(:)
 
        integer :: i
+       real (wp) :: normjfnew
        
        call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
        inform%g_eval = inform%g_eval + 1
        If (inform%external_return /= 0) Then
           inform%external_name = 'eval_J'
+          inform%external_return = 2512
           inform%status = NLLS_ERROR_EVALUATION
           goto 100
        End If
@@ -3172,6 +3190,13 @@ contains
           call mult_Jt(w%J,n,m,w%f,w%g,options)
           w%g = -w%g
        end if
+
+       normjfnew = norm2(x=w%g)
+       If ((log(normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
+         inform%external_name = 'eval_J'
+         inform%external_return = 2512
+         inform%status = NLLS_ERROR_EVALUATION
+       End If
 
 100    continue
        
