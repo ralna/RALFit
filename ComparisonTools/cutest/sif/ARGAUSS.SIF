@@ -1,0 +1,142 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          ARGAUSS
+
+*   Problem :
+*   *********
+*   More''s gaussian problem in 3 variables
+
+*   Source: Problem 9 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#28
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification NOR2-AN-3-15
+
+*   This function  is a nonlinear least squares with 15 groups.  Each
+*   group has a nonlinear element.
+
+*   Number of groups
+
+ IE 15                  15
+
+*   Useful parameters
+
+ IE 1                   1
+ RE 8                   8.0
+
+VARIABLES
+
+    X1
+    X2
+    X3
+
+GROUPS
+
+ DO I         1                        15
+ XE G(I)
+ ND
+
+CONSTANTS
+
+    ARGAUSS   G1        0.0009
+    ARGAUSS   G2        0.0044
+    ARGAUSS   G3        0.0175
+    ARGAUSS   G4        0.0540
+    ARGAUSS   G5        0.1295
+    ARGAUSS   G6        0.2420
+    ARGAUSS   G7        0.3521
+    ARGAUSS   G8        0.3989
+    ARGAUSS   G9        0.3521
+    ARGAUSS   G10       0.2420
+    ARGAUSS   G11       0.1295
+    ARGAUSS   G12       0.0540
+    ARGAUSS   G13       0.0175
+    ARGAUSS   G14       0.0044
+    ARGAUSS   G15       0.0009
+
+BOUNDS
+
+ FR ARGAUSS   'DEFAULT'
+
+START POINT
+
+    ARGAUSS   X1        0.4
+    ARGAUSS   X2        1.0
+    ARGAUSS   X3        0.0
+
+ELEMENT TYPE
+
+ EV GAUSS     V1                       V2
+ EV GAUSS     V3
+ EP GAUSS     T
+
+ELEMENT USES
+
+ T  'DEFAULT' GAUSS
+
+ DO I         1                        15
+ RI REALI     I
+ RM MREALI    REALI     -1.0
+ R+ 8-I       8                        MREALI
+ RM TI        8-I       0.5
+ ZV E(I)      V1                       X1
+ ZV E(I)      V2                       X2
+ ZV E(I)      V3                       X3
+ ZP E(I)      T                        TI
+ ND
+
+GROUP USES
+
+ DO I         1                        15
+ XE G(I)      E(I)
+ ND
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      ARGAUSS
+
+TEMPORARIES
+
+ R  TMV3
+ R  TMV3SQ
+ R  EXPA
+ R  FVAL
+ R  V2TMV3
+ M  EXP
+
+INDIVIDUALS
+
+*   Gaussian function
+
+ T  GAUSS
+
+ A  TMV3                T - V3
+ A  TMV3SQ              - 0.5D0 * TMV3 * TMV3
+ A  EXPA                EXP( V2 * TMV3SQ )
+ A  FVAL                V1 * EXPA
+ A  V2TMV3              V2 * TMV3
+
+ F                      FVAL
+
+ G  V1                  EXPA
+ G  V2                  TMV3SQ * FVAL
+ G  V3                  V2TMV3 * FVAL
+
+ H  V1        V2        TMV3SQ * EXPA
+ H  V1        V3        V2TMV3 * EXPA
+ H  V2        V2        TMV3SQ * TMV3SQ * FVAL
+ H  V2        V3        ( TMV3SQ * V2TMV3 + TMV3 ) * FVAL
+ H  V3        V3        ( V2TMV3 * V2TMV3 - V2 ) * FVAL
+
+ENDATA

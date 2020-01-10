@@ -1,0 +1,192 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          KOWOSB
+
+*   Problem :
+*   *********
+
+*   A problem arising in the analysis of kinetic data for an enzyme
+*   reaction, known under the name of Kowalik and Osborne problem
+*   in 4 variables.
+
+*   Source:  Problem 15 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-MN-4-0
+
+*   This function  is a nonlinear least squares with 11 groups.  Each
+*   group has a linear and a nonlinear element.
+
+*   Number of groups
+
+ IE M                   11
+
+*   Useful parameters
+
+ IE 1                   1
+
+VARIABLES
+
+    X1
+    X2
+    X3
+    X4
+
+GROUPS
+
+ DO I         1                        M
+ XN G(I)
+ ND
+
+CONSTANTS
+
+    KOWOSB    G1        0.1957
+    KOWOSB    G2        0.1947
+    KOWOSB    G3        0.1735
+    KOWOSB    G4        0.1600
+    KOWOSB    G5        0.0844
+    KOWOSB    G6        0.0627
+    KOWOSB    G7        0.0456
+    KOWOSB    G8        0.0342
+    KOWOSB    G9        0.0323
+    KOWOSB    G10       0.0235
+    KOWOSB    G11       0.0246
+
+BOUNDS
+
+*   All variables are free
+
+ FR KOWOSB    'DEFAULT'
+
+START POINT
+
+*   Starting for MGH#15 and Buckley#31
+
+    KOWOSB    X1        0.25
+    KOWOSB    X2        0.39
+    KOWOSB    X3        0.415
+    KOWOSB    X4        0.39
+
+ELEMENT TYPE
+
+ EV KWO       V1                       V2
+ EV KWO       V3                       V4
+ EP KWO       U
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      KWO
+ ZV E(I)      V1                       X1
+ ZV E(I)      V2                       X2
+ ZV E(I)      V3                       X3
+ ZV E(I)      V4                       X4
+ ND
+
+ P  E1        U         4.0
+ P  E2        U         2.0
+ P  E3        U         1.0
+ P  E4        U         0.5
+ P  E5        U         0.25
+ P  E6        U         0.167
+ P  E7        U         0.125
+ P  E8        U         0.1
+ P  E9        U         0.0833
+ P  E10       U         0.0714
+ P  E11       U         0.0624
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ DO I         1                        M
+ XT G(I)      L2
+ XE G(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO KOWOSB              0.0
+
+*   Solution
+
+*LO SOLTN               0.00102734
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      KOWOSB
+
+TEMPORARIES
+
+ R  USQ
+ R  B1
+ R  B2
+ R  B2SQ
+ R  B2CB
+ R  UV1
+ R  UB1
+ R  T1
+ R  T2
+
+INDIVIDUALS
+
+*   Kowalik and Osborne function
+
+ T  KWO
+ A  USQ                 U * U
+ A  B1                  USQ + U * V2
+ A  B2                  USQ + U * V3 + V4
+ A  B2SQ                B2 * B2
+ A  B2CB                B2 * B2SQ
+ A  UV1                 U * V1
+ A  UB1                 U * B1
+ A  T1                  B1 / B2SQ
+ A  T2                  2.0 / B2CB
+ F                      V1 * B1 / B2
+ G  V1                  B1 / B2
+ G  V2                  UV1 / B2
+ G  V3                  - UV1 * T1
+ G  V4                  - V1 * T1
+ H  V1        V2        U / B2
+ H  V1        V3        - UB1 / B2SQ
+ H  V1        V4        - T1
+ H  V2        V3        - UV1 * U / B2SQ
+ H  V2        V4        - UV1 / B2SQ
+ H  V3        V3        T2 * UV1 * UB1
+ H  V3        V4        T2 * UV1 * B1
+ H  V4        V4        T2 * V1 * B1
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        KOWOSB
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

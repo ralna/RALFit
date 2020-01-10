@@ -1,0 +1,168 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          RAT42
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem RAT42 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = b1 / (1+exp[b2-b3*x])  +  e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Ratkowsky, D.A. (1983).  
+*     Nonlinear Regression Modeling.
+*     New York, NY:  Marcel Dekker, pp. 61 and 88.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-3-9
+
+*   Number of data values
+
+ IE M                   9
+
+*   Number of variables
+
+ IE N                   3
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                   9.0
+ RE X2                  14.0
+ RE X3                  21.0
+ RE X4                  28.0
+ RE X5                  42.0
+ RE X6                  57.0
+ RE X7                  63.0
+ RE X8                  70.0
+ RE X9                  79.0
+
+ RE Y1                   8.93
+ RE Y2                  10.80
+ RE Y3                  18.59
+ RE Y4                  22.33
+ RE Y5                  39.35
+ RE Y6                  56.11
+ RE Y7                  61.73
+ RE Y8                  64.62
+ RE Y9                  67.08
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  RAT42     F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR RAT42     'DEFAULT'
+
+START POINT
+
+    START1    B1        100.0
+    START1    B2        1.0  
+    START1    B3        0.1  
+
+*  Alternative start point
+
+    START2    B1        75.0
+    START2    B2        2.5 
+    START2    B3        0.07
+
+ELEMENT TYPE
+
+ EV E11       V1
+ EV E11       V2
+ EV E11       V3
+ EP E11       X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E11
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO RAT42               0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      RAT42
+
+TEMPORARIES
+
+ R  E
+ R  E2
+ R  EP1
+ R  EP12
+ R  EP13
+ R  V1E
+ R  V1E2
+ M  EXP
+
+INDIVIDUALS
+
+ T  E11
+ A  E                   EXP( V2 - V3 * X )
+ A  E2                  E * E
+ A  EP1                 E + 1.0
+ A  EP12                EP1 * EP1
+ A  EP13                EP1 * EP12
+ A  V1E                 V1 * E
+ A  V1E2                V1 * E2
+ F                      V1 / EP1 
+ G  V1                  1.0 / EP1 
+ G  V2                  - V1E / EP12 
+ G  V3                  V1E * X / EP12 
+ H  V1        V2        - E / EP12 
+ H  V1        V3        X * E / EP12 
+ H  V2        V2        2.0 * V1E2 / EP13 - V1E / EP12 
+ H  V2        V3        ( V1E / EP12 - 2.0 * V1E2 / EP13 ) * X
+ H  V3        V3        ( 2.0 * V1E2 / EP13 - V1E / EP12 ) 
+ H+                       * X ** 2
+ENDATA
+

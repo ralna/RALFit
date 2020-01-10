@@ -1,0 +1,163 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          MISRA1D
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem MISRA1D given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = y = b1*b2*x*((1+b2*x)**(-1)) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Misra, D., NIST (1978).  
+*     Dental Research Monomolecular Adsorption Study.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-2-14
+
+*   Number of data values
+
+ IE M                   14
+
+*   Number of variables
+
+ IE N                   2
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                   77.6
+ RE X2                  114.9
+ RE X3                  141.1
+ RE X4                  190.8
+ RE X5                  239.9
+ RE X6                  289.0
+ RE X7                  332.8
+ RE X8                  378.4
+ RE X9                  434.8
+ RE X10                 477.3
+ RE X11                 536.8
+ RE X12                 593.1
+ RE X13                 689.1
+ RE X14                 760.0
+
+ RE Y1                  10.07
+ RE Y2                  14.73
+ RE Y3                  17.94
+ RE Y4                  23.93
+ RE Y5                  29.61
+ RE Y6                  35.18
+ RE Y7                  40.02
+ RE Y8                  44.82
+ RE Y9                  50.76
+ RE Y10                 55.05
+ RE Y11                 61.01
+ RE Y12                 66.40
+ RE Y13                 75.47
+ RE Y14                 81.78
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  MISRA1D   F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR MISRA1D   'DEFAULT'
+
+START POINT
+
+    START1    B1        500.0
+    START1    B2        0.0001
+
+*  Alternative start point
+
+    START2    B1        450.0    
+    START2    B2        0.0003
+
+ELEMENT TYPE
+
+ EV E5        V1
+ EV E5        V2
+ EP E5        X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E5
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO MISRA1D             0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      MISRA1D
+
+TEMPORARIES
+
+ R  R
+ R  R2
+ R  X2
+ R  XR
+ R  V2X2R2
+
+INDIVIDUALS
+
+ T  E5
+ A  R                   1.0 + V2 * X
+ A  R2                  R * R
+ A  X2                  X * X
+ A  XR                  X / R
+ A  V2X2R2              V2 * X2 / R2
+ F                      V1 * V2 * XR 
+ G  V1                  V2 * XR
+ G  V2                  V1 * ( XR - V2X2R2 )
+ H  V1        V2        XR - V2X2R2
+ H  V2        V2        2.0 * V1 * ( V2 * XR**3 - X2 / R2 )
+
+ENDATA

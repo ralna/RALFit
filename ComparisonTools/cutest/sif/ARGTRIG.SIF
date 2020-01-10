@@ -1,0 +1,132 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          ARGTRIG
+
+*   Problem :
+*   *********
+
+*   Variable dimension trigonometric problem
+*   This problem is a sum of n least-squares groups, each of
+*   which has n+1 nonlinear elements.  Its Hessian matrix is dense.
+
+*   Source:  Problem 26 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification NOR2-AN-V-V
+
+*   N is the number of free variables
+
+ IE N                   10             $-PARAMETER original value
+*IE N                   50             $-PARAMETER 
+*IE N                   100            $-PARAMETER
+*IE N                   200            $-PARAMETER
+
+*   Define useful parameters
+
+ IE 1                   1
+ RE 1.0                 1.0
+
+ RI RN        N
+ R/ 1OVERN    1.0                      RN
+
+VARIABLES
+
+ DO I         1                        N
+ X  X(I)
+ ND
+
+GROUPS
+
+ DO I         1                        N
+ XE G(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        N
+ I+ N+I       N                        I
+ RI RN+I      N+I
+ Z  ARGTRIG   G(I)                     RN+I
+ ND
+
+BOUNDS
+
+ FR ARGTRIG   'DEFAULT'
+
+START POINT
+
+ DO I         1                        N
+ Z  ARGTRIG   X(I)                     1OVERN
+ ND
+
+ELEMENT TYPE
+
+ EV COSINE    XJ
+ EV SINCOS    XI
+
+ELEMENT USES
+
+ DO I         1                        N
+ XT C(I)      COSINE
+ ZV C(I)      XJ                       X(I)
+ XT SC(I)     SINCOS
+ ZV SC(I)     XI                       X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        N
+ RI REALI     I
+ ZE G(I)      SC(I)                    REALI
+ DO J         1                        N
+ XE G(I)      C(J)
+ ND
+
+OBJECT BOUND
+
+*   Solution
+
+*LO SOLTN               0.0
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      ARGTRIG
+
+TEMPORARIES
+
+ R  SX
+ R  CX
+ M  SIN
+ M  COS
+
+INDIVIDUALS
+
+*  Cosine type
+
+ T  COSINE
+ A  CX                  COS( XJ )
+ F                      CX
+ G  XJ                  - SIN( XJ )
+ H  XJ        XJ        - CX
+
+*   Mixed type
+
+ T  SINCOS
+ A  CX                  COS( XI )
+ A  SX                  SIN( XI )
+ F                      CX + SX
+ G  XI                  - SX + CX
+ H  XI        XI        - CX - SX
+
+ENDATA

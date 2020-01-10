@@ -1,0 +1,575 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          CHWIRUT1
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem CHWIRUT1 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = exp[-b1*x]/(b2+b3*x) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Chwirut, D., NIST (197?).  
+*     Ultrasonic Reference Block Study. 
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-3-214
+
+*   Number of data values
+
+ IE M                   214
+
+*   Number of variables
+
+ IE N                   3
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  0.5     
+ RE X2                  0.625   
+ RE X3                  0.75    
+ RE X4                  0.875   
+ RE X5                  1.0     
+ RE X6                  1.25    
+ RE X7                  1.75    
+ RE X8                  2.25    
+ RE X9                  1.75    
+ RE X10                 2.25    
+ RE X11                 2.75    
+ RE X12                 3.25    
+ RE X13                 3.75    
+ RE X14                 4.25    
+ RE X15                 4.75    
+ RE X16                 5.25    
+ RE X17                 5.75    
+ RE X18                 0.5     
+ RE X19                 0.625   
+ RE X20                 0.75    
+ RE X21                 0.875   
+ RE X22                 1.0     
+ RE X23                 1.25    
+ RE X24                 1.75    
+ RE X25                 2.25    
+ RE X26                 1.75    
+ RE X27                 2.25    
+ RE X28                 2.75    
+ RE X29                 3.25    
+ RE X30                 3.75    
+ RE X31                 4.25    
+ RE X32                 4.75    
+ RE X33                 5.25    
+ RE X34                 5.75    
+ RE X35                 0.5     
+ RE X36                 0.625   
+ RE X37                 0.75    
+ RE X38                 0.875   
+ RE X39                 1.0     
+ RE X40                 1.25    
+ RE X41                 1.75    
+ RE X42                 2.25    
+ RE X43                 1.75    
+ RE X44                 2.25    
+ RE X45                 2.75    
+ RE X46                 3.25    
+ RE X47                 3.75    
+ RE X48                 4.25    
+ RE X49                 4.75    
+ RE X50                 5.25    
+ RE X51                 5.75    
+ RE X52                 0.5     
+ RE X53                 0.625   
+ RE X54                 0.75    
+ RE X55                 0.875   
+ RE X56                 1.0     
+ RE X57                 1.25    
+ RE X58                 1.75    
+ RE X59                 2.25    
+ RE X60                 1.75    
+ RE X61                 2.25    
+ RE X62                 2.75    
+ RE X63                 3.25    
+ RE X64                 3.75    
+ RE X65                 4.25    
+ RE X66                 4.75    
+ RE X67                 5.25    
+ RE X68                 5.75    
+ RE X69                 0.5     
+ RE X70                 0.75    
+ RE X71                 1.5     
+ RE X72                 3.0     
+ RE X73                 3.0     
+ RE X74                 3.0     
+ RE X75                 6.0     
+ RE X76                 0.5     
+ RE X77                 0.75    
+ RE X78                 1.5     
+ RE X79                 3.0     
+ RE X80                 3.0     
+ RE X81                 3.0     
+ RE X82                 6.0     
+ RE X83                 0.5     
+ RE X84                 0.75    
+ RE X85                 1.5     
+ RE X86                 3.0     
+ RE X87                 3.0     
+ RE X88                 3.0     
+ RE X89                 6.0     
+ RE X90                 0.5     
+ RE X91                 0.75    
+ RE X92                 1.5     
+ RE X93                 3.0     
+ RE X94                 6.0     
+ RE X95                 3.0     
+ RE X96                 3.0     
+ RE X97                 6.0     
+ RE X98                 0.5     
+ RE X99                 0.75    
+ RE X100                1.0     
+ RE X101                1.5     
+ RE X102                2.0     
+ RE X103                2.0     
+ RE X104                2.5     
+ RE X105                3.0     
+ RE X106                4.0     
+ RE X107                5.0     
+ RE X108                6.0     
+ RE X109                0.5     
+ RE X110                0.75    
+ RE X111                1.0     
+ RE X112                1.5     
+ RE X113                2.0     
+ RE X114                2.0     
+ RE X115                2.5     
+ RE X116                3.0     
+ RE X117                4.0     
+ RE X118                5.0     
+ RE X119                6.0     
+ RE X120                0.5     
+ RE X121                0.75    
+ RE X122                1.0     
+ RE X123                1.5     
+ RE X124                2.0     
+ RE X125                2.0     
+ RE X126                2.5     
+ RE X127                3.0     
+ RE X128                4.0     
+ RE X129                5.0     
+ RE X130                6.0     
+ RE X131                0.5     
+ RE X132                0.625   
+ RE X133                0.75    
+ RE X134                0.875   
+ RE X135                1.0     
+ RE X136                1.25    
+ RE X137                2.25    
+ RE X138                2.25    
+ RE X139                2.75    
+ RE X140                3.25    
+ RE X141                3.75    
+ RE X142                4.25    
+ RE X143                4.75    
+ RE X144                5.25    
+ RE X145                5.75    
+ RE X146                3.0     
+ RE X147                3.0     
+ RE X148                3.0     
+ RE X149                3.0     
+ RE X150                3.0     
+ RE X151                3.0     
+ RE X152                0.5     
+ RE X153                0.75    
+ RE X154                1.0     
+ RE X155                1.5     
+ RE X156                2.0     
+ RE X157                2.5     
+ RE X158                2.0     
+ RE X159                2.5     
+ RE X160                3.0     
+ RE X161                4.0     
+ RE X162                5.0     
+ RE X163                6.0     
+ RE X164                0.5     
+ RE X165                0.75    
+ RE X166                1.0     
+ RE X167                1.5     
+ RE X168                2.0     
+ RE X169                2.5     
+ RE X170                2.0     
+ RE X171                2.5     
+ RE X172                3.0     
+ RE X173                4.0     
+ RE X174                5.0     
+ RE X175                6.0     
+ RE X176                0.5     
+ RE X177                0.75    
+ RE X178                1.0     
+ RE X179                1.5     
+ RE X180                2.0     
+ RE X181                2.5     
+ RE X182                2.0     
+ RE X183                2.5     
+ RE X184                3.0     
+ RE X185                4.0     
+ RE X186                5.0     
+ RE X187                6.0     
+ RE X188                3.0     
+ RE X189                0.5     
+ RE X190                0.75    
+ RE X191                1.5     
+ RE X192                3.0     
+ RE X193                6.0     
+ RE X194                3.0     
+ RE X195                6.0     
+ RE X196                3.0     
+ RE X197                3.0     
+ RE X198                3.0     
+ RE X199                1.75    
+ RE X200                1.75    
+ RE X201                0.5     
+ RE X202                0.75    
+ RE X203                1.75    
+ RE X204                1.75    
+ RE X205                2.75    
+ RE X206                3.75    
+ RE X207                1.75    
+ RE X208                1.75    
+ RE X209                0.5     
+ RE X210                0.75    
+ RE X211                2.75    
+ RE X212                3.75    
+ RE X213                1.75    
+ RE X214                1.75
+
+ RE Y1                  92.9    
+ RE Y2                  78.7    
+ RE Y3                  64.2    
+ RE Y4                  64.9    
+ RE Y5                  57.1    
+ RE Y6                  43.3    
+ RE Y7                  31.1    
+ RE Y8                  23.6    
+ RE Y9                  31.05   
+ RE Y10                 23.7750 
+ RE Y11                 17.7375 
+ RE Y12                 13.8    
+ RE Y13                 11.5875 
+ RE Y14                 9.4125  
+ RE Y15                 7.7250  
+ RE Y16                 7.35    
+ RE Y17                 8.0250  
+ RE Y18                 90.6    
+ RE Y19                 76.9    
+ RE Y20                 71.6    
+ RE Y21                 63.6    
+ RE Y22                 54.0    
+ RE Y23                 39.2    
+ RE Y24                 29.3    
+ RE Y25                 21.4    
+ RE Y26                 29.1750 
+ RE Y27                 22.1250 
+ RE Y28                 17.5125 
+ RE Y29                 14.25   
+ RE Y30                  9.45   
+ RE Y31                  9.15   
+ RE Y32                  7.9125 
+ RE Y33                  8.4750 
+ RE Y34                  6.1125 
+ RE Y35                 80.0    
+ RE Y36                 79.0    
+ RE Y37                 63.8    
+ RE Y38                 57.2    
+ RE Y39                 53.2    
+ RE Y40                 42.5    
+ RE Y41                 26.8    
+ RE Y42                 20.4    
+ RE Y43                 26.85   
+ RE Y44                 21.0    
+ RE Y45                 16.4625 
+ RE Y46                 12.5250 
+ RE Y47                 10.5375 
+ RE Y48                  8.5875 
+ RE Y49                  7.1250 
+ RE Y50                  6.1125 
+ RE Y51                  5.9625 
+ RE Y52                 74.1    
+ RE Y53                 67.3    
+ RE Y54                 60.8    
+ RE Y55                 55.5    
+ RE Y56                 50.3    
+ RE Y57                 41.0    
+ RE Y58                 29.4    
+ RE Y59                 20.4    
+ RE Y60                 29.3625 
+ RE Y61                 21.15   
+ RE Y62                 16.7625 
+ RE Y63                 13.2    
+ RE Y64                 10.8750 
+ RE Y65                  8.1750 
+ RE Y66                  7.35   
+ RE Y67                  5.9625 
+ RE Y68                  5.6250 
+ RE Y69                 81.5    
+ RE Y70                 62.4    
+ RE Y71                 32.5    
+ RE Y72                 12.41   
+ RE Y73                 13.12   
+ RE Y74                 15.56   
+ RE Y75                  5.63   
+ RE Y76                 78.0    
+ RE Y77                 59.9    
+ RE Y78                 33.2    
+ RE Y79                 13.84   
+ RE Y80                 12.75   
+ RE Y81                 14.62   
+ RE Y82                  3.94   
+ RE Y83                 76.8    
+ RE Y84                 61.0    
+ RE Y85                 32.9    
+ RE Y86                 13.87   
+ RE Y87                 11.81   
+ RE Y88                 13.31   
+ RE Y89                  5.44   
+ RE Y90                 78.0    
+ RE Y91                 63.5    
+ RE Y92                 33.8    
+ RE Y93                 12.56   
+ RE Y94                  5.63   
+ RE Y95                 12.75   
+ RE Y96                 13.12   
+ RE Y97                  5.44   
+ RE Y98                 76.8    
+ RE Y99                 60.0    
+ RE Y100                47.8    
+ RE Y101                32.0    
+ RE Y102                22.2    
+ RE Y103                22.57   
+ RE Y104                18.82   
+ RE Y105                13.95   
+ RE Y106                11.25   
+ RE Y107                 9.0    
+ RE Y108                 6.67   
+ RE Y109                75.8    
+ RE Y110                62.0    
+ RE Y111                48.8    
+ RE Y112                35.2    
+ RE Y113                20.0    
+ RE Y114                20.32   
+ RE Y115                19.31   
+ RE Y116                12.75   
+ RE Y117                10.42   
+ RE Y118                 7.31   
+ RE Y119                 7.42   
+ RE Y120                70.5    
+ RE Y121                59.5    
+ RE Y122                48.5    
+ RE Y123                35.8    
+ RE Y124                21.0    
+ RE Y125                21.67   
+ RE Y126                21.0    
+ RE Y127                15.64   
+ RE Y128                 8.17   
+ RE Y129                 8.55   
+ RE Y130                10.12   
+ RE Y131                78.0    
+ RE Y132                66.0    
+ RE Y133                62.0    
+ RE Y134                58.0    
+ RE Y135                47.7    
+ RE Y136                37.8    
+ RE Y137                20.2    
+ RE Y138                21.07   
+ RE Y139                13.87   
+ RE Y140                 9.67   
+ RE Y141                 7.76   
+ RE Y142                 5.44   
+ RE Y143                 4.87   
+ RE Y144                 4.01   
+ RE Y145                 3.75   
+ RE Y146                24.19   
+ RE Y147                25.76   
+ RE Y148                18.07   
+ RE Y149                11.81   
+ RE Y150                12.07   
+ RE Y151                16.12   
+ RE Y152                70.8    
+ RE Y153                54.7    
+ RE Y154                48.0    
+ RE Y155                39.8    
+ RE Y156                29.8    
+ RE Y157                23.7    
+ RE Y158                29.62   
+ RE Y159                23.81   
+ RE Y160                17.7    
+ RE Y161                11.55   
+ RE Y162                12.07   
+ RE Y163                 8.74   
+ RE Y164                80.7    
+ RE Y165                61.3    
+ RE Y166                47.5    
+ RE Y167                29.0    
+ RE Y168                24.0    
+ RE Y169                17.7    
+ RE Y170                24.56   
+ RE Y171                18.67   
+ RE Y172                16.24   
+ RE Y173                 8.74   
+ RE Y174                 7.87   
+ RE Y175                 8.51   
+ RE Y176                66.7    
+ RE Y177                59.2    
+ RE Y178                40.8    
+ RE Y179                30.7    
+ RE Y180                25.7    
+ RE Y181                16.3    
+ RE Y182                25.99   
+ RE Y183                16.95   
+ RE Y184                13.35   
+ RE Y185                 8.62   
+ RE Y186                 7.2    
+ RE Y187                 6.64   
+ RE Y188                13.69   
+ RE Y189                81.0    
+ RE Y190                64.5    
+ RE Y191                35.5    
+ RE Y192                13.31   
+ RE Y193                 4.87   
+ RE Y194                12.94   
+ RE Y195                 5.06   
+ RE Y196                15.19   
+ RE Y197                14.62   
+ RE Y198                15.64   
+ RE Y199                25.5    
+ RE Y200                25.95   
+ RE Y201                81.7    
+ RE Y202                61.6    
+ RE Y203                29.8    
+ RE Y204                29.81   
+ RE Y205                17.17   
+ RE Y206                10.39   
+ RE Y207                28.4    
+ RE Y208                28.69   
+ RE Y209                81.3    
+ RE Y210                60.9    
+ RE Y211                16.65   
+ RE Y212                10.05   
+ RE Y213                28.9    
+ RE Y214                28.95
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  CHWIRUT1  F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR CHWIRUT1  'DEFAULT'
+
+START POINT
+
+    START1    B1        0.1 
+    START1    B2        0.01
+    START1    B3        0.02
+
+*  Alternative start point
+
+    START2    B1        0.15 
+    START2    B2        0.008
+    START2    B3        0.010
+
+ELEMENT TYPE
+
+ EV E16       V1
+ EV E16       V2
+ EV E16       V3
+ EP E16       X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E16
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO CHWIRUT1            0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      CHWIRUT1
+
+TEMPORARIES
+
+ R  E
+ R  V2PV3X
+ R  V2PV32
+ R  V2PV33
+ R  EX
+ R  EX2
+ M  EXP
+
+INDIVIDUALS
+
+ T  E16
+ A  E                   EXP( - V1 * X )    
+ A  EX                  E * X
+ A  EX2                 EX * X
+ A  V2PV3X              V2 + V3 * X
+ A  V2PV32              V2PV3X * V2PV3X
+ A  V2PV33              V2PV3X * V2PV32
+ F                      E / V2PV3X
+ G  V1                  - EX / V2PV3X
+ G  V2                  - E / V2PV32
+ G  V3                  - EX / V2PV32
+ H  V1        V1        EX2 / V2PV3X
+ H  V1        V2        EX / V2PV32
+ H  V1        V3        EX2 / V2PV32
+ H  V2        V2        2.0 * E / V2PV33
+ H  V2        V3        2.0 * EX / V2PV33
+ H  V3        V3        2.0 * EX2 / V2PV33
+
+ENDATA

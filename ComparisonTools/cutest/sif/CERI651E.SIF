@@ -1,0 +1,600 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          CERI651E
+
+*   Problem :
+*   *********
+
+*   ISIS Data fitting problem CERI651E given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = c + l * x + I*A*B/2(A+B) *
+*              [ exp( A*[A*S^2+2(x-X0)]/2) * erfc( A*S^2+(x-X0)/S*sqrt(2) ) +
+*                exp( B*[B*S^2+2(x-X0)]/2) * erfc( B*S^2+(x-X0)/S*sqrt(2) ) ]
+
+*   Source: fit to a sum of a linear background and a back-to-back exponential
+*   using data enginx_ceria193749_spectrum_number_651_vana_corrected-0
+*   from Mantid (http://www.mantidproject.org)
+
+*   subset X in [13556.2988352, 13731.2988352]
+
+*   SIF input: Nick Gould and Tyrone Rees, Mar 2016
+
+*   classification NOR2-MN-7-64
+
+*   Potential number of data values
+
+ IE M                   10186
+
+*   Actual range
+
+ IE MLOWER              4077
+ IE MUPPER              4140
+
+*   Number of variables
+
+ IE N                   7
+
+*   Useful parameters
+
+ IE 1                   1
+ RE ONE                 1.0
+
+*  Data values
+
+ RE X4077               13558.04688
+ RE X4078               13560.76563
+ RE X4079               13563.48438
+ RE X4080               13566.20313
+ RE X4081               13568.92188
+ RE X4082               13571.64063
+ RE X4083               13574.35938
+ RE X4084               13577.07813
+ RE X4085               13579.79688
+ RE X4086               13582.51563
+ RE X4087               13585.23438
+ RE X4088               13587.95313
+ RE X4089               13590.67188
+ RE X4090               13593.39063
+ RE X4091               13596.10938
+ RE X4092               13598.82813
+ RE X4093               13601.54688
+ RE X4094               13604.26563
+ RE X4095               13606.98438
+ RE X4096               13609.70313
+ RE X4097               13612.42188
+ RE X4098               13615.14063
+ RE X4099               13617.85938
+ RE X4100               13620.57813
+ RE X4101               13623.29688
+ RE X4102               13626.01563
+ RE X4103               13628.73438
+ RE X4104               13631.45313
+ RE X4105               13634.17188
+ RE X4106               13636.89063
+ RE X4107               13639.60938
+ RE X4108               13642.32813
+ RE X4109               13645.04688
+ RE X4110               13647.76563
+ RE X4111               13650.48438
+ RE X4112               13653.20313
+ RE X4113               13655.92188
+ RE X4114               13658.64063
+ RE X4115               13661.35938
+ RE X4116               13664.07813
+ RE X4117               13666.79688
+ RE X4118               13669.51563
+ RE X4119               13672.23438
+ RE X4120               13674.96875
+ RE X4121               13677.71875
+ RE X4122               13680.46875
+ RE X4123               13683.21875
+ RE X4124               13685.96875
+ RE X4125               13688.71875
+ RE X4126               13691.46875
+ RE X4127               13694.21875
+ RE X4128               13696.96875
+ RE X4129               13699.71875
+ RE X4130               13702.46875
+ RE X4131               13705.21875
+ RE X4132               13707.96875
+ RE X4133               13710.71875
+ RE X4134               13713.46875
+ RE X4135               13716.21875
+ RE X4136               13718.96875
+ RE X4137               13721.71875
+ RE X4138               13724.46875
+ RE X4139               13727.21875
+ RE X4140               13729.96875
+
+ RE Y4077                 0.00000000
+ RE Y4078                 1.96083316
+ RE Y4079                 0.98041658
+ RE Y4080                 0.00000000
+ RE Y4081                 0.00000000
+ RE Y4082                 0.00000000
+ RE Y4083                 0.00000000
+ RE Y4084                 0.00000000
+ RE Y4085                 0.00000000
+ RE Y4086                 0.00000000
+ RE Y4087                 0.00000000
+ RE Y4088                 0.00000000
+ RE Y4089                 0.00000000
+ RE Y4090                 0.00000000
+ RE Y4091                 0.00000000
+ RE Y4092                 0.00000000
+ RE Y4093                 0.00000000
+ RE Y4094                 0.00000000
+ RE Y4095                 0.98041658
+ RE Y4096                 0.00000000
+ RE Y4097                 0.00000000
+ RE Y4098                 0.98041658
+ RE Y4099                 0.98041658
+ RE Y4100                 1.96083316
+ RE Y4101                 1.96083316
+ RE Y4102                 4.90208290
+ RE Y4103                 0.98041658
+ RE Y4104                 1.96083316
+ RE Y4105                 0.00000000
+ RE Y4106                 1.96083316
+ RE Y4107                 0.98041658
+ RE Y4108                 5.88249948
+ RE Y4109                 0.98041658
+ RE Y4110                 1.96083316
+ RE Y4111                 0.00000000
+ RE Y4112                 0.98041658
+ RE Y4113                 0.00000000
+ RE Y4114                 0.00000000
+ RE Y4115                 0.98041658
+ RE Y4116                 0.00000000
+ RE Y4117                 1.96083316
+ RE Y4118                 0.98041658
+ RE Y4119                 0.00000000
+ RE Y4120                 0.98041658
+ RE Y4121                 0.98041658
+ RE Y4122                 0.98041658
+ RE Y4123                 0.00000000
+ RE Y4124                 0.00000000
+ RE Y4125                 0.98041658
+ RE Y4126                 0.00000000
+ RE Y4127                 0.00000000
+ RE Y4128                 0.98041658
+ RE Y4129                 0.00000000
+ RE Y4130                 0.00000000
+ RE Y4131                 0.00000000
+ RE Y4132                 0.98041658
+ RE Y4133                 0.98041658
+ RE Y4134                 0.98041658
+ RE Y4135                 0.00000000
+ RE Y4136                 0.98041658
+ RE Y4137                 0.00000000
+ RE Y4138                 1.96083316
+ RE Y4139                 0.00000000
+ RE Y4140                 0.00000000
+
+ RE E4077               1.00000000
+ RE E4078               1.41421356
+ RE E4079               1.00000000
+ RE E4080               1.00000000
+ RE E4081               1.00000000
+ RE E4082               1.00000000
+ RE E4083               1.00000000
+ RE E4084               1.00000000
+ RE E4085               1.00000000
+ RE E4086               1.00000000
+ RE E4087               1.00000000
+ RE E4088               1.00000000
+ RE E4089               1.00000000
+ RE E4090               1.00000000
+ RE E4091               1.00000000
+ RE E4092               1.00000000
+ RE E4093               1.00000000
+ RE E4094               1.00000000
+ RE E4095               1.00000000
+ RE E4096               1.00000000
+ RE E4097               1.00000000
+ RE E4098               1.00000000
+ RE E4099               1.00000000
+ RE E4100               1.41421356
+ RE E4101               1.41421356
+ RE E4102               2.23606798
+ RE E4103               1.00000000
+ RE E4104               1.41421356
+ RE E4105               1.00000000
+ RE E4106               1.41421356
+ RE E4107               1.00000000
+ RE E4108               2.44948974
+ RE E4109               1.00000000
+ RE E4110               1.41421356
+ RE E4111               1.00000000
+ RE E4112               1.00000000
+ RE E4113               1.00000000
+ RE E4114               1.00000000
+ RE E4115               1.00000000
+ RE E4116               1.00000000
+ RE E4117               1.41421356
+ RE E4118               1.00000000
+ RE E4119               1.00000000
+ RE E4120               1.00000000
+ RE E4121               1.00000000
+ RE E4122               1.00000000
+ RE E4123               1.00000000
+ RE E4124               1.00000000
+ RE E4125               1.00000000
+ RE E4126               1.00000000
+ RE E4127               1.00000000
+ RE E4128               1.00000000
+ RE E4129               1.00000000
+ RE E4130               1.00000000
+ RE E4131               1.00000000
+ RE E4132               1.00000000
+ RE E4133               1.00000000
+ RE E4134               1.00000000
+ RE E4135               1.00000000
+ RE E4136               1.00000000
+ RE E4137               1.00000000
+ RE E4138               1.41421356
+ RE E4139               1.00000000
+ RE E4140               1.00000000
+
+VARIABLES
+
+    C
+    L
+    A
+    B
+    I
+    S
+    X0
+
+GROUPS
+
+ DO I         MLOWER                   MUPPER
+ A= E         E(I)
+ R/ EINV      ONE                      E
+ A* XOVERE    EINV                     X(I)
+ ZE F(I)      C                        EINV
+ ZE F(I)      L                        XOVERE
+ ND
+
+CONSTANTS
+
+ DO I         MLOWER                   MUPPER
+ A= E         E(I)
+ R/ EINV      ONE                      E
+ A* YOVERE    EINV                     Y(I)
+ Z  CERIA651  F(I)                     YOVERE
+ ND
+
+BOUNDS
+
+ FR CERIA651  'DEFAULT'
+
+START POINT
+
+    START5    C         0.0
+    START5    L         0.0
+    START5    A         1.0
+    START5    B         0.05
+    START5    I         17.06794
+*   START5    S         1.25655
+    START5    S         8.0
+    START5    X0        13642.3
+
+ELEMENT TYPE
+
+ EV B2BEXP    A
+ EV B2BEXP    B
+ EV B2BEXP    I
+ EV B2BEXP    S
+ EV B2BEXP    Y
+ EP B2BEXP    X
+
+ELEMENT USES
+
+ DO I         MLOWER                   MUPPER
+ XT B(I)      B2BEXP
+ ZV B(I)      A                        A
+ ZV B(I)      B                        B
+ ZV B(I)      I                        I
+ ZV B(I)      S                        S
+ ZV B(I)      Y                        X0
+ ZP B(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         MLOWER                   MUPPER
+ A= E         E(I)
+ R/ EINV      ONE                      E
+ ZE F(I)      B(I)                     EINV
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO B2BEXP              0.0
+
+*   Solution
+
+*LO SOLTN
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      CERI651E
+
+TEMPORARIES
+
+ R  TORPI
+ R  ROOTP5
+ R  APB
+ R  APB2
+ R  A2
+ R  B2
+ R  AB
+ R  S2
+ R  S3
+ R  PI
+ R  P
+ R  PAI
+ R  PBI
+ R  PA
+ R  PB
+ R  PAB
+ R  PAA
+ R  PBB
+ R  XMY
+ R  Z
+ R  ZY
+ R  ZS
+ R  ZSY
+ R  ZSS
+ R  R
+ R  DR
+ R  D2R
+ R  RS
+ R  RY
+ R  RSS
+ R  RSY
+ R  RYY
+ R  AC
+ R  ACA
+ R  ACS
+ R  ACY
+ R  ACAS
+ R  ACSS
+ R  ACSY
+ R  BC
+ R  BCB
+ R  BCS
+ R  BCY
+ R  BCBS
+ R  BCSS
+ R  BCSY
+ R  QA
+ R  DQA
+ R  D2QA
+ R  QAA
+ R  QAS
+ R  QAY
+ R  QAAA
+ R  QAAS
+ R  QAAY
+ R  QASS
+ R  QASY
+ R  QAYY
+ R  QB
+ R  DQB
+ R  D2QB
+ R  QBB
+ R  QBS
+ R  QBY
+ R  QBBB
+ R  QBBS
+ R  QBBY
+ R  QBSS
+ R  QBSY
+ R  QBYY
+ R  T
+ R  TA
+ R  TB
+ R  TS
+ R  TY
+ R  TAA
+ R  TAS
+ R  TAY
+ R  TBB
+ R  TBS
+ R  TBY
+ R  TSS
+ R  TSY
+ R  TYY
+
+ M  ATAN
+ M  SQRT
+ M  EXP
+
+*  Back-to-back-exponential function:
+*     b2b(I,A,B,S,Y) = I*A*B/2(A+B) *
+*              [ exp( A*[A*S^2+2(x-Y)]/2) * erfc( A*S^2+(x-Y)/S*sqrt(2) ) +
+*                exp( B*[B*S^2+2(x-Y)]/2) * erfc( B*S^2+(x-Y)/S*sqrt(2) ) ]
+
+*  obvious calculation leads to overflow * underflow, so ... note that
+*    exp( A*[A*S^2+2(x-Y)]/2) * erfc( A*S^2+(x-Y)/S*sqrt(2)
+*    = exp(-0.5 ((x-Y)/S)**2 ) erfc_scaled( A*S^2+(x-Y)/S*sqrt(2) )
+
+*  and thus b2b = I*A*B/2(A+B) * exp(-0.5 ((x-Y)/S)**2) *
+*    [ erfc_scaled( A*S^2+(x-Y)/S*sqrt(2)) + erfc_scaled( B*S^2+(x-Y)/S*sqrt(2)]
+*   = P(I,A,B) * R(S,Y) * T(A,B,S,Y)
+*   where
+*   P(I,A,B) = I*A*B/2(A+B)
+*   R(S,Y) = exp(-0.5 Z**2)
+*   T(A,B,S,Y) = QA(A,S,Y) + QB(B,S,Y)
+*   QA(A,S,Y) = erfc_scaled( AC )
+*   QB(A,S,Y) = erfc_scaled( BC )
+*   Z = (x-Y)/S
+*   AC = sqrt(2)*(A*S+(x-Y)/S)
+*   BC = sqrt(2)*(B*S+(x-Y)/S)
+
+*  also note that  erfc_scaled'(c) = 2 * c *  erfc_scaled(c) - 2 / root(pi)
+*  and erfc_scaled''(c) = 2  erfc_scaled(c) + 2 * w * erfc_scaled'(c)
+
+GLOBALS
+
+ A  TORPI               SQRT( 1.0D0 / ATAN( 1.0D0 ) )
+ A  ROOTP5              SQRT( 0.5D0 )
+
+INDIVIDUALS
+
+ T  B2BEXP
+
+ A  APB                 A + B
+ A  APB2                APB * APB
+ A  A2                  A * A
+ A  B2                  B * B
+ A  AB                  A * B
+ A  S2                  S * S
+ A  S3                  S * S2
+
+*  P and its derivatives
+
+ A  PI                  0.5D0 * AB / APB
+ A  P                   I * PI
+ A  PAI                 0.5D0 * B / APB
+ A+                       - 0.5D0 * AB / APB2
+ A  PBI                 0.5D0 * A / APB
+ A+                       - 0.5D0 * AB / APB2
+ A  PA                  PAI * I
+ A  PB                  PBI * I
+ A  PAB                 I * AB / APB ** 3
+ A  PAA                 - I * B / APB2 + PAB
+ A  PBB                 - I * A / APB2 + PAB
+
+*  Z and its derivatives
+
+ A  XMY                 X - Y
+ A  Z                   XMY / S
+ A  ZY                  - 1.0D0 / S
+ A  ZS                  - XMY / S ** 2
+ A  ZSY                 1.0D0 / S ** 2
+ A  ZSS                 2.0D0 * XMY / S ** 3
+
+*  R and its derivatives
+
+ A  R                   EXP( - 0.5D0 * Z ** 2 )
+ A  DR                  - Z * R
+ A  D2R                 - R - Z * DR
+ A  RS                  DR * ZS
+ A  RY                  DR * ZY
+ A  RSS                 D2R * ZS * ZS + DR * ZSS
+ A  RSY                 D2R * ZS * ZY + DR * ZSY
+ A  RYY                 D2R * ZY * ZY
+
+*  AC and its derivatives
+
+ A  AC                  ROOTP5 * ( A * S + XMY / S )
+ A  ACA                 ROOTP5 * S
+ A  ACS                 ROOTP5 * ( A - XMY / S2 )
+ A  ACY                 - ROOTP5 / S
+ A  ACAS                ROOTP5
+ A  ACSS                2.0D0 * ROOTP5 * XMY / S3
+ A  ACSY                ROOTP5 / S2
+
+*  BC and its derivatives
+
+ A  BC                  ROOTP5 * ( B * S + XMY / S )
+ A  BCB                 ACA
+ A  BCS                 ROOTP5 * ( B - XMY / S2 )
+ A  BCY                 ACY
+ A  BCBS                ROOTP5
+ A  BCSS                ACSS
+ A  BCSY                ACSY
+
+*  QA and its derivatives
+
+ A  QA                  ERFC_SCALED( AC )
+ A  DQA                 2.0D0 * AC * QA - TORPI
+ A  D2QA                2.0D0 * ( QA + AC * DQA )
+ A  QAA                 DQA * ACA
+ A  QAS                 DQA * ACS
+ A  QAY                 DQA * ACY
+ A  QAAA                D2QA * ACA * ACA
+ A  QAAS                D2QA * ACA * ACS + DQA * ACAS
+ A  QAAY                D2QA * ACA * ACY
+ A  QASS                D2QA * ACS * ACS + DQA * ACSS
+ A  QASY                D2QA * ACS * ACY + DQA * ACSY
+ A  QAYY                D2QA * ACY * ACY
+
+*  QB and its derivatives
+
+ A  QB                  ERFC_SCALED( BC )
+ A  DQB                 2.0D0 * BC * QB - TORPI
+ A  D2QB                2.0D0 * ( QB + BC * DQB )
+ A  QBB                 DQB * BCB
+ A  QBS                 DQB * BCS
+ A  QBY                 DQB * BCY
+ A  QBBB                D2QB * BCB * BCB
+ A  QBBS                D2QB * BCB * BCS + DQB * BCBS
+ A  QBBY                D2QB * BCB * BCY
+ A  QBSS                D2QB * BCS * BCS + DQB * BCSS
+ A  QBSY                D2QB * BCS * BCY + DQB * BCSY
+ A  QBYY                D2QB * BCY * BCY
+
+*  constituent terms
+
+ A  T                   QA + QB
+ A  TA                  QAA
+ A  TB                  QBB
+ A  TS                  QAS + QBS
+ A  TY                  QAY + QBY
+ A  TAA                 QAAA
+ A  TAS                 QAAS
+ A  TAY                 QAAY
+ A  TBB                 QBBB
+ A  TBS                 QBBS
+ A  TBY                 QBBY
+ A  TSS                 QASS + QBSS
+ A  TSY                 QASY + QBSY
+ A  TYY                 QAYY + QBYY
+
+ F                      P * T * R
+ G  A                   ( P * TA + PA * T ) * R
+ G  B                   ( P * TB + PB * T ) * R
+ G  I                   PI * T * R
+ G  S                   P * ( T * RS + TS * R )
+ G  Y                   P * ( T * RY + TY * R )
+
+ H  A         A         R * ( P * TAA + PAA * T
+ H+                           + 2.0D0 * PA * TA )
+ H  A         B         R * ( PA * TB + PB * TA
+ H+                           + PAB * T )
+ H  A         I         ( PI * TA + PAI * T ) * R
+ H  A         S         ( P * TA + PA * T ) * RS
+ H+                       + ( P * TAS + PA * TS ) * R
+ H  A         Y         ( P * TA + PA * T ) * RY
+ H+                       + ( P * TAY + PA * TY ) * R
+ H  B         B         R * ( P * TBB + PBB * T
+ H+                           + 2.0D0 * PB * TB )
+ H  B         I         ( PI * TB + PBI * T ) * R
+ H  B         S         ( P * TB + PB * T ) * RS
+ H+                       + ( P * TBS + PB * TS ) * R
+ H  B         Y         ( P * TB + PB * T ) * RY
+ H+                       + ( P * TBY + PB * TY ) * R
+ H  I         S         PI * ( T * RS + TS * R )
+ H  I         Y         PI * ( T * RY + TY * R )
+ H  S         S         P * ( T * RSS + TSS * R
+ H+                           + 2.0D0 * TS * RS )
+ H  S         Y         P * ( T * RSY + TSY * R
+ H+                           + TS * RY + TY * RS )
+ H  Y         Y         P * ( T * RYY + TYY * R
+ H+                           + 2.0D0 * TY * RY )
+
+ENDATA

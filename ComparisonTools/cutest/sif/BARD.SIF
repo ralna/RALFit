@@ -1,0 +1,179 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BARD
+
+*   Problem :
+*   *********
+*   Bard problem in 3 variables.
+*   This function  is a nonlinear least squares with 15 groups.  Each
+*   group has a linear and a nonlinear element.
+
+*   Source: Problem 3 in
+*   J.J. More', B.S. Garbow and K.E. Hillstrom,
+*   "Testing Unconstrained Optimization Software",
+*   ACM Transactions on Mathematical Software, vol. 7(1), pp. 17-41, 1981.
+
+*   See also Buckley#16.
+*   SIF input: Ph. Toint, Dec 1989.
+
+*   classification SUR2-AN-3-0
+
+*   Number of groups
+
+ IE 15                  15
+
+*   Useful parameters
+
+ IE 1                   1
+ IE 8                   8
+ IE 9                   9
+
+VARIABLES
+
+    X1
+    X2
+    X3
+
+GROUPS
+
+ DO I         1                        15
+ XN G(I)      X1        1.0
+ ND
+
+CONSTANTS
+
+    BARD      G1        0.14
+    BARD      G2        0.18
+    BARD      G3        0.22
+    BARD      G4        0.25
+    BARD      G5        0.29
+    BARD      G6        0.32
+    BARD      G7        0.35
+    BARD      G8        0.39
+    BARD      G9        0.37
+    BARD      G10       0.58
+    BARD      G11       0.73
+    BARD      G12       0.96
+    BARD      G13       1.34
+    BARD      G14       2.10
+    BARD      G15       4.39
+
+BOUNDS
+
+ FR BARD      'DEFAULT'
+
+START POINT
+
+ XV BARD      'DEFAULT' 1.0
+
+ELEMENT TYPE
+
+ EV BD        V1                       V2
+ EP BD        U                        V
+ EP BD        W
+
+ELEMENT USES
+
+ T  'DEFAULT' BD
+
+ DO I         1                        8
+
+ RI REALI     I
+ RS 16-I      REALI     16.0
+
+ ZV E(I)      V1                       X2
+ ZV E(I)      V2                       X3
+ ZP E(I)      U                        REALI
+ ZP E(I)      V                        16-I
+ ZP E(I)      W                        REALI
+
+ ND
+
+ DO I         9                        15
+
+ RI REALI     I
+ RS 16-I      REALI     16.0
+
+ ZV E(I)      V1                       X2
+ ZV E(I)      V2                       X3
+ ZP E(I)      U                        REALI
+ ZP E(I)      V                        16-I
+ ZP E(I)      W                        16-I
+
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ T  'DEFAULT' L2
+
+ DO I         1                        15
+ XE G(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+ LO BARD                0.0
+
+*   Solution
+
+* LO SOLTN               8.2149D-03
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      BARD
+
+TEMPORARIES
+
+ R  Z
+ R  Z2
+ R  Z3
+ R  VU
+ R  WU
+
+INDIVIDUALS
+
+*   Bard function
+
+ T  BD
+ A  Z                   V * V1 + W * V2
+ A  Z2                  Z * Z
+ A  Z3                  Z * Z2
+ A  VU                  V * U
+ A  WU                  W * U
+ F                      U / Z
+ G  V1                  - VU / Z2
+ G  V2                  - WU / Z2
+ H  V1        V1        2.0 * V * VU / Z3
+ H  V1        V2        2.0 * V * WU / Z3
+ H  V2        V2        2.0 * W * WU / Z3
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        BARD
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

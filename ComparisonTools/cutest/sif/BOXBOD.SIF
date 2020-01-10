@@ -1,0 +1,143 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          BOXBOD
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem BOXBOD given as an inconsistent set of 
+*   nonlinear equations
+
+*   Fit: y = b1*(1-exp[-b2*x]) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+
+*   Reference: Box, G. P., W. G. Hunter, and J. S. Hunter (1978).
+*     Statistics for Experimenters, New York, NY: Wiley, pp. 483-487.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-2-6
+
+*   Number of data values
+
+ IE M                   6
+
+*   Number of variables
+
+ IE N                   2
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  1.0
+ RE X2                  2.0
+ RE X3                  3.0
+ RE X4                  5.0
+ RE X5                  7.0
+ RE X6                  10.0
+
+ RE Y1                  109.0
+ RE Y2                  149.0
+ RE Y3                  149.0
+ RE Y4                  191.0
+ RE Y5                  213.0
+ RE Y6                  224.0
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)      B1        1.0
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  BOXBOD    F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR BOXBOD    'DEFAULT'
+
+START POINT
+
+    START1    B1        1.0
+    START1    B2        1.0
+
+*  Alternative start point
+
+    START2    B1        100.0    
+    START2    B2        0.75
+
+
+ELEMENT TYPE
+
+ EV E2        V1
+ EV E2        V2
+ EP E2        X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E2
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)      -1.0
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO BOXBOD              0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      BOXBOD
+
+TEMPORARIES
+
+ R  E
+ M  EXP
+
+INDIVIDUALS
+
+ T  E2
+ A  E                   EXP( - V2 * X )
+ F                      V1 * E
+ G  V1                  E
+ G  V2                  - V1 * X * E
+ H  V1        V2        - X * E
+ H  V2        V2        V1 * X * X * E
+
+ENDATA
+

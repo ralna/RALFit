@@ -1,0 +1,255 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          CHWIRUT2
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem CHWIRUT2 given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = exp[-b1*x]/(b2+b3*x) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Chwirut, D., NIST (197?).  
+*     Ultrasonic Reference Block Study. 
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-3-54
+
+*   Number of data values
+
+ IE M                   54
+
+*   Number of variables
+
+ IE N                   3
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  0.5  
+ RE X2                  1.0  
+ RE X3                  1.75 
+ RE X4                  3.75 
+ RE X5                  5.75 
+ RE X6                  0.875
+ RE X7                  2.25 
+ RE X8                  3.25 
+ RE X9                  5.25 
+ RE X10                 0.75 
+ RE X11                 1.75 
+ RE X12                 2.75 
+ RE X13                 4.75 
+ RE X14                 0.625
+ RE X15                 1.25 
+ RE X16                 2.25 
+ RE X17                 4.25 
+ RE X18                 0.5  
+ RE X19                 3.0  
+ RE X20                 0.75 
+ RE X21                 3.0  
+ RE X22                 1.5  
+ RE X23                 6.0  
+ RE X24                 3.0  
+ RE X25                 6.0  
+ RE X26                 1.5  
+ RE X27                 3.0  
+ RE X28                 0.5  
+ RE X29                 2.0  
+ RE X30                 4.0  
+ RE X31                 0.75 
+ RE X32                 2.0  
+ RE X33                 5.0  
+ RE X34                 0.75 
+ RE X35                 2.25 
+ RE X36                 3.75 
+ RE X37                 5.75 
+ RE X38                 3.0  
+ RE X39                 0.75 
+ RE X40                 2.5  
+ RE X41                 4.0  
+ RE X42                 0.75 
+ RE X43                 2.5  
+ RE X44                 4.0  
+ RE X45                 0.75 
+ RE X46                 2.5  
+ RE X47                 4.0  
+ RE X48                 0.5  
+ RE X49                 6.0  
+ RE X50                 3.0  
+ RE X51                 0.5  
+ RE X52                 2.75 
+ RE X53                 0.5  
+ RE X54                 1.75 
+
+ RE Y1                  92.9   
+ RE Y2                  57.1   
+ RE Y3                  31.05  
+ RE Y4                  11.5875
+ RE Y5                  8.025  
+ RE Y6                  63.6   
+ RE Y7                  21.4   
+ RE Y8                  14.25  
+ RE Y9                  8.475  
+ RE Y10                 63.8   
+ RE Y11                 26.8   
+ RE Y12                 16.4625
+ RE Y13                 7.125  
+ RE Y14                 67.3   
+ RE Y15                 41.0   
+ RE Y16                 21.15  
+ RE Y17                 8.175  
+ RE Y18                 81.50  
+ RE Y19                 13.12  
+ RE Y20                 59.9   
+ RE Y21                 14.62  
+ RE Y22                 32.9   
+ RE Y23                 5.44   
+ RE Y24                 12.56  
+ RE Y25                 5.44   
+ RE Y26                 32.0   
+ RE Y27                 13.95  
+ RE Y28                 75.8   
+ RE Y29                 20.0   
+ RE Y30                 10.42  
+ RE Y31                 59.5   
+ RE Y32                 21.67  
+ RE Y33                 8.55   
+ RE Y34                 62.0   
+ RE Y35                 20.2   
+ RE Y36                 7.76   
+ RE Y37                 3.75   
+ RE Y38                 11.81  
+ RE Y39                 54.7   
+ RE Y40                 23.7   
+ RE Y41                 11.55  
+ RE Y42                 61.3   
+ RE Y43                 17.7   
+ RE Y44                 8.74   
+ RE Y45                 59.2   
+ RE Y46                 16.3   
+ RE Y47                 8.62   
+ RE Y48                 81.0   
+ RE Y49                 4.87   
+ RE Y50                 14.62  
+ RE Y51                 81.7   
+ RE Y52                 17.17  
+ RE Y53                 81.3   
+ RE Y54                 28.9   
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  CHWIRUT2  F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR CHWIRUT2  'DEFAULT'
+
+START POINT
+
+    START1    B1        0.1 
+    START1    B2        0.01
+    START1    B3        0.02
+
+*  Alternative start point
+
+    START2    B1        0.15 
+    START2    B2        0.008
+    START2    B3        0.010
+
+ELEMENT TYPE
+
+ EV E16       V1
+ EV E16       V2
+ EV E16       V3
+ EP E16       X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E16
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO CHWIRUT2            0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      CHWIRUT2
+
+TEMPORARIES
+
+ R  E
+ R  V2PV3X
+ R  V2PV32
+ R  V2PV33
+ R  EX
+ R  EX2
+ M  EXP
+
+INDIVIDUALS
+
+ T  E16
+ A  E                   EXP( - V1 * X )    
+ A  EX                  E * X
+ A  EX2                 EX * X
+ A  V2PV3X              V2 + V3 * X
+ A  V2PV32              V2PV3X * V2PV3X
+ A  V2PV33              V2PV3X * V2PV32
+ F                      E / V2PV3X
+ G  V1                  - EX / V2PV3X
+ G  V2                  - E / V2PV32
+ G  V3                  - EX / V2PV32
+ H  V1        V1        EX2 / V2PV3X
+ H  V1        V2        EX / V2PV32
+ H  V1        V3        EX2 / V2PV32
+ H  V2        V2        2.0 * E / V2PV33
+ H  V2        V3        2.0 * EX / V2PV33
+ H  V3        V3        2.0 * EX2 / V2PV33
+
+ENDATA

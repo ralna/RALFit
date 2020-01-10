@@ -1,0 +1,201 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          MGH10LS
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem MGH10.
+
+*   Fit: y = b1 * exp[b2/(x+b3)] + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Meyer, R. R. (1970).  
+*     Theoretical and computational aspects of nonlinear 
+*     regression.  In Nonlinear Programming, Rosen, 
+*     Mangasarian and Ritter (Eds).  
+*     New York, NY: Academic Press, pp. 465-486.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification SUR2-MN-3-0
+
+*   Number of data values
+
+ IE M                   16
+
+*   Number of variables
+
+ IE N                   3
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  5.00E+01
+ RE X2                  5.50E+01
+ RE X3                  6.00E+01
+ RE X4                  6.50E+01
+ RE X5                  7.00E+01
+ RE X6                  7.50E+01
+ RE X7                  8.00E+01
+ RE X8                  8.50E+01
+ RE X9                  9.00E+01
+ RE X10                 9.50E+01
+ RE X11                 1.00E+02
+ RE X12                 1.05E+02
+ RE X13                 1.10E+02
+ RE X14                 1.15E+02
+ RE X15                 1.20E+02
+ RE X16                 1.25E+02
+
+ RE Y1                  3.478+04
+ RE Y2                  2.861+04
+ RE Y3                  2.365+04
+ RE Y4                  1.963+04
+ RE Y5                  1.637+04
+ RE Y6                  1.372+04
+ RE Y7                  1.154+04
+ RE Y8                  9.744+03
+ RE Y9                  8.261+03
+ RE Y10                 7.030+03
+ RE Y11                 6.005+03
+ RE Y12                 5.147+03
+ RE Y13                 4.427+03
+ RE Y14                 3.820+03
+ RE Y15                 3.307+03
+ RE Y16                 2.872+03
+
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XN F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  MGH10     F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR MGH10     'DEFAULT'
+
+START POINT
+
+    START1    B1        2.0     
+    START1    B2        400000.0
+    START1    B3        25000.0 
+
+*  Alternative start point
+
+    START2    B1        0.02  
+    START2    B2        4000.0
+    START2    B3        250.0 
+
+ELEMENT TYPE
+
+ EV E12       V1
+ EV E12       V2
+ EV E12       V3
+ EP E12       X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E12
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP TYPE
+
+ GV L2        GVAR
+
+GROUP USES
+
+ T  'DEFAULT' L2
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO MGH10               0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      MGH10LS
+
+TEMPORARIES
+
+ R  E
+ R  V3PX
+ R  V3PX2
+ R  V3PX3
+ M  EXP
+
+INDIVIDUALS
+
+ T  E12
+ A  V3PX                V3 + X
+ A  V3PX2               V3PX * V3PX
+ A  V3PX3               V3PX * V3PX2
+ A  E                   EXP( V2 / V3PX )
+ F                      V1 * E
+ G  V1                  E
+ G  V2                  V1 * E / V3PX
+ G  V3                  - V1 * V2 * E/ V3PX2
+ H  V1        V2        E / V3PX
+ H  V1        V3        - V2 * E / V3PX2
+ H  V2        V2        V1 * E / V3PX2
+ H  V2        V3        - V1 * E / V3PX2
+ H+                       - V1 * V2 * E / V3PX3 
+ H  V3        V3        V1 * V2 *  * 2.0 * E / V3PX ** 4 
+ H+                       + 2.0 * V1 * V2 * E / V3PX3 
+
+ENDATA
+
+*********************
+* SET UP THE GROUPS *
+* ROUTINE           *
+*********************
+
+GROUPS        MGH10LS
+
+INDIVIDUALS
+
+*   Least-square groups
+
+ T  L2
+ F                      GVAR * GVAR
+ G                      GVAR + GVAR
+ H                      2.0
+
+ENDATA

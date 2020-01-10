@@ -1,0 +1,261 @@
+***************************
+* SET UP THE INITIAL DATA *
+***************************
+
+NAME          THURBER 
+
+*   Problem :
+*   *********
+
+*   NIST Data fitting problem THURBER given as an inconsistent set of
+*   nonlinear equations.
+
+*   Fit: y = (b1 + b2*x + b3*x**2 + b4*x**3) / 
+*            (1 + b5*x + b6*x**2 + b7*x**3) + e
+
+*   Source:  Problem from the NIST nonlinear regression test set
+*     http://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+
+*   Reference: Thurber, R., NIST (197?).  
+*     Semiconductor electron mobility modeling.
+
+*   SIF input: Nick Gould and Tyrone Rees, Oct 2015
+
+*   classification NOR2-MN-7-37
+
+*   Number of data values
+
+ IE M                   37
+
+*   Number of variables
+
+ IE N                   7
+
+*   Useful parameters
+
+ IE 1                   1
+
+*  Data values
+
+ RE X1                  -3.067
+ RE X2                  -2.981
+ RE X3                  -2.921
+ RE X4                  -2.912
+ RE X5                  -2.840
+ RE X6                  -2.797
+ RE X7                  -2.702
+ RE X8                  -2.699
+ RE X9                  -2.633
+ RE X10                 -2.481
+ RE X11                 -2.363
+ RE X12                 -2.322
+ RE X13                 -1.501
+ RE X14                 -1.460
+ RE X15                 -1.274
+ RE X16                 -1.212
+ RE X17                 -1.100
+ RE X18                 -1.046
+ RE X19                 -0.915
+ RE X20                 -0.714
+ RE X21                 -0.566
+ RE X22                 -0.545
+ RE X23                 -0.400
+ RE X24                 -0.309
+ RE X25                 -0.109
+ RE X26                 -0.103
+ RE X27                  0.010
+ RE X28                  0.119
+ RE X29                  0.377
+ RE X30                  0.790
+ RE X31                  0.963
+ RE X32                  1.006
+ RE X33                  1.115
+ RE X34                  1.572
+ RE X35                  1.841
+ RE X36                  2.047
+ RE X37                  2.200
+
+ RE Y1                    80.574
+ RE Y2                    84.248
+ RE Y3                    87.264
+ RE Y4                    87.195
+ RE Y5                    89.076
+ RE Y6                    89.608
+ RE Y7                    89.868
+ RE Y8                    90.101
+ RE Y9                    92.405
+ RE Y10                   95.854
+ RE Y11                  100.696
+ RE Y12                  101.060
+ RE Y13                  401.672
+ RE Y14                  390.724
+ RE Y15                  567.534
+ RE Y16                  635.316
+ RE Y17                  733.054
+ RE Y18                  759.087
+ RE Y19                  894.206
+ RE Y20                  990.785
+ RE Y21                 1090.109
+ RE Y22                 1080.914
+ RE Y23                 1122.643
+ RE Y24                 1178.351
+ RE Y25                 1260.531
+ RE Y26                 1273.514
+ RE Y27                 1288.339
+ RE Y28                 1327.543
+ RE Y29                 1353.863
+ RE Y30                 1414.509
+ RE Y31                 1425.208
+ RE Y32                 1421.384
+ RE Y33                 1442.962
+ RE Y34                 1464.350
+ RE Y35                 1468.705
+ RE Y36                 1447.894
+ RE Y37                 1457.628
+VARIABLES
+
+ DO I         1                        N
+ X  B(I)
+ ND
+
+GROUPS
+
+ DO I         1                        M
+ XE F(I)
+ ND
+
+CONSTANTS
+
+ DO I         1                        M
+ Z  THURBER   F(I)                     Y(I)
+ ND        
+
+BOUNDS
+
+ FR THURBER   'DEFAULT'
+
+START POINT
+
+    START1    B1        1000.0
+    START1    B2        1000.0
+    START1    B3        400.0 
+    START1    B4        40.0  
+    START1    B5        0.7   
+    START1    B6        0.3   
+    START1    B7        0.03  
+
+*  Alternative start point
+
+    START2    B1        1300.0 
+    START2    B2        1500.0 
+    START2    B3        500.0  
+    START2    B4        75.0   
+    START2    B5        1.0    
+    START2    B6        0.4    
+    START2    B7        0.05   
+
+ELEMENT TYPE
+
+ EV E19       V1
+ EV E19       V2
+ EV E19       V3
+ EV E19       V4
+ EV E19       V5
+ EV E19       V6
+ EV E19       V7
+ EP E19       X
+
+ELEMENT USES
+
+ DO I         1                        M
+ XT E(I)      E19
+ ZV E(I)      V1                       B1
+ ZV E(I)      V2                       B2
+ ZV E(I)      V3                       B3
+ ZV E(I)      V4                       B4
+ ZV E(I)      V5                       B5
+ ZV E(I)      V6                       B6
+ ZV E(I)      V7                       B7
+ ZP E(I)      X                        X(I)
+ ND
+
+GROUP USES
+
+ DO I         1                        M
+ XE F(I)      E(I)
+ ND
+
+OBJECT BOUND
+
+*   Least square problems are bounded below by zero
+
+ LO THURBER             0.0
+
+*   Solution
+
+*LO SOLTN               
+
+ENDATA
+
+***********************
+* SET UP THE FUNCTION *
+* AND RANGE ROUTINES  *
+***********************
+
+ELEMENTS      THURBER 
+
+TEMPORARIES
+
+ R  E
+ R  T
+ R  D
+ R  D2
+ R  TD3
+ R  X2
+ R  X3
+ R  X4
+ R  X5
+ R  X6
+ M  EXP
+
+INDIVIDUALS
+
+ T  E19
+ A  X2                  X * X
+ A  X3                  X2 * X
+ A  X4                  X3 * X
+ A  X5                  X4 * X
+ A  X6                  X5 * X
+ A  T                   V1 + V2 * X + V3 * X2 + V4 * X3
+ A  D                   1.0D0 + V5 * X + V6 * X2 + V7 * X3
+ A  D2                  D * D
+ A  TD3                 0.5D0 * D2 * D
+ F                      T / D
+ G  V1                  1.0D0 / D
+ G  V2                  X / D
+ G  V3                  X2 / D
+ G  V4                  X3 / D
+ G  V5                  - X * T / D2
+ G  V6                  - X2 * T / D2
+ G  V7                  - X3 * T / D2
+ H  V1        V5        - X / D2
+ H  V1        V6        - X2 / D2 
+ H  V1        V7        - X3 / D2
+ H  V2        V5        - X2 / D2
+ H  V2        V6        - X3 / D2 
+ H  V2        V7        - X4 / D2  
+ H  V3        V5        - X3 / D2
+ H  V3        V6        - X4 / D2 
+ H  V3        V7        - X5 / D2 
+ H  V4        V5        - X4 / D2
+ H  V4        V6        - X5 / D2 
+ H  V4        V7        - X6 / D2 
+ H  V5        V5        X2 * T / TD3
+ H  V5        V6        X3 * T / TD3
+ H  V5        V7        X4 * T / TD3
+ H  V6        V6        X4 * T / TD3
+ H  V6        V7        X5 * T / TD3
+ H  V7        V7        X6 * T / TD3
+
+ENDATA
+
