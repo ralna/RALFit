@@ -110,8 +110,8 @@ contains
     class( params_base_type ), intent(inout) :: params
     real( wp ), dimension( m ), intent(in), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
-    real( wp ), dimension( n ), intent(in), optional :: lower_bounds
-    real( wp ), dimension( n ), intent(in), optional :: upper_bounds
+    real( wp ), dimension( n ), intent(inout), optional :: lower_bounds
+    real( wp ), dimension( n ), intent(inout), optional :: upper_bounds
 
     integer  :: i, nrec
     Character(Len=80) :: rec(3)
@@ -207,8 +207,8 @@ contains
     class( params_base_type ), intent(inout) :: params
     REAL( wp ), DIMENSION( m ), INTENT( IN ), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
-    real( wp ), dimension( n ), intent(in), optional :: lower_bounds
-    real( wp ), dimension( n ), intent(in), optional :: upper_bounds
+    real( wp ), dimension( n ), intent(inout), optional :: lower_bounds
+    real( wp ), dimension( n ), intent(inout), optional :: upper_bounds
 
     integer :: i, no_reductions, max_tr_decrease, prncnt
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
@@ -281,6 +281,16 @@ contains
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .false.
        end if
 
+       ! Setup box_logic workspace
+       if ( present(lower_bounds) .or. present(upper_bounds)) then
+          call setup_bounds_type(w%box_ws,n,lower_bounds,upper_bounds,options,inform)
+          if (inform%status .ne. 0) then
+             goto 100
+          end if
+          ! make initial point feasible by projecting into the box
+          Call box_proj_xxx(w%box_ws, n, x)
+       end if
+       
        !   Make initial point x0 feasible
        Select Type(params)
        Class Is(params_box_type)
@@ -364,8 +374,7 @@ contains
          inform%status = NLLS_ERROR_INITIAL_GUESS
          Go To 100
        End If
-
-       ! save some data
+          
        Select Type(params)
        Class Is(params_box_type)
          If (params%iusrbox==1) Then
@@ -381,8 +390,20 @@ contains
            ! box-bound in practice is non-existent...
            inform%norm_g = w%normJF
          End If
-       Class Default
-         inform%norm_g = w%normJF
+      Class Default
+         ! save some data
+         if ( w%box_ws%has_box ) then
+            ! store current merit, used to see how well a quadratic fits
+            ! Reference value used in LS Step
+            w%box_ws%normFold = 2.0_wp * w%normF
+            ! Reference used in the nonmonotone ls in the PG Step
+            w%box_ws%nFref = 1
+            w%box_ws%normFref(1) = w%normF
+            Call box_projdir_xxx(w%box_ws,n,X,w%g,w%normJF)
+            inform%norm_g = w%box_ws%normPD
+         else
+            inform%norm_g = w%normJF
+         end if
        End Select
        w%normJF0 = inform%norm_g
        inform%scaled_g = inform%norm_g / w%normF0
@@ -607,8 +628,8 @@ lp: do while (.not. success)
        Class is(params_box_type)
          If (params%iusrbox==1) Then
 !          Project candidate: w%Xnew <- P(X + w%d) = P(w%Xnew)
-           tau = norm2(w%Xnew-X)
-           Call box_proj(params=params,n=n, x=X, xnew=w%Xnew, dir=w%d)
+            tau = norm2(w%Xnew-X)
+            Call box_proj(params, n=n, x=X, xnew=w%Xnew, dir=w%d)
            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
            !!!    Update d = P(X+d)-X  !!!
            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -632,6 +653,32 @@ lp: do while (.not. success)
          End If
        End Select
 
+       if (w%box_ws%has_box) then
+          ! Project candidate: w%Xnew <- P(X + w%d) = P(w%Xnew)
+          tau = norm2(w%Xnew-X)
+          Call box_proj_xxx(w%box_ws, n=n, x=X, xnew=w%Xnew, dir=w%d)
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          !!!    Update d = P(X+d)-X  !!!
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           If (w%box_ws%prjchd) Then
+              w%d(1:n) = w%Xnew(1:n)-X(1:n)
+              w%norm_2_d = norm2(w%d)
+           End If
+           ! tau = |P(X+d)-X| / |d|.
+           ! if tau << 1 then the TR step is orthogonal to the active constraints
+           tau = w%norm_2_d / tau
+           ! fix rounding & cancelation errors
+           tau = max(0.0_wp, min(1.0_wp, tau))
+           If (no_reductions==1) Then
+!            gtd = -g(x)^T (P(x+d)-x)
+              w%box_ws%gtd = 0.0_wp
+              Do i = 1, n
+                 w%box_ws%gtd = w%box_ws%gtd + w%g(i)*w%d(i)
+                 w%box_ws%g(i) = w%g(i)
+              End Do
+           End If
+        End If
+        
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
@@ -1004,11 +1051,16 @@ lp: do while (.not. success)
       If (params%iusrbox==1) Then
         Call box_projdir(params,n=n,x=X,dir=w%g,normg=w%normJF)
         inform%norm_g = params%normPD
-      Else
+     Else
         inform%norm_g = w%normJF
       End If
-    Class Default
-      inform%norm_g = w%normJF
+   Class Default
+      if (w%box_ws%has_box) then
+         Call box_projdir_xxx(w%box_ws,n=n,x=X,dir=w%g,normg=w%normJF)
+         inform%norm_g = w%box_ws%normPD
+      else
+         inform%norm_g = w%normJF
+      end if
     End Select
     inform%scaled_g = inform%norm_g/merge(1.0_wp, w%normF, w%normF==0.0_wp)
     inform%step = w%norm_2_d
@@ -4316,7 +4368,7 @@ lp:    do i = 1, w%tensor_options%maxit
 !     Main changes include the addition of box projection and modification of the scaling
 !     logic since uncmin.f operates in the original (unscaled) variable space.
       Recursive Subroutine lnsrch(n,m,x,f,g,p,alpha,sigma,xpls,fpls,eval_f,mxtake,   &
-        stepmx,steptl,fnew,inform,params,options,iretcd,weights,sx)
+        stepmx,steptl,fnew,inform,params,options,iretcd,box_ws,weights,sx)
         Use ral_nlls_workspaces
         Implicit None
 
@@ -4325,6 +4377,7 @@ lp:    do i = 1, w%tensor_options%maxit
         Real (Kind=wp), Intent (In)    :: f, g(n), p(n), sigma, stepmx,  &
                                           steptl
         Real (Kind=wp), Intent (Inout) :: x(n), xpls(n), fpls, fnew(m),alpha
+        type (box_type), intent (inout) :: box_ws
         Real (Kind=wp), Intent (In), Optional :: weights(n), sx(n)
         Logical, Intent (Out)          :: mxtake
         Class (params_box_type), Intent (InOut) :: params
@@ -4384,9 +4437,10 @@ lp:    do i = 1, w%tensor_options%maxit
 99997   Format (I2,1X,Es8.2e2,1X,Es16.8e2,1X,Es9.2e2,1X,I4)
 99996   Format (A)
         Do j = 1, options%box_ls_step_maxit
-          ! xpls(i) = P(x(i) + alpha*scl*p(i))
-          Call box_proj(params, n, x, xpls, p, alpha*scl)
-
+           ! xpls(i) = P(x(i) + alpha*scl*p(i))
+           Call box_proj(params, n, x, xpls, p, alpha*scl)
+           Call box_proj_xxx(box_ws, n, x, xpls, p, alpha*scl)
+           
 !         evaluate function at new point */
           If (.Not. present(sx)) Then
             Call eval_f(inform%external_return,n,m,xpls,fnew,params)
@@ -4546,19 +4600,11 @@ lp:    do i = 1, w%tensor_options%maxit
         steptl = sqrt(epsmch) ! this parameter determines how small
 !       can the step be before giving up, set from 1e3 to 1.0
         f0 = 0.5_wp*w%normf**2
-        If (present(weights)) Then
-          Call lnsrch(n=n,m=m,x=x,f=f0,g=fdx,p=w%d,alpha=alpn,                 &
-            sigma=options%box_wolfe_descent,xpls=w%xnew,fpls=fpls,             &
-            eval_f=eval_f,mxtake=mxtake,stepmx=stepmx,steptl=steptl,           &
-            fnew=w%fnew,inform=inform,params=params,options=options,           &
-            iretcd=ierr,weights=weights)
-        Else
-          Call lnsrch(n=n,m=m,x=x,f=f0,g=fdx,p=w%d,alpha=alpn,                 &
-            sigma=options%box_wolfe_descent,xpls=w%xnew,fpls=fpls,             &
-            eval_f=eval_f,mxtake=mxtake,stepmx=stepmx,steptl=steptl,           &
-            fnew=w%fnew,inform=inform,params=params,options=options,           &
-            iretcd=ierr)
-        End If
+        Call lnsrch(n=n,m=m,x=x,f=f0,g=fdx,p=w%d,alpha=alpn,                 &
+             sigma=options%box_wolfe_descent,xpls=w%xnew,fpls=fpls,             &
+             eval_f=eval_f,mxtake=mxtake,stepmx=stepmx,steptl=steptl,           &
+             fnew=w%fnew,inform=inform,params=params,options=options,           &
+             iretcd=ierr,box_ws=w%box_ws,weights=weights)
         If (ierr/=0) Then
           Go To 100
         End If
@@ -4655,28 +4701,30 @@ lp:    do i = 1, w%tensor_options%maxit
         Integer :: ierr
 
         Continue
-          ! Calculate params%pdir
-          Call box_projdir(params, n=n, x=x, dir=w%g, normg=w%normJF, sigma=1.0_wp)
-          If (params%quad_i>=options%box_quad_match) Then
-            alpha = max(min(1.0_wp,options%box_alpha_scale*inform%step/params% &
-              normpd), 1.0e-10_wp)
-          Else
-            alpha = 1.0_wp
-          End If
-          If (present(weights)) Then
-            Call nmls_pg(m=m,                                                  &
-              fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
-              Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
-              options=options,alpha=alpha,ierr=ierr,weights=weights)
-          Else
-            Call nmls_pg(m=m,                                                  &
-              fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
-              Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
-              options=options,alpha=alpha,ierr=ierr)
-          End If
-          If (ierr==0 .or. ierr==-2) Then
-!           Update w%g JF
-            if (.not. options%exact_second_derivatives) then
+        ! Calculate params%pdir
+        Call box_projdir(params, n=n, x=x, dir=w%g, normg=w%normJF, sigma=1.0_wp)
+        Call box_projdir_xxx(w%box_ws, n=n, x=x, dir=w%g, normg=w%normJF, sigma=1.0_wp)
+        If (params%quad_i>=options%box_quad_match) Then
+           alpha = max(min(1.0_wp,options%box_alpha_scale*inform%step/params% &
+                normpd), 1.0e-10_wp)
+        Else
+           alpha = 1.0_wp
+        End If
+
+        If (present(weights)) Then
+           Call nmls_pg(m=m,                                                  &
+                fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
+                Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
+                options=options,alpha=alpha,ierr=ierr,weights=weights)
+        Else
+           Call nmls_pg(m=m,                                                  &
+                fnew=w%Fnew,n=n,x=X,fdx=w%g,normFnew=normFnew,                  &
+                Xnew=w%Xnew,normX=normX,params=params,eval_F=eval_F,inform=inform,&
+                options=options,alpha=alpha,ierr=ierr)
+        End If
+        If (ierr==0 .or. ierr==-2) Then
+           !           Update w%g JF
+           if (.not. options%exact_second_derivatives) then
               ! save the value of g_mixed, which is needed for
               ! call to rank_one_update
               ! g_mixed = -J_k^T r_{k+1}
