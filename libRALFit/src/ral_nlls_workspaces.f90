@@ -546,6 +546,21 @@ module ral_nlls_workspaces
      type( tenJ_type ), pointer :: tenJ
   end type tensor_params_type
 
+  type, public :: box_type
+     ! See if problem has box bounds
+     Integer :: iusrbox = 0
+     Real(Kind=wp), Allocatable :: pdir(:), normFref(:), sk(:), g(:)
+     ! projection changed the direction? d /= P(d)?
+     Logical :: prjchd = .false.
+     ! Convergence metrics
+     Real(Kind=wp) :: normPD, gtd
+     ! Memory for HZLS (LS)
+     Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
+     ! Consecutive times quadratic model is accurate
+     Integer       :: quad_i = 0
+     ! Memory for nonmonotone LS
+     Integer       :: nFref = 0
+  end type box_type
 
   type, public :: max_eig_work ! workspace for subroutine max_eig
      logical :: allocated = .false.
