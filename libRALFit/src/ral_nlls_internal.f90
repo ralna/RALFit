@@ -147,35 +147,11 @@ contains
     End Select
 
     main_loop: do i = 1,options%maxit
-       if ( present(weights) ) then
-          if ( present(eval_HP) ) then
-             call nlls_iterate(n, m, X,      &
-                  w,                         &
-                  eval_F, eval_J, eval_HF,   &
-                  params,                    &
-                  inform, options, weights=weights,eval_HP=eval_HP)
-          else
-             call nlls_iterate(n, m, X,      &
-                  w,                         &
-                  eval_F, eval_J, eval_HF,   &
-                  params,                    &
-                  inform, options, weights=weights)
-          end if
-       else
-          if ( present(eval_HP) ) then
-             call nlls_iterate(n, m, X,      &
-                  w,                         &
-                  eval_F, eval_J, eval_HF,   &
-                  params,                    &
-                  inform, options, eval_HP=eval_HP)
-          else
-             call nlls_iterate(n, m, X,      &
-                  w,                         &
-                  eval_F, eval_J, eval_HF,   &
-                  params,                    &
-                  inform, options)
-          end if
-       end if
+       call nlls_iterate(n, m, X,      &
+            w,                         &
+            eval_F, eval_J, eval_HF,   &
+            params,                    &
+            inform, options, weights=weights,eval_HP=eval_HP)
 
        ! test the returns to see if we've converged
        if (inform%status /= 0) then
