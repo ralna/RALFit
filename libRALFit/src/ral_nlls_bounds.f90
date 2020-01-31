@@ -5,8 +5,6 @@ Private
 Public :: nlls_setup_bounds
 ! Routines used by ral_nlls_internal
 Public :: box_proj, box_projdir
-Public :: box_proj_xxx, box_projdir_xxx
-
 
 Contains
 
@@ -125,105 +123,12 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
  
   End Subroutine box_proj
 
-
-
-  Subroutine box_proj_xxx(params, n, x, xnew, dir, alpha)
-    Use ral_nlls_workspaces, Only: params_box_type, wp
-!   Two modes
-!   If xnew and d are present, then project x+alpha*dir, otherwise just 
-!   make x feasible (ignoring either dir or xnew) and return
-!   In either case flag in params%prjchd if the projection altered any entry
-    Implicit None
-    Integer, Intent(In)                    :: n
-    Class(params_box_type), Intent(InOut)  :: params
-    Real(Kind=wp), Intent(InOut)           :: x(n)
-    Real(Kind=wp), Intent(InOut), Optional :: xnew(n)
-    Real(Kind=wp), Intent(In), Optional    :: dir(n), alpha
-    Integer                                :: i
-    Real(Kind=wp)                          :: alp, xi
-
-    Continue
-    params%prjchd = .False.
-    If (.not. (present(xnew) .And. present(dir))) Then
-!     Make feasible point x and return
-      If (params%iusrbox==1) Then
-        Do i = 1, n
-          xi = x(i)
-          x(i) = max(min(params%bux(i), x(i)), params%blx(i))
-          If (xi/=x(i)) Then
-            params%prjchd = .True.
-          End If
-        End Do
-      End If
-      Go To 100
-    End If
-    
-    If (present(alpha)) Then
-      alp = alpha
-    Else
-      alp = 1.0_wp
-    End If
-
-    If (params%iusrbox==1) Then
-      Do i = 1, n
-        xnew(i) = max(min(params%bux(i), x(i)+alp*dir(i)), params%blx(i))
-        If (xnew(i) /= x(i)+dir(i)) Then
-          params%prjchd = .True.
-        End If
-      End Do
-    Else
-      xnew(1:n) = x(1:n) + alp* dir(1:n)
-    End If
-    
-100 Continue
- 
-  End Subroutine box_proj_xxx
-
-  Subroutine box_projdir_xxx(params, n, x, dir, normg, sigma)
-    Use ral_nlls_workspaces, Only: params_box_type, wp
-!   Calculate the projected dir and it's two-norm
-!   Assumes dir = -fdx
-!   If there is no box, then normPD=normg and if pdir is allocated then 
-!   copy dir to it.
-    Implicit None
-    Integer, Intent(In)                   :: n
-    Class(params_box_type), Intent(InOut) :: params
-    Real(Kind=wp), Intent(In)             :: x(n), dir(n), normg
-    Real(Kind=wp), Intent(In), Optional   :: sigma
-    Real(Kind=wp)                         :: alpb
-    Integer                               :: i
-
-    If (params%iusrbox==1) Then
-      If (Present(sigma)) Then
-        alpb = sigma
-      Else
-        alpb = 1.0_wp
-      End If
-      params%normPD = 0.0_wp
-      do i = 1, n
-        If (params%bux(i)/=params%blx(i)) Then
-          params%pdir(i) = max(min(params%bux(i), x(i)+alpb*dir(i)), params%blx(i))-x(i)
-          params%normPD = params%normPD + (params%pdir(i))**2 
-        Else
-          params%pdir(i) = 0.0_wp
-        End If
-      end do
-      params%normPD = sqrt(params%normPD)
-    Else
-      If (allocated(params%pdir)) Then
-        params%pdir(1:n) = dir(1:n)
-      End If
-      params%normPD = normg
-    End If
-  End Subroutine box_projdir_xxx
-
-
-    Subroutine box_projdir(w, n, x, dir, normg, sigma)
+  Subroutine box_projdir(w, n, x, dir, normg, sigma)
     Use ral_nlls_workspaces, Only: params_box_type, wp, box_type
-!   Calculate the projected dir and it's two-norm
-!   Assumes dir = -fdx
-!   If there is no box, then normPD=normg and if pdir is allocated then 
-!   copy dir to it.
+    !   Calculate the projected dir and it's two-norm
+    !   Assumes dir = -fdx
+    !   If there is no box, then normPD=normg and if pdir is allocated then 
+    !   copy dir to it.
     Implicit None
     type( box_type ), Intent(InOut)       :: w
     Integer, Intent(In)                   :: n
@@ -232,30 +137,30 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
     
     Real(Kind=wp)                         :: alpb
     Integer                               :: i
-
+    
     If (w%iusrbox==1) Then
-      If (Present(sigma)) Then
-        alpb = sigma
-      Else
-        alpb = 1.0_wp
-      End If
-      w%normPD = 0.0_wp
-      do i = 1, n
-        If (w%bux(i)/=w%blx(i)) Then
-          w%pdir(i) = max(min(w%bux(i), x(i)+alpb*dir(i)), w%blx(i))-x(i)
-          w%normPD = w%normPD + (w%pdir(i))**2 
-        Else
-          w%pdir(i) = 0.0_wp
-        End If
-      end do
-      w%normPD = sqrt(w%normPD)
+       If (Present(sigma)) Then
+          alpb = sigma
+       Else
+          alpb = 1.0_wp
+       End If
+       w%normPD = 0.0_wp
+       do i = 1, n
+          If (w%bux(i)/=w%blx(i)) Then
+             w%pdir(i) = max(min(w%bux(i), x(i)+alpb*dir(i)), w%blx(i))-x(i)
+             w%normPD = w%normPD + (w%pdir(i))**2 
+          Else
+             w%pdir(i) = 0.0_wp
+          End If
+       end do
+       w%normPD = sqrt(w%normPD)
     Else
-      If (allocated(w%pdir)) Then
-        w%pdir(1:n) = dir(1:n)
-      End If
-      w%normPD = normg
+       If (allocated(w%pdir)) Then
+          w%pdir(1:n) = dir(1:n)
+       End If
+       w%normPD = normg
     End If
   End Subroutine box_projdir
-
+  
   
 End Module ral_nlls_bounds
