@@ -85,7 +85,8 @@ contains
   RECURSIVE SUBROUTINE NLLS_SOLVE( n, m, X,                   &
                          eval_F, eval_J, eval_HF,             &
                          params,                              &
-                         options, inform, weights, eval_HP )
+                         options, inform, weights, eval_HP,   &
+                         lower_bounds, upper_bounds)
 
 !  -----------------------------------------------------------------------------
 !  RAL_NLLS, a fortran subroutine for finding a first-order critical
@@ -109,6 +110,8 @@ contains
     class( params_base_type ), intent(inout) :: params
     real( wp ), dimension( m ), intent(in), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
+    real( wp ), dimension( n ), intent(in), optional :: lower_bounds
+    real( wp ), dimension( n ), intent(in), optional :: upper_bounds
 
     integer  :: i, nrec
     Character(Len=80) :: rec(3)
@@ -194,11 +197,13 @@ contains
   !!******************************************************!!
   !!******************************************************!!
 
-   recursive subroutine nlls_iterate(n, m, X,                   &
+   recursive subroutine nlls_iterate(n, m, X,        &
                           w,                         &
                           eval_F, eval_J, eval_HF,   &
                           params,                    &
-                          inform, options, weights, eval_HP)
+                          inform, options, weights,  &
+                          eval_HP,                   &
+                          lower_bounds, upper_bounds)
     implicit none
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
@@ -211,6 +216,8 @@ contains
     class( params_base_type ), intent(inout) :: params
     REAL( wp ), DIMENSION( m ), INTENT( IN ), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
+    real( wp ), dimension( n ), intent(in), optional :: lower_bounds
+    real( wp ), dimension( n ), intent(in), optional :: upper_bounds
 
     integer :: i, no_reductions, max_tr_decrease, prncnt
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
