@@ -140,15 +140,6 @@ contains
       Call print_options(options)
     End If
 
-!   Make initial point x0 feasible
-    Select Type(params)
-    Class Is(params_box_type)
-      If (params%iusrbox == 1) Then
-!       Project initial point to feasible box
-        Call box_proj(params, n, x)
-      End If
-    End Select
-
     main_loop: do i = 1,options%maxit
        call nlls_iterate(n, m, X,      &
             w,                         &
@@ -290,6 +281,15 @@ contains
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .false.
        end if
 
+       !   Make initial point x0 feasible
+       Select Type(params)
+       Class Is(params_box_type)
+          If (params%iusrbox == 1) Then
+             !       Project initial point to feasible box
+             Call box_proj(params, n, x)
+          End If
+       End Select
+       
        ! evaluate the residual
        ! Note: Assumes X is x0 and is feasible
        call eval_F(inform%external_return, n, m, X, w%f, params)
