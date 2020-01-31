@@ -1782,6 +1782,7 @@ contains
     
     Integer                                   :: i, iusrbox, ierr
 
+    w%has_box = .true.
     w%prjchd = .False.
     w%quad_i = 0
     w%quad_c = 0.0_wp
@@ -1795,7 +1796,6 @@ contains
           If ( lower_bounds(i) > -options%box_bigbnd .Or. &
              options%box_bigbnd > upper_bounds(i)) Then
              iusrbox = 1
-             w%has_box = .true.
           End If
        Else
           inform%status = NLLS_ERROR_BAD_BOX_BOUNDS
@@ -1813,7 +1813,7 @@ contains
       If (allocated(w%normFref)) deallocate(w%normFref, Stat=ierr)
       If (allocated(w%sk)) deallocate(w%sk, Stat=ierr)
       If (allocated(w%g)) deallocate(w%g, Stat=ierr)
-      Allocate(w%pdir(n), w%g(n),      &
+      Allocate(w%blx(n), w%bux(n), w%pdir(n), w%g(n),      &
         w%normFref(options%box_nFref_max), w%sk(n), Stat=ierr)
       if (ierr /= 0) Then
         If (allocated(w%blx)) deallocate(w%blx, Stat=ierr)

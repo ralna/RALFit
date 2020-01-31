@@ -202,7 +202,8 @@ program lanczos_box
 
   ! call fitting routine
   call cpu_time(tic)
-  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
+  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform, &
+       lower_bounds=blx, upper_bounds=bux)
   if(inform%status.ne.0) then
      print *, "ral_nlls() returned with error flag ", inform%status
      stop

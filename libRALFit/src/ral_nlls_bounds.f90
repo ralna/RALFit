@@ -73,7 +73,7 @@ Subroutine nlls_setup_bounds(params, n, blx, bux, options, inform)
 
 End Subroutine nlls_setup_bounds
 
-Subroutine box_proj_xxx(w, n, x, xnew, dir, alpha)
+Subroutine box_proj(w, n, x, xnew, dir, alpha)
     Use ral_nlls_workspaces, Only: box_type, wp
 !   Two modes
 !   If xnew and d are present, then project x+alpha*dir, otherwise just 
@@ -123,11 +123,11 @@ Subroutine box_proj_xxx(w, n, x, xnew, dir, alpha)
     
 100 Continue
  
-  End Subroutine box_proj_xxx
+  End Subroutine box_proj
 
 
 
-  Subroutine box_proj(params, n, x, xnew, dir, alpha)
+  Subroutine box_proj_xxx(params, n, x, xnew, dir, alpha)
     Use ral_nlls_workspaces, Only: params_box_type, wp
 !   Two modes
 !   If xnew and d are present, then project x+alpha*dir, otherwise just 
@@ -177,9 +177,9 @@ Subroutine box_proj_xxx(w, n, x, xnew, dir, alpha)
     
 100 Continue
  
-  End Subroutine box_proj
+  End Subroutine box_proj_xxx
 
-  Subroutine box_projdir(params, n, x, dir, normg, sigma)
+  Subroutine box_projdir_xxx(params, n, x, dir, normg, sigma)
     Use ral_nlls_workspaces, Only: params_box_type, wp
 !   Calculate the projected dir and it's two-norm
 !   Assumes dir = -fdx
@@ -215,10 +215,10 @@ Subroutine box_proj_xxx(w, n, x, xnew, dir, alpha)
       End If
       params%normPD = normg
     End If
-  End Subroutine box_projdir
+  End Subroutine box_projdir_xxx
 
 
-    Subroutine box_projdir_xxx(w, n, x, dir, normg, sigma)
+    Subroutine box_projdir(w, n, x, dir, normg, sigma)
     Use ral_nlls_workspaces, Only: params_box_type, wp, box_type
 !   Calculate the projected dir and it's two-norm
 !   Assumes dir = -fdx
@@ -255,7 +255,7 @@ Subroutine box_proj_xxx(w, n, x, xnew, dir, alpha)
       End If
       w%normPD = normg
     End If
-  End Subroutine box_projdir_xxx
+  End Subroutine box_projdir
 
   
 End Module ral_nlls_bounds
