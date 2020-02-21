@@ -975,12 +975,14 @@ program nlls_test
      ! Two cases:
      ! 1. x is solution point
      ! 2. x is active and projected gradient is zero
+     deallocate(params%x_values, params%y_values)
+     call generate_data_example_box(params)
      call generate_data_example(params_box)
      call reset_default_options(options)
      options%maxit = 2
      options%print_level=0
      x(:) = (/0.3199787042575630E+00, 0.2752509146444680E-01/)
-     call solve_basic(X,params_box,options,status,.True.)
+     call solve_basic(X,params,options,status,.True.)
      if ( .Not. (status%status == 0 .And. status%iter == 0) ) then 
         write(*,*) 'Error: x0 solution but not caught'
         no_errors_main = no_errors_main + 1
@@ -989,12 +991,7 @@ program nlls_test
      Allocate(blx(n), bux(n))
      blx(1:n) = -1.0
      bux(1:n) = blx(1:n)
-     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
-     if (status%status/=0) then
-       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
-       stop
-     End if
-     call solve_basic(X,params_box,options,status)
+     call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( .Not. (status%status == 0 .And. status%iter == 0 .And.               &
        status%norm_g==0.0) ) then 
         write(*,*) 'Error: Proj grd at x0 is zero, but not caught'
@@ -1003,9 +1000,10 @@ program nlls_test
      status%status = 0
 
      ! Unsupported Line Search
+     call reset_default_options(options)
      options%box_linesearch_type = 3
      options%print_level = 5
-     call solve_basic(X,params,options,status)
+     call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
         write(*,*) 'Error: unsupported Linesearch type passed and not caught'
         no_errors_main = no_errors_main + 1
@@ -1013,6 +1011,7 @@ program nlls_test
      status%status = 0
 
      ! Unsupported Print Level
+     call reset_default_options(options)
      options%print_level = 7
      call solve_basic(X,params,options,status)
      if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL ) then 
@@ -1023,15 +1022,15 @@ program nlls_test
      status%status = 0
 
      ! Bad box constraints
+     call reset_default_options(options)
      blx(1:n) = 1.0
-     bux(1:n) = -blx(1:n)
-     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
+     bux(1:n) = -1.0
+     call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( status%status /= NLLS_ERROR_BAD_BOX_BOUNDS ) then 
-        write(*,*) 'Error: Illegal box, but not caught'
+        write(*,*) 'Error: Illegal box, but not caught.  Status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
-
 
      ! Projected Gradient Linesearch recovery error after LS D-S failure
      call reset_default_options(options)
@@ -1039,16 +1038,12 @@ program nlls_test
      x(2) = -2.0_wp
      blx(1:n) = (/1.2_wp,-10.0_wp/)
      bux(1:n) = (/1.2_wp,10.0_wp/)
-     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
-     if (status%status/=0) then
-       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
-       stop
-     End if
      params_box%iter = 0
-     params_box%n_iter = 9
-     call solve_basic(X,params_box,options,status,.True.)
+     params_box%n_iter = 4
+     call solve_basic(X,params_box,options,status,blx=blx,bux=bux)
      if ( status%status /= NLLS_ERROR_PG_STEP ) then 
         write(*,*) 'Error: PG step failed, but not caught'
+        write(*,*) 'status = ', status%status, ' returned'
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
@@ -1058,35 +1053,29 @@ program nlls_test
      x(1) = 1.3_wp
      x(2) = -2.0_wp
      blx(1:n) = (/1.2_wp,-10.0_wp/)
-     bux(1:n) = (/1.2_wp,10.0_wp/)
-     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
-     if (status%status/=0) then
-       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
-       stop
-     End if
+     bux(1:n) = (/1.2_wp,10.0_wp/)     
      options%box_linesearch_type = 2
-     options%maxit = 4
+     options%maxit = 10
      params_box%iter = 0
      params_box%n_iter = 4
-     call solve_basic(X,params_box,options,status,.True.)
+     call solve_basic(X,params,options,status,warm_start=.True.,blx=blx,bux=bux)
      if ( status%status /= NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
-        write(*,*) 'Error: HZLS unsupported, but not caught'
+        write(*,*) 'Error: HZLS unsupported, but not caught.'
+        write(*,*) 'status = ', status%status, ' returned'
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
+     options%print_level = 0
+     options%out = 17
 
-     ! Excersize Print Level logic, this is not a test
+     ! Excercise Print Level logic, this is not a test
+     call reset_default_options(options)
      blx(1:n) = (/1.2_wp,-10.0_wp/)
-     bux(1:n) = (/1.2_wp,10.0_wp/)
-     Call nlls_setup_bounds(params_box, n, blx, bux, options, status)
-     if (status%status/=0) then
-       Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', status%status
-       stop
-     End if
+     bux(1:n) = (/1.2_wp,10.0_wp/)     
      Do i = 1, 5
        options%print_level = i
        Write(options%out, '(80(''=''))')
-       Write(options%out, *) 'Excersizing Print Level = ', options%print_level
+       Write(options%out, *) 'Exercising Print Level = ', options%print_level
        Write(options%out, '(80(''=''))')
        Call reset_default_options(options)
        options%print_header = 4
@@ -1094,8 +1083,8 @@ program nlls_test
        x(1) = 1.3_wp
        x(2) = -2.0_wp
        params_box%iter = 0
-       params_box%n_iter = 9
-       Call solve_basic(X,params_box,options,status,.True.)
+       params_box%n_iter = 9     
+       call solve_basic(X,params,options,status,blx=blx,bux=bux)
        status%status = 0
      End Do
      Write(options%out, '(80(''=''))')
