@@ -224,6 +224,7 @@ contains
     Real(Kind=wp) :: tau, gtd_new, pgtd, wgtd
     Logical       :: takestep, wolfe
     Integer       :: ntrfail, nlab, lstype
+    
 
     ! todo: make max_tr_decrease a control variable
     max_tr_decrease = 100
@@ -4260,30 +4261,31 @@ lp:    do i = 1, w%tensor_options%maxit
             ! Unrecoverable error occured
             Go To 100
           End If
-        End If
-        If (take_pg_step) Then
-!         Nonmonotone Projected Gradient Linesearch ----------------------------
+       End If
+       
+       If (take_pg_step) Then
+          !         Nonmonotone Projected Gradient Linesearch ----------------------------
           lstype = lstype + 2
           If (present(weights)) Then
-            Call pg_step(m,n,x,normx,normfnew,normjfnew,eval_f,eval_j,params,  &
-              w,options,inform,weights)
+             Call pg_step(m,n,x,normx,normfnew,normjfnew,eval_f,eval_j,params,  &
+                  w,options,inform,weights)
           Else
-            Call pg_step(m,n,x,normx,normfnew,normjfnew,eval_f,eval_j,params,  &
-              w,options,inform)
+             Call pg_step(m,n,x,normx,normfnew,normjfnew,eval_f,eval_j,params,  &
+                  w,options,inform)
           End If
           If (inform%status/=0) Then
-            Go To 100
+             Go To 100
           End If
-        End If
-!       Update LS/PG step data
-        w%d(1:n) = w%xnew(1:n) - x(1:n)
-        w%norm_2_d = norm2(w%d)
-!       ---------------------------------!
-!       Update TR radius with LS/PG step !
-!       ---------------------------------!
-        w%Delta = options%box_delta_scale*w%norm_2_d
-
-100     Continue
+       End If
+       !       Update LS/PG step data
+       w%d(1:n) = w%xnew(1:n) - x(1:n)
+       w%norm_2_d = norm2(w%d)
+       !       ---------------------------------!
+       !       Update TR radius with LS/PG step !
+       !       ---------------------------------!
+       w%Delta = options%box_delta_scale*w%norm_2_d
+       
+100    Continue
 
 
     End Subroutine linesearch_steps
