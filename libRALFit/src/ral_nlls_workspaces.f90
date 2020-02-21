@@ -487,22 +487,6 @@ module ral_nlls_workspaces
      ! deliberately empty
   end type params_base_type
 
-  Type, Public, Extends(params_base_type) :: params_box_type
-    ! See if problem has box bounds
-    Integer :: iusrbox = 0
-    Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
-    ! projection changed the direction? d /= P(d)?
-    Logical :: prjchd = .false.
-    ! Convergence metrics
-    Real(Kind=wp) :: normPD, gtd
-    ! Memory for HZLS (LS)
-    Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
-    ! Consecutive times quadratic model is accurate
-    Integer       :: quad_i = 0
-    ! Memory for nonmonotone LS
-    Integer       :: nFref = 0
-  End Type params_box_type
-
   abstract interface
      subroutine eval_hf_type(status, n, m, x, f, h, params)
        import :: params_base_type

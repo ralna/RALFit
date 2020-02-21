@@ -1,75 +1,10 @@
 Module ral_nlls_bounds
 Implicit None
 Private
-! User routine
-Public :: nlls_setup_bounds
 ! Routines used by ral_nlls_internal
 Public :: box_proj, box_projdir
 
 Contains
-
-Subroutine nlls_setup_bounds(params, n, blx, bux, options, inform)
-    Use ral_nlls_workspaces
-    Implicit None
-    Integer, Intent(In)                       :: n
-    Type(NLLS_inform), Intent(InOut)          :: inform
-    Type(NLLS_options), Intent(In)            :: options
-    Class(params_box_type), Intent(InOut)     :: params
-    Real(Kind=wp), Intent(In)                 :: blx(n), bux(n)
-    Integer                                   :: i, iusrbox, ierr
-
-    Continue
-
-    params%prjchd = .False.
-    params%quad_i = 0
-    params%quad_c = 0.0_wp
-    params%quad_q = 0.0_wp
-    
-    iusrbox = 0
-    Do i = 1, n
-      If ( blx(i) <= bux(i) .And. blx(i)==blx(i) .And. bux(i)==bux(i) ) Then
-        If ( blx(i) > -options%box_bigbnd .Or. options%box_bigbnd > bux(i)) Then
-          iusrbox = 1
-        End If
-      Else
-        inform%status = NLLS_ERROR_BAD_BOX_BOUNDS
-        Go To 100
-      End If
-    End Do
-    
-    params%iusrbox = iusrbox
-    If (iusrbox==1) Then
-      params%iusrbox = 1
-      ! Clear all arrays...
-      If (allocated(params%blx)) deallocate(params%blx, Stat=ierr)
-      If (allocated(params%bux)) deallocate(params%bux, Stat=ierr)
-      If (allocated(params%pdir)) deallocate(params%pdir, Stat=ierr)
-      If (allocated(params%normFref)) deallocate(params%normFref, Stat=ierr)
-      If (allocated(params%sk)) deallocate(params%sk, Stat=ierr)
-      If (allocated(params%g)) deallocate(params%g, Stat=ierr)
-      Allocate(params%blx(n), params%bux(n), params%pdir(n), params%g(n),      &
-        params%normFref(options%box_nFref_max), params%sk(n), Stat=ierr)
-      if (ierr /= 0) Then
-        If (allocated(params%blx)) deallocate(params%blx, Stat=ierr)
-        If (allocated(params%bux)) deallocate(params%bux, Stat=ierr)
-        If (allocated(params%pdir)) deallocate(params%pdir, Stat=ierr)
-        If (allocated(params%normFref)) deallocate(params%normFref, Stat=ierr)
-        If (allocated(params%sk)) deallocate(params%sk, Stat=ierr)
-        If (allocated(params%g)) deallocate(params%g, Stat=ierr)
-        inform%status = NLLS_ERROR_ALLOCATION
-        inform%bad_alloc = 'ral_nlls_box'
-        Go To 100
-      end if
-      params%normfref(1:options%box_nFref_max) = -1.0e-20_wp
-      Do i = 1, n
-        params%blx(i) = max(blx(i), -options%box_bigbnd)
-        params%bux(i) = min(bux(i), options%box_bigbnd)
-      End Do
-    End If
-
-100 Continue
-
-End Subroutine nlls_setup_bounds
 
 Subroutine box_proj(w, n, x, xnew, dir, alpha)
     Use ral_nlls_workspaces, Only: box_type, wp
@@ -124,7 +59,7 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
   End Subroutine box_proj
 
   Subroutine box_projdir(w, n, x, dir, normg, sigma)
-    Use ral_nlls_workspaces, Only: params_box_type, wp, box_type
+    Use ral_nlls_workspaces, Only: wp, box_type
     !   Calculate the projected dir and it's two-norm
     !   Assumes dir = -fdx
     !   If there is no box, then normPD=normg and if pdir is allocated then 

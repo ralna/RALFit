@@ -3,9 +3,8 @@
 module ral_nlls_double
 
   use ral_nlls_internal
-  use ral_nlls_workspaces, only : params_base_type, params_box_type,           &
+  use ral_nlls_workspaces, only : params_base_type,           &
     nlls_options, nlls_inform, nlls_workspace
-  use ral_nlls_bounds, Only: nlls_setup_bounds
 
   implicit none
 
@@ -50,7 +49,7 @@ module ral_nlls_double
 
   public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
   public :: nlls_options, nlls_inform, nlls_workspace
-  public :: params_base_type, params_box_type, nlls_setup_bounds
+  public :: params_base_type
 
 end module ral_nlls_double
 
