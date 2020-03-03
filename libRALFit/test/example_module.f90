@@ -12,14 +12,6 @@ module example_module
      integer :: m
   end type user_type
 
-  type, extends( params_box_type ) :: user_box_type
-     real(wp), allocatable :: x_values(:)
-     real(wp), allocatable :: y_values(:)
-     integer :: iter = 0
-     integer :: n_iter = 1e6 
-     integer :: m
-  end type user_box_type
-
 contains
   
   
@@ -51,17 +43,17 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
             ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
             f(i) = params%y_values(i) - exp( ex )
           end do
-       type is(user_box_type)
-          params%iter = params%iter + 1
-          If (params%iter>=params%n_iter) Then
-            f(1:m) = 1.0e6
-          Else
-            do i = 1,m
-              ! Avoid overflow
-              ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
-              f(i) = params%y_values(i) - exp( ex )
-            end do
-          End If
+!!$       type is(user_box_type)
+!!$          params%iter = params%iter + 1
+!!$          If (params%iter>=params%n_iter) Then
+!!$            f(1:m) = 1.0e6
+!!$          Else
+!!$            do i = 1,m
+!!$              ! Avoid overflow
+!!$              ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+!!$              f(i) = params%y_values(i) - exp( ex )
+!!$            end do
+!!$          End If
        Class Default
          Stop 'wrong class'
        end select
@@ -150,6 +142,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      END SUBROUTINE eval_F_allbutone_error
 
 
+     
+     
      SUBROUTINE eval_F_large( status, n_dummy, m, X, f, params)
 
 !  -------------------------------------------------------------------
@@ -185,6 +179,44 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        status = 0
        
      END SUBROUTINE eval_F_large
+
+     
+     SUBROUTINE eval_F_pg( status, n_dummy, m, X, f, params)
+
+!  -------------------------------------------------------------------
+!  eval_F, a subroutine for evaluating the function f at a point X
+!  -------------------------------------------------------------------
+
+       USE ISO_FORTRAN_ENV
+
+       INTEGER, PARAMETER :: wp = KIND( 1.0D+0 )
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(inout) :: params
+       Real (Kind=wp) :: ex
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          if (params%iter .ge. 6) then
+             do i = 1, m
+                f(i) = 1e6_wp!exp(88.0)
+             end do
+          else
+             do i = 1,m
+                ! Avoid overflow
+                ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+                f(i) = params%y_values(i) - exp( ex )
+             end do
+          end if
+          params%iter = params%iter + 1
+       end select
+       status = 0
+       
+     END SUBROUTINE eval_F_pg
+
 
      SUBROUTINE eval_J_large( status, n_dummy, m, X, J, params)
 
@@ -261,11 +293,6 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        ! X(1) = m, X(2) = c
        select type(params)
        type is(user_type)
-          do i = 1,m
-             J(i) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
-             J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
-          end do
-       type is(user_box_type)
           do i = 1,m
              J(i) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
              J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
@@ -439,27 +466,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
                   )
           end do
           h(3) = h(2)
-       type is(user_box_type)
-          ! evaluate 
-          ! HF = \sum_{i=1}^m F_i H_i
-          h(1:4) = 0.0
-          do i = 1, m
-             h(1) = &
-                  h(1) + f(i)* ( & 
-                  - (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) &
-                  )
-             h(2) = &
-                  h(2) + f(i)* ( &
-                  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) &
-                  )
-             h(4) = &
-                  h(4) + f(i)* ( &
-                  -  exp( X(1) * params%x_values(i) + X(2) ) &
-                  )
-          end do
-          h(3) = h(2)
-          Class Default
-            Stop 'Wrong Class'
+       Class Default
+          Stop 'Wrong Class'
        end select
 
        status = 0
@@ -565,35 +573,178 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        ! X(1) = m, X(2) = c
        select type(params)
        type is(user_type)
-         hp(1:n*m) = 0.0
-         do i = 1, m ! loop over the columns
-         ! need to put H(x)*y in each row
-         hp( n*(i-1) + 1 ) = &
-           y(1)* (- (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
-           y(2)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) )
-         hp( n*(i-1) + 2 ) = &
-           y(1)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
-           y(2)* (-  exp( X(1) * params%x_values(i) + X(2) ) )
-         end do
-         type is(user_box_type)
-           hp(1:n*m) = 0.0
-           do i = 1, m ! loop over the columns
-           ! need to put H(x)*y in each row
-           hp( n*(i-1) + 1 ) = &
-             y(1)* (- (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
-             y(2)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) )
-           hp( n*(i-1) + 2 ) = &
-             y(1)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
-             y(2)* (-  exp( X(1) * params%x_values(i) + X(2) ) )
-           end do
-         Class default
-           Stop 'Wrong class'
-         end select
+          hp(1:n*m) = 0.0
+          do i = 1, m ! loop over the columns
+             ! need to put H(x)*y in each row
+             hp( n*(i-1) + 1 ) = &
+                  y(1)* (- (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
+                  y(2)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) )
+             hp( n*(i-1) + 2 ) = &
+                  y(1)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
+                  y(2)* (-  exp( X(1) * params%x_values(i) + X(2) ) )
+          end do
+          
+       Class default
+          Stop 'Wrong class'
+       end select
 
-         status = 0
+       status = 0
        
      end subroutine eval_HP
 
+     subroutine generate_data_example_box(params)
+
+            Class ( params_base_type ), intent(out) :: params
+
+
+     select type(params)
+     type is(user_type)
+        
+        params%m = 67
+        allocate(params%x_values(params%m))
+        allocate(params%y_values(params%m))
+        
+        params%x_values = (/ 0.0, &
+             0.075000000000000, &
+             0.150000000000000, &
+             0.225000000000000, &
+             0.300000000000000, &
+             0.375000000000000, &
+             0.450000000000000, &
+             0.525000000000000, &
+             0.600000000000000, &
+             0.675000000000000, &
+             0.750000000000000, &
+             0.825000000000000, &
+             0.900000000000000, &
+             0.975000000000000, &
+             1.050000000000000, &
+             1.125000000000000, &
+             1.200000000000000, &
+             1.275000000000000, &
+             1.350000000000000, &
+             1.425000000000000, &
+             1.500000000000000, &
+             1.575000000000000, &
+             1.650000000000000, &
+             1.725000000000000, &
+             1.800000000000000, &
+             1.875000000000000, &
+             1.950000000000000, &
+             2.025000000000000, &
+             2.100000000000000, &
+             2.175000000000000, &
+             2.250000000000000, &
+             2.325000000000000, &
+             2.400000000000000, &
+             2.475000000000000, &
+             2.550000000000000, &
+             2.625000000000000, &
+             2.700000000000000, &
+             2.775000000000000, &
+             2.850000000000000, &
+             2.925000000000000, &
+             3.000000000000000, &
+             3.075000000000000, &
+             3.150000000000000, &
+             3.225000000000001, &
+             3.300000000000000, &
+             3.375000000000000, &
+             3.450000000000000, &
+             3.525000000000000, &
+             3.600000000000001, &
+             3.675000000000000, &
+             3.750000000000000, &
+             3.825000000000000, &
+             3.900000000000000, &
+             3.975000000000000, &
+             4.050000000000001, &
+             4.125000000000000, &
+             4.200000000000000, &
+             4.275000000000000, &
+             4.350000000000001, &
+             4.425000000000000, &
+             4.500000000000000, &
+             4.575000000000000, &
+             4.650000000000000, &
+             4.725000000000001, &
+             4.800000000000000, &
+             4.875000000000000, &
+             4.950000000000000 /)
+
+           params%y_values = (/ 0.907946872110432, &
+             1.199579396036134, &
+             1.060092431384317, &
+             1.298370500472354, &
+             0.952768858414788, &
+             1.209665290655204, &
+             1.256912538155493, &
+             1.163922146095987, &
+             1.004877938808100, &
+             1.205944250961060, &
+             0.952693297695969, &
+             1.449662692280761, &
+             1.402015259144406, &
+             1.378094012325746, &
+             1.560882147577552, &
+             1.437185539058121, &
+             1.559853079888265, &
+             1.877814947316832, &
+             1.818781749024682, &
+             1.375546045112591, &
+             1.233967904388409, &
+             1.887793124397751, &
+             1.610237096463521, &
+             1.787032484792262, &
+             1.850015127982676, &
+             2.120553361509177, &
+             1.942913663511919, &
+             2.106517132599766, &
+             2.271787117356578, &
+             1.727554346001754, &
+             2.002909500898113, &
+             1.975837413903495, &
+             2.337446525801909, &
+             1.960190841677278, &
+             2.447097025572309, &
+             2.161663720225506, &
+             2.748798529374621, &
+             2.507814238594416, &
+             2.423769408403069, &
+             2.578119353028746, &
+             2.460310096221557, &
+             2.638362783992324, &
+             2.765540456237868, &
+             2.837165966564409, &
+             3.179711963042789, &
+             3.245315453091675, &
+             3.289631922410174, &
+             3.360995198615834, &
+             3.470489725998371, &
+             3.169513520153466, &
+             3.363740517933189, &
+             3.665288099084969, &
+             3.620334359722351, &
+             4.018911445550667, &
+             3.512715166706162, &
+             3.874661411575566, &
+             4.197746303653517, &
+             3.703511523106007, &
+             4.076351488309604, &
+             4.056340365649961, &
+             4.297751562451419, &
+             4.373076571153739, &
+             4.577093065941748, &
+             4.856619059058190, &
+             4.927350280596274, &
+             4.703122139742729, &
+             4.870205182453842 /)
+        end select
+       
+     end subroutine generate_data_example_box
+
+     
+     
      subroutine generate_data_example(params)
        ! First, let's get the data
        ! Generated with the code
@@ -750,145 +901,6 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            4.703122139742729, &
            4.870205182453842 /)
 
-         type is(user_box_type)
-           params%m = 67
-           allocate(params%x_values(params%m))
-           allocate(params%y_values(params%m))
-           params%x_values = (/ 0.0, &
-             0.075000000000000, &
-             0.150000000000000, &
-             0.225000000000000, &
-             0.300000000000000, &
-             0.375000000000000, &
-             0.450000000000000, &
-             0.525000000000000, &
-             0.600000000000000, &
-             0.675000000000000, &
-             0.750000000000000, &
-             0.825000000000000, &
-             0.900000000000000, &
-             0.975000000000000, &
-             1.050000000000000, &
-             1.125000000000000, &
-             1.200000000000000, &
-             1.275000000000000, &
-             1.350000000000000, &
-             1.425000000000000, &
-             1.500000000000000, &
-             1.575000000000000, &
-             1.650000000000000, &
-             1.725000000000000, &
-             1.800000000000000, &
-             1.875000000000000, &
-             1.950000000000000, &
-             2.025000000000000, &
-             2.100000000000000, &
-             2.175000000000000, &
-             2.250000000000000, &
-             2.325000000000000, &
-             2.400000000000000, &
-             2.475000000000000, &
-             2.550000000000000, &
-             2.625000000000000, &
-             2.700000000000000, &
-             2.775000000000000, &
-             2.850000000000000, &
-             2.925000000000000, &
-             3.000000000000000, &
-             3.075000000000000, &
-             3.150000000000000, &
-             3.225000000000001, &
-             3.300000000000000, &
-             3.375000000000000, &
-             3.450000000000000, &
-             3.525000000000000, &
-             3.600000000000001, &
-             3.675000000000000, &
-             3.750000000000000, &
-             3.825000000000000, &
-             3.900000000000000, &
-             3.975000000000000, &
-             4.050000000000001, &
-             4.125000000000000, &
-             4.200000000000000, &
-             4.275000000000000, &
-             4.350000000000001, &
-             4.425000000000000, &
-             4.500000000000000, &
-             4.575000000000000, &
-             4.650000000000000, &
-             4.725000000000001, &
-             4.800000000000000, &
-             4.875000000000000, &
-             4.950000000000000 /)
-
-           params%y_values = (/ 0.907946872110432, &
-             1.199579396036134, &
-             1.060092431384317, &
-             1.298370500472354, &
-             0.952768858414788, &
-             1.209665290655204, &
-             1.256912538155493, &
-             1.163922146095987, &
-             1.004877938808100, &
-             1.205944250961060, &
-             0.952693297695969, &
-             1.449662692280761, &
-             1.402015259144406, &
-             1.378094012325746, &
-             1.560882147577552, &
-             1.437185539058121, &
-             1.559853079888265, &
-             1.877814947316832, &
-             1.818781749024682, &
-             1.375546045112591, &
-             1.233967904388409, &
-             1.887793124397751, &
-             1.610237096463521, &
-             1.787032484792262, &
-             1.850015127982676, &
-             2.120553361509177, &
-             1.942913663511919, &
-             2.106517132599766, &
-             2.271787117356578, &
-             1.727554346001754, &
-             2.002909500898113, &
-             1.975837413903495, &
-             2.337446525801909, &
-             1.960190841677278, &
-             2.447097025572309, &
-             2.161663720225506, &
-             2.748798529374621, &
-             2.507814238594416, &
-             2.423769408403069, &
-             2.578119353028746, &
-             2.460310096221557, &
-             2.638362783992324, &
-             2.765540456237868, &
-             2.837165966564409, &
-             3.179711963042789, &
-             3.245315453091675, &
-             3.289631922410174, &
-             3.360995198615834, &
-             3.470489725998371, &
-             3.169513520153466, &
-             3.363740517933189, &
-             3.665288099084969, &
-             3.620334359722351, &
-             4.018911445550667, &
-             3.512715166706162, &
-             3.874661411575566, &
-             4.197746303653517, &
-             3.703511523106007, &
-             4.076351488309604, &
-             4.056340365649961, &
-             4.297751562451419, &
-             4.373076571153739, &
-             4.577093065941748, &
-             4.856619059058190, &
-             4.927350280596274, &
-             4.703122139742729, &
-             4.870205182453842 /)
          Class default
            stop "Wrong class"
          End Select
@@ -935,6 +947,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%exact_second_derivatives = default_options%exact_second_derivatives
        options%subproblem_eig_fact = default_options%subproblem_eig_fact
        options%use_ews_subproblem = default_options%use_ews_subproblem
+       options%force_min_eig_symm = default_options%force_min_eig_symm
        options%scale = default_options%scale
        options%scale_max = default_options%scale_max
        options%scale_min = default_options%scale_min
@@ -978,7 +991,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%box_linesearch_type = default_options%box_linesearch_type
      end subroutine reset_default_options
 
-     subroutine solve_basic(X,params,options,inform,warm_start)
+     subroutine solve_basic(X,params,options,inform,warm_start,blx,bux)
       
        real(wp), intent(inout) :: X(:)
 !      type( user_type ), intent(inout) :: params
@@ -986,6 +999,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        Logical, Optional, Intent(In) :: warm_start
+       real(wp), intent(inout),optional :: blx(:), bux(:)
 
        integer :: n, m
        
@@ -1000,12 +1014,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        Else
          X(1) = 1.0
          X(2) = 2.0
-       End if 
-       
-       call nlls_solve(n, m, X,                         &
-                   eval_F, eval_J, eval_H, params,  &
-                   options, inform )       
-       
+      End if
+      call nlls_solve(n, m, X,                         &
+           eval_F, eval_J, eval_H, params,  &
+           options, inform,                 &
+           lower_bounds=blx, upper_bounds=bux )       
+      
      end subroutine solve_basic
 
      subroutine dogleg_tests(options,fails)

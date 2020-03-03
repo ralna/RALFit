@@ -487,22 +487,6 @@ module ral_nlls_workspaces
      ! deliberately empty
   end type params_base_type
 
-  Type, Public, Extends(params_base_type) :: params_box_type
-    ! See if problem has box bounds
-    Integer :: iusrbox = 0
-    Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
-    ! projection changed the direction? d /= P(d)?
-    Logical :: prjchd = .false.
-    ! Convergence metrics
-    Real(Kind=wp) :: normPD, gtd
-    ! Memory for HZLS (LS)
-    Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
-    ! Consecutive times quadratic model is accurate
-    Integer       :: quad_i = 0
-    ! Memory for nonmonotone LS
-    Integer       :: nFref = 0
-  End Type params_box_type
-
   abstract interface
      subroutine eval_hf_type(status, n, m, x, f, h, params)
        import :: params_base_type
@@ -546,6 +530,23 @@ module ral_nlls_workspaces
      type( tenJ_type ), pointer :: tenJ
   end type tensor_params_type
 
+  type, public :: box_type
+     ! Does the problem have a box?
+     logical :: has_box = .false.
+     ! See if problem has box bounds
+     Integer :: iusrbox = 0
+     Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
+     ! projection changed the direction? d /= P(d)?
+     Logical :: prjchd = .false.
+     ! Convergence metrics
+     Real(Kind=wp) :: normPD, gtd
+     ! Memory for HZLS (LS)
+     Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
+     ! Consecutive times quadratic model is accurate
+     Integer       :: quad_i = 0
+     ! Memory for nonmonotone LS
+     Integer       :: nFref = 0
+  end type box_type
 
   type, public :: max_eig_work ! workspace for subroutine max_eig
      logical :: allocated = .false.
@@ -684,6 +685,7 @@ module ral_nlls_workspaces
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
      type ( calculate_step_work ) :: calculate_step_ws
+     type ( box_type ) :: box_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
      type (tenJ_type ) :: tenJ
@@ -694,6 +696,7 @@ module ral_nlls_workspaces
   public :: setup_workspace_dogleg, setup_workspace_AINT_tr
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
   public :: setup_workspace_regularization_solver
+  public :: setup_bounds_type
 
 contains
 
@@ -1752,5 +1755,70 @@ contains
 
     w%allocated = .false.
   end subroutine remove_workspace_generate_scaling
+
+  subroutine setup_bounds_type(w, n, lower_bounds, upper_bounds, options, inform)
+    Implicit None
+    type(box_type), Intent(InOut)             :: w
+    Integer, Intent(In)                       :: n
+    Real(Kind=wp), Intent(In)                 :: lower_bounds(n), upper_bounds(n)
+    Type(NLLS_options), Intent(In)            :: options
+    Type(NLLS_inform), Intent(InOut)          :: inform
+    
+    Integer                                   :: i, iusrbox, ierr
+
+    w%has_box = .true.
+    w%prjchd = .False.
+    w%quad_i = 0
+    w%quad_c = 0.0_wp
+    w%quad_q = 0.0_wp
+    
+    iusrbox = 0
+    Do i = 1, n
+       If ( lower_bounds(i) <= upper_bounds(i) .And. &
+          lower_bounds(i) == lower_bounds(i) .And.   &
+          upper_bounds(i) == upper_bounds(i) ) Then
+          If ( lower_bounds(i) > -options%box_bigbnd .Or. &
+             options%box_bigbnd > upper_bounds(i)) Then
+             iusrbox = 1
+          End If
+       Else
+          inform%status = NLLS_ERROR_BAD_BOX_BOUNDS
+          Go To 100
+       End If
+    End Do
+    
+    w%iusrbox = iusrbox
+    If (iusrbox==1) Then
+      w%iusrbox = 1
+      ! Clear all arrays...
+      If (allocated(w%blx)) deallocate(w%blx, Stat=ierr)
+      If (allocated(w%bux)) deallocate(w%bux, Stat=ierr)
+      If (allocated(w%pdir)) deallocate(w%pdir, Stat=ierr)
+      If (allocated(w%normFref)) deallocate(w%normFref, Stat=ierr)
+      If (allocated(w%sk)) deallocate(w%sk, Stat=ierr)
+      If (allocated(w%g)) deallocate(w%g, Stat=ierr)
+      Allocate(w%blx(n), w%bux(n), w%pdir(n), w%g(n),      &
+        w%normFref(options%box_nFref_max), w%sk(n), Stat=ierr)
+      if (ierr /= 0) Then
+        If (allocated(w%blx)) deallocate(w%blx, Stat=ierr)
+        If (allocated(w%bux)) deallocate(w%bux, Stat=ierr)
+        If (allocated(w%pdir)) deallocate(w%pdir, Stat=ierr)
+        If (allocated(w%normFref)) deallocate(w%normFref, Stat=ierr)
+        If (allocated(w%sk)) deallocate(w%sk, Stat=ierr)
+        If (allocated(w%g)) deallocate(w%g, Stat=ierr)
+        inform%status = NLLS_ERROR_ALLOCATION
+        inform%bad_alloc = 'ral_nlls_box'
+        Go To 100
+      end if
+      w%normfref(1:options%box_nFref_max) = -1.0e-20_wp
+      Do i = 1, n
+        w%blx(i) = max(lower_bounds(i), -options%box_bigbnd)
+        w%bux(i) = min(upper_bounds(i), options%box_bigbnd)
+      End Do
+    End If
+
+100 Continue
+
+  end subroutine setup_bounds_type
 
 end module ral_nlls_workspaces

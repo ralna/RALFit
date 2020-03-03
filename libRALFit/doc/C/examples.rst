@@ -9,4 +9,4 @@ Examples
 
 This returns the following output:
 
-.. literalinclude:: ../../test/c_example_output.out
+.. literalinclude:: ../../test/nlls_c_example.output

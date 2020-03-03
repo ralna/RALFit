@@ -272,7 +272,7 @@ minimum of the model with a regularization term added:
 .. math::
    :label: regsub
    
-   \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{p} \|\vs\|_B^p,
+   \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{q} \|\vs\|_B^q,
 
 At present, only one method of solving
 this subproblem is supported:
@@ -281,7 +281,7 @@ this subproblem is supported:
   this solves :eq:`regsub` by first
   converting the problem into the form
 
-  .. math:: \min_\vp \vw^T \vp + \frac{1}{2} \vp^T \vD \vp + \frac{1}{p}\|\vp\|_2^p,
+  .. math:: \min_\vp \vw^T \vp + \frac{1}{2} \vp^T \vD \vp + \frac{1}{q}\|\vp\|_2^q,
 
   where :math:`\vD` is a diagonal matrix. We do this by performing an
   eigen-decomposition of the Hessian in the model. Then, we call the
@@ -410,10 +410,11 @@ The package supports two options:
 Incorporating the regularization term
 -------------------------------------
 
-If a non-zero regularization term is required in
-:eq:`lsq`, then this is handled by transforming the
-problem internally into a new non-linear least-squares problem. 
-The formulation used will depend on the value of ``regularization`` in |nlls_options|.
+If ``regularization = 0``, then no regularization is added.
+
+A non-zero regularization term can be used in :eq:`lsq` by setting ``regularization`` to be non-zero.
+This is done by transforming the problem internally into a new non-linear least-squares problem. 
+The formulation used will depend on the value of ``regularization`` in |nlls_options|, as described below.
 
 ``regularization = 1``
   **This is only supported if** :math:`\bf p = 2`.

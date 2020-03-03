@@ -5,7 +5,7 @@ module lanczos_box_module
   implicit none
   integer, parameter :: wp = kind(0d0)
 
-  type, extends(params_box_type) :: params_type
+  type, extends(params_base_type) :: params_type
      real(wp), dimension(:), allocatable :: t ! The m data points t_i
      real(wp), dimension(:), allocatable :: y ! The m data points y_i
   end type params_type
@@ -192,17 +192,17 @@ program lanczos_box
   options%box_tau_tr_step = 0.3_wp
   options%box_ls_step_maxit = 20
 
-  Call nlls_setup_bounds(params, n, blx, bux, options, inform)
-  if (inform%status/=0) then
-    Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', inform%status
-    stop
-  End if
-
+!!$  Call nlls_setup_bounds(params, n, blx, bux, options, inform)
+!!$  if (inform%status/=0) then
+!!$    Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', inform%status
+!!$    stop
+!!$  End if
 
 
   ! call fitting routine
   call cpu_time(tic)
-  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
+  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform, &
+       lower_bounds=blx, upper_bounds=bux)
   if(inform%status.ne.0) then
      print *, "ral_nlls() returned with error flag ", inform%status
      stop
@@ -212,15 +212,9 @@ program lanczos_box
   ! Print result
   Write(*,*) 'Solution: '
   Write(*,Fmt=99998) 'idx', 'low bnd', 'x', 'upp bnd'
-  if (params%iusrbox/=0) Then
-    Do i = 1, n
-      Write(*,Fmt=99999) i, blx(i), x(i), bux(i)
-    End Do
-  else
-    Do i = 1, n
-      Write(*,Fmt=99997) i, x(i)
-    End Do
-  End If
+  Do i = 1, n
+     Write(*,Fmt=99999) i, blx(i), x(i), bux(i)
+  End Do
   print *, ""
   print *, "Objective Value at solution    = ", inform%obj
   print *, "Objective Gradient at solution = ", inform%norm_g
