@@ -282,7 +282,6 @@ contains
 
        ! Setup box_logic workspace
        if ( present(lower_bounds) .or. present(upper_bounds)) then
-          w%box_ws%has_box = .true.
           call setup_bounds_type(w%box_ws,n,lower_bounds,upper_bounds,options,inform)
           if (inform%status .ne. 0) then
              goto 100
@@ -306,7 +305,7 @@ contains
           w%f(1:m) = weights(1:m)*w%f(1:m)
        end if
        w%normf = norm2(x=w%f(1:m))
-       If ((log(w%normf)>100.0_wp) .Or. (w%normf/=w%normf)) Then
+       If ((log(1.0_wp+w%normf)>100.0_wp) .Or. (w%normf/=w%normf)) Then
          ! Initial guess x0 is not usable
          inform%external_name = 'eval_F'
          inform%external_return = 2101
@@ -358,7 +357,7 @@ contains
        w%normJF = norm2(w%g)
        w%normJFold = w%normJF
 
-       If ( (log(w%normJF)>100.0_wp) .or. (w%normJF/=w%normJF) ) Then
+       If ( (log(1.0_wp+w%normJF)>100.0_wp) .or. (w%normJF/=w%normJF) ) Then
          ! Initial guess x0 is not usable
          inform%external_name = 'eval_J'
          inform%external_return = 2102
@@ -640,7 +639,7 @@ lp: do while (.not. success)
          end if
          normFnew = norm2(w%fnew(1:m))
 
-         If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
+         If ((log(1.0_wp+normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
            rho = -1.0_wp
            eval_f_status = 1
            num_successful_steps = 0
@@ -708,7 +707,7 @@ lp: do while (.not. success)
 
              normJFnew = norm2(w%g)
 
-             If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
+             If ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
 !              trigger reset_gradients
                eval_j_status = 1
              End If
@@ -868,7 +867,7 @@ lp: do while (.not. success)
          w%g(:) = -w%g(:)
          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
          normJFnew = norm2(w%g)
-         if ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
+         if ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
             ! Recover: force to take a PG step
             takestep = .False.
          end if
@@ -3360,7 +3359,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        if (present(options)) Then
          If (.not. options%Fortran_Jacobian) then
            ! Jacobian held in row major format...
-           call dgemv('T',n,m,alpha,J,n,x,1,beta,Jx,1)
+           call dgemv('T',n,m,alpha,J,max(1,n),x,1,beta,Jx,1)
          Else
            call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
          End If
@@ -3387,7 +3386,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        if (present(options)) Then
          If (.not. options%Fortran_Jacobian) then
            ! Jacobian held in row major format...
-           call dgemv('N',n,m,alpha,J,n,x,1,beta,Jtx,1)
+           call dgemv('N',n,m,alpha,J,max(1,n),x,1,beta,Jtx,1)
          Else
            call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
          End If
@@ -3453,7 +3452,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        end if
 
        normjfnew = norm2(x=w%g)
-       If ((log(normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
+       If ((log(1.0_wp+normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
          inform%external_name = 'eval_J'
          inform%external_return = 2512
          inform%status = NLLS_ERROR_EVALUATION
@@ -4580,7 +4579,7 @@ lp:    do i = 1, w%tensor_options%maxit
         End If
 
         normJFnew = norm2(w%g)
-        If ( (log(normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
+        If ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
           ! Initial guess x0 is not usable
           inform%external_name = 'eval_J'
           inform%external_return = 2512
@@ -4678,7 +4677,7 @@ lp:    do i = 1, w%tensor_options%maxit
             w%g(:) = -w%g(:)
             if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
             normJFnew = norm2(w%g)
-            If ((log(normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
+            If ((log(1.0_wp+normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
               inform%external_name = 'eval_J'
               inform%external_return = 2512
               inform%status = nlls_error_evaluation
@@ -4756,7 +4755,7 @@ armijo: Do
               fnew(1:m) = weights(1:m)*fnew(1:m)
             End If
             normfnew = norm2(fnew(1:m))
-            If ((log(normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
+            If ((log(1.0_wp+normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
               evalok = .False.
             End If
           End If

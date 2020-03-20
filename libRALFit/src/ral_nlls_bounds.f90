@@ -25,7 +25,7 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
     w%prjchd = .False.
     If (.not. (present(xnew) .And. present(dir))) Then
 !     Make feasible point x and return
-      If (w%iusrbox==1) Then
+      If (w%has_box) Then
         Do i = 1, n
           xi = x(i)
           x(i) = max(min(w%bux(i), x(i)), w%blx(i))
@@ -43,7 +43,7 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
       alp = 1.0_wp
     End If
 
-    If (w%iusrbox==1) Then
+    If (w%has_box) Then
       Do i = 1, n
         xnew(i) = max(min(w%bux(i), x(i)+alp*dir(i)), w%blx(i))
         If (xnew(i) /= x(i)+dir(i)) Then
@@ -73,7 +73,7 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
     Real(Kind=wp)                         :: alpb
     Integer                               :: i
     
-    If (w%iusrbox==1) Then
+    If (w%has_box) Then
        If (Present(sigma)) Then
           alpb = sigma
        Else

@@ -533,8 +533,6 @@ module ral_nlls_workspaces
   type, public :: box_type
      ! Does the problem have a box?
      logical :: has_box = .false.
-     ! See if problem has box bounds
-     Integer :: iusrbox = 0
      Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
      ! projection changed the direction? d /= P(d)?
      Logical :: prjchd = .false.
@@ -696,7 +694,7 @@ module ral_nlls_workspaces
   public :: setup_workspace_dogleg, setup_workspace_AINT_tr
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
   public :: setup_workspace_regularization_solver
-  public :: setup_bounds_type
+  public :: setup_bounds_type, remove_workspace_bounds
 
 contains
 
@@ -905,6 +903,8 @@ contains
     call remove_workspace_calculate_step(workspace%calculate_step_ws,&
          options,workspace%tenJ, workspace%iw_ptr)
 
+    call remove_workspace_bounds(workspace%box_ws)
+
     workspace%allocated = .false.
 
   end subroutine remove_workspaces
@@ -1039,7 +1039,7 @@ contains
       goto 100
     End If
 
-    w%scale(n) = 0.0_wp
+    w%scale(:) = 0.0_wp
 
     call setup_workspace_evaluate_model(n,m,&
          w%evaluate_model_ws,options,inform)
@@ -1350,7 +1350,7 @@ contains
        End If
        call dsyev('V', & ! both ew's and ev's
             'U', & ! upper triangle of A
-            n, w%A, n, & ! data about A
+            n, w%A, max(1,n), & ! data about A
             w%ew, workquery, -1, &
             inform%external_return)
        If (inform%external_return .ne. 0) then
@@ -1451,10 +1451,10 @@ contains
     ! make a workspace query to dggev
     call dggev('N', & ! No left eigenvectors
          'V', &! Yes right eigenvectors
-         2*n, A_dummy, 2*n, B_dummy, 2*n, &
+         2*n, A_dummy, max(1,2*n), B_dummy, max(1,2*n), &
          w%alphaR, W%alphaI, w%beta, & ! eigenvalue data
-         vl_dummy, 2*n, & ! not referenced
-         vr_dummy, 2*n, & ! right eigenvectors
+         vl_dummy, max(1,2*n), & ! not referenced
+         vr_dummy, max(1,2*n), & ! right eigenvectors
          workquery, -1, inform%external_return)
     If (inform%external_return > 0) Then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
@@ -1626,7 +1626,7 @@ contains
     w%ew(:) = 1.0_wp
     call dsyev('V', & ! both ew's and ev's
          'U', & ! upper triangle of A
-         n, A_dummy, n, & ! data about A
+         n, A_dummy, max(1,n), & ! data about A
          w%ew, workquery, -1, &
          inform%external_return)
     If (inform%external_return .ne. 0) Then
@@ -1760,36 +1760,52 @@ contains
     Implicit None
     type(box_type), Intent(InOut)             :: w
     Integer, Intent(In)                       :: n
-    Real(Kind=wp), Intent(In)                 :: lower_bounds(n), upper_bounds(n)
+    Real(Kind=wp), Intent(In), Optional       :: lower_bounds(n), upper_bounds(n)
     Type(NLLS_options), Intent(In)            :: options
     Type(NLLS_inform), Intent(InOut)          :: inform
     
-    Integer                                   :: i, iusrbox, ierr
+    Integer                                   :: i, ierr
+    Logical                                   :: has_box, lower_usr, upper_usr
+    Real(wp)                                  :: lower, upper
 
-    w%has_box = .true.
+    has_box = .False.
+    w%has_box = has_box
     w%prjchd = .False.
     w%quad_i = 0
     w%quad_c = 0.0_wp
     w%quad_q = 0.0_wp
+    lower_usr = Present(lower_bounds)
+    upper_usr = Present(upper_bounds)
+
+    if ( (.Not. lower_usr) .And. (.Not. upper_usr) ) Then
+      Go To 100
+    end if
     
-    iusrbox = 0
     Do i = 1, n
-       If ( lower_bounds(i) <= upper_bounds(i) .And. &
-          lower_bounds(i) == lower_bounds(i) .And.   &
-          upper_bounds(i) == upper_bounds(i) ) Then
-          If ( lower_bounds(i) > -options%box_bigbnd .Or. &
-             options%box_bigbnd > upper_bounds(i)) Then
-             iusrbox = 1
+        If (lower_usr) Then
+          lower = lower_bounds(i)
+        Else
+          lower = -options%box_bigbnd
+        End if
+        If (upper_usr) Then
+          upper = upper_bounds(i)
+        Else
+          upper = options%box_bigbnd
+        End if
+
+       If ( lower <= upper .And. lower == lower .And. upper == upper ) Then
+          If (-options%box_bigbnd < lower .And. upper < options%box_bigbnd) Then
+             has_box = .True.
           End If
        Else
           inform%status = NLLS_ERROR_BAD_BOX_BOUNDS
           Go To 100
        End If
     End Do
-    
-    w%iusrbox = iusrbox
-    If (iusrbox==1) Then
-      w%iusrbox = 1
+
+    w%has_box = has_box
+
+    If (has_box) Then
       ! Clear all arrays...
       If (allocated(w%blx)) deallocate(w%blx, Stat=ierr)
       If (allocated(w%bux)) deallocate(w%bux, Stat=ierr)
@@ -1812,13 +1828,41 @@ contains
       end if
       w%normfref(1:options%box_nFref_max) = -1.0e-20_wp
       Do i = 1, n
-        w%blx(i) = max(lower_bounds(i), -options%box_bigbnd)
-        w%bux(i) = min(upper_bounds(i), options%box_bigbnd)
+        If (lower_usr) Then
+          lower = lower_bounds(i)
+        Else
+          lower = -options%box_bigbnd
+        End if
+        If (upper_usr) Then
+          upper = upper_bounds(i)
+        Else
+          upper = options%box_bigbnd
+        End if
+        w%blx(i) = max(lower, -options%box_bigbnd)
+        w%bux(i) = min(upper, options%box_bigbnd)
       End Do
     End If
 
 100 Continue
 
   end subroutine setup_bounds_type
+
+  Subroutine remove_workspace_bounds(w)
+
+    Implicit None
+    type(box_type), Intent(InOut)             :: w
+    Integer                                   :: ierr_dummy
+    Continue
+
+    If (allocated(w%blx)) deallocate(w%blx, Stat=ierr_dummy)
+    If (allocated(w%bux)) deallocate(w%bux, Stat=ierr_dummy)
+    If (allocated(w%pdir)) deallocate(w%pdir, Stat=ierr_dummy)
+    If (allocated(w%normFref)) deallocate(w%normFref, Stat=ierr_dummy)
+    If (allocated(w%sk)) deallocate(w%sk, Stat=ierr_dummy)
+    If (allocated(w%g)) deallocate(w%g, Stat=ierr_dummy)
+
+  End Subroutine remove_workspace_bounds
+
+
 
 end module ral_nlls_workspaces
