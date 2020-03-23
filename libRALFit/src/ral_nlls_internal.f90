@@ -2753,7 +2753,7 @@ lp:  do i = 1, options%more_sorensen_maxits
         call dtrs_initialize( dtrs_options, dtrs_inform )
         ! Does not fail.
         call dtrs_solve(n, Delta, 0.0_wp, w%v_trans, w%ew, w%d_trans, &
-                        dtrs_options, dtrs_inform )
+                        dtrs_options, dtrs_inform, w%scale_c, w%scale_h )
         if ( dtrs_inform%status /= 0) then
            inform%external_return = dtrs_inform%status
            inform%external_name = 'galahad_dtrs'
@@ -2769,7 +2769,7 @@ lp:  do i = 1, options%more_sorensen_maxits
            reg_param = options%base_regularization + 1.0_wp/Delta
            call drqs_solve &
                 (n, reg_order, reg_param, 0.0_wp, w%v_trans, w%ew, w%d_trans, &
-                drqs_options, drqs_inform )
+                drqs_options, drqs_inform, w%scale_c, w%scale_h )
            if ( drqs_inform%status == -7 ) then
               ! drqs_solve has failed because the matrix
               !     J'J + *1/(2*Delta) * I

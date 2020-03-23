@@ -604,7 +604,8 @@ module ral_nlls_workspaces
 
   type, public :: solve_galahad_work ! workspace for subroutine dtrs_work
      logical :: allocated = .false.
-     real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:)
+     real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:), scale_c(:),&
+       scale_h(:)
      type( all_eig_symm_work ) :: all_eig_symm_ws
   end type solve_galahad_work
 
@@ -1538,7 +1539,8 @@ contains
     type( nlls_inform ), intent(inout) :: inform
 
     inform%status = 0
-    allocate(w%ev(n,n),w%v_trans(n),w%ew(n),w%d_trans(n),stat = inform%alloc_status)
+    allocate(w%ev(n,n),w%v_trans(n),w%ew(n),w%d_trans(n),w%scale_c(n),         &
+      w%scale_h(n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
       inform%bad_alloc = "setup_workspace_solve_galahad"
@@ -1567,6 +1569,8 @@ contains
     if(allocated( w%v_trans )) deallocate(w%v_trans, stat=ierr_dummy)
     if(allocated( w%ew )) deallocate(w%ew, stat=ierr_dummy)
     if(allocated( w%d_trans )) deallocate(w%d_trans, stat=ierr_dummy)
+    if(allocated( w%scale_c )) deallocate(w%scale_c, stat=ierr_dummy)
+    if(allocated( w%scale_h )) deallocate(w%scale_h, stat=ierr_dummy)
 
     call remove_workspace_all_eig_symm(w%all_eig_symm_ws,options)
 
