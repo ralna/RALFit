@@ -599,7 +599,11 @@ lp: do while (.not. success)
        !+++++++++++++++++++++++++++++++++++++++++++!
        if (w%box_ws%has_box) then
           ! Project candidate: w%Xnew <- P(X + w%d) = P(w%Xnew)
-          tau = norm2(w%Xnew-X)
+          tau = 0.0_wp
+          Do i = 1, n
+            tau = tau + (w%xnew(i) - x(i))**2
+          End Do
+          tau = sqrt(tau)
           Call box_proj(w%box_ws, n=n, x=X, xnew=w%Xnew, dir=w%d)
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           !!!    Update d = P(X+d)-X  !!!
@@ -889,14 +893,19 @@ lp: do while (.not. success)
       ! update LS metrics if actual box is finite
       w%box_ws%normFold = w%normF
       w%box_ws%nFref = max(1, min(w%box_ws%nFref + 1, options%box_nFref_max))
-      w%box_ws%normFref(1:w%box_ws%nFref) = (/normFnew, w%box_ws%normFref(1:w%box_ws%nFref-1)/)
-      !       Update moving averages (used by HZLS in LS STEP)
+      ! w%box_ws%normFref(1:w%box_ws%nFref) = &
+      ! (/normFnew, w%box_ws%normFref(1:w%box_ws%nFref-1)/)
+      Do i = w%box_ws%nFref, 2, -1
+        w%box_ws%normFref(i) = w%box_ws%normFref(i-1)
+      End Do
+      w%box_ws%normFref(1) = normFnew
+      ! Update moving averages (used by HZLS in LS STEP)
       w%box_ws%quad_q = 1.0_wp + w%box_ws%quad_q*0.7_wp
       w%box_ws%quad_c = w%box_ws%quad_c + (0.5_wp*normFnew**2-w%box_ws%quad_c)/w%box_ws%quad_q
-      !       Update quadratic model hit counter (used in LS/PG steps)
-      !       Quadratic model Mk(step) is fitted using f(X_k), f'(X_k)^Tdir and
-      !       f'(X_k+1), and is used to approximate f(X_k+1), if approximation is good
-      !       quad_i counter is incremented.
+      ! Update quadratic model hit counter (used in LS/PG steps)
+      ! Quadratic model Mk(step) is fitted using f(X_k), f'(X_k)^Tdir and
+      ! f'(X_k+1), and is used to approximate f(X_k+1), if approximation is good
+      ! quad_i counter is incremented.
       pgtd = dot_product(w%box_ws%g,w%d)
       wgtd = dot_product(w%g,w%d)
       If (abs(w%normF+w%norm_2_d*(pgtd+wgtd/2.0_wp)-normFnew) <=             &
