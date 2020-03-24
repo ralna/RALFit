@@ -3959,6 +3959,12 @@ lp:    do i = 1, w%tensor_options%maxit
         ! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
 100   continue
+
+      If (w%allocated) Then
+        Nullify (w%tparams%parent_params)
+        Nullify (w%tparams%tenj)
+      End If
+
      end subroutine solve_newton_tensor
 
      Recursive subroutine evaltensor_f(status, n, m, s, f, params)
