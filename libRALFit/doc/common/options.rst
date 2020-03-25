@@ -92,47 +92,48 @@
 
 .. |more_sorensen_tol| replace:: if ``nlls_method = 3``, specifies the tolerance to be used in the More-Sorensen method.
 
-.. |box_nFref_max| replace:: Memory size for the non-monotone linesearch.
+.. |box_nFref_max| replace:: Memory size for the non-monotone projected gradient linesearch.
 
-.. |box_gamma| replace:: Kanzow sufficient decrease ratio (see equtaion 25 in Kanzow [2004])
+.. |box_gamma| replace:: Sufficient decrease parameter (:math:`0 < \gamma < 1`). A step is deemed successful if :math:`f(x_{k+1}) \leq \gamma f(x_k)`. FIXME!: what is f?
 
-.. |box_decmin| replace:: FIXME! macheps
+.. |box_decmin| replace:: Defines a safe :math:`\epsilon_{\rm machine}`.
+			  Reserved for compatibility use.
 
-.. |box_bigbnd| replace:: Magic number to consider box bound (+/-) infinity
+.. |box_bigbnd| replace:: Value used as a proxy for :math:`\pm \infty` in the box bound.
 
-.. |box_wolfe_descent| replace:: Wolfe descent condition :math:`0<\sigma_1<1/2`
+.. |box_wolfe_descent| replace:: Wolfe descent condition parameter :math:`0<\sigma_1<1/2`.
 
-.. |box_wolfe_curvature| replace:: Wolfe curvature condition :math:`0<\sigma_2`
+.. |box_wolfe_curvature| replace:: Wolfe curvature condition parameter :math:`0<\sigma_2<1`.
 
-.. |box_kanzow_power| replace:: Tolerance to consider projected direction a descent direction.  See LS STEP, Section 4, p392, Kanzow [2014]
+.. |box_kanzow_power| replace:: Parameter setting :math:`\nu > 1` in equation FIXME!.  
 
-.. |box_kanzow_descent| replace:: FIXME! sqrt(mcheps)
+.. |box_kanzow_descent| replace:: Parameter setting :math:`\kappa > 0` in equation FIXME! See (LS STEP, Section 4, page 392, Kanzow 2014).  The descent test in FIXME! is only accepted if the projected trust region step was not too severe, specifically, when the projection ratio :math:`\tau` is greater than :math:`\tau_d`.
 
-.. |box_quad_model_descent| replace:: FIXME! sqrt(mcheps)
+.. |box_quad_model_descent| replace:: Error tolerance, :math:`\epsilon_q > 0`, for the quadratic model.  A quadratic model is fitted to :math:`(f(x_k),g(x_k),g(x_{k+1}))`, :math:`e_k := |f(x_{k+1} - q(x_{k+1})|` is the error. (FIXME!--needs clarification)
 
-.. |box_tr_test_step| replace:: Take a projected trust region step when trust region test is OK?  If false, force a linesearch or projected gradient step.
+.. |box_tr_test_step| replace::  If true, then a trust region step is taken if the trust region loop is successful and projection ratio :math:`\tau` is about :math:`\tau_{\rm TR}`.
 
-.. |box_wolfe_test_step| replace:: Take a project trust region step when Wolfe test is OK?  If false, force a linesearch or projected gradient step.
+.. |box_wolfe_test_step| replace:: If true, and the current point satisfies the weak Wolfe descent conditions, and the projection ratio :math:`\tau` is above :math:`\tau_W`, then the step is taken.
 
-.. |box_tau_min| replace:: Threshold to determine if the projection of the trust region direction is too severe (:math:0 < \tau_min 1)
+.. |box_tau_min| replace:: Threshold, :math:`0 < \tau_{min} < \min(\tau_W,\tau_{TR})`, to determine if the projection of the trust region direction is too severe.  If this is the case, the trust region loop is terminated and a linesearch step is forced.
 
-.. |box_tau_descent| replace:: :math:`\tau >=` ``tau_descent`` in order to test for descent
+.. |box_tau_descent| replace:: Tolerance :math:`0 < \tau_d < 1` to test if the projected trust region step descends. 
 
-.. |box_max_ntrfail| replace:: Max times trust region iterations can fail without passing the various descent tests. Ignored when :math:`\mathrm{proj}(x)==x`.
+.. |box_max_ntrfail| replace:: Number of unsuccessful trust region iterations to allow without passing the various descent tests. Ignored when :math:`\mathrm{proj}(x)=x`.
 
-.. |box_quad_match| replace:: Number of consecutive times quadratic model matches :math:`f(x_{k+1})` required before setting initial alpha step for projected gradient step equal to ``scale_alpha*alpha_k-1`` (FIXME)
+.. |box_quad_match| replace:: Number of consecutive times :math:`e_k < \epsilon_q` required before setting ``\alpha_0 = \mu_\alpha * alpha_k-1`` in the projected gradient step.
 
-.. |box_alpha_scale| replace:: Initial step scale (if :math:`\mathrm{quad}_i >= \mathrm{box\_quad}_i`)
+.. |box_alpha_scale| replace:: Scale factor :math:`\mu_\alpha` for initial step length in the projected gradient linesearch.
+			       
+.. |box_Delta_scale| replace:: Scaling factor :math:`\mu_\Delta`, used when updating :math:`\Delta_{k+1} = \mu_\Delta\|s_k\|` from linesearch/project gradient step.
 
-.. |box_Delta_scale| replace:: Scaling factor to use when updating Delta from linesearch/project gradient step
-
-.. |box_tau_wolfe| replace:: FIXME
+.. |box_tau_wolfe| replace:: Tolerance that defines the value of :math:`0 < \tau_W < 1`.
 
 .. |box_tau_tr_wolfe| replace:: FIXME
 
-.. |box_tau_tr_step| replace:: FIXME
+.. |box_tau_tr_step| replace:: Tolerance :math:`0 < \tau_{TR} < 1` to allow a successful trust region step.
 
-.. |box_ls_step_maxit| replace:: FIXME
+.. |box_ls_step_maxit| replace:: Maximum number of iterations to perform in the linesearch step.
 
 .. |box_linesearch_type| replace:: Linesearch type -- available options are:
 
@@ -145,3 +146,4 @@
 .. |inner_method| replace::  if ``nlls_method = 4``, specifies the method used to pass in the regularization parameter to the inner non-linear least squares solver.   Possible values are:
 
 .. |output_progress_vectors| replace:: if true, outputs the progress vectors ``nlls_inform%resvec`` and ``nlls_inform%gradvec`` at the end of the routine.
+
