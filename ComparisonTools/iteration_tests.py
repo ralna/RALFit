@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function, unicode_literals
 
 import sys
 import numpy as np
@@ -6,6 +7,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import os
 import argparse
+import math
 
 def main():
     # Let's get the files containing the problem and control parameters from the calling command..
@@ -34,21 +36,25 @@ def main():
                         "-no_performance_profile",
                         action="store_true",
                         help="if present, do not display the performance profile")
+    parser.add_argument("-cr",
+                        "-check_with_reference",
+                        action="store_true",
+                        help="if present, also display the reference data, labeled <problem>.reg")
     args = parser.parse_args()
     no_tests = len(args.control_files)
     compute_results = not args.reuse_data
     
     prob_list = args.problem_list
-    problems = np.loadtxt("cutest/sif/"+prob_list+".txt", dtype = str)
+    problems = np.genfromtxt("cutest/sif/"+prob_list+".txt", dtype = 'U10')
     no_probs = len(problems)
-        
-    print "*************************************"
-    print "**                                 **"
-    print "**        R A L _ N L L S          **"
-    print "**                                 **"
-    print "*************************************"
 
-    print "Testing ",no_probs," problems with ",no_tests," minimizers"
+    print("*************************************")
+    print("**                                 **")
+    print("**        R A L _ N L L S          **")
+    print("**                                 **")
+    print("*************************************")
+
+    print("Testing {} problems with {} minimizers".format(no_probs,no_tests))
 
     if compute_results:
         # run the tests!
@@ -60,51 +66,71 @@ def main():
     info = np.dtype({'names' :   ['pname','n','m','status','iter',
                                   'func','jac','hess','inner',
                                   'res','grad','ratio','solve_time'],
-                     'formats' : ['S10' ,int ,int,int,int,
+                     'formats' : ['U10' ,int ,int,int,int,
                                   int, int, int, int,
                                   float,float,float,float]})
     info_noinner = np.dtype({'names' :   ['pname','n','m','status','iter',
                                           'func','jac','hess',
                                           'res','grad','ratio','solve_time'],
-                             'formats' : ['S10' ,int ,int,int,int,
+                             'formats' : ['U10' ,int ,int,int,int,
                                           int, int, int, 
                                           float,float,float,float]})
     hashinfo = np.dtype({'names'   : ['hash','no_probs'], 
-                         'formats' : ['S7',int]})
+                         'formats' : ['U10',int]})
 
-    data = [None for i in range(no_tests)]
-    metadata = [None for i in range(no_tests)]
-    clear_best = np.zeros(no_tests, dtype = np.int)
-    best = np.zeros(no_tests,dtype = np.int)
-    too_many_its = np.zeros(no_tests, dtype = np.int)
-    local_iterates = np.zeros(no_tests, dtype = np.int)
-    local_inner_it = np.zeros(no_tests,dtype = np.int)
-    average_iterates = np.zeros(no_tests, dtype = np.int)
-    average_funeval = np.zeros(no_tests, dtype = np.int)
-    average_inner = np.zeros(no_tests,dtype = np.int)
-    no_failures = np.zeros(no_tests, dtype = np.int)
+
+    if args.cr:
+        no_tests_displayed = 2 * no_tests
+    else:
+        no_tests_displayed = no_tests
+        
+    data = [None for i in range(no_tests_displayed)]
+    metadata = [None for i in range(no_tests_displayed)]
+    clear_best = np.zeros(no_tests_displayed, dtype = np.int)
+    best = np.zeros(no_tests_displayed,dtype = np.int)
+    too_many_its = -np.ones(no_tests_displayed, dtype = np.int)
+    local_iterates = np.zeros(no_tests_displayed, dtype = np.int)
+    local_inner_it = np.zeros(no_tests_displayed,dtype = np.int)
+    average_iterates = np.zeros(no_tests_displayed, dtype = np.int)
+    average_funeval = np.zeros(no_tests_displayed, dtype = np.int)
+    average_inner = np.zeros(no_tests_displayed,dtype = np.int)
+    no_failures = np.zeros(no_tests_displayed, dtype = np.int)
 
     InnerResults = 1 # if gsl (or another method with no inners) is present, 
                      # then do not collect inner data (maybe fix)
-    for j in range(no_tests):
+
+    def get_data(filename):
+        # this takes a filename, and outputs:
+        # data :: an array containing details from filename
+        # metadata :: the metadata from filename
         try:
-            data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+            data = np.genfromtxt("data/"+filename, dtype = info)
         except ValueError:
             # these are results that don't include inner iterations
             # (i.e. from gsl)
             # only in this case, don't look for inner iterations
-            data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
+            data = np.genfromtxt("data/"+filename, dtype = info_noinner)
             InnerResults = 0
             # we want to put this back into a file that *does* have inner iterations,
             # so that the performance profiles work below...
-            add_inner_information(args.control_files[j],no_probs,data[j])
-        metadata[j] = np.loadtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
-        if "gsl" in args.control_files[j]: # == "gsl":
-            too_many_its[j] = -2
-        else:
-            too_many_its[j] = -1
-
+            add_inner_information(args.control_files[j],data[j])
+        metadata = np.genfromtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
+        return data,metadata
     
+    for j in range(no_tests):
+        data_index = j
+        if args.cr:
+            data_index = 2*j
+        [data[data_index],metadata[data_index]] = get_data(args.control_files[j]+".out")
+        if "gsl" in args.control_files[j].lower(): # == "gsl":
+            too_many_its[data_index] = -2
+        if args.cr:
+            [data[data_index+1],metadata[data_index+1]] = get_data(args.control_files[j]+".ref")
+            if "gsl" in args.control_files[j].lower(): # == "gsl":
+                too_many_its[data_index+1] = -2         
+        
+    no_probs = len(data[0]['res'])
+
     if args.test_times > 0:
         # repeat the experiment another 'args.test_times' times, and get the average time over
         # that many runs
@@ -113,61 +139,66 @@ def main():
         for j in range(no_tests):
             sum_times[j][:] = data[j]['solve_time'][:]
 
-        print sum_times
+        print("{}".format(sum_times))
         no_runs = 0
         while no_runs < args.test_times:
             run_cutest_and_copy_results_locally(args,problems)
             no_runs += 1
-            print "run "+str(no_runs)+"/"+str(args.test_times)
+            print("run {}/{}".format(no_runs,args.test_times))
 
             for j in range(no_tests):
                 try:
-                    data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info)
+                    data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info)
                 except ValueError:
                     # these are results that don't include inner iterations
                     # (i.e. from gsl)
                     # only in this case, don't look for inner iterations
-                    data[j] = np.loadtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
+                    data[j] = np.genfromtxt("data/"+args.control_files[j]+".out", dtype = info_noinner)
                     InnerResults = 0
                     # we want to put this back into a file that *does* have inner iterations,
                     # so that the performance profiles work below...
-                    add_inner_information(args.control_files[j],no_probs,data[j])
+                    add_inner_information(args.control_files[j],data[j])
                 sum_times[j][:] += data[j]['solve_time'][:]
-                print "sum_times = "
-                print sum_times
-                print "solve_time = "
-                print data[j]['solve_time'][:]
-        print "final solve time = "
+                print("sum_times = {}".format(sum_times))
+                print("solve_time = {}".format(data[j]['solve_time'][:]))
+#        print "final solve time = "
         for j in range(no_tests):
             data[j]['solve_time'][:] = sum_times[j][:]/no_runs
-            print data[j]['solve_time'][:]
-        
+            print("final solve time = {}".format(data[j]['solve_time'][:]))
             
-            
-
-            
-    all_iterates = [data[j]['iter'] for j in range(no_tests)]
-    all_func = [data[j]['func'] for j in range(no_tests)]
-    all_status = [data[j]['status'] for j in range(no_tests)]
-    all_solve_time = [data[j]['solve_time'] for j in range(no_tests)]
+    all_iterates = [data[j]['iter'] for j in range(no_tests_displayed)]
+    all_func = [data[j]['func'] for j in range(no_tests_displayed)]
+    all_status = [data[j]['status'] for j in range(no_tests_displayed)]
+    all_solve_time = [data[j]['solve_time'] for j in range(no_tests_displayed)]
     if InnerResults:
-        all_inner = [data[j]['inner'] for j in range(no_tests)]
+        all_inner = [data[j]['inner'] for j in range(no_tests_displayed)]
     else:
         # since there's no inner iterations, set the number of inner iterations 
         # to equal the number inner iterations
         all_inner = all_iterates
     
     
-    normalized_mins = [data[j]['res'] for j in range(no_tests)]
+    normalized_mins = [data[j]['res'] for j in range(no_tests_displayed)]
     tiny = 1e-8
     normalized_iterates = np.copy(all_iterates)#[data[j]['iter'] for j in range(no_tests)]
     normalized_func = np.copy(all_func)
     normalized_inner = np.copy(all_inner)
     normalized_solve_time = np.copy(all_solve_time)
-    failure = np.zeros((no_probs, no_tests))
 
+    print("no_tests = {}".format(no_tests_displayed))
+    print("no_probs = {}".format(no_probs))
+
+    
+    print("********************")
+    for j in range(no_tests_displayed):
+        for i in range(no_probs):
+            print("{}".format(data[j]['pname'][i]))
+    print("********************")
+    
+    failure = np.zeros((no_probs, no_tests_displayed))
+    
     # finally, run through the data....
-    for j in range (0,no_tests):
+    for j in range (0,no_tests_displayed):
         if j == 0:
             short_hash = str(metadata[j]['hash'])
             hash_error = False
@@ -175,8 +206,9 @@ def main():
             hash_error = True
 
     for i in range(0,no_probs):     
-        for j in range (0,no_tests):
+        for j in range (0,no_tests_displayed):
             if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
+                # if failed, then overwrite with default numbers
                 all_iterates[j][i] = -9999 
                 failure[i][j] = 1 
                 normalized_iterates[j][i] = 9999
@@ -187,6 +219,7 @@ def main():
                 no_failures[j] += 1
                 if (failure[i][j] != 1):
                     failure[i][j] = 2
+                    # set the values in a failure to be negative
                     normalized_iterates[j][i] = -normalized_iterates[j][i]
                     normalized_func[j][i] = -normalized_func[j][i]
                     normalized_inner[j][i] = -normalized_inner[j][i]
@@ -205,7 +238,7 @@ def main():
         for j in range(0,minima[0].shape[0]):
             best[ minima[0][j] ] += 1
     
-    for j in range(0,no_tests):
+    for j in range(0,no_tests_displayed):
         average_funeval[j] = average_funeval[j] / (no_probs - no_failures[j])
         average_iterates[j] = average_iterates[j] / (no_probs - no_failures[j])
         average_inner[j] = average_inner[j] / (no_probs - no_failures[j])
@@ -226,65 +259,68 @@ def main():
     inner_boundaries = np.array([2, 5, 10, 30])
     solve_time_boundaries = np.array([1.1, 1.33, 1.75, 3.0])
     additive = 0
-    print_to_html(no_probs, no_tests, problems, normalized_mins, smallest_resid, 
+    print_to_html(no_probs, no_tests_displayed, data[0]['pname'], normalized_mins, smallest_resid, 
                   mins_boundaries, 'normalized_mins', args.control_files, failure, additive,
-                  short_hash)
-    print_to_html(no_probs, no_tests, problems, normalized_solve_time, smallest_solve_time, 
+                  short_hash, args)
+    print_to_html(no_probs, no_tests_displayed, data[0]['pname'], normalized_solve_time, smallest_solve_time, 
                   solve_time_boundaries, 'normalized_solve_time', args.control_files, 
-                  failure, additive, short_hash)
+                  failure, additive, short_hash, args)
     additive = 1
-    print_to_html(no_probs, no_tests, problems, normalized_iterates, smallest_iterates,
+    print_to_html(no_probs, no_tests_displayed, data[0]['pname'], normalized_iterates, smallest_iterates,
                   iter_boundaries, 'normalized_iters', args.control_files, failure, additive,
-                  short_hash)
-    print_to_html(no_probs, no_tests, problems, normalized_func, smallest_func, 
+                  short_hash, args)
+    print_to_html(no_probs, no_tests_displayed, data[0]['pname'], normalized_func, smallest_func, 
                   func_boundaries, 'normalized_func', args.control_files, failure, additive,
-                  short_hash)
-    print_to_html(no_probs, no_tests, problems, normalized_inner, smallest_inner, 
+                  short_hash, args)
+    print_to_html(no_probs, no_tests_displayed, data[0]['pname'], normalized_inner, smallest_inner, 
                   inner_boundaries, 'normalized_inner', args.control_files, 
-                  failure, additive, short_hash)
+                  failure, additive, short_hash, args)
     
-    print "Iteration numbers, git commit "+short_hash
-    print "%10s" % "problem",
-    for j in range(0,no_tests):
-        print " ", 
-        print "%16s" % args.control_files[j],
-    print " "
+    print("Iteration numbers, git commit {}".format(short_hash))
+    
+    print("\n")
+    def test_name(args,j):
+        if args.cr:
+            if j % 2 == 0:
+                name = args.control_files[math.floor(j / 2)]
+            else:
+                name = args.control_files[math.floor((j-1) / 2)]+'(ref)'
+        else:
+            name = args.control_files[j]
+        return name
+        
+    for j in range (0, no_tests_displayed):
+            
+        print("{} is best {} times (and clear best {} times)".format(
+            test_name(args,j),best[j],clear_best[j]))
 
-    for i in range(0,no_probs):
-        print "%10s" % problems[i],
-        for j in range(0,no_tests):
-            print ' ', 
-            print "%16d" % all_iterates[j][i],
-        print ' '
-
-    print "\n\n"
-    for j in range (0, no_tests):
-        print args.control_files[j]+" is best ",best[j],\
-            " times (and clear best ",clear_best[j]," times)"
-
-    for j in range (0, no_tests):
-        print args.control_files[j]+" took ",average_iterates[j],\
-            " iterations and ", average_funeval[j], \
-            " func. evals on average, and failed ", no_failures[j]," times)"
+    print("\n")
+    for j in range (0, no_tests_displayed):
+        print("{} took {} iterations and {} func. evals on average, and failed {} times)"
+            .format(test_name(args,j),average_iterates[j],average_funeval[j],no_failures[j]))
         if average_inner[j] > average_iterates[j]:
-            print args.control_files[j]+" took ", average_inner[j],\
-                " inner iterations on average"
+            print("{} took {} inner iterations on average".format(
+            test_name(args,j),average_inner[j]))
+    print("")
+            
+    for j in range (0,no_tests_displayed):
+        print("{} took {}s to solve all problems".format(
+            test_name(args,j),np.sum(all_solve_time[:][j])))
 
-    for j in range (0,no_tests):
-        print args.control_files[j]+" took "+str(np.sum(all_solve_time[:][j]))+"s to solve all problems"
-
+    print("")
+    
     if hash_error == True:
-        print "\n\n"
-        print "************************************************"
-        print "*                 W A R N I N G               **"
-        print "* results computed with different git commits  *"
-        print "************************************************"
-        print "\n"
+        print("\n\n")
+        print("************************************************")
+        print("*                 W A R N I N G               **")
+        print("* results computed with different git commits  *")
+        print("************************************************")
+        print("\n")
 
-    plot_prof(args.control_files,no_tests,prob_list,args.np)
+    plot_prof(args.control_files,no_tests_displayed,prob_list,args.np,args.cr)
 
 def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries, 
-                  filename, control_files, failure, additive, short_hash):
+                  filename, control_files, failure, additive, short_hash, args):
 
     # first, let's set the background colours...
     good = '#00ff00'
@@ -293,7 +329,7 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
     badaverage = '#ff7f00'
     bad = '#ff0000'
 
-    print filename
+    print(filename)
     output = open('data/'+filename+'.html','w')
     output.write('<!DOCTYPE html>\n')
     output.write('<html>\n')
@@ -333,13 +369,19 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
     output.write('  <tr>\n')
     output.write('    <td></td>\n')
     for j in range(0,no_tests):
-        output.write('    <td>'+control_files[j]+'</td>\n')
+        if args.cr:
+            if j % 2 == 0:
+                output.write('    <td>'+control_files[math.floor(j / 2)]+'</td>\n')
+            else:
+                output.write('    <td>'+control_files[math.floor((j-1) / 2)]+'(ref) </td>\n')
+        else:
+            output.write('    <td>'+control_files[j]+'</td>\n')
     output.write('  </tr>\n')
         
 
     for i in range(0,no_probs):
         output.write('  <tr>\n')
-        output.write('    <td>'+problems[i]+'</td>')
+        output.write('    <td>{}</td>'.format(problems[i]))
         for j in range(0,no_tests):
             if additive:
                 current_value = data[i][j] - smallest[i] + 1
@@ -361,11 +403,15 @@ def print_to_html(no_probs, no_tests, problems, data, smallest, boundaries,
                 colour = badaverage
             else:
                 colour = bad
-            output.write('    <td bgcolor='+colour+'>'+str(format(data[i][j]))+label+'</td>')
+            if additive:
+                output_string = '    <td bgcolor={}>{}{}</td>'.format(colour,data[i][j],label)
+            else:
+                output_string = '    <td bgcolor={}>{:f}{}</td>'.format(colour,data[i][j],label)
+            output.write(output_string)
         output.write('\n')
         output.write('  </tr>\n')
     output.write('</table>\n')
-    output.write('Computed using git commit <b>#'+short_hash+'</b>\n\n')
+    output.write('Computed using git commit <b>#{}</b>\n\n'.format(short_hash))
     output.write('</body>\n')
     output.write('</html>\n')
     output.close()
@@ -378,15 +424,14 @@ def format(number):
         return "%.4g" % number
 
 
-def add_inner_information(method_name,no_probs,data):
+def add_inner_information(method_name,data):
     # take the file method_name.out (which does not have inner information),
     # and add it in.
     # This is needed so that the output file is the same as that for RALFit, and
     # therefore pypprof can compare them
     copy_file = open("data/"+method_name+".out","w")
-    print "no_probs = "+str(no_probs)
     space = "   "
-    for i in range(no_probs):
+    for i in range(len(data['pname'])):
         line_to_print = (data['pname'][i]+
                          space+
                          str(data['n'][i])+
@@ -418,27 +463,29 @@ def add_inner_information(method_name,no_probs,data):
     copy_file.close()
     
 def run_cutest_and_copy_results_locally(args,problems):
-    no_tests = len(args.control_files)
+#    no_tests = len(args.control_files)
+    no_tests = 0 
     no_probs = len(problems)
     for i in range(no_probs):
         # let's run the tests!
-        print "**** "+ problems[i] +" ****"
+        print("**** "+ problems[i] +" ****")
         compute(no_tests,args.control_files,problems,i,args.starting_point)
-        
-    for j in range(no_tests):
+    
+    
+    for test in args.control_files:#range(no_tests):
         # copy the data file locally
-        subprocess.call(["mv", "cutest/sif/"+args.control_files[j]+".out", \
-                         "data/"+args.control_files[j]+".out"])
-        if "gsl" in args.control_files[j]: # == "gsl":
+        subprocess.call(["mv", "cutest/sif/"+test+".out", \
+                         "data/"+test+".out"])
+        if "gsl" in test.lower(): # == "gsl":
             # c doesn't end with a newline, so add one
             gslresults = open("data/gsl.out","a")
             gslresults.write("\n")
             gslresults.close()
         # get the hash of the git version
-        short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
-        f = open('data/'+args.control_files[j]+".hash",'w')
-        f.write(short_hash+"\t"+str(no_probs))
-        f.close()
+        short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD'],
+                           universal_newlines=True).strip()
+        with open('data/'+test+".hash",'w') as hash_file:
+            hash_file.write("{}\t {}".format(short_hash,no_probs))
 
     
 
@@ -452,48 +499,65 @@ def compute(no_tests,control_files,problems,i,starting_point):
     # copy the ral_nlls files to cutest
     subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_test.f90",cutestdir+"/src/ral_nlls/"])
     subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_main.f90",cutestdir+"/src/ral_nlls/"])
-        
-    for j in range(no_tests):
-        if "gsl" in control_files[j]: # == "gsl":
+
+    j = 0
+    
+    for test in control_files:
+        j += 1
+        if "gsl" in test.lower(): # == "gsl":
             package = "gsl"
         else: # assume ral_nlls is being called
             package = "ral_nlls"
             
         try:
-            subprocess.call(["cp", "control_files/"+control_files[j], \
+            subprocess.call(["cp", "control_files/"+test, \
                              "cutest/sif/"+package.upper()+".SPC"])
         except:
-            raise Error("No control file " + control_files[j] + " found")
+            raise Error("No control file " + test + " found")
            
         os.chdir("cutest/sif/")
                
         if i == 0:
             # very first call, so create blank file...
-            subprocess.call(["cp","/dev/null",control_files[j]+".out"])
+            subprocess.call(["cp","/dev/null",test+".out"])
 
-        if j == 0:
-            # and then call sifdecoder as well as cutest
-            subprocess.call(["runcutest","-p",package,"--decode",problems[i], \
-                             "-st",str(starting_point)])
-        else: # no need to decode again....
-            subprocess.call(["runcutest","-p",package])
-        
+        if (int(starting_point) == 0) and (problems[i] in open('nist.txt').read()):
+            # we have a nist problem
+            range_sp = ['1','2']
+        else:
+            range_sp = [str(starting_point)]
+
+        for sp in range_sp:
+            if (j == 1) or (int(starting_point)==0): # and then call sifdecoder as well as cutest
+                subprocess.call(["runcutest","-p",package,"--decode",problems[i], \
+                                 "-st",sp])
+                no_tests += 1
+            else: # no need to decode again....
+                subprocess.call(["runcutest","-p",package,"-st",sp])
+                no_tests += 1
+
         os.chdir("../../")
 
-def plot_prof(control_files,no_tests,prob_list,np):
+def plot_prof(control_files,no_tests,prob_list,np,cr):
     # performance profiles for iterations
-    Strings = ["./pypprof -c 5 -s iterations ",
-               "./pypprof -c 6 -s fevals ",
-               "./pypprof --log -c 13 -s time "]
+    Strings = ["python pypprof -ne -c 5 -s iterations ",
+               "python pypprof -ne -c 6 -s fevals ",
+               "python pypprof -ne -nf --log -c 13 -s time "]
     data_files = ""
     for j in range(no_tests):
-        data_files += control_files[j]+".out"
+        if cr:
+            if j % 2 == 0:
+                data_files += control_files[math.floor(j / 2)]+".out"
+            else:
+                data_files += control_files[math.floor((j-1) / 2)]+".ref"
+        else:
+            data_files += control_files[j]+".out"
         if j != no_tests-1:
             data_files += " "
     Strings[:] = [string + data_files for string in Strings]
 
     if prob_list=="names_nist_first" or prob_list=="sif_names":
-        testset = "'All tests'"
+        testset = "'test problems'"
     elif prob_list=="nist":
         testset = "'NIST tests'"
     else:
@@ -509,7 +573,7 @@ def plot_prof(control_files,no_tests,prob_list,np):
         for string in Strings:
             os.system(string)
     except:
-        print "Performance profiles not available: ensure pprof is in the path"#
+        print("Performance profiles not available: ensure pprof is in the path")
     os.chdir("..")
 
 if __name__ == "__main__":
