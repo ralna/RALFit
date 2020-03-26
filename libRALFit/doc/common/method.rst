@@ -589,7 +589,10 @@ Bound constraints
      \min_\vx \  F(\vx) := &\frac{1}{2}\| \vr(\vx) \|_{\vW}^2 + \frac{\sigma}{p}\| \vx\|_2^p, \\
 	   &s.t. \  \mathbf{l}_b \leq \vx \leq \mathbf{u}_b 
 	   
-FIXME: describe method   
+ 
+**RALFit** handles the bound constraints by projecting candidate points into the feasible set. The implemented framework is an adaptation of Algorithm 3.12 described by Kanzow , Yamashita, and Fukushima [6]_, where the Levenberg-Marquardt step is replaced by a trust region one. The framework consists of three major steps. It first attempts a projected trust region step and, if unsuccessful, it attempts a Wolfe-type linesearch step along the projected trust region step direction; otherwise, it defaults to a projected gradient step with the Armijo-type linesearch.  Specifically:
+
+
 
 .. [1] Adachi, Satoru and Iwata, Satoru and Nakatsukasa, Yuji and Takeda, Akiko (2015). Solving the trust region subproblem by a generalized eigenvalue problem. Technical report, Mathematical Engineering, The University of Tokyo.
 .. [2] Conn, A. R., Gould, N. I., & Toint, P. L. (2000). Trust region methods. SIAM.
@@ -598,3 +601,4 @@ FIXME: describe method
 .. [5] Nielsen, Hans Bruun (1999). Damping parameter in Marquadt's Method. 
        Technical report TR IMM-REP-1999-05, Department of Mathematical Modelling, 
        Technical University of Denmark (http://www2.imm.dtu.dk/documents/ftp/tr99/tr05_99.pdf)
+.. [6] Kanzow, C., Yamashita, N. and Fukushima, M (2004). Levenberg-Marquardt methods with strong local convergence properties for solving nonlinear equations with convex constraints. Journal of Computational and Applied Mathematic 172(2), 375-397.
