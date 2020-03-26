@@ -295,6 +295,7 @@ contains
        if ( present(weights)) then
           ! set f -> Wf
           w%f(1:m) = weights(1:m)*w%f(1:m)
+          w%Wf(1:m) = weights(1:m)*w%f(1:m)
        end if
 
        ! and evaluate the jacobian
@@ -380,7 +381,7 @@ contains
        case (2) ! second order
           if ( options%exact_second_derivatives ) then
              if ( present(weights) ) then
-                call eval_HF(inform%external_return, n, m, X, weights(1:m)*w%f, w%hf, params)
+                call eval_HF(inform%external_return, n, m, X, w%Wf, w%hf, params)
              else
                 call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
              end if
@@ -424,7 +425,7 @@ contains
           w%use_second_derivatives = .true.
           if ( options%exact_second_derivatives ) then
              if ( present(weights) ) then
-                call eval_HF(inform%external_return, n, m, X, weights(1:m)*w%f, w%hf, params)
+                call eval_HF(inform%external_return, n, m, X, w%Wf, w%hf, params)
              else
                 call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
              end if
@@ -1644,7 +1645,9 @@ contains
         End If
         ! overwrite H onto M0, and the outer prod onto M1...
         size_hard = shape(w%y_hardcase)
-        call matmult_outer( matmul(w%B,w%y_hardcase), size_hard(2), n, w%M1_small)
+
+        w%By_hardcase = matmul(w%B,w%y_hardcase)
+        call matmult_outer( w%By_hardcase, size_hard(2), n, w%M1_small)
         w%M0_small = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model)
@@ -2813,7 +2816,7 @@ contains
 
        if (options%exact_second_derivatives) then
           if ( present(weights) ) then
-             call eval_HF(inform%external_return, n, m, X, weights(1:m)*w%f, w%hf, params)
+             call eval_HF(inform%external_return, n, m, X, w%Wf, w%hf, params)
           else
              call eval_HF(inform%external_return, n, m, X, w%f, w%hf, params)
           end if
@@ -3848,13 +3851,14 @@ contains
        real( wp ) :: ei( m )
 
        ei = 0.0_wp
-       ei(i) = 1.0_wp
-
        if ( present(weights) ) then
-          call eval_HF(inform%external_return, n, m, X, weights(1:m)*ei, Hi, params)
-       else
-          call eval_HF(inform%external_return, n, m, X, ei, Hi, params)
+          ei(i) = weights(i)
+       else 
+          ei(i) = 1.0_wp
        end if
+
+       call eval_HF(inform%external_return, n, m, X, ei, Hi, params)
+
        If (inform%external_return/=0) Then
          inform%status = NLLS_ERROR_FROM_EXTERNAL
          inform%external_name = "eval_HF"
