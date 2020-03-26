@@ -53,8 +53,8 @@ The components of |nlls_options| and |nlls_inform| are explained below in :ref:`
 Argument lists and calling sequences
 ------------------------------------
 
-We use square brackets to indicate  arguments. In each call, optional
-arguments follow the argument inform. Since we reserve the right to add
+We use square brackets to indicate optional arguments, which
+follow the argument :f:type:`inform`. Since we reserve the right to add
 additional optional arguments in future releases of the code, **we
 strongly recommend that all optional arguments be called by keyword, not
 by position**.
@@ -416,16 +416,14 @@ The derived data type for holding options
    
    :f integer more_sorensen_maxits [default=500]: |more_sorensen_maxits|
 
-   :f integer more_sorensen_maxits [default=3]: |more_sorensen_maxits|
-
    :f real more_sorensen_shift [default=1e-13]: |more_sorensen_shift|
 
    :f real more_sorensen_tiny [default=10.0*eps]: |more_sorensen_tiny|
 
    :f real more_sorensen_tol [default=1e-3]: |more_sorensen_tol|
 
-   **Box Bound Options** These options are used if ``nlls_setup_bounds`` is called to set up box constraints.
-
+   **Box Bound Options** These options are used if box constraints are included.
+   
    :f integer box_nFref_max [default=4]: |box_nFref_max|
 
    :f real box_gamma [default=0.9995]: |box_gamma|
@@ -448,25 +446,25 @@ The derived data type for holding options
 
    :f logical box_wolfe_test_step [default=true]: |box_wolfe_test_step|
 
-   :f real box_tau_min [default=0.25]|: |box_tau_min|
+   :f real box_tau_min [default=0.25]: |box_tau_min|
 
-   :f real box_tau_descent [default=1.0e-4]|: |box_tau_descent|
+   :f real box_tau_descent [default=1.0e-4]: |box_tau_descent|
 
-   :f integer box_max_ntrfail [default=2]|: |box_max_ntrfail|
+   :f integer box_max_ntrfail [default=2]: |box_max_ntrfail|
 
-   :f integer box_quad_match [default=1]|: |box_quad_match|
+   :f integer box_quad_match [default=1]: |box_quad_match|
 
-   :f real box_alpha_scale [default=1.0]|: |box_alpha_scale|
+   :f real box_alpha_scale [default=1.0]: |box_alpha_scale|
 
-   :f real box_Delta_scale [default=2.0]|: |box_Delta_scale|
+   :f real box_Delta_scale [default=2.0]: |box_Delta_scale|
 
-   :f real box_tau_wolfe [default=0.3]|: |box_tau_wolfe|
+   :f real box_tau_wolfe [default=0.3]: |box_tau_wolfe|
 
-   :f real box_tau_tr_step [default=0.3]|: |box_tau_tr_step|
+   :f real box_tau_tr_step [default=0.3]: |box_tau_tr_step|
 
-   :f integer box_ls_step_maxit [default=20]|: |box_ls_step_maxit|
+   :f integer box_ls_step_maxit [default=20]: |box_ls_step_maxit|
 
-   :f integer box_lineseach_type [default=1]|: |box_linesearch_type|
+   :f integer box_lineseach_type [default=1]: |box_linesearch_type|
 
 					       .. include:: ../common/options_linesearch_type.txt
 
