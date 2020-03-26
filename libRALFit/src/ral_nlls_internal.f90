@@ -1843,7 +1843,6 @@ lp: do while (.not. success)
        inform%status = NLLS_ERROR_WORKSPACE_ERROR
        goto 100
      End If
-print *, 'AINT !!!!'
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
@@ -1946,12 +1945,10 @@ print *, 'AINT !!!!'
         End Do
         select case (options%model)
         case (1)
-print *, 'AINT SOLVE model 1 !!!!'
            ! note: v is mult by -1 in solve_spd
            call solve_spd(w%B,v,w%LtL,w%p1,n,inform)
            if (inform%status /= 0) goto 100
         case default
-print *, 'AINT SOLVE model other !!!!'
            ! note: v is mult by -1 in solve_general
            call solve_general(w%B,v,w%p1,n,inform,w%solve_general_ws)
            if (inform%status /= 0) goto 100
@@ -2986,6 +2983,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        type( evaluate_model_work ), intent(inout) :: w
 
        real(wp) :: xtd, normx, p, sigma
+       integer :: i
        Character(Len=80) :: rec(1)
 
        md = 0.0_wp
@@ -2999,7 +2997,12 @@ lp:  do i = 1, options%more_sorensen_maxits
        !Jd = J*d
        call mult_J(J,n,m,d,w%Jd,options)
 
-       md_gn = 0.5_wp * norm2(f(1:m) + w%Jd(1:m))**2
+       !md_gn = 0.5_wp * norm2(f(1:m) + w%Jd(1:m))**2
+       md_gn = 0.0_wp
+       Do i = 1, m
+        md_gn = md_gn + (f(i)+w%Jd(i))**2
+       End Do
+       md_gn = 0.5_wp * md_gn
 
        ! if we are solving a regularized problem, update terms
        p = options%regularization_power
