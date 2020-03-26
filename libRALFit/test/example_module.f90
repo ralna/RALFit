@@ -2165,12 +2165,24 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      A = reshape([ 4.0, 1.0, 1.0, 2.0 ], shape(A))
      x_true = [1.0, 1.0]
      b = [5.0, 3.0]
+     ! note: b is inverted in solve_spd, so we need to invert it (previously)
+     b(:) = -b(:)
      call solve_spd(A,b,LtL,x_calc,n,status)
      if (status%status .ne. 0) then
-        write(*,*) 'Error: info = ', status%status, ' returned from solve_spd'
+        write(*,*) 'Error: solve_spd info = ', status%status, ' returned from solve_spd'
         fails = fails + 1
      else if (norm2(x_calc-x_true) > 1e-12) then
         write(*,*) 'Error: incorrect value returned from solve_spd'
+        fails = fails + 1
+     end if
+
+     ! test also _nocopy variant !
+     call solve_spd_nocopy(A,b,x_calc,n,status)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: solve_spd_nocopy info = ', status%status, ' returned from solve_spd'
+        fails = fails + 1
+     else if (norm2(x_calc-x_true) > 1e-12) then
+        write(*,*) 'Error: incorrect value returned from solve_spd_nocopy'
         fails = fails + 1
      end if
           
@@ -2205,7 +2217,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      A = reshape([4.0, 1.0, 2.0, 2.0], shape(A))
      x_true = [1.0, 1.0] 
      b = [6.0, 3.0]
-
+     ! note: b is inverted in solve_general, so we need to invert it (previously)
+     b(:) = -b(:)
      call solve_general(A,b,x_calc,n,status,& 
           work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
      if (status%status .ne. 0) then
@@ -2219,7 +2232,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      A = reshape( [ 0.0, 0.0, 0.0, 0.0 ],shape(A))
      b = [ 6.0, 3.0 ]
-
+     ! note: b is inverted in solve_general, so we need to invert it (previously)
+     b(:) = -b(:)
      call solve_general(A,b,x_calc,n,status,& 
           work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
      if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
