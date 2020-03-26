@@ -5,7 +5,7 @@ module lanczos_box_module
   implicit none
   integer, parameter :: wp = kind(0d0)
 
-  type, extends(params_box_type) :: params_type
+  type, extends(params_base_type) :: params_type
      real(wp), dimension(:), allocatable :: t ! The m data points t_i
      real(wp), dimension(:), allocatable :: y ! The m data points y_i
   end type params_type
@@ -160,37 +160,49 @@ program lanczos_box
 
   n = 6
   allocate(x(n))
-  x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
+  x = (/ 0.44, -0.2408, 2.598, 3.44, -6.199, 0.0977 /)
  
   ! Add bounds on the variables
   Allocate(blx(n),bux(n),xnew(n))
-  blx(1:n) = -1.0e20
-  bux(1:n) = +1.0e20
-  blx(1) = 0.59
-  bux(1) = 1.445
-  blx(5) = -3.9e-1
-  bux(5) = -0.2
+  blx(1:n) = -1.0
+  bux(1:n) = +1.0e+20
+  blx(1) = 0.445
+  bux(1) = 1.0
+  blx(5) = -1.0
+  bux(5) = 1.0
   bux(6) = 10.0
 
-  Call nlls_setup_bounds(params, n, blx, bux, options, inform)
-  if (inform%status/=0) then
-    Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', inform%status
-    stop
-  End if
-
-  options%print_level = 1
-  options%maxit = 100
-  options%exact_second_derivatives = .false.
+  options%print_level = 2
+  options%maxit = 1500
+  options%exact_second_derivatives = .true.
   options%model = 3
-  options%type_of_method = 1
-  options%nlls_method = 3
-  options%inner_method = 2
+  options%type_of_method = 1 ! TR / Reg
+  options%inner_method = 1 ! Implicit / min / basereg
+  options%nlls_method = 1 ! Dogleg / AINT / More-Sorensen (LinSolve) / Galahad
+  options%reg_order = 2.0_wp
+  options%regularization = 1
   options%print_options = .True.
-  options%box_linesearch_type = 1
+  options%box_tau_min = 0.1_wp
+  options%box_tau_descent = 1.0e-5_wp
+  options%box_max_ntrfail = 2
+  options%box_quad_match = 5
+  options%box_alpha_scale = 1.0_wp
+  options%box_Delta_scale = 2.0_wp
+  options%box_tau_wolfe = 0.3_wp
+  options%box_tau_tr_step = 0.3_wp
+  options%box_ls_step_maxit = 20
+
+!!$  Call nlls_setup_bounds(params, n, blx, bux, options, inform)
+!!$  if (inform%status/=0) then
+!!$    Write(*,*) 'ERROR: nlls_setup_bounds failed, status=', inform%status
+!!$    stop
+!!$  End if
+
 
   ! call fitting routine
   call cpu_time(tic)
-  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)
+  call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform, &
+       lower_bounds=blx, upper_bounds=bux)
   if(inform%status.ne.0) then
      print *, "ral_nlls() returned with error flag ", inform%status
      stop
@@ -200,15 +212,9 @@ program lanczos_box
   ! Print result
   Write(*,*) 'Solution: '
   Write(*,Fmt=99998) 'idx', 'low bnd', 'x', 'upp bnd'
-  if (params%iusrbox/=0) Then
-    Do i = 1, n
-      Write(*,Fmt=99999) i, blx(i), x(i), bux(i)
-    End Do
-  else
-    Do i = 1, n
-      Write(*,Fmt=99997) i, x(i)
-    End Do
-  End If
+  Do i = 1, n
+     Write(*,Fmt=99999) i, blx(i), x(i), bux(i)
+  End Do
   print *, ""
   print *, "Objective Value at solution    = ", inform%obj
   print *, "Objective Gradient at solution = ", inform%norm_g

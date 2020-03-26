@@ -322,10 +322,10 @@ module ral_nlls_workspaces
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !    Memory size for the non-monotone linesearch
-     Integer :: box_nFref_max = 4
+     Integer :: box_nFref_max = 1
 !    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
      Real(Kind=wp) :: box_gamma = 0.99995_wp
-     Real(Kind=wp) :: box_decmin = 2.0_wp * 1.0e-16_wp ! macheps
+     Real(Kind=wp) :: box_decmin = epsmch
 !    Magic number to consider box bound (+/-) infinity
      Real(Kind=wp) :: box_bigbnd = 1.0e20_wp
 !    Wolfe descent condition (0<\sigma1<1/2), curvature condition (0<\sigma2)
@@ -335,9 +335,9 @@ module ral_nlls_workspaces
 !    See LS STEP Section 4 p392 Kanzow 2014
      Real(Kind=wp) :: box_kanzow_power = 2.1_wp
 !    sqrt(mcheps)
-     Real(Kind=wp) :: box_kanzow_descent = 1.0e-8_wp
+     Real(Kind=wp) :: box_kanzow_descent = toltm8 
 !    sqrt(mcheps)
-     Real(Kind=wp) :: box_quad_model_descent = 1.0e-8_wp
+     Real(Kind=wp) :: box_quad_model_descent = toltm8
 !    Take projected TR step when TR test is Ok?
 !    True  => take step
 !    False => force a LS or PG step
@@ -348,16 +348,16 @@ module ral_nlls_workspaces
      Logical       :: box_wolfe_test_step = .True.
 !    Threshold to determine if the projection of TR direction
 !    is too severe 0<tau_min<1
-     Real(Kind=wp) :: box_tau_min = 0.25_wp
+     Real(Kind=wp) :: box_tau_min = 0.1_wp
 !    tau >= tau_descent in order to test for descent
-     Real(Kind=wp) :: box_tau_descent = 1.0e-4_wp
+     Real(Kind=wp) :: box_tau_descent = 1.0e-5_wp
 !    Max times TR iterations can fail without passing the various
 !    descent tests: 2? 3? 5? Ignored when proj(x)==x
      Integer       :: box_max_ntrfail = 2
 !    Number of consecutive times quadratic model matches f(x_k+1)
 !    required before setting initial alpha step for PG step equal
 !    to scale_alpha*alpha_k-1
-     Integer       :: box_quad_match = 1
+     Integer       :: box_quad_match = 2
 !    Initial step scale (if quad_i >= box_quad_i)
      Real(Kind=wp) :: box_alpha_scale = 1.0_wp
 !    Scaling factor to use when updating Delta from LS/PG step
@@ -365,7 +365,7 @@ module ral_nlls_workspaces
      Real(Kind=wp) :: box_tau_wolfe = 0.3_wp
      Real(Kind=wp) :: box_tau_tr_step = 0.3_wp
      Integer       :: box_ls_step_maxit = 20
-!    LS type: 1 => Dennis-Schnable; 2 => Hager-Zhang
+!    LS type: 1 => Dennis-Schnabel; 2 => Hager-Zhang
      Integer       :: box_linesearch_type = 1
   END TYPE nlls_options
 
@@ -446,14 +446,6 @@ module ral_nlls_workspaces
 
      real(wp), allocatable :: gradvec(:)
 
-!  vector of smallest singular values
-
-!    real(wp), allocatable :: smallest_sv(:)
-
-!  vector of largest singular values
-
-!    real(wp), allocatable :: largest_sv(:)
-
 !  the value of the objective function at the best estimate of the solution
 !   determined by NLLS_solve
 
@@ -494,22 +486,6 @@ module ral_nlls_workspaces
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
-
-  Type, Public, Extends(params_base_type) :: params_box_type
-    ! See if problem has box bounds
-    Integer :: iusrbox = 0
-    Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
-    ! projection changed the direction? d /= P(d)?
-    Logical :: prjchd = .false.
-    ! Convergence metrics
-    Real(Kind=wp) :: normPD, gtd
-    ! Memory for HZLS (LS)
-    Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
-    ! Consecutive times quadratic model is accurate
-    Integer       :: quad_i = 0
-    ! Memory for nonmonotone LS
-    Integer       :: nFref = 0
-  End Type params_box_type
 
   abstract interface
      subroutine eval_hf_type(status, n, m, x, f, h, params)
@@ -554,6 +530,21 @@ module ral_nlls_workspaces
      type( tenJ_type ), pointer :: tenJ
   end type tensor_params_type
 
+  type, public :: box_type
+     ! Does the problem have a box?
+     logical :: has_box = .false.
+     Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
+     ! projection changed the direction? d /= P(d)?
+     Logical :: prjchd = .false.
+     ! Convergence metrics
+     Real(Kind=wp) :: normPD, gtd
+     ! Memory for HZLS (LS)
+     Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
+     ! Consecutive times quadratic model is accurate
+     Integer       :: quad_i = 0
+     ! Memory for nonmonotone LS
+     Integer       :: nFref = 0
+  end type box_type
 
   type, public :: max_eig_work ! workspace for subroutine max_eig
      logical :: allocated = .false.
@@ -613,7 +604,8 @@ module ral_nlls_workspaces
 
   type, public :: solve_galahad_work ! workspace for subroutine dtrs_work
      logical :: allocated = .false.
-     real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:)
+     real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:), scale_c(:),&
+       scale_h(:)
      type( all_eig_symm_work ) :: all_eig_symm_ws
   end type solve_galahad_work
 
@@ -640,6 +632,7 @@ module ral_nlls_workspaces
      REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
      REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
      REAL(wp), allocatable :: y_hardcase(:,:)
+     REAL(wp), allocatable :: By_hardcase(:,:)
   end type AINT_tr_work
 
   type, public :: dogleg_work ! workspace for subroutine dogleg
@@ -691,8 +684,9 @@ module ral_nlls_workspaces
      real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
-!    real(wp), allocatable :: largest_sv(:), smallest_sv(:)
+     real(wp), allocatable :: Wf(:)
      type ( calculate_step_work ) :: calculate_step_ws
+     type ( box_type ) :: box_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
      type (tenJ_type ) :: tenJ
@@ -703,6 +697,7 @@ module ral_nlls_workspaces
   public :: setup_workspace_dogleg, setup_workspace_AINT_tr
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
   public :: setup_workspace_regularization_solver
+  public :: setup_bounds_type, remove_workspace_bounds
 
 contains
 
@@ -811,6 +806,15 @@ contains
        End If
     end if
 
+    if( .not. allocated(workspace%Wf)) then
+       allocate(workspace%Wf(m), stat = inform%alloc_status)
+       If (inform%alloc_status /= 0) Then
+         inform%bad_alloc = 'setup_workspaces'
+         inform%status = NLLS_ERROR_ALLOCATION
+         goto 100
+       End If
+    end if
+
     if( .not. allocated(workspace%fnew)) then
        allocate(workspace%fnew(m), stat = inform%alloc_status)
        If (inform%alloc_status /= 0) Then
@@ -895,15 +899,13 @@ contains
     if(allocated(workspace%resvec)) deallocate(workspace%resvec, stat=ierr_dummy)
     if(allocated(workspace%gradvec)) deallocate(workspace%gradvec, stat=ierr_dummy)
 
-!   if(allocated(workspace%largest_sv)) deallocate(workspace%largest_sv, stat=ierr_dummy)
-!   if(allocated(workspace%smallest_sv)) deallocate(workspace%smallest_sv, stat=ierr_dummy)
-
     if(allocated(workspace%fNewton)) deallocate(workspace%fNewton, stat=ierr_dummy )
     if(allocated(workspace%JNewton)) deallocate(workspace%JNewton, stat=ierr_dummy )
     if(allocated(workspace%XNewton)) deallocate(workspace%XNewton, stat=ierr_dummy )
 
     if(allocated(workspace%J)) deallocate(workspace%J, stat=ierr_dummy )
     if(allocated(workspace%f)) deallocate(workspace%f, stat=ierr_dummy )
+    if(allocated(workspace%Wf)) deallocate(workspace%Wf, stat=ierr_dummy )
     if(allocated(workspace%fnew)) deallocate(workspace%fnew, stat=ierr_dummy )
     if(allocated(workspace%hf)) deallocate(workspace%hf, stat=ierr_dummy )
     if(allocated(workspace%hf_temp)) deallocate(workspace%hf_temp, stat=ierr_dummy)
@@ -913,6 +915,8 @@ contains
 
     call remove_workspace_calculate_step(workspace%calculate_step_ws,&
          options,workspace%tenJ, workspace%iw_ptr)
+
+    call remove_workspace_bounds(workspace%box_ws)
 
     workspace%allocated = .false.
 
@@ -1048,7 +1052,7 @@ contains
       goto 100
     End If
 
-    w%scale(n) = 0.0_wp
+    w%scale(:) = 0.0_wp
 
     call setup_workspace_evaluate_model(n,m,&
          w%evaluate_model_ws,options,inform)
@@ -1206,7 +1210,7 @@ contains
   subroutine setup_workspace_solve_LLS(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n, m
-    type( solve_LLS_work ) :: w
+    type( solve_LLS_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
     integer :: lwork
@@ -1225,7 +1229,7 @@ contains
 
   subroutine remove_workspace_solve_LLS(w,options)
     implicit none
-    type( solve_LLS_work ) :: w
+    type( solve_LLS_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1239,7 +1243,7 @@ contains
   subroutine setup_workspace_evaluate_model(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n, m
-    type( evaluate_model_work ) :: w
+    type( evaluate_model_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
@@ -1256,7 +1260,7 @@ contains
 
   subroutine remove_workspace_evaluate_model(w,options)
     implicit none
-    type( evaluate_model_work ) :: w
+    type( evaluate_model_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1270,14 +1274,16 @@ contains
   subroutine setup_workspace_AINT_tr(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n, m
-    type( AINT_tr_work ) :: w
+    type( AINT_tr_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
     inform%status = 0
-    allocate(w%B(n,n),w%p0(n),w%p1(n),w%M0(2*n,2*n),w%M1(2*n,2*n),w%M0_small(n,n),&
-      w%M1_small(n,n),w%y(2*n),w%gtg(n,n),w%q(n),w%LtL(n,n),w%y_hardcase(n,2), &
-      stat = inform%alloc_status)
+    allocate(w%B(n,n),w%p0(n),w%p1(n),w%M0(2*n,2*n),w%M1(2*n,2*n),  &
+             w%M0_small(n,n),w%M1_small(n,n),w%y(2*n),w%gtg(n,n),   &
+             w%q(n),w%LtL(n,n),w%y_hardcase(n,2),w%By_hardcase(n,2),&
+             stat = inform%alloc_status)
+
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
       inform%bad_alloc = "setup_workspace_AINT_tr"
@@ -1304,7 +1310,7 @@ contains
 
   subroutine remove_workspace_AINT_tr(w,options)
     implicit none
-    type( AINT_tr_work ) :: w
+    type( AINT_tr_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1320,6 +1326,7 @@ contains
     if(allocated( w%q )) deallocate(w%q,stat=ierr_dummy)
     if(allocated( w%LtL )) deallocate(w%LtL,stat=ierr_dummy)
     if(allocated( w%y_hardcase )) deallocate(w%y_hardcase,stat=ierr_dummy)
+    if(allocated( w%By_hardcase )) deallocate(w%By_hardcase,stat=ierr_dummy)
     ! setup space for max_eig
     call remove_workspace_max_eig(w%max_eig_ws,options)
     call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
@@ -1334,7 +1341,7 @@ contains
   subroutine setup_workspace_min_eig_symm(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n, m
-    type( min_eig_symm_work) :: w
+    type( min_eig_symm_work), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
@@ -1359,7 +1366,7 @@ contains
        End If
        call dsyev('V', & ! both ew's and ev's
             'U', & ! upper triangle of A
-            n, w%A, n, & ! data about A
+            n, w%A, max(1,n), & ! data about A
             w%ew, workquery, -1, &
             inform%external_return)
        If (inform%external_return .ne. 0) then
@@ -1416,7 +1423,7 @@ contains
 
   subroutine remove_workspace_min_eig_symm(w,options)
     implicit none
-    type( min_eig_symm_work) :: w
+    type( min_eig_symm_work), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1437,7 +1444,7 @@ contains
   subroutine setup_workspace_max_eig(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n, m
-    type( max_eig_work) :: w
+    type( max_eig_work), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform), intent(inout) :: inform
     real(wp), allocatable :: workquery(:)
@@ -1460,10 +1467,10 @@ contains
     ! make a workspace query to dggev
     call dggev('N', & ! No left eigenvectors
          'V', &! Yes right eigenvectors
-         2*n, A_dummy, 2*n, B_dummy, 2*n, &
+         2*n, A_dummy, max(1,2*n), B_dummy, max(1,2*n), &
          w%alphaR, W%alphaI, w%beta, & ! eigenvalue data
-         vl_dummy, 2*n, & ! not referenced
-         vr_dummy, 2*n, & ! right eigenvectors
+         vl_dummy, max(1,2*n), & ! not referenced
+         vr_dummy, max(1,2*n), & ! right eigenvectors
          workquery, -1, inform%external_return)
     If (inform%external_return > 0) Then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
@@ -1493,7 +1500,7 @@ contains
 
   subroutine remove_workspace_max_eig(w,options)
     implicit none
-    type( max_eig_work) :: w
+    type( max_eig_work), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1512,7 +1519,7 @@ contains
   subroutine setup_workspace_solve_general(n, m, w, options, inform)
     implicit none
     integer, intent(in) :: n, m
-    type( solve_general_work ) :: w
+    type( solve_general_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform), intent(inout) :: inform
 
@@ -1529,7 +1536,7 @@ contains
 
   subroutine remove_workspace_solve_general(w, options)
     implicit none
-    type( solve_general_work ) :: w
+    type( solve_general_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1542,12 +1549,13 @@ contains
   subroutine setup_workspace_solve_galahad(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n,m
-    type( solve_galahad_work ) :: w
+    type( solve_galahad_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
     inform%status = 0
-    allocate(w%ev(n,n),w%v_trans(n),w%ew(n),w%d_trans(n),stat = inform%alloc_status)
+    allocate(w%ev(n,n),w%v_trans(n),w%ew(n),w%d_trans(n),w%scale_c(n),         &
+      w%scale_h(n),stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%status = NLLS_ERROR_ALLOCATION
       inform%bad_alloc = "setup_workspace_solve_galahad"
@@ -1568,7 +1576,7 @@ contains
 
   subroutine remove_workspace_solve_galahad(w,options)
     implicit none
-    type( solve_galahad_work ) :: w
+    type( solve_galahad_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1576,6 +1584,8 @@ contains
     if(allocated( w%v_trans )) deallocate(w%v_trans, stat=ierr_dummy)
     if(allocated( w%ew )) deallocate(w%ew, stat=ierr_dummy)
     if(allocated( w%d_trans )) deallocate(w%d_trans, stat=ierr_dummy)
+    if(allocated( w%scale_c )) deallocate(w%scale_c, stat=ierr_dummy)
+    if(allocated( w%scale_h )) deallocate(w%scale_h, stat=ierr_dummy)
 
     call remove_workspace_all_eig_symm(w%all_eig_symm_ws,options)
 
@@ -1585,7 +1595,7 @@ contains
   subroutine setup_workspace_regularization_solver(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n,m
-    type ( regularization_solver_work ) :: w
+    type ( regularization_solver_work ), INTENT( INOUT) :: w
     type ( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
@@ -1602,7 +1612,7 @@ contains
 
   subroutine remove_workspace_regularization_solver(w,options)
     implicit none
-    type( regularization_solver_work ) :: w
+    type( regularization_solver_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1615,7 +1625,7 @@ contains
   subroutine setup_workspace_all_eig_symm(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n,m
-    type( all_eig_symm_work ) :: w
+    type( all_eig_symm_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
@@ -1635,7 +1645,7 @@ contains
     w%ew(:) = 1.0_wp
     call dsyev('V', & ! both ew's and ev's
          'U', & ! upper triangle of A
-         n, A_dummy, n, & ! data about A
+         n, A_dummy, max(1,n), & ! data about A
          w%ew, workquery, -1, &
          inform%external_return)
     If (inform%external_return .ne. 0) Then
@@ -1663,7 +1673,7 @@ contains
 
   subroutine remove_workspace_all_eig_symm(w,options)
     implicit none
-    type( all_eig_symm_work ) :: w
+    type( all_eig_symm_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1674,7 +1684,7 @@ contains
   subroutine setup_workspace_more_sorensen(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n,m
-    type( more_sorensen_work ) :: w
+    type( more_sorensen_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
@@ -1700,7 +1710,7 @@ contains
 
   subroutine remove_workspace_more_sorensen(w,options)
     implicit none
-    type( more_sorensen_work ) :: w
+    type( more_sorensen_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1718,7 +1728,7 @@ contains
   subroutine setup_workspace_generate_scaling(n,m,w,options,inform)
     implicit none
     integer, intent(in) :: n,m
-    type( generate_scaling_work ) :: w
+    type( generate_scaling_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
@@ -1750,7 +1760,7 @@ contains
 
   subroutine remove_workspace_generate_scaling(w,options)
     implicit none
-    type( generate_scaling_work ) :: w
+    type( generate_scaling_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1764,5 +1774,114 @@ contains
 
     w%allocated = .false.
   end subroutine remove_workspace_generate_scaling
+
+  subroutine setup_bounds_type(w, n, lower_bounds, upper_bounds, options, inform)
+    Implicit None
+    type(box_type), Intent(InOut)             :: w
+    Integer, Intent(In)                       :: n
+    Real(Kind=wp), Intent(In), Optional       :: lower_bounds(n), upper_bounds(n)
+    Type(NLLS_options), Intent(In)            :: options
+    Type(NLLS_inform), Intent(InOut)          :: inform
+    
+    Integer                                   :: i, ierr
+    Logical                                   :: has_box, lower_usr, upper_usr
+    Real(wp)                                  :: lower, upper
+
+    has_box = .False.
+    w%has_box = has_box
+    w%prjchd = .False.
+    w%quad_i = 0
+    w%quad_c = 0.0_wp
+    w%quad_q = 0.0_wp
+    lower_usr = Present(lower_bounds)
+    upper_usr = Present(upper_bounds)
+
+    if ( (.Not. lower_usr) .And. (.Not. upper_usr) ) Then
+      Go To 100
+    end if
+    
+    Do i = 1, n
+        If (lower_usr) Then
+          lower = lower_bounds(i)
+        Else
+          lower = -options%box_bigbnd
+        End if
+        If (upper_usr) Then
+          upper = upper_bounds(i)
+        Else
+          upper = options%box_bigbnd
+        End if
+
+       If ( lower <= upper .And. lower == lower .And. upper == upper ) Then
+          If (-options%box_bigbnd < lower .And. upper < options%box_bigbnd) Then
+             has_box = .True.
+          End If
+       Else
+          inform%status = NLLS_ERROR_BAD_BOX_BOUNDS
+          Go To 100
+       End If
+    End Do
+
+    w%has_box = has_box
+
+    If (has_box) Then
+      ! Clear all arrays...
+      If (allocated(w%blx)) deallocate(w%blx, Stat=ierr)
+      If (allocated(w%bux)) deallocate(w%bux, Stat=ierr)
+      If (allocated(w%pdir)) deallocate(w%pdir, Stat=ierr)
+      If (allocated(w%normFref)) deallocate(w%normFref, Stat=ierr)
+      If (allocated(w%sk)) deallocate(w%sk, Stat=ierr)
+      If (allocated(w%g)) deallocate(w%g, Stat=ierr)
+      Allocate(w%blx(n), w%bux(n), w%pdir(n), w%g(n),      &
+        w%normFref(options%box_nFref_max), w%sk(n), Stat=ierr)
+      if (ierr /= 0) Then
+        If (allocated(w%blx)) deallocate(w%blx, Stat=ierr)
+        If (allocated(w%bux)) deallocate(w%bux, Stat=ierr)
+        If (allocated(w%pdir)) deallocate(w%pdir, Stat=ierr)
+        If (allocated(w%normFref)) deallocate(w%normFref, Stat=ierr)
+        If (allocated(w%sk)) deallocate(w%sk, Stat=ierr)
+        If (allocated(w%g)) deallocate(w%g, Stat=ierr)
+        inform%status = NLLS_ERROR_ALLOCATION
+        inform%bad_alloc = 'ral_nlls_box'
+        Go To 100
+      end if
+      w%normfref(1:options%box_nFref_max) = -1.0e-20_wp
+      Do i = 1, n
+        If (lower_usr) Then
+          lower = lower_bounds(i)
+        Else
+          lower = -options%box_bigbnd
+        End if
+        If (upper_usr) Then
+          upper = upper_bounds(i)
+        Else
+          upper = options%box_bigbnd
+        End if
+        w%blx(i) = max(lower, -options%box_bigbnd)
+        w%bux(i) = min(upper, options%box_bigbnd)
+      End Do
+    End If
+
+100 Continue
+
+  end subroutine setup_bounds_type
+
+  Subroutine remove_workspace_bounds(w)
+
+    Implicit None
+    type(box_type), Intent(InOut)             :: w
+    Integer                                   :: ierr_dummy
+    Continue
+
+    If (allocated(w%blx)) deallocate(w%blx, Stat=ierr_dummy)
+    If (allocated(w%bux)) deallocate(w%bux, Stat=ierr_dummy)
+    If (allocated(w%pdir)) deallocate(w%pdir, Stat=ierr_dummy)
+    If (allocated(w%normFref)) deallocate(w%normFref, Stat=ierr_dummy)
+    If (allocated(w%sk)) deallocate(w%sk, Stat=ierr_dummy)
+    If (allocated(w%g)) deallocate(w%g, Stat=ierr_dummy)
+
+  End Subroutine remove_workspace_bounds
+
+
 
 end module ral_nlls_workspaces

@@ -9,9 +9,10 @@ def main():
                         help="The name of the control file")
     parser.add_argument("--base_file","-b",
                         help="The base file to amend",default="DEF")
-    opt_arguments = ['error',
-                     'out',
+    opt_arguments = ['out',
                      'print_level',
+                     'print_header',
+                     'print_options',
                      'maxit',
                      'model',
                      'type_of_method',
@@ -62,7 +63,8 @@ def main():
                      'output_progress_vectors',
                      'update_lower_order',
                      'summary_unit',
-                     'iteration_summary']
+                     'iteration_summary',
+                     'supply_eval_hp']
     
     for arg in opt_arguments:
         parser.add_argument('--'+arg)
