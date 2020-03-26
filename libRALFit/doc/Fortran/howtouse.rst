@@ -25,8 +25,6 @@ The user can then call one of the procedures:
 |nlls_iterate| performs one iteration of the non-linear least squares
 solver.
 
-|nlls_setup_bounds| sets up a bound-constrained non-linear least squares problem.
-
 The calling sequences of these subroutines are outlined in :ref:`arg-lists`.
 
 
@@ -69,7 +67,7 @@ To solve the non-linear least squares problem
 
 .. include:: ../common/subroutines.rst
 
-.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP])
+.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP,lower_bounds,upper_bounds])
 
    Solves the non-linear least squares problem.
    
@@ -95,17 +93,22 @@ To solve the non-linear least squares problem
 
    :o procedure eval_HP: |eval_HP_desc|
 
+   :o real lower_bounds(n): |lower_bounds|
+
+   :o real upper_bounds(n): |upper_bounds|
+
 To iterate once
 ^^^^^^^^^^^^^^^
 
 
-.. f:subroutine:: nlls_iterate(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights])
+.. f:subroutine:: nlls_iterate(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP,lower_bounds,upper_bounds])
 		  
    A call of this form allows the user to step through the solution process one
    iteration at a time.
 
    **n**, **m**, **eval_F**, **eval_J**, **eval_HF**, **params**, **inform**,
-   **options** and **weights** are as in the desciption of |nlls_solve|.
+   **options**, **weights**, **eval_HP**, **lower_bounds** and **upper_bounds**
+   are as in the desciption of |nlls_solve|.
 
    :p real X(n) [inout]: |iterate_X|
 
@@ -114,19 +117,6 @@ To iterate once
 The user may use the components ``convergence_normf`` and
 ``convergence_normg`` and ``converge_norms`` in |nlls_inform| to determine whether the iteration has
 converged.
-
-To set up box constraints
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. f:subroutine:: nlls_setup_bounds(params,n,blx,bux,options,info)
-
-   A call of this form passes in information about box contraints that the solution should satisfy.
-
-   **n**, **params**, **options**, **info**  are as in the description of |nlls_solve|
-
-   :p real blx(n) [in]: is used to pass in lower bounds on the solution.
-
-   :p real bux(n) [in]: is used to pass in upper bounds on the solution.
    
 
 .. _user-routines:
