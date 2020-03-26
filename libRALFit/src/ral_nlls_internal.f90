@@ -1843,7 +1843,7 @@ lp: do while (.not. success)
        inform%status = NLLS_ERROR_WORKSPACE_ERROR
        goto 100
      End If
-
+print *, 'AINT !!!!'
      ! todo..
      ! seems wasteful to have a copy of A and B in M0 and M1
      ! use a pointer?
@@ -1937,14 +1937,23 @@ lp: do while (.not. success)
         w%p1(:) = w%q(:) + eta * w%y_hardcase(:,1)
 
      else
+       ! Solve (A+lam*w%B)x=-v:
+       ! 1. we can use w%B to actually store A + lam * w%B
+       ! 2. b=v is then inverted inside of `solve_spd` or `solve_general`
+        w%B(:,:) = A(:,:)
+        Do i = 1, n
+          w%B(i,i) = w%B(i,i) + lam
+        End Do
         select case (options%model)
         case (1)
+print *, 'AINT SOLVE model 1 !!!!'
            ! note: v is mult by -1 in solve_spd
-           call solve_spd(A + lam*w%B,v,w%LtL,w%p1,n,inform)
+           call solve_spd(w%B,v,w%LtL,w%p1,n,inform)
            if (inform%status /= 0) goto 100
         case default
+print *, 'AINT SOLVE model other !!!!'
            ! note: v is mult by -1 in solve_general
-           call solve_general(A + lam*w%B,v,w%p1,n,inform,w%solve_general_ws)
+           call solve_general(w%B,v,w%p1,n,inform,w%solve_general_ws)
            if (inform%status /= 0) goto 100
         end select
         ! note -- a copy of the matrix is taken on entry to the solve routines
