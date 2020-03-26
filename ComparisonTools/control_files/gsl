@@ -6,3 +6,4 @@
 gsl.out               summary file (max 20 characters)		      
 1                     write iteration summary (not 1 == don't write)
 gsl_iter.out	      iteration summary file (max 20 characters)
+0                     should we print updates?
