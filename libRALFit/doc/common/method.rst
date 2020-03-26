@@ -620,8 +620,13 @@ Specifically:
   This step is attempted when the trust region step is unsuccessful but 
   :math:`d_k^{LS}=P_\Omega(x_k+s_k)-x_k` is a descent direction,
   and a viable search direction in the sense that
-  :math:`\nabla f(x_k)^T d_k^{LS} \leq - \rho \|d_k^{LS}\| \nu`,
-  with :math:`s_k` the trust region step, :math:`\rho > 0` and :math:`\nu>1`.
+  
+  .. math::
+     :label: ls-eqn
+
+     \nabla f(x_k)^T d_k^{LS} \leq - \kappa \|d_k^{LS}\|^\nu,
+	
+  with :math:`s_k` the trust region step, :math:`\kappa > 0` and :math:`\nu>1`.
   RALFit performs a weak Wolfe-type linesearch along this direction to find the next point.
   During the linesearch the intermediary candidates are projected into the feasible set
   and kept feasible.

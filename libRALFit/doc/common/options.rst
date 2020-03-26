@@ -94,7 +94,7 @@
 
 .. |box_nFref_max| replace:: Memory size for the non-monotone projected gradient linesearch.
 
-.. |box_gamma| replace:: Sufficient decrease parameter (:math:`0 < \gamma < 1`). A step is deemed successful if :math:`f(x_{k+1}) \leq \gamma f(x_k)`. FIXME!: what is f?
+.. |box_gamma| replace:: Sufficient decrease parameter (:math:`0 < \gamma < 1`). A step is deemed successful if :math:`F(x_{k+1}) \leq \gamma F(x_k)`.
 
 .. |box_decmin| replace:: Defines a safe :math:`\epsilon_{\rm machine}`.
 			  Reserved for compatibility use.
@@ -105,11 +105,13 @@
 
 .. |box_wolfe_curvature| replace:: Wolfe curvature condition parameter :math:`0<\sigma_2<1`.
 
-.. |box_kanzow_power| replace:: Parameter setting :math:`\nu > 1` in equation FIXME!.  
+.. |box_kanzow_power| replace:: Parameter setting :math:`\nu > 1` in equation :eq:`ls-eqn`. 
 
-.. |box_kanzow_descent| replace:: Parameter setting :math:`\kappa > 0` in equation FIXME! See (LS STEP, Section 4, page 392, Kanzow 2014).  The descent test in FIXME! is only accepted if the projected trust region step was not too severe, specifically, when the projection ratio :math:`\tau` is greater than :math:`\tau_d`.
+.. |box_kanzow_descent| replace:: Parameter setting :math:`\kappa > 0` in equation :eq:`ls-eqn` See (LS STEP, Section 4, page 392, Kanzow 2014).  The descent test in equation :eq:`ls-eqn` is only accepted if the projected trust region step was not too severe, specifically, when the projection ratio :math:`\tau` is greater than :math:`\tau_d`.
 
-.. |box_quad_model_descent| replace:: Error tolerance, :math:`\epsilon_q > 0`, for the quadratic model.  A quadratic model is fitted to :math:`(f(x_k),g(x_k),g(x_{k+1}))`, :math:`e_k := |f(x_{k+1} - q(x_{k+1})|` is the error. (FIXME!--needs clarification)
+.. |box_quad_model_descent| replace:: Error tolerance, :math:`\epsilon_q > 0`, required for
+   the error :math:`e_k := |f(x_{k+1} - q(x_{k+1})|` in a quadratic model,
+   :math:`q(x_{k+1})` of :math:`F(x_{k+1})` to be deemed sufficient.
 
 .. |box_tr_test_step| replace::  If true, then a trust region step is taken if the trust region loop is successful and projection ratio :math:`\tau` is about :math:`\tau_{\rm TR}`.
 
@@ -128,8 +130,6 @@
 .. |box_Delta_scale| replace:: Scaling factor :math:`\mu_\Delta`, used when updating :math:`\Delta_{k+1} = \mu_\Delta\|s_k\|` from linesearch/project gradient step.
 
 .. |box_tau_wolfe| replace:: Tolerance that defines the value of :math:`0 < \tau_W < 1`.
-
-.. |box_tau_tr_wolfe| replace:: FIXME
 
 .. |box_tau_tr_step| replace:: Tolerance :math:`0 < \tau_{TR} < 1` to allow a successful trust region step.
 
