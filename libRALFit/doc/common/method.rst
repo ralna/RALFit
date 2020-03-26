@@ -589,9 +589,47 @@ Bound constraints
      \min_\vx \  F(\vx) := &\frac{1}{2}\| \vr(\vx) \|_{\vW}^2 + \frac{\sigma}{p}\| \vx\|_2^p, \\
 	   &s.t. \  \mathbf{l}_b \leq \vx \leq \mathbf{u}_b 
 	   
- 
-**RALFit** handles the bound constraints by projecting candidate points into the feasible set. The implemented framework is an adaptation of Algorithm 3.12 described by Kanzow , Yamashita, and Fukushima [6]_, where the Levenberg-Marquardt step is replaced by a trust region one. The framework consists of three major steps. It first attempts a projected trust region step and, if unsuccessful, it attempts a Wolfe-type linesearch step along the projected trust region step direction; otherwise, it defaults to a projected gradient step with the Armijo-type linesearch.  Specifically:
+RALFit handles the bound constraints by projecting candidate points into the feasible set.
+The implemented framework is an adaptation of Algorithm 3.12
+described by Kanzow, Yamashita, and Fukushima [6]_,
+where the Levenberg-Marquardt step is replaced by a trust region one.
+The framework consists of three major steps.
+It first attempts a projected trust region step and, if unsuccessful,
+it attempts a Wolfe-type linesearch step along the projected trust region step direction;
+otherwise, it defaults to a projected gradient step with the Armijo-type linesearch.
+Specifically:
 
+* **Trust Region Step**
+  The trust region loop needs to be interrupted if the proposed steps
+  :math:`s_k` lead to points outside of the feasible set,
+  i.e., they are orthogonal with respect to the active bounds.
+  This is monitored by the ratio :math:`\tau_k = \|P_\Omega (x_k + s_k) - x_k\|\|s_k\|`,
+  where :math:`P_\Omega` is the Euclidean projection operator over the feasible set.
+  :math:`\tau` provides a convenient way to asses how severe the projection is,
+  if :math:`\tau \approx 0`, then the step :math:`s_k` is indeed orthogonal
+  to the active space and does not provide a suitable search direction, so
+  the loop is terminated.
+  On the contrary, if :math:`\tau \approx 1` then :math:`s_k` has components
+  that are not orthogonal to the active set that can be explored.
+  The trust region step is taken when it is deemed that it makes enough progress
+  in decreasing the error.
+
+  
+* **Linesearch step**
+  This step is attempted when the trust region step is unsuccessful but 
+  :math:`d_k^{LS}=P_\Omega(x_k+s_k)-x_k` is a descent direction,
+  and a viable search direction in the sense that
+  :math:`\nabla f(x_k)^T d_k^{LS} \leq - \rho \|d_k^{LS}\| \nu`,
+  with :math:`s_k` the trust region step, :math:`\rho > 0` and :math:`\nu>1`.
+  RALFit performs a weak Wolfe-type linesearch along this direction to find the next point.
+  During the linesearch the intermediary candidates are projected into the feasible set
+  and kept feasible.
+
+  
+* **Projected gradient step**
+  The projected gradient step is only taken if both the trust region step and
+  the linesearch step where unsuccessful. It consists of an Armijo-type linesearch
+  along the projected gradient direction, :math:`d_k^{PG}=P_\Omega(x_k-\nabla f(x_k))-x_k`.
 
 
 .. [1] Adachi, Satoru and Iwata, Satoru and Nakatsukasa, Yuji and Takeda, Akiko (2015). Solving the trust region subproblem by a generalized eigenvalue problem. Technical report, Mathematical Engineering, The University of Tokyo.
