@@ -4040,6 +4040,8 @@ lp:    do i = 1, w%tensor_options%maxit
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: f
        class( params_base_type ), intent(inout) :: params
+       real(wp) :: regp
+       integer :: k
 
        ! Add default return value for status
        status = 0
@@ -4064,12 +4066,20 @@ lp:    do i = 1, w%tensor_options%maxit
           call calculate_sHs(n,m, s, params)
 
           ! put them all together for the first 1:m terms of f
-          f(1:params%m) = params%f(1:params%m) + params%tenJ%Js(1:params%m) +  &
-            0.5_wp*params%tenJ%stHs(1:params%m)
-
+          !f(1:params%m) = params%f(1:params%m) + params%tenJ%Js(1:params%m) +  &
+          !  0.5_wp*params%tenJ%stHs(1:params%m)
+          ! avoid auto allocs: mixed assume shape/size arrays
+          Do k = 1, params%m
+            f(k) = params%f(k) + params%tenJ%Js(k) + 0.5_wp*params%tenJ%stHs(k)
+          End Do
           if (params%extra == 1) then
              ! we're passing in the regularization via the function/Jacobian
-             f(params%m + 1: params%m + n) = (1.0_wp/sqrt(params%Delta)) * s(1:n)
+             ! f(params%m + 1: params%m + n) = (1.0_wp/sqrt(params%Delta)) * s(1:n)
+             ! same here, avoid auto allocs
+             regp = 1.0_wp/sqrt(params%Delta)
+             Do k = 1, n
+               f(params%m + k) = regp * s(k)
+             End Do
           elseif (params%extra == 2) then
              f(params%m + 1) = sqrt(2.0_wp/(params%Delta * params%p)) * &
                                (norm2(s(1:n))**(params%p/2.0_wp))
