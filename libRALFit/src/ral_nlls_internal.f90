@@ -2435,7 +2435,10 @@ lp:  do i = 1, options%more_sorensen_maxits
                 Write(rec(1), Fmt=6020) sigma_l
                 Call printmsg(5,.False.,options,1,rec)
               End If
-              dHd = dot_product(d, matmul(w%AplusSigma,d))
+             !dHd = dot_product(d, matmul(w%AplusSigma,d))
+             !reuse w%q to store intermediary MV product
+              w%q(:) = matmul(w%AplusSigma,d)
+              dHd = dot_product(d, w%q)
               call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
               if (inform%status /= 0 ) goto 100
               d = d + alpha * w%y1
