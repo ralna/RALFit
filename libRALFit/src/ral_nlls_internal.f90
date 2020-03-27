@@ -1760,8 +1760,8 @@ lp: do while (.not. success)
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      TYPE( dogleg_work ), Intent(InOut) :: w
 
-     real(wp) :: alpha, beta
-     Integer :: nstep
+     real(wp) :: alpha, beta, nrmg, nrm_d_sd
+     Integer :: nstep, i
      Character(Len=20), Parameter :: steplabs(3) = (/'Gauss-Newton    ',       &
        'Steepest Descent', 'Dogleg          '/)
      Character(Len=80) :: rec(1)
@@ -1776,9 +1776,12 @@ lp: do while (.not. success)
      !     Jg = J * g
      call mult_J(J,n,m,g,w%Jg,options)
 
-     alpha = norm2(g)**2 / norm2( w%Jg )**2
+    !alpha = norm2(g)**2 / norm2( w%Jg )**2
+     nrmg = norm2(g)
+     alpha = nrmg**2 / norm2( w%Jg )**2
 
      w%d_sd(:) = alpha * g;
+     nrm_d_sd = alpha * nrmg
 
      ! Solve the linear problem...
      select case (options%model)
@@ -1793,23 +1796,32 @@ lp: do while (.not. success)
 
      if (norm2(w%d_gn) <= Delta) then
         ! Gauss-Newton step
-        d = w%d_gn
+        d(:) = w%d_gn
+        normd = norm2(d)
         nstep = 1
-     else if (norm2( alpha * w%d_sd ) >= Delta) then
+    !else if (norm2( alpha * w%d_sd ) >= Delta) then
+     else if (alpha * nrm_d_sd >= Delta) then
         ! Steepest Descent step
-        d = (Delta / norm2(w%d_sd) ) * w%d_sd
+       !d(:) = (Delta / norm2(w%d_sd) ) * w%d_sd
+        d(:) = (Delta / nrm_d_sd) * w%d_sd
+        normd = Delta
         nstep = 2
      else
        ! Dogleg step
-        w%d_sd = alpha * w%d_sd
+       !avoid triggering automatic allocation
+       !w%d_sd = alpha * w%d_sd
+        do i = 1, size(d)
+          w%d_sd(i) = alpha * w%d_sd(i)
+        end do
         w%ghat(:) = w%d_gn - w%d_sd
         call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
         if ( inform%status /= 0 ) goto 100
         d = w%d_sd + beta * w%ghat
+        normd = norm2(d)
         nstep = 3
      end if
 
-     normd = norm2(d)
+    !normd = norm2(d)
 
 100 continue
      If (buildmsg(5,.false.,options).And.nstep > 0) Then
