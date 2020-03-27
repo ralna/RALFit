@@ -1816,7 +1816,7 @@ lp: do while (.not. success)
         w%ghat(:) = w%d_gn - w%d_sd
         call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
         if ( inform%status /= 0 ) goto 100
-        d = w%d_sd + beta * w%ghat
+        d(:) = w%d_sd + beta * w%ghat
         normd = norm2(d)
         nstep = 3
      end if
