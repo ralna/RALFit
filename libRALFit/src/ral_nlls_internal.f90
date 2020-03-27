@@ -2650,7 +2650,10 @@ lp:  do i = 1, options%more_sorensen_maxits
 !!$        write(*,*) H(:,i)
 !!$     end do
 
-     uHu = dot_product(u, matmul(H,u))
+     ! uHu = dot_product(u, matmul(H,u))
+     Call matrix_norm(u,H,uHu)
+     uHu = uHu**2
+
 !     write(*,*) 'uHu = ', uHu
 
    end subroutine linpack_method
@@ -3611,8 +3614,18 @@ lp:  do i = 1, options%more_sorensen_maxits
        Implicit None
        REAL(wp), intent(in) :: A(:,:), x(:)
        REAL(wp), intent(out) :: norm_A_x
+       Integer :: n, i
        ! Calculates norm_A_x = ||x||_A = sqrt(x'*A*x)
-       norm_A_x = sqrt(dot_product(x,matmul(A,x)))
+       ! assumes dimension match !
+       ! norm_A_x = sqrt(dot_product(x,matmul(A,x)))
+       ! trivial version that does not trigger automatic 
+       ! array allocation for MV product, can be done better...
+       n = size(x)
+       norm_A_x = 0.0_wp
+       Do i = 1, n
+         norm_A_x = norm_A_x + x(i) * dot_product(A(i,:),x)
+       End Do
+       norm_A_x = sqrt(norm_A_x)
      end subroutine matrix_norm
 
      subroutine matmult_inner(J,n,m,A,options)
