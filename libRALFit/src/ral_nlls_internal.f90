@@ -4118,7 +4118,7 @@ lp:    do i = 1, w%tensor_options%maxit
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: J
        class( params_base_type ), intent(inout) :: params
-       integer :: ii, jj
+       integer :: ii, jj, kk, offset_j, offset_pj
        ! Add default return value for status
        status = 0
        ! The function we need to return is
@@ -4133,8 +4133,13 @@ lp:    do i = 1, w%tensor_options%maxit
           J(1:n*m) = 0.0_wp
           do jj = 1,n ! columns
              ! tenJ%Hs has been set by evaltensor_f, which is called first
-             J( (jj-1)*m + 1 : (jj-1)*m + params%m) &
-                  = params%J((jj-1)*params%m + 1 : jj*params%m) + params%tenJ%Hs(jj,1:params%m)
+!             J( (jj-1)*m + 1 : (jj-1)*m + params%m) =                        &
+!               params%J((jj-1)*params%m + 1 : jj*params%m) + params%tenJ%Hs(jj,1:params%m)
+             offset_j = (jj-1) * m
+             offset_pj = (jj-1) * params%m
+             Do kk = 1, params%m
+               J(offset_j+kk) = params%J(offset_pj+kk) + params%tenJ%Hs(jj, kk)
+             End Do
           end do
           if (params%extra == 1) then
              ! we're passing in the regularization via the function/Jacobian
