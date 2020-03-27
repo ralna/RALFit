@@ -162,6 +162,16 @@ typedef int (*ral_nlls_eval_hf_type) (
                ral_nllspkgtype_d_ *hf
                );
 
+typedef int (*ral_nlls_eval_hp_type) (
+               int n, 
+               int m,
+               const ral_nllspkgtype_d_ *x, 
+               const ral_nllspkgtype_d_ *y,
+               ral_nllspkgtype_d_ *hp,
+	       void *params
+               );
+
+
 /* Perform the nlls solve */
   void nlls_solve_d( int n, int m, 
 		     ral_nllspkgtype_d_ X[],
@@ -171,7 +181,10 @@ typedef int (*ral_nlls_eval_hf_type) (
 		     void const* params, 
 		     struct ral_nlls_options const* options,
 		     struct ral_nlls_inform *status,
-		     ral_nllspkgtype_d_ weights[]
+		     ral_nllspkgtype_d_ weights[],
+		     ral_nlls_eval_hp_type eval_hp,
+		     ral_nllspkgtype_d_ lower_bounds[],
+		     ral_nllspkgtype_d_ upper_bounds[]
 		     );
 /* Initialise a workspace for use with ral_nlls_iterate_d() */
   void ral_nlls_init_workspace_d(void **w, void **iw);
@@ -187,7 +200,10 @@ typedef int (*ral_nlls_eval_hf_type) (
 			void const* params, 
 			struct ral_nlls_options const* options,
 			struct ral_nlls_inform *status,
-			ral_nllspkgtype_d_ weights[]
+			ral_nllspkgtype_d_ weights[],
+			ral_nlls_eval_hp_type eval_hp,
+			ral_nllspkgtype_d_ lower_bounds[],
+			ral_nllspkgtype_d_ upper_bounds[]
 			);
   /* get the error string */
   void nlls_strerror_d(

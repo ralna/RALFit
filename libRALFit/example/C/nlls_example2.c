@@ -73,6 +73,7 @@ int main(void) {
    // Initialize options values
    struct ral_nlls_options options;
    ral_nlls_default_options(&options);
+   options.print_level = 4;
    // options.model = 4;
    // options.exact_second_derivatives = true;
 
@@ -86,12 +87,12 @@ int main(void) {
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
    struct ral_nlls_inform inform;
-   double *weights;
-   weights =  malloc(m*sizeof(double)); // weights
-   for(int i=0; i<m; i++) weights[i] = 2.0;
+   double weights[2] = { 2.0, 2.0 };
 
+   printf("sending to ral_nlls_iterate\n");
    for (int i=0; i<options.maxit; i++){
-     ral_nlls_iterate(2, m, x, workspace, eval_r, eval_J, eval_HF, &params, &options, &inform, weights);
+     ral_nlls_iterate(2, m, x, workspace, eval_r, eval_J, eval_HF, &params,
+		      &options, &inform, weights, NULL, NULL, NULL);
      if(inform.status != 0) {
        printf("ral_nlls() returned with error flag %d\n", inform.status);
        return 1; 
@@ -101,9 +102,6 @@ int main(void) {
      }
    } // iteration loop
 
-   //   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, weights);
-   
-   free(weights);
    ral_nlls_free_workspace(&workspace);
    ral_nlls_free_workspace(&inner_workspace);
    

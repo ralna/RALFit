@@ -84,7 +84,8 @@ int generic_test(int model, int method){
   // Call fitting routine
   double x[2] = { 2.5, 0.25 }; // Initial guess
   struct ral_nlls_inform inform;
-  nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, NULL);
+  nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform,
+	     NULL, NULL, NULL, NULL);
   if (model == 0) {
     printf("%s \n", inform.error_message);
     if (inform.status != -3){
