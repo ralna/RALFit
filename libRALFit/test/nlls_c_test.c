@@ -99,6 +99,23 @@ int generic_test(int model, int method){
       return inform.status; // Error
     }
   }
+
+  // If model is expected to pass,
+  // call fitting routine with weights and bounds
+  if (model > 0) { 
+    x[0] =  2.5;
+    x[1] =  0.25; // Reset Initial guess
+    double weights[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
+    double lower_bounds[2] = {0.0, 0.0};
+    double upper_bounds[2] = {10.0, 10.0};
+    
+    nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform,
+	       weights, NULL, lower_bounds, upper_bounds);
+    if(inform.status != 0) {
+      printf("ral_nlls() returned with error flag %d\n", inform.status);
+      return inform.status; // Error
+    }
+  }
     
   return 0; // Success!
 }
