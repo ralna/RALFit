@@ -86,9 +86,9 @@ if(CompileMiniLAPACK)
 endif()
 
 # Python interface
-find_program(PYTHON "python")
+find_package (PythonInterp)
 
-if (PYTHON)
+if (PYTHONINTERP_FOUND)
    message( STATUS "looking for file in ${CMAKE_CURRENT_SOURCE_DIR}")	
    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
@@ -96,8 +96,14 @@ if (PYTHON)
 
    configure_file(${SETUP_PY_IN} ${SETUP_PY})
 
+   execute_process (
+     COMMAND which ${PYTHON_EXECUTABLE}
+     OUTPUT_VARIABLE outVar
+     )
+   message( STATUS ${outVar} )
+
    add_custom_command(OUTPUT ${OUTPUT}
-   		      COMMAND ${PYTHON} ${SETUP_PY} build
+   		      COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} build
 		      COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT})
 
 
@@ -106,7 +112,7 @@ if (PYTHON)
    add_custom_target(target ALL DEPENDS ${OUTPUT} ral_nlls)
 
    install(CODE "execute_process(
-   	    COMMAND ${PYTHON} ${SETUP_PY} install --user
+   	    COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --user
 	    )"	    
 	   )
 endif()
