@@ -1267,16 +1267,16 @@ lp: do while (.not. success)
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-    REAL(wp), intent(in) :: J(:), f(:), hf(:)
-    REAL(wp), intent(inout) :: g(:)
+    REAL(wp), intent(in), Contiguous :: J(:), f(:), hf(:)
+    REAL(wp), intent(inout), Contiguous :: g(:)
     REAL(wp), intent(inout) :: Delta
-    REAL(wp), intent(in) :: X(:)
+    REAL(wp), intent(in), Contiguous :: X(:)
     procedure( eval_hf_type ) :: eval_HF
     class( params_base_type ),intent(inout) :: params
     integer, intent(in) :: num_successful_steps
     integer, intent(in)  :: n, m
     logical, intent(in) :: use_second_derivatives
-    real(wp), intent(out) :: d(:), Xnew(:)
+    real(wp), intent(out), Contiguous :: d(:), Xnew(:)
     real(wp), intent(out) :: md, md_gn
     real(wp), intent(out) :: norm_2_d,norm_S_d
     TYPE( nlls_options ), INTENT( IN ) :: options
@@ -1752,9 +1752,10 @@ lp: do while (.not. success)
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in) :: J(:), hf(:), f(:), g(:), Delta
+     REAL(wp), intent(in), contiguous :: J(:), hf(:), f(:), g(:)
+     REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out), contiguous :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -1846,7 +1847,7 @@ lp: do while (.not. success)
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( AINT_tr_work ), Intent(inout) :: w
 
-     integer :: i, size_hard(2)
+     integer :: i, size_hard2
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
      Character(Len=80) :: rec(1)
@@ -1918,9 +1919,24 @@ lp: do while (.not. success)
           Call Printmsg(5,.False.,options,1,rec)
         End If
         ! overwrite H onto M0, and the outer prod onto M1...
-        size_hard = shape(w%y_hardcase)
-        w%By_hardcase = matmul(w%B,w%y_hardcase)
-        call matmult_outer( w%By_hardcase, size_hard(2), n, w%M1_small)
+        size_hard2 = size(w%y_hardcase, 2)
+        ! Note! max_eig can reallocate w%y_hardcase! see if size changed
+        If (size(w%y_hardcase,2) /= size(w%by_hardcase,2)) Then
+          Deallocate(w%by_hardcase, stat=inform%alloc_status)
+          If (inform%alloc_status/=0) Then
+            inform%status = nlls_error_allocation
+            inform%bad_alloc = 'aint_tr'
+            Go To 100
+          End If
+          Allocate(w%by_hardcase(n, size_hard2), stat=inform%alloc_status)
+          If (inform%alloc_status/=0) Then
+            inform%status = nlls_error_allocation
+            inform%bad_alloc = 'aint_tr'
+            Go To 100
+          End If
+        End If
+        w%By_hardcase(:,:) = matmul(w%B,w%y_hardcase)
+        call matmult_outer( w%By_hardcase, size_hard2, n, w%M1_small)
         w%M0_small(:,:) = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         select case (options%model)
@@ -2267,9 +2283,10 @@ lp:  do i = 1, options%more_sorensen_maxits
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in) :: A(:,:), v(:), Delta
+     REAL(wp), intent(in), contiguous :: A(:,:), v(:)
+     REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out), contiguous :: d(:)
      real(wp), intent(out) :: nd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -2609,8 +2626,9 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      Implicit None
      integer, intent(in) :: n
-     real(wp), intent(in) :: H(:,:), mLLt(:,:)
-     real(wp), intent(out) :: u(:), uHu
+     real(wp), intent(in), contiguous :: H(:,:), mLLt(:,:)
+     real(wp), intent(out), contiguous :: u(:)
+     real(wp), intent(out) :: uHu
 
      real(wp) :: v_minus, v_plus, ltimesw
      integer :: i
@@ -2727,11 +2745,11 @@ lp:  do i = 1, options%more_sorensen_maxits
      !--------------------------------------------
 
      Implicit None
-     REAL(wp), intent(in) :: A(:,:), v(:)
+     REAL(wp), intent(in), Contiguous :: A(:,:), v(:)
      REAL(wp), intent(inout) :: Delta
      integer, intent(in)  :: n, m
      integer, intent(in) :: num_successful_steps
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out), Contiguous :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
      real(wp), intent(in) :: reg_order
      type( solve_galahad_work ), intent(inout) :: w
@@ -2987,12 +3005,12 @@ lp:  do i = 1, options%more_sorensen_maxits
 ! --------------------------------------------------
 
        Implicit None
-       real(wp), intent(in) :: f(:) ! f(x_k)
-       real(wp), intent(in) :: d(:) ! direction in which we move
-       real(wp), intent(in) :: J(:) ! J(x_k) (by columns)
-       real(wp), intent(in) :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
-       real(wp), intent(in) :: X(:) ! original step
-       real(wp), intent(in) :: Xnew(:) ! updated step
+       real(wp), intent(in), contiguous :: f(:) ! f(x_k)
+       real(wp), intent(in), contiguous :: d(:) ! direction in which we move
+       real(wp), intent(in), contiguous :: J(:) ! J(x_k) (by columns)
+       real(wp), intent(in), contiguous :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
+       real(wp), intent(in), contiguous :: X(:) ! original step
+       real(wp), intent(in), contiguous :: Xnew(:) ! updated step
        integer, intent(in) :: m,n
        real(wp), intent(out) :: md  ! m_k(d)
        real(wp), intent(out) :: md_gn
@@ -3109,13 +3127,13 @@ lp:  do i = 1, options%more_sorensen_maxits
          weights)
        Implicit None
        integer, intent(in)  :: n, m
-       real(wp), intent(in) :: X(:)
+       real(wp), intent(in), contiguous :: X(:)
        type( NLLS_workspace ), intent(inout) :: w
        procedure( eval_hf_type ) :: eval_Hf
        class( params_base_type ), intent(inout) :: params
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       real(wp), intent(in), optional :: weights(:)
+       real(wp), intent(in),contiguous, optional :: weights(:)
 
        if (options%exact_second_derivatives) then
           if ( present(weights) ) then
@@ -3206,7 +3224,7 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      subroutine rank_one_update(hf,w,n,options)
        Implicit None
-       real(wp), intent(inout) :: hf(:)
+       real(wp), intent(inout), Contiguous :: hf(:)
        type( NLLS_workspace ), intent(inout) :: w
        integer, intent(in) :: n
        type( NLLS_options ), intent(in) :: options
@@ -3470,13 +3488,13 @@ lp:  do i = 1, options%more_sorensen_maxits
      Recursive subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
        Implicit None
        integer, intent(in) :: n, m
-       real(wp), intent(in) :: X(:)
+       real(wp), intent(in), contiguous :: X(:)
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        class( params_base_type ), intent(inout) :: params
        type( nlls_workspace ), intent(inout) :: w
        procedure( eval_j_type ) :: eval_J
-       real( wp ), intent(in), optional :: weights(:)
+       real( wp ), intent(in), contiguous, optional :: weights(:)
 
        integer :: i
        real (wp) :: normjfnew
@@ -3497,10 +3515,10 @@ lp:  do i = 1, options%more_sorensen_maxits
        ! reset g
        if (.not. options%exact_second_derivatives) then
           ! this is already saved...
-          w%g(:) = w%g_old
+          w%g(:) = w%g_old(:)
        else
           call mult_Jt(w%J,n,m,w%f,w%g,options)
-          w%g(:) = -w%g
+          w%g(:) = -w%g(:)
        end if
 
        normjfnew = norm2(x=w%g)
@@ -3546,10 +3564,10 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      subroutine solve_spd(A,b,LtL,x,n,inform)
        Implicit None
-       REAL(wp), intent(in) :: A(:,:)
-       REAL(wp), intent(in) :: b(:)
-       REAL(wp), intent(out) :: LtL(:,:)
-       REAL(wp), intent(out) :: x(:)
+       REAL(wp), intent(in), contiguous :: A(:,:)
+       REAL(wp), intent(in), contiguous :: b(:)
+       REAL(wp), intent(out), contiguous :: LtL(:,:)
+       REAL(wp), intent(out), contiguous :: x(:)
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
        inform%status = 0
@@ -3566,9 +3584,9 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      subroutine solve_spd_nocopy(A,b,x,n,inform)
        Implicit None
-       REAL(wp), intent(inout) :: A(:,:)
-       REAL(wp), intent(in) :: b(:)
-       REAL(wp), intent(out) :: x(:)
+       REAL(wp), intent(inout), contiguous :: A(:,:)
+       REAL(wp), intent(in), contiguous :: b(:)
+       REAL(wp), intent(out), contiguous :: x(:)
        integer, intent(in) :: n
        type( nlls_inform), intent(inout) :: inform
        inform%status = 0
@@ -3584,9 +3602,9 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      subroutine solve_general(A,b,x,n,inform,w)
        Implicit None
-       REAL(wp), intent(in) :: A(:,:)
-       REAL(wp), intent(in) :: b(:)
-       REAL(wp), intent(out) :: x(:)
+       REAL(wp), intent(in), contiguous :: A(:,:)
+       REAL(wp), intent(in), contiguous :: b(:)
+       REAL(wp), intent(out), contiguous :: x(:)
        integer, intent(in) :: n
        type( nlls_inform ), intent(inout) :: inform
        type( solve_general_work ),Intent(inout) :: w
@@ -3667,9 +3685,9 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      subroutine outer_product(x,n,xxt)
        Implicit None
-       real(wp), intent(in) :: x(:)
+       real(wp), intent(in), contiguous :: x(:)
        integer, intent(in) :: n
-       real(wp), intent(out) :: xxt(:,:)
+       real(wp), intent(out), contiguous :: xxt(:,:)
 
        ! Takes an n vector x and forms the
        ! n x n matrix xtx given by
@@ -3682,9 +3700,9 @@ lp:  do i = 1, options%more_sorensen_maxits
      subroutine all_eig_symm(A,n,ew,ev,w,inform)
        Implicit None
        ! calculate all the eigenvalues of A (symmetric)
-       real(wp), intent(in) :: A(:,:)
+       real(wp), intent(in), contiguous :: A(:,:)
        integer, intent(in) :: n
-       real(wp), intent(out) :: ew(:), ev(:,:)
+       real(wp), intent(out), contiguous :: ew(:), ev(:,:)
        type( all_eig_symm_work ), Intent(inout) :: w
        type( nlls_inform ), intent(inout) :: inform
        integer :: lwork
@@ -3714,9 +3732,10 @@ lp:  do i = 1, options%more_sorensen_maxits
      subroutine min_eig_symm(A,n,ew,ev,options,inform,w)
        Implicit None
        ! calculate the leftmost eigenvalue of A
-       real(wp), intent(in) :: A(:,:)
+       real(wp), intent(in), contiguous :: A(:,:)
        integer, intent(in) :: n
-       real(wp), intent(out) :: ew, ev(:)
+       real(wp), intent(out) ::  ew
+       real(wp), intent(out), contiguous :: ev(:)
        type( nlls_inform ), intent(inout) :: inform
        type( nlls_options ), INTENT( IN ) :: options
        type( min_eig_symm_work ), Intent(Inout) :: w
@@ -3780,9 +3799,10 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      subroutine max_eig(A,B,n,ew,ev,nullevs,options,inform,w)
        Implicit None
-       real(wp), intent(inout) :: A(:,:), B(:,:)
+       real(wp), intent(inout), Contiguous :: A(:,:), B(:,:)
        integer, intent(in) :: n
-       real(wp), intent(out) :: ew, ev(:)
+       real(wp), intent(out), Contiguous :: ev(:)
+       real(wp), intent(out) :: ew
        real(wp), intent(inout), allocatable :: nullevs(:,:)
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
@@ -3899,10 +3919,11 @@ lp:  do i = 1, options%more_sorensen_maxits
                                     w, tenJ, inner_workspace)
        Implicit None
        integer, intent(in)   :: n,m
-       real(wp), intent(in)  :: f(:), J(:)
-       real(wp) , intent(in) :: X(:), Delta
+       real(wp), intent(in), contiguous :: f(:), J(:)
+       real(wp) , intent(in), contiguous :: X(:)
+       real(wp) , intent(in) :: Delta
        integer, intent(in) :: num_successful_steps
-       real(wp), intent(out) :: d(:)
+       real(wp), intent(out), contiguous :: d(:)
        real(wp), intent(out) :: md
        procedure( eval_hf_type ) :: eval_HF
        class( params_base_type ), intent(inout), target :: params
@@ -3928,6 +3949,21 @@ lp:  do i = 1, options%more_sorensen_maxits
          goto 100
        End If
 
+       md = 0.0_wp
+
+       if (.not. w%tparams%eval_hp_provided) then
+          ! let's get all the Hi's...
+          w%tparams%f(:) = 0.0_wp
+          do i = 1, m
+             ! get_Hi expects ei=w%tparams%f to be a zero-filled vector
+             call get_Hi(n, m, X, params, i, w%tparams%f, w%tparams%Hi(:,:,i), &
+               eval_HF, inform)
+             If (inform%status/=0) Then
+               Go To 100
+             End If
+          end do
+       end if
+
        ! save to params
        w%tparams%f(1:m) = f(1:m)
        w%tparams%Delta = Delta
@@ -3936,18 +3972,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        w%tparams%eval_HF => eval_HF
        w%tparams%parent_params => params
        w%tparams%tenJ => tenJ
-
-       md = 0.0_wp
-
-       if (.not. w%tparams%eval_hp_provided) then
-          ! let's get all the Hi's...
-          do i = 1,m
-             call get_Hi(n, m, X, params, i, w%tparams%Hi(:,:,i), eval_HF, inform)
-             If (inform%status/=0) Then
-               Go To 100
-             End If
-          end do
-       end if
 
        d(1:n) = 0.0_wp
 
@@ -3996,6 +4020,10 @@ lp:    do i = 1, w%tensor_options%maxit
        If (w%tparams%eval_hp_provided) Then
          inform%hp_eval = inform%hp_eval + tensor_inform%f_eval
        End If
+       ! Account for the eval_Hf calls, every call to evaltensor_hf implies
+       ! a casll to eval_hf
+       inform%h_eval = inform%h_eval + tensor_inform%h_eval
+
 
        call nlls_finalize(inner_workspace,w%tensor_options)
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
@@ -4207,22 +4235,22 @@ lp:    do i = 1, w%tensor_options%maxit
 100    Continue
      end subroutine evaltensor_HF
 
-     Recursive subroutine get_Hi(n, m, X, params, i, Hi, eval_HF, inform, weights)
+     Recursive subroutine get_Hi(n, m, X, params, i, ei, Hi, eval_HF, inform, weights)
        Implicit None
        integer, intent(in) :: n, m
-       real(wp), intent(in) :: X(:)
+       real(wp), intent(in), contiguous :: X(:)
        class( params_base_type ), intent(inout) :: params
+       ! ei array of zeros
+       real( wp ), dimension( m ), intent ( inout ) :: ei
        integer, intent(in) :: i
-       real(wp), intent(out) :: Hi(:,:)
+       real(wp), intent(out), contiguous :: Hi(:,:)
        procedure( eval_hf_type ) :: eval_HF
        type( nlls_inform ), intent( inout ) :: inform
        real( wp ), dimension( m ), intent( in ), optional :: weights
-       real( wp ) :: ei( m )
 
-       ei = 0.0_wp
        if ( present(weights) ) then
           ei(i) = weights(i)
-       else 
+       else
           ei(i) = 1.0_wp
        end if
 
@@ -4234,7 +4262,8 @@ lp:    do i = 1, w%tensor_options%maxit
          inform%status = NLLS_ERROR_EVALUATION
          inform%external_name = "eval_HF"
          inform%external_return = 2513
-       End iF
+       End If
+       ei(i) = 0.0_wp
      end subroutine get_Hi
 
      Subroutine check_options(opt, inform)
