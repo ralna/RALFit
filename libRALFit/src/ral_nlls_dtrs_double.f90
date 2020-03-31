@@ -1035,7 +1035,12 @@
 
 !  scale H by the largest H and remove relatively tiny H
 
-      scale_h = MAXVAL( ABS( H ) )
+     !scale_h = MAXVAL( ABS( H ) )
+      scale_h = zero
+      DO i = 1, n
+        scale_h = MAX( scale_h, ABS( H( i ) ) )
+      END DO
+
       IF ( scale_h > zero ) THEN
         DO i = 1, n
           IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
@@ -1051,7 +1056,12 @@
 
 !  scale c by the largest c and remove relatively tiny c
 
-      scale_c = MAXVAL( ABS( C ) )
+     !scale_c = MAXVAL( ABS( C ) )
+      scale_c = zero
+      DO i = 1, n
+        scale_c = MAX( scale_c, ABS( C( i ) ) )
+      END DO
+
       IF ( scale_c > zero ) THEN
         DO i = 1, n
           IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
@@ -1151,11 +1161,12 @@
       INTEGER :: max_order, n_lambda, i_hard, n_sing
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda
       REAL ( KIND = wp ) :: alpha, utx, distx, x_big
-      REAL ( KIND = wp ) :: c_norm, c_norm_over_radius, v_norm2, w_norm2
+      REAL ( KIND = wp ) :: c_norm, c_norm_over_radius, v_norm2, w_norm2, h_norm
       REAL ( KIND = wp ) :: beta, z_norm2, root1, root2, root3
       REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, c2
       REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max
       REAL ( KIND = wp ), DIMENSION( 3 ) :: lambda_new
+      INTEGER, DIMENSION( 1 ) :: mloc
       REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: x_norm2, pi_beta
       LOGICAL :: printi, printt, printd, problem_file_exists
       CHARACTER ( LEN = 1 ) :: region
@@ -1213,10 +1224,13 @@
       c_norm = TWO_NORM( C )
       lambda_min = MINVAL( H( : n ) )
       lambda_max = MAXVAL( H( : n ) )
-
+      h_norm = zero
+      DO i = 1, n
+        h_norm = MAX( h_norm, ABS( H( i ) ) )
+      END DO
       IF ( printt ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
      &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
-          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
+          prefix, c_norm, h_norm, lambda_min
 
       region = 'L'
       IF ( printt )                                                            &
@@ -1560,11 +1574,9 @@
 !  record all of the estimates of the optimal lambda
 
         IF ( printd ) THEN
+          MLOC(:) = MAXLOC( lambda_new( : n_lambda ) )
           WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
-            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
-            lambda_new( : MIN( 3, n_lambda ) )
-          IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
-            prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+            prefix, MLOC(1), lambda_new( : MIN( 3, n_lambda ) )
         END IF
 
 !  compute the best Taylor improvement
@@ -2090,7 +2102,11 @@
 
 !  scale H by the largest H and remove relatively tiny H
 
-      scale_h = MAXVAL( ABS( H ) )
+     !scale_h = MAXVAL( ABS( H ) )
+      scale_h = zero
+      DO i = 1, n
+        scale_h = MAX( scale_h, ABS( H( i ) ) )
+      END DO
       IF ( scale_h > zero ) THEN
         DO i = 1, n
           IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
@@ -2106,7 +2122,11 @@
 
 !  scale c by the largest c and remove relatively tiny c
 
-      scale_c = MAXVAL( ABS( C ) )
+     !scale_c = MAXVAL( ABS( C ) )
+      scale_c = zero
+      DO i = 1, n
+        scale_c = MAX( scale_c, ABS( C( i ) ) )
+      END DO
       IF ( scale_c > zero ) THEN
         DO i = 1, n
           IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
@@ -2207,12 +2227,13 @@
 
       INTEGER :: i, it, out, nroots, print_level, max_order, n_lambda, i_hard
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda, target
-      REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2
+      REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2, h_norm
       REAL ( KIND = wp ) :: beta, z_norm2, pm2, oopm2, oos, oos2
       REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, topm2
       REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max, c2
       REAL ( KIND = wp ), DIMENSION( 4 ) :: roots
       REAL ( KIND = wp ), DIMENSION( 9 ) :: lambda_new
+      INTEGER, DIMENSION( 1 ) :: mloc
       REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: x_norm2
       REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: pi_beta, theta_beta
       LOGICAL :: printi, printt, printd, problem_file_exists
@@ -2283,10 +2304,14 @@
       c_norm = TWO_NORM( C )
       lambda_min = MINVAL( H( : n ) )
       lambda_max = MAXVAL( H( : n ) )
+      h_norm = zero
+      DO i = 1, n
+        h_norm = MAX( h_norm, ABS( H( i ) ) )
+      END DO
 
       IF ( printi ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
      &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
-          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
+          prefix, c_norm, h_norm, lambda_min
 
       region = 'L'
       IF ( printt )                                                            &
@@ -2932,11 +2957,13 @@
 !  record all of the estimates of the optimal lambda
 
         IF ( printd ) THEN
+          MLOC(:) = MAXLOC( lambda_new( : n_lambda ) )
           WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
-            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
-            lambda_new( : MIN( 3, n_lambda ) )
+            prefix, MLOC(1), lambda_new( : MIN( 3, n_lambda ) )
           IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
             prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+          IF ( n_lambda > 6 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
+            prefix, lambda_new( 7 : MIN( 9, n_lambda ) )
         END IF
 
 !  compute the best Taylor improvement
