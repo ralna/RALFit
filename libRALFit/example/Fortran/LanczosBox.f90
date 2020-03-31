@@ -172,25 +172,14 @@ program lanczos_box
   bux(5) = 1.0
   bux(6) = 10.0
 
-  options%print_level = 2
-  options%maxit = 1500
+  options%print_level = 3
+  options%maxit = 100
   options%exact_second_derivatives = .true.
   options%model = 3
   options%type_of_method = 1 ! TR / Reg
   options%inner_method = 1 ! Implicit / min / basereg
-  options%nlls_method = 1 ! Dogleg / AINT / More-Sorensen (LinSolve) / Galahad
-  options%reg_order = 2.0_wp
-  options%regularization = 1
-  options%print_options = .True.
-  options%box_tau_min = 0.1_wp
-  options%box_tau_descent = 1.0e-5_wp
+  options%nlls_method = 4 ! Dogleg / AINT / More-Sorensen (LinSolve) / Galahad
   options%box_max_ntrfail = 2
-  options%box_quad_match = 5
-  options%box_alpha_scale = 1.0_wp
-  options%box_Delta_scale = 2.0_wp
-  options%box_tau_wolfe = 0.3_wp
-  options%box_tau_tr_step = 0.3_wp
-  options%box_ls_step_maxit = 20
 
 !!$  Call nlls_setup_bounds(params, n, blx, bux, options, inform)
 !!$  if (inform%status/=0) then
