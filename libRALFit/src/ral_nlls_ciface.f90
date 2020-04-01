@@ -156,10 +156,23 @@ module ral_nlls_ciface
      end function c_eval_hf_type
   end interface
 
+  abstract interface
+     integer(c_int) function c_eval_hp_type(n, m, x, y, hp, params) bind(c)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(c_int) :: n,m
+       real(c_double), dimension(*), intent(in)  :: x
+       real(c_double), dimension(*), intent(in)  :: y
+       real(c_double), dimension(*), intent(out) :: hp
+       type(C_PTR), value :: params
+     end function c_eval_hp_type
+  end interface
+
   type, extends(f_params_base_type) :: params_wrapper
      procedure(c_eval_r_type), nopass, pointer :: r
      procedure(c_eval_j_type), nopass, pointer :: j
      procedure(c_eval_hf_type), nopass, pointer :: hf
+     procedure(c_eval_hp_type), nopass, pointer :: hp
      type(C_PTR) :: params
   end type params_wrapper
 
@@ -338,6 +351,22 @@ contains
 
   end subroutine c_eval_hf
 
+  subroutine c_eval_hp(evalhpstatus, n, m, x, y, hp, fparams)
+    integer, intent(in) :: n, m
+    integer, intent(out) :: evalhpstatus
+    double precision, dimension(*), intent(in) :: x
+    double precision, dimension(*), intent(in) :: y
+    double precision, dimension(*), intent(out) :: hp
+    class(f_params_base_type), intent(inout) :: fparams
+
+    select type(fparams)
+    type is(params_wrapper)
+       evalhpstatus = fparams%hp(n,m,x(1:n),y(1:n),hp(1:n*m),fparams%params)
+    end select
+
+  end subroutine c_eval_hp
+
+  
 end module ral_nlls_ciface
 
 subroutine ral_nlls_default_options_d(coptions) bind(C)
@@ -424,7 +453,8 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
 
 end subroutine ral_nlls_default_options_d
 
-subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights) bind(C)
+subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
+     cweights, hp, clower_bounds, cupper_bounds) bind(C)
   use ral_nlls_ciface
   implicit none
 
@@ -440,11 +470,18 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights
   TYPE( f_nlls_options ) :: foptions
   TYPE( f_nlls_inform ) :: finform
   TYPE( C_PTR ), value :: cweights
+  TYPE( C_PTR ), value :: clower_bounds
+  TYPE( C_PTR ), value :: cupper_bounds
   real( c_double ), dimension(:), pointer :: fweights
+  type( C_FUNPTR ), value :: hp
+  real( c_double ), dimension(:), pointer :: flower_bounds
+  real( c_double ), dimension(:), pointer :: fupper_bounds
+  
 !  real( wp ), dimension(*), optional :: cweights
 
   logical :: f_arrays
-
+  logical :: hp_sent_in = .false.
+  
   ! copy data in and associate pointers correctly
   call copy_options_in(coptions, foptions, f_arrays)
 
@@ -452,18 +489,40 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, cweights
   call c_f_procpointer(j, fparams%j)
   call c_f_procpointer(hf, fparams%hf)
   fparams%params = params
-
+  if (C_ASSOCIATED(hp)) hp_sent_in = .true.
+  
+  ! the following steps for passing optional arguments
+  ! requires a compiler compatible with Fortran 2008+TS29113
+  nullify(fweights)
   if (C_ASSOCIATED(cweights)) then
      call c_f_pointer(cweights, fweights, shape = (/ m /) )
+  end if
+  nullify(flower_bounds)
+  if (C_ASSOCIATED(clower_bounds)) then
+     call c_f_pointer(clower_bounds, flower_bounds, shape = (/ m /) )
+  end if
+  nullify(fupper_bounds)
+  if (C_ASSOCIATED(cupper_bounds)) then
+     call c_f_pointer(cupper_bounds, fupper_bounds, shape = (/ m /) )
+  end if
+
+  if (hp_sent_in) then
      call f_nlls_solve( n, m, cx, &
-       c_eval_r, c_eval_j,   &
-       c_eval_hf, fparams,   &
-       foptions,finform,fweights)
+          c_eval_r, c_eval_j,   &
+          c_eval_hf, fparams,   &
+          foptions,finform, & 
+          weights=fweights, &
+          eval_hp=c_eval_hp, &
+          lower_bounds=flower_bounds, &
+          upper_bounds=fupper_bounds)
   else
      call f_nlls_solve( n, m, cx, &
-       c_eval_r, c_eval_j,   &
-       c_eval_hf, fparams,   &
-       foptions,finform)
+          c_eval_r, c_eval_j,   &
+          c_eval_hf, fparams,   &
+          foptions,finform, & 
+          weights=fweights, &
+          lower_bounds=flower_bounds, &
+          upper_bounds=fupper_bounds)     
   end if
 
   ! Copy data out
@@ -506,7 +565,7 @@ subroutine ral_nlls_free_workspace_d(cw) bind(C)
 end subroutine ral_nlls_free_workspace_d
 
 subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
-      cinform, cweights) bind(C)
+      cinform, cweights, hp, clower_bounds, cupper_bounds) bind(C)
   use ral_nlls_ciface
   implicit none
 
@@ -520,11 +579,16 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   TYPE( nlls_options ) :: coptions
   TYPE( nlls_inform )  :: cinform
   TYPE( C_PTR ), value :: cweights
+  type( C_FUNPTR ), value :: hp
+  type( C_PTR ), value :: clower_bounds
+  type( C_PTR ), value :: cupper_bounds
 
   type( params_wrapper ) :: fparams
   TYPE( f_nlls_inform) :: finform
   TYPE( f_nlls_workspace ), pointer :: fw
   real( c_double ), dimension(:), pointer :: fweights
+  real( c_double ), dimension(:), pointer :: flower_bounds
+  real( c_double ), dimension(:), pointer :: fupper_bounds
   TYPE( f_nlls_options) :: foptions
 
   logical :: f_arrays
@@ -535,21 +599,32 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   call c_f_procpointer(r, fparams%r)
   call c_f_procpointer(j, fparams%j)
   call c_f_procpointer(hf, fparams%hf)
+  nullify(fparams%hp)
+  if (C_associated(hp)) call c_f_procpointer(hp, fparams%hp)
   call c_f_pointer(cw, fw)
   fparams%params = params
 
+  nullify(fweights)
   if (C_ASSOCIATED(cweights)) then
      call c_f_pointer(cweights, fweights, shape = (/ m /) )
-     call f_nlls_iterate( n, m, cx, fw, &
-          c_eval_r, c_eval_j,   &
-          c_eval_hf, fparams,   &
-          finform, foptions, fweights)
-  else
-     call f_nlls_iterate( n, m, cx, fw, &
-          c_eval_r, c_eval_j,   &
-          c_eval_hf, fparams,   &
-          finform, foptions)
   end if
+  nullify(flower_bounds)
+  if (C_ASSOCIATED(clower_bounds)) then
+     call c_f_pointer(clower_bounds, flower_bounds, shape = (/ n /) )
+  end if
+  nullify(fupper_bounds)
+  if (C_ASSOCIATED(cupper_bounds)) then
+     call c_f_pointer(cupper_bounds, fupper_bounds, shape = (/ n /) )
+  end if
+
+  call f_nlls_iterate( n, m, cx, fw, &
+       c_eval_r, c_eval_j,           &
+       c_eval_hf, fparams,           &
+       finform, foptions,            & 
+       weights=fweights,             & 
+       eval_hp=c_eval_hp,            &
+       lower_bounds=flower_bounds,   &
+       upper_bounds=fupper_bounds)
 
   ! Copy data out
   call copy_info_out(finform, cinform)
