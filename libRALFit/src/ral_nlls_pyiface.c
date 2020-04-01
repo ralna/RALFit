@@ -24,7 +24,7 @@ struct callback_data {
 };
 
 ///
-/// get the argument list of a 
+/// get the argument list of a  
 ///
 static
 PyObject* build_arglist(Py_ssize_t sz, PyObject* extra) {
