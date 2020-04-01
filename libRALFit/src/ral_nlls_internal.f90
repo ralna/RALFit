@@ -3187,13 +3187,18 @@ lp:  do i = 1, options%more_sorensen_maxits
        real(wp), intent(in) :: X(:), normX
        type( nlls_options ), intent(in) :: options
 
-       select case(options%regularization)
-       case (1)
-          g = g - options%regularization_term * X
-       case (2)
-          g = g - options%regularization_term *  &
-               (normX**(options%regularization_power - 2.0_wp)) * X
-       end select
+      Select Case (options%regularization)
+      Case (1)
+        g = g - options%regularization_term*x
+      Case (2)
+        If (normx==0.0_wp) Then
+!         Avoid undefined behaviour (Knuth 1992, 0^0 := 1)
+          g = g - options%regularization_term*x
+        Else
+          g = g - options%regularization_term*(normx**(options%                &
+            regularization_power-2.0_wp))*x
+        End If
+      End Select
      end subroutine update_regularized_gradient
 
      subroutine update_regularized_hessian(hf,X,n,options)
