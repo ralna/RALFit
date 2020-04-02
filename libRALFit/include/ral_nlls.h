@@ -144,7 +144,8 @@ typedef int (*ral_nlls_eval_r_type) (
               const ral_nllspkgtype_d_ *x, 
               ral_nllspkgtype_d_ *f
               );
-  
+
+/* define the eval_j_type */
 typedef int (*ral_nlls_eval_j_type) (
               int n, 
               int m,
@@ -153,6 +154,7 @@ typedef int (*ral_nlls_eval_j_type) (
               ral_nllspkgtype_d_ *j
               );
 
+/* define the eval_hf_type */
 typedef int (*ral_nlls_eval_hf_type) (
                int n, 
                int m,
@@ -162,6 +164,7 @@ typedef int (*ral_nlls_eval_hf_type) (
                ral_nllspkgtype_d_ *hf
                );
 
+/* define the eval_hp_type */
 typedef int (*ral_nlls_eval_hp_type) (
                int n, 
                int m,
