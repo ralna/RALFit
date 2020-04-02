@@ -17,10 +17,11 @@ static struct ral_nlls_state _state;
 #endif
 
 struct callback_data {
-   PyObject* f;
-   PyObject* J;
-   PyObject* Hr;
-   PyObject* params;
+  PyObject* f;
+  PyObject* J;
+  PyObject* Hr;
+  PyObject* Hp;
+  PyObject* params;
 };
 
 ///
@@ -227,7 +228,7 @@ int eval_Hp(int n, int m, void *params, const double *x, const double *y,
       Py_DECREF(result);
       return -1;
    }
-   if(PyArray_NDIM(Hrarray) != 2) {
+   if(PyArray_NDIM(Hparray) != 2) {
       PyErr_SetString(PyExc_RuntimeError, "Hp() must return rank-2 array");
       Py_DECREF(Hparray);
       Py_DECREF(result);
@@ -1090,7 +1091,7 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyDict_SetItemString(pyinfo, "ls_step_iter", PyInt_FromLong(inform->ls_step_iter));
    PyDict_SetItemString(pyinfo, "f_eval_ls", PyInt_FromLong(inform->f_eval_ls));
    PyDict_SetItemString(pyinfo, "g_eval_ls", PyInt_FromLong(inform->g_eval_ls));
-   PyDict_SetItemString(pyinfo, "pg_eval_ls", PyInt_FromLong(inform->pg_eval_ls));
+   PyDict_SetItemString(pyinfo, "pg_step_iter", PyInt_FromLong(inform->pg_step_iter));
    PyDict_SetItemString(pyinfo, "f_eval_pg", PyInt_FromLong(inform->f_eval_pg));
    PyDict_SetItemString(pyinfo, "g_eval_pg", PyInt_FromLong(inform->g_eval_pg));
 
