@@ -1073,6 +1073,8 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyObject *pyinfo = PyDict_New();
 
    PyDict_SetItemString(pyinfo, "iter", PyInt_FromLong(inform->iter));
+   PyDict_SetItemString(pyinfo, "inner_iter", PyInt_FromLong(inform->inner_iter));
+   // bool:: inner_iter_success?
    PyDict_SetItemString(pyinfo, "f_eval", PyInt_FromLong(inform->f_eval));
    PyDict_SetItemString(pyinfo, "g_eval", PyInt_FromLong(inform->g_eval));
    PyDict_SetItemString(pyinfo, "h_eval", PyInt_FromLong(inform->h_eval));
@@ -1084,7 +1086,13 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyDict_SetItemString(pyinfo, "obj", PyFloat_FromDouble(inform->obj));
    PyDict_SetItemString(pyinfo, "norm_g", PyFloat_FromDouble(inform->norm_g));
    PyDict_SetItemString(pyinfo, "scaled_g",PyFloat_FromDouble(inform->scaled_g));
-   PyDict_SetItemString(pyinfo, "step",PyFloat_FromDouble(inform->step));
+   //   PyDict_SetItemString(pyinfo, "step",PyFloat_FromDouble(inform->step));
+   PyDict_SetItemString(pyinfo, "ls_step_iter", PyInt_FromLong(inform->ls_step_iter));
+   PyDict_SetItemString(pyinfo, "f_eval_ls", PyInt_FromLong(inform->f_eval_ls));
+   PyDict_SetItemString(pyinfo, "g_eval_ls", PyInt_FromLong(inform->g_eval_ls));
+   PyDict_SetItemString(pyinfo, "pg_eval_ls", PyInt_FromLong(inform->pg_eval_ls));
+   PyDict_SetItemString(pyinfo, "f_eval_pg", PyInt_FromLong(inform->f_eval_pg));
+   PyDict_SetItemString(pyinfo, "g_eval_pg", PyInt_FromLong(inform->g_eval_pg));
 
    return pyinfo;
 }
