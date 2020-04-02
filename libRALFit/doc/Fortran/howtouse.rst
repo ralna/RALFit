@@ -53,8 +53,8 @@ The components of |nlls_options| and |nlls_inform| are explained below in :ref:`
 Argument lists and calling sequences
 ------------------------------------
 
-We use square brackets to indicate  arguments. In each call, optional
-arguments follow the argument inform. Since we reserve the right to add
+We use square brackets to indicate optional arguments, which
+follow the argument :f:type:`inform`. Since we reserve the right to add
 additional optional arguments in future releases of the code, **we
 strongly recommend that all optional arguments be called by keyword, not
 by position**.
@@ -67,7 +67,7 @@ To solve the non-linear least squares problem
 
 .. include:: ../common/subroutines.rst
 
-.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP])
+.. f:subroutine:: nlls_solve(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP,lower_bounds,upper_bounds])
 
    Solves the non-linear least squares problem.
    
@@ -93,17 +93,22 @@ To solve the non-linear least squares problem
 
    :o procedure eval_HP: |eval_HP_desc|
 
+   :o real lower_bounds(n): |lower_bounds|
+
+   :o real upper_bounds(n): |upper_bounds|
+
 To iterate once
 ^^^^^^^^^^^^^^^
 
 
-.. f:subroutine:: nlls_iterate(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights])
+.. f:subroutine:: nlls_iterate(n,m,X,eval_r,eval_J,eval_Hf,params,options,inform[,weights,eval_HP,lower_bounds,upper_bounds])
 		  
    A call of this form allows the user to step through the solution process one
    iteration at a time.
 
-   **n**, **m**, **eval_F**, **eval_J**, **eval_HF**, **params**, **info**,
-   **options** and **weights** are as in the desciption of |nlls_solve|.
+   **n**, **m**, **eval_F**, **eval_J**, **eval_HF**, **params**, **inform**,
+   **options**, **weights**, **eval_HP**, **lower_bounds** and **upper_bounds**
+   are as in the desciption of |nlls_solve|.
 
    :p real X(n) [inout]: |iterate_X|
 
@@ -112,6 +117,7 @@ To iterate once
 The user may use the components ``convergence_normf`` and
 ``convergence_normg`` and ``converge_norms`` in |nlls_inform| to determine whether the iteration has
 converged.
+   
 
 .. _user-routines:
 
@@ -410,14 +416,58 @@ The derived data type for holding options
    
    :f integer more_sorensen_maxits [default=500]: |more_sorensen_maxits|
 
-   :f integer more_sorensen_maxits [default=3]: |more_sorensen_maxits|
-
    :f real more_sorensen_shift [default=1e-13]: |more_sorensen_shift|
 
    :f real more_sorensen_tiny [default=10.0*eps]: |more_sorensen_tiny|
 
    :f real more_sorensen_tol [default=1e-3]: |more_sorensen_tol|
-						  
+
+   **Box Bound Options** These options are used if box constraints are included.
+   
+   :f integer box_nFref_max [default=4]: |box_nFref_max|
+
+   :f real box_gamma [default=0.9995]: |box_gamma|
+
+   :f real box_decmin [default=2.0e-16]: |box_decmin|
+
+   :f real box_bigbnd [default=1.0e20]: |box_bigbnd|
+
+   :f real box_wolfe_descent [default=1.0e-4]: |box_wolfe_descent|
+
+   :f real box_wolfe_curvature [default=0.9]: |box_wolfe_curvature|
+
+   :f real box_kanzow_power [default=2.1]: |box_kanzow_power|
+
+   :f real box_kanzow_descent [default=1.0e-8]: |box_kanzow_descent|
+
+   :f real box_quad_model_descent [default=1.0e-8]: |box_quad_model_descent|
+
+   :f logical box_tr_test_step [default=true]: |box_tr_test_step|
+
+   :f logical box_wolfe_test_step [default=true]: |box_wolfe_test_step|
+
+   :f real box_tau_min [default=0.25]: |box_tau_min|
+
+   :f real box_tau_descent [default=1.0e-4]: |box_tau_descent|
+
+   :f integer box_max_ntrfail [default=2]: |box_max_ntrfail|
+
+   :f integer box_quad_match [default=1]: |box_quad_match|
+
+   :f real box_alpha_scale [default=1.0]: |box_alpha_scale|
+
+   :f real box_Delta_scale [default=2.0]: |box_Delta_scale|
+
+   :f real box_tau_wolfe [default=0.3]: |box_tau_wolfe|
+
+   :f real box_tau_tr_step [default=0.3]: |box_tau_tr_step|
+
+   :f integer box_ls_step_maxit [default=20]: |box_ls_step_maxit|
+
+   :f integer box_lineseach_type [default=1]: |box_linesearch_type|
+
+					       .. include:: ../common/options_linesearch_type.txt
+
    **Other options**
 					     
    :f logical output_progress_vectors [default=false]: |output_progress_vectors|
@@ -458,6 +508,8 @@ The derived data type for holding information
    :f integer g_eval: |g_eval|
 
    :f integer h_eval: |h_eval|
+
+   :f intgeer hp_eval: |hp_eval|
 
    :f integer convergence_normf: |convergence_normf|
 

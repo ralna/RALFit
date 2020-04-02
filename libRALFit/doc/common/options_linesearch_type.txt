@@ -1,0 +1,8 @@
+.. list-table::
+      
+    * - 1
+      - Dennis-Schnabel linesearch.
+    * - 2
+      - Hager-Zhang linesearch.
+
+For more information, see :ref:`bound-constraints`

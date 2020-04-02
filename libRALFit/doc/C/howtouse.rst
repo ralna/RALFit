@@ -39,7 +39,7 @@ The derived data types
 
 For each problem, the user must employ the derived types
 defined by the module to declare scalars of the types |nlls_options| and 
-|nlls_inform|
+|nlls_inform|.
 
 The following pseudocode illustrates this.
 
@@ -65,7 +65,7 @@ To initialize members of |nlls_options| to default values
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To initialize the value of |nlls_options|, the user **must** make a call to the 
-following subroutine.  Failure to do so will result in undefined behaviour).
+following subroutine.  Failure to do so will result in undefined behaviour.
 
 .. c:function:: void ral_nlls_default_options(struct spral_lsmr_options *options)
 
@@ -76,7 +76,7 @@ To solve the non-linear least squares problem
 
 .. include:: ../common/subroutines.rst
 
-.. c:function:: void nlls_solve(int n, int n, int m, double X[], ral_nlls_eval_r_type eval_r,ral_nlls_eval_j_type eval_J, ral_nlls_eval_hf_type eval_Hf, void* params, struct nlls_options const* options, struct nlls_inform* inform, double weights[])
+.. c:function:: void nlls_solve(int n, int n, int m, double X[], ral_nlls_eval_r_type eval_r,ral_nlls_eval_j_type eval_J, ral_nlls_eval_hf_type eval_Hf, void* params, struct nlls_options const* options, struct nlls_inform* inform, double weights[], nlls_eval_HP_type eval_HP, double lower_bounds[], double upper_bounds[])
 
    Solves the non-linear least squares problem.
    
@@ -100,6 +100,12 @@ To solve the non-linear least squares problem
 
    :param weights: |weights|
 
+   :param eval_HP: |eval_HP_desc|
+
+   :param lower_bounds: |lower_bounds|
+
+   :param upper_bounds: |upper_bounds|
+
 
 To initialize a workspace for use with |nlls_iterate|
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,13 +121,14 @@ initialised by a call to the following subroutine:
 To iterate once
 ^^^^^^^^^^^^^^^
 
-.. c:function:: void ral_nlls_iterate(int n, int m, double X[], void* workspace, ral_nlls_eval_r_type eval_r, ral_nlls_eval_j_type eval_J, ral_nlls_eval_hf_type eval_Hf, void* params, struct nlls_options const* options, struct nlls_inform* inform, double weights[])
+.. c:function:: void ral_nlls_iterate(int n, int m, double X[], void* workspace, ral_nlls_eval_r_type eval_r, ral_nlls_eval_j_type eval_J, ral_nlls_eval_hf_type eval_Hf, void* params, struct nlls_options const* options, struct nlls_inform* inform, double weights[], nlls_eval_HP_type eval_HP, double lower_bounds[], double upper_bounds[])
 		  
    A call of this form allows the user to step through the solution process one
    iteration at a time.
 
    **n**, **m**, **eval_F**, **eval_J**, **eval_HF**, **params**, **info**,
-   **options** and **weights** are as in the desciption of |nlls_solve|.
+   **options**, **weights**, **eval_HP**, **lower_bounds** and **upper_bounds**
+   are as in the desciption of |nlls_solve|.
 
    :param  X: |iterate_X|
 
@@ -221,6 +228,28 @@ It must have the following signature:
    :param Hf: |eval_Hf_Hf|
 
    :param status: |eval_Hf_status|
+
+For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A subroutine may be supplied to calculate
+:math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})` for
+given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^n`. The
+subroutine must implement the following interface:
+
+.. c:function:: int eval_HP (int n, int m, double const* x, double const* y, double* HP, void const*params)
+
+   :param n: |eval_HP_n|
+
+   :param m: |eval_HP_m|
+		      
+   :param x: |eval_HP_x|
+
+   :param y: |eval_HP_y|
+
+   :param HP: |eval_HP_HP|
+			   
+   :param params: |eval_HP_params|
 
 .. _data_types:
 
@@ -456,11 +485,6 @@ The derived data type for holding options
 		 |more_sorensen_maxits|
 		 Default is 500.
 
-   .. c:member:: int more_sorensen_maxits
-      
-		 |more_sorensen_maxits|
-		 Default is 3.
-
    .. c:member:: double more_sorensen_shift
 		 		 
 		 |more_sorensen_shift|
@@ -475,6 +499,115 @@ The derived data type for holding options
 
 		 |more_sorensen_tol|
 		 Default is 1e-3.
+
+   **Box bound options**  These options are used if box constraints are included.
+
+   .. c:member:: integer box_nFref_max
+
+		 |box_nFref_max|
+		 Default is 4.
+
+   .. c:member:: real box_gamma
+
+		 |box_gamma|
+		 Default is 0.9995.
+		 
+   .. c:member:: real box_decmin
+
+		 |box_decmin|
+		 Default is 2.0e-16.
+
+   .. c:member:: real box_bigbnd
+
+		 |box_bigbnd|
+		 Default is 1.0e20.
+
+   .. c:member:: real box_wolfe_descent
+
+		 |box_wolfe_descent|
+		 Default is 1.0e-4.
+
+   .. c:member:: real box_wolfe_curvature
+
+		 |box_wolfe_curvature|
+		 Default is 0.9.
+
+   .. c:member:: real box_kanzow_power
+
+		 |box_kanzow_power|
+		 Default is 2.1.
+
+   .. c:member:: real box_kanzow_descent
+
+		 |box_kanzow_descent|
+		 Default is 1.0e-8.
+
+   .. c:member:: real box_quad_model_descent
+
+		 |box_quad_model_descent|
+		 Default is 1.0e-8.
+
+   .. c:member:: logical box_tr_test_step
+
+		 |box_tr_test_step|
+		 Default is true.
+
+   .. c:member:: logical box_wolfe_test_step
+
+		 |box_wolfe_test_step|
+		 Default is true.
+
+   .. c:member:: real box_tau_min
+
+		 |box_tau_min|
+		 Default is 0.25.
+
+   .. c:member:: real box_tau_descent
+
+		 |box_tau_descent|
+		 Default is 1.0e-4.
+
+   .. c:member:: integer box_max_ntrfail
+
+		 |box_max_ntrfail|
+		 Default is 2.
+
+   .. c:member:: integer box_quad_match
+
+		 |box_quad_match|
+		 Default is 1.
+
+   .. c:member:: real box_alpha_scale
+
+		 |box_alpha_scale|
+		 Default is 1.0.
+
+   .. c:member:: real box_Delta_scale
+
+		 |box_Delta_scale|
+		 Default is 2.0.
+
+   .. c:member:: real box_tau_wolfe
+
+		 |box_tau_wolfe|
+		 Default is 0.3.
+
+   .. c:member:: real box_tau_tr_step
+
+		 |box_tau_tr_step|
+		 Default is 0.3.
+
+   .. c:member:: integer box_ls_step_maxit
+
+		 |box_ls_step_maxit|
+		 Default is 20.
+
+   .. c:member:: integer box_lineseach_type
+
+		 |box_linesearch_type|
+		 Default is 1.
+
+					       .. include::  ../common/options_linesearch_type.txt
 						  
    **Other options**
 					     
@@ -544,6 +677,10 @@ The derived data type for holding information
       
 		 |h_eval|
 
+   .. c:member:: int hp_eval
+      
+		 |hp_eval|
+		 
    .. c:member:: int convergence_normf
 		 
 		 |convergence_normf|
@@ -586,7 +723,7 @@ The derived data type for holding information
 
    .. c:member:: double step
 
-     |step|
+		 |step|
    
 
 The workspace derived data type
