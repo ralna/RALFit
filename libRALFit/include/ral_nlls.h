@@ -61,6 +61,8 @@ struct ral_nlls_options_d {
   ral_nllspkgtype_d_ hybrid_switch;
   bool exact_second_derivatives;
   bool subproblem_eig_fact;
+  bool use_ews_subproblem;
+  bool force_min_eig_symm;
   int scale; /* 0: don't scale, 1: norm of J, 2: norm of Hessian, 3: eigs */
   ral_nllspkgtype_d_ scale_max; /* max before we trim scaling */
   ral_nllspkgtype_d_ scale_min; /* min before we trim scaling */
@@ -80,6 +82,25 @@ struct ral_nlls_options_d {
   bool output_progress_vectors;
   bool update_lower_order;
   bool Fortran_Jacobian;
+  int box_nFref_max;
+  ral_nllspkgtype_d_ box_gamma;
+  ral_nllspkgtype_d_ box_decmin;
+  ral_nllspkgtype_d_ box_bigbnd;
+  ral_nllspkgtype_d_ box_wolfe_descent;
+  ral_nllspkgtype_d_ box_wolfe_curvature;
+  ral_nllspkgtype_d_ box_kanzow_power;
+  ral_nllspkgtype_d_ box_kanzow_descent;
+  ral_nllspkgtype_d_ box_quad_model_descent;
+  bool box_tr_test_step;
+  bool box_wolfe_test_step;
+  ral_nllspkgtype_d_ box_tau_descent;
+  int box_max_ntrfail;
+  int box_quad_match;
+  ral_nllspkgtype_d_ box_alpha_scale;
+  ral_nllspkgtype_d_ box_Delta_scale;
+  ral_nllspkgtype_d_ box_tau_min;
+  int box_ls_step_maxit;
+  int box_linesearch_type;
 };
 
 struct ral_nlls_inform_d {
@@ -89,6 +110,7 @@ struct ral_nlls_inform_d {
   char bad_alloc[81];
   int iter;
   int inner_iter;
+  bool inner_iter_success;
   int f_eval;
   int g_eval;
   int h_eval;
@@ -103,6 +125,12 @@ struct ral_nlls_inform_d {
   int external_return;
   char external_name[81];
   ral_nllspkgtype_d_ step;
+  ral_nllspkgtype_d_ ls_step_iter;
+  ral_nllspkgtype_d_ f_eval_ls;
+  ral_nllspkgtype_d_ g_eval_ls;
+  ral_nllspkgtype_d_ pg_step_iter;
+  ral_nllspkgtype_d_ f_eval_pg;
+  ral_nllspkgtype_d_ g_eval_pg;
 };
 
 /* Set default values of options */
@@ -134,6 +162,16 @@ typedef int (*ral_nlls_eval_hf_type) (
                ral_nllspkgtype_d_ *hf
                );
 
+typedef int (*ral_nlls_eval_hp_type) (
+               int n, 
+               int m,
+               const ral_nllspkgtype_d_ *x, 
+               const ral_nllspkgtype_d_ *y,
+               ral_nllspkgtype_d_ *hp,
+	       void *params
+               );
+
+
 /* Perform the nlls solve */
   void nlls_solve_d( int n, int m, 
 		     ral_nllspkgtype_d_ X[],
@@ -143,7 +181,10 @@ typedef int (*ral_nlls_eval_hf_type) (
 		     void const* params, 
 		     struct ral_nlls_options const* options,
 		     struct ral_nlls_inform *status,
-		     ral_nllspkgtype_d_ weights[]
+		     ral_nllspkgtype_d_ weights[],
+		     ral_nlls_eval_hp_type eval_hp,
+		     ral_nllspkgtype_d_ lower_bounds[],
+		     ral_nllspkgtype_d_ upper_bounds[]
 		     );
 /* Initialise a workspace for use with ral_nlls_iterate_d() */
   void ral_nlls_init_workspace_d(void **w, void **iw);
@@ -159,7 +200,10 @@ typedef int (*ral_nlls_eval_hf_type) (
 			void const* params, 
 			struct ral_nlls_options const* options,
 			struct ral_nlls_inform *status,
-			ral_nllspkgtype_d_ weights[]
+			ral_nllspkgtype_d_ weights[],
+			ral_nlls_eval_hp_type eval_hp,
+			ral_nllspkgtype_d_ lower_bounds[],
+			ral_nllspkgtype_d_ upper_bounds[]
 			);
   /* get the error string */
   void nlls_strerror_d(

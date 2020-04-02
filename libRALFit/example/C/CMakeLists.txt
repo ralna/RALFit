@@ -10,3 +10,5 @@ target_link_libraries(nlls_c_example ral_nlls -lm)
 add_executable (nlls_c_example2 nlls_example2.c)
 target_link_libraries(nlls_c_example2 ral_nlls -lm)
 
+add_executable (nlls_c_example_box nlls_example_box.c)
+target_link_libraries(nlls_c_example_box ral_nlls -lm)

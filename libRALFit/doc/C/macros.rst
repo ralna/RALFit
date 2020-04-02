@@ -21,3 +21,5 @@
 .. |eval_J| replace:: :c:func:`eval_J`
 
 .. |eval_Hf| replace:: :c:func:`eval_Hf`
+
+.. |eval_HP| replace:: :c:func:`eval_HP`
