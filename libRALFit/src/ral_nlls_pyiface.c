@@ -193,8 +193,8 @@ int eval_Hr(int n, int m, void *params, const double *x, const double *r,
 /// the eval_Hp subroutine
 ///
 static
-int eval_Hp(int n, int m, void *params, const double *x, const double *y,
-	    double *Hp) {
+int eval_Hp(int n, int m, const double *x, const double *y,
+	    double *Hp, void *params) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
 
