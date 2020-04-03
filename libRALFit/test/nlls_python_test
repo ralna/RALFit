@@ -4,4 +4,12 @@ python ../example/Python/solve.py
 RESULT=$?
 [ $RESULT -ne 0 ] && exit -1
 
+python ../example/Python/solve_weights.py
+RESULT=$?
+[ $RESULT -ne 0 ] && exit -1
+
+python ../example/Python/solve_box.py
+RESULT=$?
+[ $RESULT -ne 0 ] && exit -1
+
 exit 0
