@@ -43,7 +43,7 @@ t = numpy.array([1.0, 2.0, 4.0,  5.0,  8.0])
 y = numpy.array([3.0, 4.0, 6.0, 11.0, 20.0])
 
 # weights
-w = numpy.array([1.0, 10.0, 1000.0, 0.01, 0.005])
+w = numpy.array([1.0, 10.0, 5.0, 0.01, 0.5])
 
 # Starting guess
 x0 = numpy.array([2.5, 0.25])

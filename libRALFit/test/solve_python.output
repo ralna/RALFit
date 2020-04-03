@@ -1,9 +1,9 @@
 Found a local optimum at x = [ 2.54104569  0.25950480 ]
 RALFit converged in 4 iterations
 The cost function is 2.247131 at the minimum, and ||J^Tr||=4.097987e-06
-Found a local optimum at x = [ 2.66237190  0.20313552 ]
-RALFit converged in 12 iterations
-The cost function is 0.036042 at the minimum, and ||J^Tr||=1.396361e-07
+Found a local optimum at x = [ 2.44243834  0.23662757 ]
+RALFit converged in 5 iterations
+The cost function is 3.185760 at the minimum, and ||J^Tr||=5.724901e-06
 Found a local optimum at x = [ 5.00000000  0.16379777 ]
 RALFit converged in 12 iterations
 The cost function is 16.198541 at the minimum, and ||J^Tr||=2.697500e-05
