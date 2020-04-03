@@ -1252,8 +1252,8 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    case 0: // Clean exit
      break;
    case -1: // Exceeded max itr
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Exceeded maximum number of iterations");
+     PyErr_WarnEx(PyExc_RuntimeWarning,
+		  "Exceeded maximum number of iterations",2);
      goto output;
    default:
      PyErr_SetString(PyExc_RuntimeError,
