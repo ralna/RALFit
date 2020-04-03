@@ -262,21 +262,27 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
    #endif
    PyObject *key, *value;
    Py_ssize_t pos = 0;
+   const char* key_name;
+   
    while(PyDict_Next(pyoptions, &pos, &key, &value)) {
-      const char* key_name = PyBytes_AsString(key);
-      if(!key_name) {
-         PyErr_SetString(PyExc_RuntimeError, "Non-string option, can't interpret!");
-         return false;
-      }
-      if(strcmp(key_name, "out")==0) {
-      	long v = PyInt_AsLong(value);
-	      if(v==-1 && PyErr_Occurred()) {
-      	  PyErr_SetString(PyExc_RuntimeError, "options['out'] must be an integer.");
-       	  return false;
-      	}
-      	options->out = (int) v;
-      	continue;
-      }
+     if (PyUnicode_Check(key)){
+       // change key from Unicode to ascii
+       key = PyUnicode_AsASCIIString(key);
+     }
+     key_name = PyBytes_AsString(key);
+     if(!key_name) {
+       PyErr_SetString(PyExc_RuntimeError, "The keys in the options dictionary must be strings.");
+       return false;
+     }
+     if(strcmp(key_name, "out")==0) {
+       long v = PyInt_AsLong(value);
+       if(v==-1 && PyErr_Occurred()) {
+	 PyErr_SetString(PyExc_RuntimeError, "options['out'] must be an integer.");
+	 return false;
+       }
+       options->out = (int) v;
+       continue;
+     }
       if(strcmp(key_name, "print_level")==0) {
          long v = PyInt_AsLong(value);
          if(v==-1 && PyErr_Occurred()) {
