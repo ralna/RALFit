@@ -137,7 +137,8 @@ int eval_J(int n, int m, void *params, const double *x, double *J) {
 /// the eval_Hr subroutine
 ///
 static
-int eval_Hr(int n, int m, void *params, const double *x, const double *r, double *Hr) {
+int eval_Hr(int n, int m, void *params, const double *x, const double *r,
+	    double *Hr) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
 
