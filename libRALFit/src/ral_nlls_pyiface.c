@@ -1106,38 +1106,114 @@ make_info_dict(const struct ral_nlls_inform *inform) {
 
 
 /*
- * x = ral_nlls.solve(x0, f, J=None, Hr=None, params=(), options={})
+ * x = ral_nlls.solve(x0, f, J=None, Hr=None, params=(), options={}
+ *                    weights=None, Hp=None,
+ *                    lower_bounds=None, upper_bounds=None)
  */
 static PyObject*
 ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 {
-   PyObject *x0ptr=NULL, *options_ptr=NULL;
-   PyObject *arglist=NULL, *result=NULL;
-   PyArrayObject *x0=NULL, *f=NULL, *x=NULL;
+  PyObject *x0ptr=NULL, *options_ptr=NULL, *weightsptr=NULL;
+  PyObject *lower_boundsptr=NULL, *upper_boundsptr=NULL;
+  PyObject *arglist=NULL, *result=NULL;
+  PyArrayObject *x0=NULL, *f=NULL, *x=NULL;
+  PyArrayObject *weights=NULL, *lower_bounds=NULL, *upper_bounds=NULL;
 
-   struct callback_data data;
-   data.f = NULL; data.J = NULL; data.Hr = NULL; data.params = NULL;
-
-   static char *kwlist[] = {"x0", "r", "J", "Hr", "params", "options", NULL};
-   if(!PyArg_ParseTupleAndKeywords(args, keywds, "OOO|OOO!", kwlist,
-            &x0ptr,
-            &data.f,
-            &data.J,
-            &data.Hr,
-            &data.params,
-            &PyDict_Type, &options_ptr)
-         )
-      return NULL;
-
-   /* x0 */
-   x0 = (PyArrayObject*) PyArray_FROM_OTF(x0ptr, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
-   if(x0 == NULL) return NULL;
-   if(PyArray_NDIM(x0) != 1) {
-      PyErr_SetString(PyExc_RuntimeError, "x0 must be a rank-1 array");
+  double *weights_val, *lower_bounds_val, *upper_bounds_val;
+  
+  struct callback_data data;
+  data.f = NULL;
+  data.J = NULL;
+  data.Hr = NULL;
+  data.params = NULL;
+  data.Hp = NULL;
+  
+  static char *kwlist[] = {"x0",
+			   "r",
+			   "J",
+			   "Hr",
+			   "params",
+			   "options",
+			   "weights",
+			   "Hp",
+			   "lower_bounds",
+			   "upper_bounds",
+			    NULL};
+  if(!PyArg_ParseTupleAndKeywords(args,
+				  keywds,
+				  "OOO|OOO!OOOO",
+				  kwlist,
+				  &x0ptr,
+				  &data.f,
+				  &data.J,
+				  &data.Hr,
+				  &data.params,
+				  &PyDict_Type,
+				  &options_ptr,
+				  &weightsptr,
+				  &data.Hp,
+				  &lower_boundsptr,
+				  &upper_boundsptr
+				  )
+     )
+    return NULL;
+  
+  /* x0 */
+  x0 = (PyArrayObject*) PyArray_FROM_OTF(x0ptr, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+  if(x0 == NULL) return NULL;
+  if(PyArray_NDIM(x0) != 1) {
+    PyErr_SetString(PyExc_RuntimeError, "x0 must be a rank-1 array");
+    goto fail;
+  }
+  npy_intp* xdim = PyArray_DIMS(x0);
+  int n = xdim[0];
+  
+  /* weights */
+  if (weightsptr == NULL) {
+    weights_val = NULL;
+  }
+  else{
+    weights = (PyArrayObject*) PyArray_FROM_OTF(weightsptr,
+						NPY_FLOAT64,
+						NPY_ARRAY_IN_ARRAY);
+    if(PyArray_NDIM(weights) != 1) {
+      PyErr_SetString(PyExc_RuntimeError, "weights must be a rank-1 array");
       goto fail;
-   }
-   npy_intp* xdim = PyArray_DIMS(x0);
-   int n = xdim[0];
+    }
+    weights_val = (double*) PyArray_DATA(weights);
+  }
+
+
+  /* lower_bounds */
+  if (lower_boundsptr == NULL) {
+    lower_bounds_val = NULL;
+  }
+  else{
+    lower_bounds = (PyArrayObject*) PyArray_FROM_OTF(lower_boundsptr,
+						NPY_FLOAT64,
+						NPY_ARRAY_IN_ARRAY);
+    if(PyArray_NDIM(lower_bounds) != 1) {
+      PyErr_SetString(PyExc_RuntimeError, "lower_bounds must be a rank-1 array");
+      goto fail;
+    }
+    lower_bounds_val = (double*) PyArray_DATA(lower_bounds);
+  }
+
+  /* upper_bounds */
+  if (upper_boundsptr == NULL) {
+    upper_bounds_val = NULL;
+  }
+  else{
+    upper_bounds = (PyArrayObject*) PyArray_FROM_OTF(upper_boundsptr,
+						NPY_FLOAT64,
+						NPY_ARRAY_IN_ARRAY);
+    if(PyArray_NDIM(upper_bounds) != 1) {
+      PyErr_SetString(PyExc_RuntimeError, "upper_bounds must be a rank-1 array");
+      goto fail;
+    }
+    upper_bounds_val = (double*) PyArray_DATA(upper_bounds);
+  }
+
 
    /* Determine m by making call to f */
    arglist = build_arglist(1, data.params);
@@ -1170,14 +1246,8 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    struct ral_nlls_options options;
    if(!set_opts(&options, options_ptr)) goto fail;
    struct ral_nlls_inform inform;
-   if(data.Hr) {
-     nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform,
-		  NULL, NULL, NULL, NULL);
-   } else {
-      options.exact_second_derivatives = false;
-      nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform,
-		   NULL, NULL, NULL, NULL);
-   }
+   nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform,
+		  weights_val, eval_Hp, lower_bounds_val, upper_bounds_val);
    switch(inform.status) {
    case 0: // Clean exit
      break;
@@ -1206,7 +1276,9 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 static PyMethodDef RalNllsMethods[] = {
    {"solve", (PyCFunction)ral_nlls_solve, METH_VARARGS | METH_KEYWORDS,
     "Solve a non-linear least squares problem.\n"
-    "   x = ral_nlls.solve(x0, r, J, Hr=None, params=None, options={})"
+    "   x = ral_nlls.solve(x0, r, J, Hr=None, params=None, options={}, \n"
+    "                      weights=None, Hp=None,\n"
+    "                      lower_bounds=None, upper_bounds=None)"
    },
    {NULL, NULL, 0, NULL} /* Sentinel */
 };
