@@ -1255,6 +1255,10 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
      PyErr_WarnEx(PyExc_RuntimeWarning,
 		  "Exceeded maximum number of iterations",2);
      goto output;
+   case -8: // No progress being made
+     PyErr_WarnEx(PyExc_RuntimeWarning,
+		  "No progress being made towards the solution",2);
+     goto output;
    default:
      PyErr_SetString(PyExc_RuntimeError,
 		     inform.error_message); // print out the error message passed
