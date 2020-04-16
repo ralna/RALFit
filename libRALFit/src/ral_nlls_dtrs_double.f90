@@ -1219,6 +1219,13 @@
       printt = out > 0 .AND. print_level > 1
       printd = out > 0 .AND. print_level > 2
 
+!  check for n < 0 or radius < 0
+
+      IF ( n < 0 .or. radius < 0 ) THEN
+        inform%status = RAL_NLLS_error_restrictions
+        RETURN
+      END IF
+
 !  compute the two-norm of c and the extreme eigenvalues of H
 
       c_norm = TWO_NORM( C )
