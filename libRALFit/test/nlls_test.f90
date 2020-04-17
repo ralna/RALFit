@@ -1167,10 +1167,10 @@ program nlls_test
      call switch_to_quasi_newton_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
-     call solve_spd_tests(options,fails)
+     call minus_solve_spd_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
-     call solve_general_tests(options,fails)
+     call minus_solve_general_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
      call matmult_inner_tests(options,fails)

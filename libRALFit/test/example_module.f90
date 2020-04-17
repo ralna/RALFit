@@ -2149,7 +2149,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
    end subroutine switch_to_quasi_newton_tests
 
    
-   subroutine solve_spd_tests(options,fails)
+   subroutine minus_solve_spd_tests(options,fails)
      
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
@@ -2165,32 +2165,32 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      A = reshape([ 4.0, 1.0, 1.0, 2.0 ], shape(A))
      x_true = [1.0, 1.0]
      b = [5.0, 3.0]
-     ! note: b is inverted in solve_spd, so we need to invert it (previously)
+     ! note: b is inverted in minus_solve_spd, so we need to invert it (previously)
      b(:) = -b(:)
-     call solve_spd(A,b,LtL,x_calc,n,status)
+     call minus_solve_spd(A,b,LtL,x_calc,n,status)
      if (status%status .ne. 0) then
-        write(*,*) 'Error: solve_spd info = ', status%status, ' returned from solve_spd'
+        write(*,*) 'Error: minus_solve_spd info = ', status%status, ' returned from minus_solve_spd'
         fails = fails + 1
      else if (norm2(x_calc-x_true) > 1e-12) then
-        write(*,*) 'Error: incorrect value returned from solve_spd'
+        write(*,*) 'Error: incorrect value returned from minus_solve_spd'
         fails = fails + 1
      end if
 
      ! test also _nocopy variant !
-     call solve_spd_nocopy(A,b,x_calc,n,status)
+     call minus_solve_spd_nocopy(A,b,x_calc,n,status)
      if (status%status .ne. 0) then
-        write(*,*) 'Error: solve_spd_nocopy info = ', status%status, ' returned from solve_spd'
+        write(*,*) 'Error: minus_solve_spd_nocopy info = ', status%status, ' returned from minus_solve_spd'
         fails = fails + 1
      else if (norm2(x_calc-x_true) > 1e-12) then
-        write(*,*) 'Error: incorrect value returned from solve_spd_nocopy'
+        write(*,*) 'Error: incorrect value returned from minus_solve_spd_nocopy'
         fails = fails + 1
      end if
           
      call reset_default_options(options)
      
-   end subroutine solve_spd_tests
+   end subroutine minus_solve_spd_tests
 
-   subroutine solve_general_tests(options,fails)
+   subroutine minus_solve_general_tests(options,fails)
      
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
@@ -2217,34 +2217,34 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      A = reshape([4.0, 1.0, 2.0, 2.0], shape(A))
      x_true = [1.0, 1.0] 
      b = [6.0, 3.0]
-     ! note: b is inverted in solve_general, so we need to invert it (previously)
+     ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
      b(:) = -b(:)
-     call solve_general(A,b,x_calc,n,status,& 
-          work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
+     call minus_solve_general(A,b,x_calc,n,status,& 
+          work%calculate_step_ws%AINT_tr_ws%minus_solve_general_ws)
      if (status%status .ne. 0) then
-        write(*,*) 'Error: info = ', status%status, ' returned from solve_general'
+        write(*,*) 'Error: info = ', status%status, ' returned from minus_solve_general'
         fails = fails + 1
         status%status = 0
      else if (norm2(x_true-x_calc) > 1e-12) then
-        write(*,*) 'Error: incorrect value returned from solve_general'
+        write(*,*) 'Error: incorrect value returned from minus_solve_general'
         fails = fails + 1
      end if
 
      A = reshape( [ 0.0, 0.0, 0.0, 0.0 ],shape(A))
      b = [ 6.0, 3.0 ]
-     ! note: b is inverted in solve_general, so we need to invert it (previously)
+     ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
      b(:) = -b(:)
-     call solve_general(A,b,x_calc,n,status,& 
-          work%calculate_step_ws%AINT_tr_ws%solve_general_ws)
+     call minus_solve_general(A,b,x_calc,n,status,& 
+          work%calculate_step_ws%AINT_tr_ws%minus_solve_general_ws)
      if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
-        write(*,*) 'Error: expected error return from solve_general, got info = ', status%status
+        write(*,*) 'Error: expected error return from minus_solve_general, got info = ', status%status
         fails = fails + 1
      end if
 
      call nlls_finalize(work,options)
      call reset_default_options(options)
      
-   end subroutine solve_general_tests
+   end subroutine minus_solve_general_tests
 
    subroutine matmult_inner_tests(options,fails)
      

@@ -255,7 +255,7 @@ module ral_nlls_workspaces
      ! use eigendecomposition in subproblem solve?
      LOGICAL :: use_ews_subproblem = .TRUE.
 
-     ! This forces to call min_eig_symm without previously calling solve_spd_nocopy
+     ! This forces to call min_eig_symm without previously calling minus_solve_spd_nocopy
      ! This option is used for code coverage and can be hidden from user.
      Logical :: force_min_eig_symm = .FALSE.
 
@@ -556,11 +556,11 @@ module ral_nlls_workspaces
      real(wp), allocatable :: nullevs(:,:)
   end type max_eig_work
 
-  type, public :: solve_general_work ! workspace for subroutine solve_general
+  type, public :: minus_solve_general_work ! workspace for subroutine minus_solve_general
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:)
      integer, allocatable :: ipiv(:)
-  end type solve_general_work
+  end type minus_solve_general_work
 
   type, public :: evaluate_model_work ! workspace for subroutine evaluate_model
      logical :: allocated = .false.
@@ -626,8 +626,8 @@ module ral_nlls_workspaces
      logical :: allocated = .false.
      type( max_eig_work ) :: max_eig_ws
      type( evaluate_model_work ) :: evaluate_model_ws
-     type( solve_general_work ) :: solve_general_ws
-     !       type( solve_spd_work ) :: solve_spd_ws
+     type( minus_solve_general_work ) :: minus_solve_general_ws
+     !       type( minus_solve_spd_work ) :: minus_solve_spd_ws
      REAL(wp), allocatable :: LtL(:,:), B(:,:), p0(:), p1(:)
      REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
      REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
@@ -1296,7 +1296,7 @@ contains
     if (inform%status /= 0) goto 100
     ! setup space for the solve routine
     if ((options%model .ne. 1)) then
-       call setup_workspace_solve_general(n,m,w%solve_general_ws,options,inform)
+       call setup_workspace_minus_solve_general(n,m,w%minus_solve_general_ws,options,inform)
        if (inform%status /= 0 ) goto 100
     end if
 
@@ -1332,7 +1332,7 @@ contains
     call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
     ! setup space for the solve routine
     if (options%model .ne. 1) then
-       call remove_workspace_solve_general(w%solve_general_ws,options)
+       call remove_workspace_minus_solve_general(w%minus_solve_general_ws,options)
     end if
 
     w%allocated = .false.
@@ -1516,27 +1516,27 @@ contains
     w%allocated = .false.
   end subroutine remove_workspace_max_eig
 
-  subroutine setup_workspace_solve_general(n, m, w, options, inform)
+  subroutine setup_workspace_minus_solve_general(n, m, w, options, inform)
     implicit none
     integer, intent(in) :: n, m
-    type( solve_general_work ), INTENT( INOUT) :: w
+    type( minus_solve_general_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform), intent(inout) :: inform
 
     inform%status = 0
     allocate( w%A(n,n),w%ipiv(n),stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
-      Call remove_workspace_solve_general(w,options)
+      Call remove_workspace_minus_solve_general(w,options)
       inform%status = NLLS_ERROR_ALLOCATION
-      inform%bad_alloc = "setup_workspace_solve_general"
+      inform%bad_alloc = "setup_workspace_minus_solve_general"
     Else
       w%allocated = .true.
     End If
-  end subroutine setup_workspace_solve_general
+  end subroutine setup_workspace_minus_solve_general
 
-  subroutine remove_workspace_solve_general(w, options)
+  subroutine remove_workspace_minus_solve_general(w, options)
     implicit none
-    type( solve_general_work ), INTENT( INOUT) :: w
+    type( minus_solve_general_work ), INTENT( INOUT) :: w
     type( nlls_options ), intent(in) :: options
     Integer :: ierr_dummy
 
@@ -1544,7 +1544,7 @@ contains
     if(allocated( w%ipiv )) deallocate( w%ipiv, stat=ierr_dummy )
 
     w%allocated = .false.
-  end subroutine remove_workspace_solve_general
+  end subroutine remove_workspace_minus_solve_general
 
   subroutine setup_workspace_solve_galahad(n,m,w,options,inform)
     implicit none
