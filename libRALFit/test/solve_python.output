@@ -1,3 +1,3 @@
 Found a local optimum at x = [ 2.54104569  0.25950480 ]
 RALFit converged in 4 iterations
-The cost function is 2.247131 at the minimum, and ||J^Tr||=4.097987e-06
+The cost function is 2.2471 at the minimum, and ||J^Tr||=4.10e-06
