@@ -17,14 +17,15 @@ static struct ral_nlls_state _state;
 #endif
 
 struct callback_data {
-   PyObject* f;
-   PyObject* J;
-   PyObject* Hr;
-   PyObject* params;
+  PyObject* f;
+  PyObject* J;
+  PyObject* Hr;
+  PyObject* Hp;
+  PyObject* params;
 };
 
 ///
-/// get the argument list of a 
+/// get the argument list of a  
 ///
 static
 PyObject* build_arglist(Py_ssize_t sz, PyObject* extra) {
@@ -133,11 +134,11 @@ int eval_J(int n, int m, void *params, const double *x, double *J) {
 }
 
 ///
-/// the eval_H subroutine
+/// the eval_Hr subroutine
 ///
-
 static
-int eval_Hr(int n, int m, void *params, const double *x, const double *r, double *Hr) {
+int eval_Hr(int n, int m, void *params, const double *x, const double *r,
+	    double *Hr) {
    // Recover our datatype
    const struct callback_data *data = (struct callback_data*) params;
 
@@ -189,6 +190,62 @@ int eval_Hr(int n, int m, void *params, const double *x, const double *r, double
 }
 
 ///
+/// the eval_Hp subroutine
+///
+static
+int eval_Hp(int n, int m, const double *x, const double *y,
+	    double *Hp, void *params) {
+   // Recover our datatype
+   const struct callback_data *data = (struct callback_data*) params;
+
+   // Copy x into Python array
+   npy_intp xdim[] = {n};
+   PyArrayObject* xpy = (PyArrayObject*) PyArray_SimpleNew(1, xdim, NPY_DOUBLE);
+   double* xval = (double*) PyArray_DATA(xpy);
+   for(int i=0; i<n; ++i)
+      xval[i] = x[i];
+
+   // Copy y into Python array
+   npy_intp ydim[] = {n};
+   PyArrayObject* ypy = (PyArrayObject*) PyArray_SimpleNew(1, ydim, NPY_DOUBLE);
+   double* yval = (double*) PyArray_DATA(ypy);
+   for(int i=0; i<n; ++i)
+      yval[i] = y[i];
+
+   // Call routine
+   PyObject *arglist = build_arglist(2, data->params);
+   PyTuple_SET_ITEM(arglist, 0, (PyObject*) xpy); Py_INCREF(xpy);
+   PyTuple_SET_ITEM(arglist, 1, (PyObject*) ypy); Py_INCREF(ypy);
+   PyObject *result = PyObject_CallObject(data->Hp, arglist);
+   Py_DECREF(arglist);
+   Py_DECREF(xpy);
+   Py_DECREF(ypy);
+   if(!result) return -1;
+
+   // Extract result
+   PyArrayObject* Hparray = (PyArrayObject*) PyArray_FROM_OTF(result, NPY_FLOAT64, NPY_ARRAY_IN_FARRAY);
+   if(Hparray == NULL) {
+      PyErr_SetString(PyExc_RuntimeError, "Error extracting array from Hp call");
+      Py_DECREF(result);
+      return -1;
+   }
+   if(PyArray_NDIM(Hparray) != 2) {
+      PyErr_SetString(PyExc_RuntimeError, "Hp() must return rank-2 array");
+      Py_DECREF(Hparray);
+      Py_DECREF(result);
+      return -2;
+   }
+   const double *Hpval = (double*) PyArray_DATA(Hparray);
+   for(int i=0; i<n*m; ++i) {
+      Hp[i] = Hpval[i];
+   }
+   Py_DECREF(Hparray);
+   Py_DECREF(result);
+
+   return 0; // Success
+}
+
+///
 /// set the options up...
 /// pick up the defaults from the C code, and update any
 /// passed via Python
@@ -205,21 +262,27 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
    #endif
    PyObject *key, *value;
    Py_ssize_t pos = 0;
+   const char* key_name;
+   
    while(PyDict_Next(pyoptions, &pos, &key, &value)) {
-      const char* key_name = PyBytes_AsString(key);
-      if(!key_name) {
-         PyErr_SetString(PyExc_RuntimeError, "Non-string option, can't interpret!");
-         return false;
-      }
-      if(strcmp(key_name, "out")==0) {
-      	long v = PyInt_AsLong(value);
-	      if(v==-1 && PyErr_Occurred()) {
-      	  PyErr_SetString(PyExc_RuntimeError, "options['out'] must be an integer.");
-       	  return false;
-      	}
-      	options->out = (int) v;
-      	continue;
-      }
+     if (PyUnicode_Check(key)){
+       // change key from Unicode to ascii
+       key = PyUnicode_AsASCIIString(key);
+     }
+     key_name = PyBytes_AsString(key);
+     if(!key_name) {
+       PyErr_SetString(PyExc_RuntimeError, "The keys in the options dictionary must be strings.");
+       return false;
+     }
+     if(strcmp(key_name, "out")==0) {
+       long v = PyInt_AsLong(value);
+       if(v==-1 && PyErr_Occurred()) {
+	 PyErr_SetString(PyExc_RuntimeError, "options['out'] must be an integer.");
+	 return false;
+       }
+       options->out = (int) v;
+       continue;
+     }
       if(strcmp(key_name, "print_level")==0) {
          long v = PyInt_AsLong(value);
          if(v==-1 && PyErr_Occurred()) {
@@ -528,6 +591,37 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	continue;
       }
 
+      // bool: user_ews_subproblem
+      if(strcmp(key_name, "use_ews_subproblem")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	printf("%d\n",vint);
+	if (vint == 1){
+	  options->use_ews_subproblem=true;
+	}else if (vint == 0){
+	  options->use_ews_subproblem=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['use_ews_subproblem'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+      
+      // bool: force_min_eig_symm
+      if(strcmp(key_name, "force_min_eig_symm")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	printf("%d\n",vint);
+	if (vint == 1){
+	  options->force_min_eig_symm=true;
+	}else if (vint == 0){
+	  options->force_min_eig_symm=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['force_min_eig_symm'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      
       if(strcmp(key_name, "scale")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
@@ -735,6 +829,238 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	continue;
       }
       
+      // bool: Fortran_Jacobian
+      if(strcmp(key_name, "Fortran_Jacobian")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	printf("%d\n",vint);
+	if (vint == 1){
+	  options->Fortran_Jacobian=true;
+	}else if (vint == 0){
+	  options->Fortran_Jacobian=false;
+	}else{
+	  PyErr_SetString(
+			  PyExc_RuntimeError,
+			  "options['Fortran_Jacobian'] must be a bool."
+			  );
+	  return false;
+	}
+	continue;
+      }
+
+      /* integer(c_int) :: box_nFref_max */
+      if(strcmp(key_name, "box_nFref_max")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_nFref_max'] must be an integer.");
+	  return false;
+	}
+	options->box_nFref_max = (int) v;
+	continue;
+      }
+
+      
+      /* 	real(wp) :: box_gamma */
+      if(strcmp(key_name, "box_gamma")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_gamma'] must be a float.");
+            return false;
+	}
+	options->box_gamma = v;
+	continue;
+      }
+      /* 	real(wp) :: box_decmin */
+      if(strcmp(key_name, "box_decmin")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_decmin'] must be a float.");
+            return false;
+	}
+	options->box_decmin = v;
+	continue;
+      }
+      
+      /* 	real(wp) :: box_bigbnd */
+      if(strcmp(key_name, "box_bigbnd")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_bigbnd'] must be a float.");
+	  return false;
+	}
+	options->box_bigbnd = v;
+	continue;
+      }
+      /* 	real(wp) :: box_wolfe_descent */
+      if(strcmp(key_name, "box_wolfe_descent")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_wolfe_descent'] must be a float.");
+	  return false;
+	}
+	options->box_wolfe_descent = v;
+	continue;
+      }
+      /* 	real(wp) :: box_wolfe_curvature */
+      if(strcmp(key_name, "box_wolfe_curvature")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_wolfe_curvature'] must be a float.");
+	  return false;
+	}
+	options->box_wolfe_curvature = v;
+	continue;
+      }
+      
+      /* 	real(wp) :: box_kanzow_power */
+      if(strcmp(key_name, "box_kanzow_power")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_kanzow_power'] must be a float.");
+	  return false;
+         }
+	options->box_kanzow_power = v;
+	continue;
+      }
+      /* 	real(wp) :: box_kanzow_descent */
+      if(strcmp(key_name, "box_kanzow_descent")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_kanzow_descent'] must be a float.");
+	  return false;
+	}
+	options->box_kanzow_descent = v;
+	continue;
+      }
+      
+      /* 	real(wp) :: box_quad_model_descent */
+      if(strcmp(key_name, "box_quad_model_descent")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_quad_model_descent'] must be a float.");
+	  return false;
+         }
+	options->box_quad_model_descent = v;
+	continue;
+      }
+      
+      /* 	Logical(c_bool):: box_tr_test_step */
+      if(strcmp(key_name, "box_tr_test_step")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	printf("%d\n",vint);
+	if (vint == 1){
+	  options->box_tr_test_step=true;
+	}else if (vint == 0){
+	  options->box_tr_test_step=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_tr_test_step'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      /* 	Logical(c_bool):: box_wolfe_test_step */
+      if(strcmp(key_name, "box_wolfe_test_step")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	printf("%d\n",vint);
+	if (vint == 1){
+	  options->box_wolfe_test_step=true;
+	}else if (vint == 0){
+	  options->box_wolfe_test_step=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_wolfe_test_step'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
+      /* 	real(wp) :: box_tau_descent */
+      if(strcmp(key_name, "box_tau_descent")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_tau_descent'] must be a float.");
+            return false;
+	}
+	options->box_tau_descent = v;
+	continue;
+      }
+      
+      /* 	integer(c_int):: box_max_ntrfail */
+      if(strcmp(key_name, "box_max_ntrfail")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_max_ntrfail'] must be an integer.");
+	  return false;
+	}
+	options->box_max_ntrfail = (int) v;
+	continue;
+      }
+
+      /* 	integer(c_int):: box_quad_match */
+      if(strcmp(key_name, "box_quad_match")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_quad_match'] must be an integer.");
+	  return false;
+	}
+	options->box_quad_match = (int) v;
+	continue;
+      }
+
+      /* 	real(wp) :: box_alpha_scale */
+      if(strcmp(key_name, "box_alpha_scale")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_alpha_scale'] must be a float.");
+	  return false;
+         }
+	options->box_alpha_scale = v;
+	continue;
+      }
+	    
+      /* 	real(wp) :: box_Delta_scale */
+      if(strcmp(key_name, "box_Delta_scale")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_Delta_scale'] must be a float.");
+            return false;
+	}
+	options->box_Delta_scale = v;
+	continue;
+      }
+      
+      /* 	real(wp) :: box_tau_min */
+      if(strcmp(key_name, "box_tau_min")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v==-1.0 && PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['box_tau_min'] must be a float.");
+            return false;
+	}
+         options->box_tau_min = v;
+         continue;
+      }
+      
+      /* 	integer(c_int):: box_ls_step_maxit */
+      if(strcmp(key_name, "box_ls_step_maxit")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_ls_step_maxit'] must be an integer.");
+	  return false;
+	}
+	options->box_ls_step_maxit = (int) v;
+	continue;
+      }
+      
+      /* 	integer(c_int):: box_linesearch_type */
+      if(strcmp(key_name, "box_linesearch_type")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['box_linesearch_type'] must be an integer.");
+	  return false;
+	}
+	options->box_linesearch_type = (int) v;
+	continue;
+      }
+      
       // If we reach this point, unrecognised option
       char errmsg[200];
       snprintf(errmsg, 200, "Bad key options['%s']\n", key_name);
@@ -755,6 +1081,8 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyObject *pyinfo = PyDict_New();
 
    PyDict_SetItemString(pyinfo, "iter", PyInt_FromLong(inform->iter));
+   PyDict_SetItemString(pyinfo, "inner_iter", PyInt_FromLong(inform->inner_iter));
+   // bool:: inner_iter_success?
    PyDict_SetItemString(pyinfo, "f_eval", PyInt_FromLong(inform->f_eval));
    PyDict_SetItemString(pyinfo, "g_eval", PyInt_FromLong(inform->g_eval));
    PyDict_SetItemString(pyinfo, "h_eval", PyInt_FromLong(inform->h_eval));
@@ -766,7 +1094,13 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyDict_SetItemString(pyinfo, "obj", PyFloat_FromDouble(inform->obj));
    PyDict_SetItemString(pyinfo, "norm_g", PyFloat_FromDouble(inform->norm_g));
    PyDict_SetItemString(pyinfo, "scaled_g",PyFloat_FromDouble(inform->scaled_g));
-   PyDict_SetItemString(pyinfo, "step",PyFloat_FromDouble(inform->step));
+   //   PyDict_SetItemString(pyinfo, "step",PyFloat_FromDouble(inform->step));
+   PyDict_SetItemString(pyinfo, "ls_step_iter", PyInt_FromLong(inform->ls_step_iter));
+   PyDict_SetItemString(pyinfo, "f_eval_ls", PyInt_FromLong(inform->f_eval_ls));
+   PyDict_SetItemString(pyinfo, "g_eval_ls", PyInt_FromLong(inform->g_eval_ls));
+   PyDict_SetItemString(pyinfo, "pg_step_iter", PyInt_FromLong(inform->pg_step_iter));
+   PyDict_SetItemString(pyinfo, "f_eval_pg", PyInt_FromLong(inform->f_eval_pg));
+   PyDict_SetItemString(pyinfo, "g_eval_pg", PyInt_FromLong(inform->g_eval_pg));
 
    return pyinfo;
 }
@@ -778,38 +1112,114 @@ make_info_dict(const struct ral_nlls_inform *inform) {
 
 
 /*
- * x = ral_nlls.solve(x0, f, J=None, Hr=None, params=(), options={})
+ * x = ral_nlls.solve(x0, f, J=None, Hr=None, params=(), options={}
+ *                    weights=None, Hp=None,
+ *                    lower_bounds=None, upper_bounds=None)
  */
 static PyObject*
 ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 {
-   PyObject *x0ptr=NULL, *options_ptr=NULL;
-   PyObject *arglist=NULL, *result=NULL;
-   PyArrayObject *x0=NULL, *f=NULL, *x=NULL;
+  PyObject *x0ptr=NULL, *options_ptr=NULL, *weightsptr=NULL;
+  PyObject *lower_boundsptr=NULL, *upper_boundsptr=NULL;
+  PyObject *arglist=NULL, *result=NULL;
+  PyArrayObject *x0=NULL, *f=NULL, *x=NULL;
+  PyArrayObject *weights=NULL, *lower_bounds=NULL, *upper_bounds=NULL;
 
-   struct callback_data data;
-   data.f = NULL; data.J = NULL; data.Hr = NULL; data.params = NULL;
-
-   static char *kwlist[] = {"x0", "r", "J", "Hr", "params", "options", NULL};
-   if(!PyArg_ParseTupleAndKeywords(args, keywds, "OOO|OOO!", kwlist,
-            &x0ptr,
-            &data.f,
-            &data.J,
-            &data.Hr,
-            &data.params,
-            &PyDict_Type, &options_ptr)
-         )
-      return NULL;
-
-   /* x0 */
-   x0 = (PyArrayObject*) PyArray_FROM_OTF(x0ptr, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
-   if(x0 == NULL) return NULL;
-   if(PyArray_NDIM(x0) != 1) {
-      PyErr_SetString(PyExc_RuntimeError, "x0 must be a rank-1 array");
+  double *weights_val, *lower_bounds_val, *upper_bounds_val;
+  
+  struct callback_data data;
+  data.f = NULL;
+  data.J = NULL;
+  data.Hr = NULL;
+  data.params = NULL;
+  data.Hp = NULL;
+  
+  static char *kwlist[] = {"x0",
+			   "r",
+			   "J",
+			   "Hr",
+			   "params",
+			   "options",
+			   "weights",
+			   "Hp",
+			   "lower_bounds",
+			   "upper_bounds",
+			    NULL};
+  if(!PyArg_ParseTupleAndKeywords(args,
+				  keywds,
+				  "OOO|OOO!OOOO",
+				  kwlist,
+				  &x0ptr,
+				  &data.f,
+				  &data.J,
+				  &data.Hr,
+				  &data.params,
+				  &PyDict_Type,
+				  &options_ptr,
+				  &weightsptr,
+				  &data.Hp,
+				  &lower_boundsptr,
+				  &upper_boundsptr
+				  )
+     )
+    return NULL;
+  
+  /* x0 */
+  x0 = (PyArrayObject*) PyArray_FROM_OTF(x0ptr, NPY_FLOAT64, NPY_ARRAY_IN_ARRAY);
+  if(x0 == NULL) return NULL;
+  if(PyArray_NDIM(x0) != 1) {
+    PyErr_SetString(PyExc_RuntimeError, "x0 must be a rank-1 array");
+    goto fail;
+  }
+  npy_intp* xdim = PyArray_DIMS(x0);
+  int n = xdim[0];
+  
+  /* weights */
+  if (weightsptr == NULL) {
+    weights_val = NULL;
+  }
+  else{
+    weights = (PyArrayObject*) PyArray_FROM_OTF(weightsptr,
+						NPY_FLOAT64,
+						NPY_ARRAY_IN_ARRAY);
+    if(PyArray_NDIM(weights) != 1) {
+      PyErr_SetString(PyExc_RuntimeError, "weights must be a rank-1 array");
       goto fail;
-   }
-   npy_intp* xdim = PyArray_DIMS(x0);
-   int n = xdim[0];
+    }
+    weights_val = (double*) PyArray_DATA(weights);
+  }
+
+
+  /* lower_bounds */
+  if (lower_boundsptr == NULL) {
+    lower_bounds_val = NULL;
+  }
+  else{
+    lower_bounds = (PyArrayObject*) PyArray_FROM_OTF(lower_boundsptr,
+						NPY_FLOAT64,
+						NPY_ARRAY_IN_ARRAY);
+    if(PyArray_NDIM(lower_bounds) != 1) {
+      PyErr_SetString(PyExc_RuntimeError, "lower_bounds must be a rank-1 array");
+      goto fail;
+    }
+    lower_bounds_val = (double*) PyArray_DATA(lower_bounds);
+  }
+
+  /* upper_bounds */
+  if (upper_boundsptr == NULL) {
+    upper_bounds_val = NULL;
+  }
+  else{
+    upper_bounds = (PyArrayObject*) PyArray_FROM_OTF(upper_boundsptr,
+						NPY_FLOAT64,
+						NPY_ARRAY_IN_ARRAY);
+    if(PyArray_NDIM(upper_bounds) != 1) {
+      PyErr_SetString(PyExc_RuntimeError, "upper_bounds must be a rank-1 array");
+      goto fail;
+    }
+    upper_bounds_val = (double*) PyArray_DATA(upper_bounds);
+  }
+
 
    /* Determine m by making call to f */
    arglist = build_arglist(1, data.params);
@@ -842,20 +1252,18 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    struct ral_nlls_options options;
    if(!set_opts(&options, options_ptr)) goto fail;
    struct ral_nlls_inform inform;
-   if(data.Hr) {
-     nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform,
-		  NULL, NULL, NULL, NULL);
-   } else {
-      options.exact_second_derivatives = false;
-      nlls_solve_d(n, m, xval, eval_f, eval_J, NULL, &data, &options, &inform,
-		   NULL, NULL, NULL, NULL);
-   }
+   nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform,
+		  weights_val, eval_Hp, lower_bounds_val, upper_bounds_val);
    switch(inform.status) {
    case 0: // Clean exit
      break;
    case -1: // Exceeded max itr
-     PyErr_SetString(PyExc_RuntimeError,
-		     "Exceeded maximum number of iterations");
+     PyErr_WarnEx(PyExc_RuntimeWarning,
+		  "Exceeded maximum number of iterations",2);
+     goto output;
+   case -8: // No progress being made
+     PyErr_WarnEx(PyExc_RuntimeWarning,
+		  "No progress being made towards the solution",2);
      goto output;
    default:
      PyErr_SetString(PyExc_RuntimeError,
@@ -878,7 +1286,9 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
 static PyMethodDef RalNllsMethods[] = {
    {"solve", (PyCFunction)ral_nlls_solve, METH_VARARGS | METH_KEYWORDS,
     "Solve a non-linear least squares problem.\n"
-    "   x = ral_nlls.solve(x0, r, J, Hr=None, params=None, options={})"
+    "   x = ral_nlls.solve(x0, r, J, Hr=None, params=None, options={}, \n"
+    "                      weights=None, Hp=None,\n"
+    "                      lower_bounds=None, upper_bounds=None)"
    },
    {NULL, NULL, 0, NULL} /* Sentinel */
 };

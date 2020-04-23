@@ -29,8 +29,6 @@ The user can then call the procedure:
 
 |nlls_solve| solves the non-linear least squares problem.
 
-At present the Python interface only supports the option :math:`W=I`.
-
 
 Argument list and calling sequence
 ----------------------------------
@@ -42,7 +40,7 @@ To solve the non-linear least squares problem
 
 .. include:: ../common/subroutines.rst
 
-.. py:function:: solve(x0, r, J, Hr=None, params=None, options=None) -> (x, info)
+.. py:function:: solve(x0, r, J, Hr=None, params=None, options=None, weights=None, Hp=None, lower_bounds=None, upper_bounds=None) -> (x, info)
 
    Solves the non-linear least squares problem.
    
@@ -55,7 +53,7 @@ To solve the non-linear least squares problem
    :param J: given a point :math:`{\bm x} _{k}^{}`, returns the :math:`m \times n` Jacobian matrix, :math:`{\bm J} _{k}^{}`, of :math:`{\bm r}` evaluated at :math:`{\bm x} _{k}^{}`. The function must have the signature ``J(x[,params])``, where ``x`` is an ndarray of shape (n,) and `params` is as defined below.  It must return an array_like of shape (m,n).
    :type J: callable
 
-   :param Hf: given vectors :math:`{\bm x} \in \mathbb{R}^n` and :math:`{\bm r} \in \mathbb{R}^m`, returns the quantity :math:`\sum_{i=1}^m ( {\bm r} )_i \nabla^2  {\bm r} _i ( {\bm x} )`. The function must have the signature ``Hf(x[,params])``, where ``x`` is an ndarray of shape (n,).  It must return an array_like of shape (n,n) and `params` is as defined below.  If ``'exact_second_derivative' : F`` in |nlls_options|, then this is not referenced.
+   :param Hf: given vectors :math:`{\bm x} \in \mathbb{R}^n` and :math:`{\bm r} \in \mathbb{R}^m`, returns the quantity :math:`\sum_{i=1}^m ( {\bm r} )_i \nabla^2  {\bm r} _i ( {\bm x} )`. The function must have the signature ``Hf(x,r[,params])``, where ``x`` is an ndarray of shape (n,) and ``r`` is an ndarray of shape (m,).  It must return an array_like of shape (n,n) and `params` is as defined below.  If ``'exact_second_derivative' : F`` in |nlls_options|, then this is not referenced.
    :type Hf: None or callable
 
    :param params: holds parameters to be passed to the routines ``r``, ``J`` and ``Hf``.  
@@ -63,8 +61,20 @@ To solve the non-linear least squares problem
 
    :param options: |options|
    :type options: None or dict
+   
+   :param weights:  |weights|
+   :type weights: None or array_like with shape (m,)
 
+   :param Hp: If present, this is a routine that, given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^m`, returns the matrix :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`.  The function must have the signature ``Hf(x,y[,params])``, where ``x`` is an ndarray of shape (n,) and ``y`` is an ndarray of shape (n,).  It must return an array_like of shape (m,n) and `params` is as defined below.  If ``model`` is not equal to ``4`` in |nlls_options|, then this is not referenced.
+   :type Hp: None or callable
 
+   :param lower_bounds:  |lower_bounds|
+   :type lower_bounds: None or array_like with shape (n,)
+			 
+   :param lower_bounds:  |upper_bounds|
+   :type lower_bounds: None or array_like with shape (n,)
+
+	     
    :returns: The first component contains the approximate solution. The second component provides information about the execution of the subroutine.
    :rtype: tuple( nparray(n,), dict)
 
@@ -98,15 +108,15 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 
    * print_options (bool)
 
-     |print_options|
+      |print_options|
 
-     Default is false.
+      Default is false.
 
    * print_header (int)
 
-     |print_header|
+       |print_header|
 
-     Default is 30.
+       Default is 30.
       
    **Choice of Algorithm**
 
@@ -320,6 +330,117 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
 
 		 |more_sorensen_tol|
 		 Default is 1e-3.
+
+
+   **Box bound options**  These options are used if box constraints are included.
+
+   *  box_nFref_max (int)
+
+		 |box_nFref_max|
+		 Default is 4.
+
+   *  box_gamma (float)
+
+		 |box_gamma|
+		 Default is 0.9995.
+		 
+   *  box_decmin (float)
+
+		 |box_decmin|
+		 Default is 2.0e-16.
+
+   *  box_bigbnd (float)
+
+		 |box_bigbnd|
+		 Default is 1.0e20.
+
+   *  box_wolfe_descent (float)
+
+		 |box_wolfe_descent|
+		 Default is 1.0e-4.
+
+   *  box_wolfe_curvature (float)
+
+		 |box_wolfe_curvature|
+		 Default is 0.9.
+
+   *  box_kanzow_power (float)
+
+		 |box_kanzow_power|
+		 Default is 2.1.
+
+   *  box_kanzow_descent (float)
+
+		 |box_kanzow_descent|
+		 Default is 1.0e-8.
+
+   *  box_quad_model_descent (float)
+
+		 |box_quad_model_descent|
+		 Default is 1.0e-8.
+
+   *  box_tr_test_step (bool)
+
+		 |box_tr_test_step|
+		 Default is true.
+
+   *  box_wolfe_test_step (bool)
+
+		 |box_wolfe_test_step|
+		 Default is true.
+
+   *  box_tau_min (float)
+
+		 |box_tau_min|
+		 Default is 0.25.
+
+   *  box_tau_descent (float)
+
+		 |box_tau_descent|
+		 Default is 1.0e-4.
+
+   *  box_max_ntrfail  (int)
+
+		 |box_max_ntrfail|
+		 Default is 2.
+
+   *  box_quad_match  (int)
+
+		 |box_quad_match|
+		 Default is 1.
+
+   *  box_alpha_scale (float)
+
+		 |box_alpha_scale|
+		 Default is 1.0.
+
+   *  box_Delta_scale (float)
+
+		 |box_Delta_scale|
+		 Default is 2.0.
+
+   *  box_tau_wolfe (float)
+
+		 |box_tau_wolfe|
+		 Default is 0.3.
+
+   *  box_tau_tr_step (float)
+
+		 |box_tau_tr_step|
+		 Default is 0.3.
+
+   *  box_ls_step_maxit  (int)
+
+		 |box_ls_step_maxit|
+		 Default is 20.
+
+   *  box_lineseach_type  (int)
+
+		 |box_linesearch_type|
+		 Default is 1.
+
+		 .. include::  ../common/options_linesearch_type.txt
+
 						  
    **Other options**
 					     
@@ -373,6 +494,11 @@ This is used to hold information about the progress of the algorithm.
       
 		 |h_eval|
 
+   * hp_eval (int)
+      
+		 |hp_eval|
+
+
    *  convergence_normf (int)
 		 
 		 |convergence_normf|
@@ -397,6 +523,8 @@ This is used to hold information about the progress of the algorithm.
 
 		 |scaled_g|
 
+
    *  step (float)
-     |step|
+
+      |step|
 

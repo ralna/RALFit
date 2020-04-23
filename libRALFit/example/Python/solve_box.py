@@ -42,11 +42,16 @@ def Hr(x, r, t, y):
 t = numpy.array([1.0, 2.0, 4.0,  5.0,  8.0])
 y = numpy.array([3.0, 4.0, 6.0, 11.0, 20.0])
 
+# bounds
+lb = numpy.array([5.0, 0.0])
+ub = numpy.array([10.0, 0.2])
+
 # Starting guess
 x0 = numpy.array([2.5, 0.25])
 
 # Call fitting routine
-(x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=(t,y))
+(x, inform) = ral_nlls.solve(x0, r, J, Hr=Hr, params=(t,y),
+                             lower_bounds=lb, upper_bounds=ub)
 
 # Print result
 print("Found a local optimum at x = [ {0:.8f}  {1:.8f} ]".format(x[0],x[1]))
