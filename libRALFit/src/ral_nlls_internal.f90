@@ -4719,7 +4719,7 @@ lp:    do i = 1, w%tensor_options%maxit
       End Subroutine ls_step_ds
 !-------------------------------------------------------------------------------
       Recursive Subroutine ls_step_hz(normf,m,fnew,nvar,x,fdx,dir,normfnew,xnew,normx,params,  &
-        eval_f,inform,options,alpn,eval_j,normJFnew,ierr,w,weights,sx)
+        eval_f,inform,options,alpn,eval_j,normJFnew,ierr,w,weights)
         Use ral_nlls_workspaces
         Implicit None
         Integer, Intent (In)           :: nvar, m
@@ -4731,7 +4731,7 @@ lp:    do i = 1, w%tensor_options%maxit
         Type (nlls_inform), Intent (Inout) :: inform
         Type (nlls_options), Intent (In) :: options
         Type (nlls_workspace), Intent(InOut) :: w
-        Real (Kind=wp), Intent (In), Optional :: weights(m), sx(nvar)
+        Real (Kind=wp), Intent (In), Optional :: weights(m)
         Procedure (eval_f_type)        :: eval_f
         Procedure (eval_j_type)        :: eval_j
 
