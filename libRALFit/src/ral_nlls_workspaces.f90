@@ -1813,7 +1813,7 @@ contains
         End if
 
        If ( lower <= upper .And. lower == lower .And. upper == upper ) Then
-          If (-options%box_bigbnd < lower .And. upper < options%box_bigbnd) Then
+          If (-options%box_bigbnd < lower .Or. upper < options%box_bigbnd) Then
              has_box = .True.
           End If
        Else
