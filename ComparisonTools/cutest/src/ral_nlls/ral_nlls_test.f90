@@ -1,7 +1,6 @@
 !  Dummy RAL_NLLS for testing ral_nlls_main interface to CUTEst
 !  Nick Gould, 6th October 2015
 
-
 module ral_nlls_workspaces
     
   implicit none 
@@ -9,10 +8,14 @@ module ral_nlls_workspaces
   private
   
   ! define derived types and subroutines for workspace arrays.
-  ! define derived types and subroutines for workspace arrays.
 
   Integer, Parameter, Public          :: wp = kind(1.0d0)
   Real (Kind = wp), Parameter, Public :: epsmch = epsilon(1.0_wp)
+  Real (Kind = wp), Parameter, Public :: toltm4= epsmch**(0.25_wp)
+  Real (Kind = wp), Parameter, Public :: toltm8 = sqrt(epsmch)
+  Real (Kind = wp), Parameter, Public :: toltm10 = sqrt(epsmch)/100.0_wp
+  Real (Kind = wp), Parameter, Public :: toltm12= epsmch**(0.75_wp)
+  Real (Kind = wp), Parameter, Public :: cmptol = toltm4/10.0_wp
   Real (Kind = wp), Parameter, Public :: infinity = HUGE(1.0_wp)
   INTEGER, PARAMETER, public          :: history_max = 100
 
@@ -32,6 +35,10 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_WORKSPACE_ERROR          =  -13
   Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_TYPE_METHOD  =  -14
   Integer, Parameter, Public :: NLLS_ERROR_WRONG_INNER_METHOD       =  -15
+  Integer, Parameter, Public :: NLLS_ERROR_INITIAL_GUESS            =  -16
+  Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -17
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -18
+
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -46,9 +53,11 @@ module ral_nlls_workspaces
   ! Tensor model errors
   Integer, Parameter, Public :: NLLS_ERROR_NO_SECOND_DERIVATIVES    = -401
 
+  ! Linesearch errors
+  Integer, Parameter, Public :: NLLS_ERROR_PG_STEP                  = -501
+
   ! Misc errors
   Integer, Parameter, Public :: NLLS_ERROR_PRINT_LEVEL              = -900
-  Integer, Parameter, Public :: NLLS_ERROR_NOT_IMPLEMENTED          = -950
   Integer, Parameter, Public :: NLLS_ERROR_UNEXPECTED               = -999
 
     TYPE, PUBLIC :: NLLS_options
@@ -121,6 +130,11 @@ module ral_nlls_workspaces
 
      INTEGER :: nlls_method = 4
 
+!   allow the algorithm to use a different subproblem solver if one fails
+
+     LOGICAL :: allow_fallback_method = .true.
+
+     
 !  which linear least squares solver should we use?
 
      INTEGER :: lls_solver = 1
@@ -304,7 +318,57 @@ module ral_nlls_workspaces
 
      ! C or Fortran storage of Jacobian?
      logical :: Fortran_Jacobian = .true.
+     
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! B O X   B O U N D   O P T I O N S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!    Memory size for the non-monotone linesearch
+     Integer :: box_nFref_max = 1
+!    Kanzow sufficient decrease ratio (eq 25) Kanzow 2004
+     Real(Kind=wp) :: box_gamma = 0.99995_wp
+     Real(Kind=wp) :: box_decmin = epsmch
+!    Magic number to consider box bound (+/-) infinity
+     Real(Kind=wp) :: box_bigbnd = 1.0e20_wp
+!    Wolfe descent condition (0<\sigma1<1/2), curvature condition (0<\sigma2)
+     Real(Kind=wp) :: box_wolfe_descent = 1.0e-4_wp
+     Real(Kind=wp) :: box_wolfe_curvature = 0.9_wp
+!    Tolerance to consider projected dir a descent direction
+!    See LS STEP Section 4 p392 Kanzow 2014
+     Real(Kind=wp) :: box_kanzow_power = 2.1_wp
+!    sqrt(mcheps)
+     Real(Kind=wp) :: box_kanzow_descent = toltm8 
+!    sqrt(mcheps)
+     Real(Kind=wp) :: box_quad_model_descent = toltm8
+!    Take projected TR step when TR test is Ok?
+!    True  => take step
+!    False => force a LS or PG step
+     Logical       :: box_tr_test_step = .True.
+!    Take projected  TR step when Wolfe test is Ok?
+!    True  => take step
+!    False => force a LS or PG step
+     Logical       :: box_wolfe_test_step = .True.
+!    Threshold to determine if the projection of TR direction
+!    is too severe 0<tau_min<1
+     Real(Kind=wp) :: box_tau_min = 0.1_wp
+!    tau >= tau_descent in order to test for descent
+     Real(Kind=wp) :: box_tau_descent = 1.0e-5_wp
+!    Max times TR iterations can fail without passing the various
+!    descent tests: 2? 3? 5? Ignored when proj(x)==x
+     Integer       :: box_max_ntrfail = 2
+!    Number of consecutive times quadratic model matches f(x_k+1)
+!    required before setting initial alpha step for PG step equal
+!    to scale_alpha*alpha_k-1
+     Integer       :: box_quad_match = 2
+!    Initial step scale (if quad_i >= box_quad_i)
+     Real(Kind=wp) :: box_alpha_scale = 1.0_wp
+!    Scaling factor to use when updating Delta from LS/PG step
+     Real(Kind=wp) :: box_Delta_scale = 2.0_wp
+     Real(Kind=wp) :: box_tau_wolfe = 0.3_wp
+     Real(Kind=wp) :: box_tau_tr_step = 0.3_wp
+     Integer       :: box_ls_step_maxit = 20
+!    LS type: 1 => Dennis-Schnabel; 2 => Hager-Zhang
+     Integer       :: box_linesearch_type = 1
   END TYPE nlls_options
 
 !  - - - - - - - - - - - - - - - - - - - - - - -
@@ -355,8 +419,14 @@ module ral_nlls_workspaces
      INTEGER :: g_eval = 0
 
 !  the total number of evaluations of the Hessian of the objective function
-
+!  using eval_hf
+     
      INTEGER :: h_eval = 0
+
+!  the total number of evaluations of the Hessian of the objective function
+!  using eval_hp
+
+     INTEGER :: hp_eval = 0
 
 !  test on the size of f satisfied?
 
@@ -377,14 +447,6 @@ module ral_nlls_workspaces
 !  vector of gradients
 
      real(wp), allocatable :: gradvec(:)
-
-!  vector of smallest singular values
-
-     real(wp), allocatable :: smallest_sv(:)
-
-!  vector of largest singular values
-
-     real(wp), allocatable :: largest_sv(:)
 
 !  the value of the objective function at the best estimate of the solution
 !   determined by NLLS_solve
@@ -409,8 +471,18 @@ module ral_nlls_workspaces
      CHARACTER ( LEN = 80 ) :: external_name = REPEAT( ' ', 80 )
 
 ! Step size of last iteration (w%normd)
-     Real(Kind=wp) :: step = 1.0e10_wp
+     Real(Kind=wp) :: step = infinity
 
+! LS Step iterations
+     Integer :: ls_step_iter = 0
+     Integer :: f_eval_ls = 0
+     Integer :: g_eval_ls = 0
+! PG Step iterations
+     Integer :: pg_step_iter = 0
+     Integer :: f_eval_pg = 0
+     Integer :: g_eval_pg = 0
+
+     
   END TYPE nlls_inform
 
   type, public :: params_base_type
@@ -460,6 +532,22 @@ module ral_nlls_workspaces
      type( tenJ_type ), pointer :: tenJ
   end type tensor_params_type
 
+    type, public :: box_type
+     ! Does the problem have a box?
+     logical :: has_box = .false.
+     Real(Kind=wp), Allocatable :: blx(:), bux(:), pdir(:), normFref(:), sk(:), g(:)
+     ! projection changed the direction? d /= P(d)?
+     Logical :: prjchd = .false.
+     ! Convergence metrics
+     Real(Kind=wp) :: normPD, gtd
+     ! Memory for HZLS (LS)
+     Real(Kind=wp) :: sksk, skyk, quad_c, quad_q, normFold
+     ! Consecutive times quadratic model is accurate
+     Integer       :: quad_i = 0
+     ! Memory for nonmonotone LS
+     Integer       :: nFref = 0
+  end type box_type
+  
     type, public :: max_eig_work ! workspace for subroutine max_eig
      logical :: allocated = .false.
      real(wp), allocatable :: alphaR(:), alphaI(:), beta(:), vr(:,:)
@@ -470,11 +558,11 @@ module ral_nlls_workspaces
      real(wp), allocatable :: nullevs(:,:)
   end type max_eig_work
 
-  type, public :: solve_general_work ! workspace for subroutine solve_general
+  type, public :: minus_solve_general_work ! workspace for subroutine solve_general
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:)
      integer, allocatable :: ipiv(:)
-  end type solve_general_work
+  end type minus_solve_general_work
 
   type, public :: evaluate_model_work ! workspace for subroutine evaluate_model
      logical :: allocated = .false.
@@ -518,7 +606,8 @@ module ral_nlls_workspaces
 
   type, public :: solve_galahad_work ! workspace for subroutine dtrs_work
      logical :: allocated = .false.
-     real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:)
+     real(wp), allocatable ::ev(:,:), ew(:), v_trans(:), d_trans(:), scale_c(:),&
+       scale_h(:)
      type( all_eig_symm_work ) :: all_eig_symm_ws
   end type solve_galahad_work
 
@@ -539,12 +628,12 @@ module ral_nlls_workspaces
      logical :: allocated = .false.
      type( max_eig_work ) :: max_eig_ws
      type( evaluate_model_work ) :: evaluate_model_ws
-     type( solve_general_work ) :: solve_general_ws
-     !       type( solve_spd_work ) :: solve_spd_ws
+     type( minus_solve_general_work ) :: minus_solve_general_ws
+     !       type( solve_spd_work ) :: minus_solve_spd_ws
      REAL(wp), allocatable :: LtL(:,:), B(:,:), p0(:), p1(:)
      REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
      REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
-     REAL(wp), allocatable :: y_hardcase(:,:)
+     REAL(wp), allocatable :: By_hardcase(:,:)
   end type AINT_tr_work
 
   type, public :: dogleg_work ! workspace for subroutine dogleg
@@ -596,8 +685,9 @@ module ral_nlls_workspaces
      real(wp), allocatable :: y(:), y_sharp(:), g_old(:), g_mixed(:)
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
-     real(wp), allocatable :: largest_sv(:), smallest_sv(:)
+     real(wp), allocatable :: Wf(:)
      type ( calculate_step_work ) :: calculate_step_ws
+     type ( box_type ) :: box_ws
      real(wp) :: tr_nu = 2.0_wp
      integer :: tr_p = 3
      type (tenJ_type ) :: tenJ
@@ -676,7 +766,8 @@ module ral_nlls_internal
 contains
 
           SUBROUTINE NLLS_SOLVE( n, m, X, eval_F, eval_J, eval_HF,                    &
-          params, options, inform, weights, eval_HP )
+               params, options, inform, weights, eval_HP, &
+               lower_bounds, upper_bounds)
     
 !  -----------------------------------------------------------------------------
 !  RAL_NLLS, a fortran subroutine for finding a first-order critical
@@ -693,12 +784,14 @@ contains
      REAL( c_double ), DIMENSION( n ), INTENT( INOUT ) :: X
      TYPE( Nlls_inform ), INTENT( OUT ) :: inform
      TYPE( Nlls_options ), INTENT( IN ) :: options
-     class( params_base_type ) :: params
      procedure( eval_f_type ) :: eval_F
      procedure( eval_j_type ) :: eval_J
      procedure( eval_hf_type ) :: eval_HF
-     real( c_double ), dimension(:), intent(in), optional :: weights
+     class( params_base_type ), intent(inout) :: params
+     real( wp ), dimension(m), intent(in), optional :: weights
      procedure( eval_hp_type ), optional :: eval_HP
+     real( wp ), dimension( n ), intent(inout), optional :: lower_bounds
+     real( wp ), dimension( n ), intent(inout), optional :: upper_bounds
 
      type ( NLLS_workspace ) :: w
      Type ( NLLS_workspace ), target :: inner_workspace
@@ -764,7 +857,6 @@ contains
      inform%status = status
      RETURN
    END SUBROUTINE NLLS_SOLVE
-
      
 end module ral_nlls_internal
 
@@ -774,7 +866,7 @@ end module ral_nlls_internal
      USE ISO_C_BINDING
      use ral_nlls_internal
      use ral_nlls_workspaces, only : params_base_type, nlls_options, &  
-                                     nlls_inform
+                                     nlls_inform, nlls_workspace
      
      IMPLICIT none
 
@@ -836,24 +928,9 @@ end module ral_nlls_internal
      END SUBROUTINE eval_HF_type
   END INTERFACE
 
-  abstract interface
-     subroutine eval_hp_type(status, n, m, x, y, hp, params)
-       import :: params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m 
-       double precision, dimension(*), intent(in)  :: x
-       double precision, dimension(*), intent(in)  :: y
-       double precision, dimension(*), intent(out) :: hp
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_hp_type     
-  end interface
-
-  
   public :: nlls_solve
-  public :: nlls_options, nlls_inform
+  public :: nlls_options, nlls_inform, nlls_workspace
   public :: params_base_type
-
 
 CONTAINS
 
