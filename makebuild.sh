@@ -51,7 +51,11 @@ fi
 export LD_LIBRARY_PATH=$SCRIPTPATH/libRALFit/build/src/:$LD_LIBRARY_PATH
 ./nlls_python_test &> nlls_python_test.output
 RESULT=$?
-[ $RESULT -ne 0 ] && exit 5
+if [ $RESULT -ne 0 ]
+then
+   echo "[Python test]: Failed"
+   exit 5
+fi
 diff nlls_python_test.output $SCRIPTPATH/libRALFit/test/solve_python.output
 RESULT=$?
 if [ $RESULT -gt 1 ] 
