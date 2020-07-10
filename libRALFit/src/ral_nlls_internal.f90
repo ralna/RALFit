@@ -3192,10 +3192,7 @@ lp:  do i = 1, options%more_sorensen_maxits
       Case (1)
         g = g - options%regularization_term*x
       Case (2)
-        If (normx==0.0_wp) Then
-!         Avoid undefined behaviour (Knuth 1992, 0^0 := 1)
-          g = g - options%regularization_term*x
-        Else
+        If (normx/=0.0_wp) Then
           g = g - options%regularization_term*(normx**(options%                &
             regularization_power-2.0_wp))*x
         End If
