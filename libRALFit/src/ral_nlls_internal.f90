@@ -1316,9 +1316,7 @@ lp: do while (.not. success)
          Write(rec(1), Fmt=8000)
          Call printmsg(4, .False., options, 1, rec)
        End If
-       If (inform%status/=0) Then
-         Go To 100
-       End If
+       ! Note: we don't need to worry about error returns here
        norm_2_d = norm2(d(1:n)) ! ||d||_D
        Xnew = X + d
        call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
@@ -4013,6 +4011,8 @@ lp:    do i = 1, w%tensor_options%maxit
                tensor_inform, w%tensor_options )
           if (tensor_inform%status /= 0) then
              ! there's an error : exit
+             ! note: we don't bail out, as the error will
+             ! be handled by the calling subroutine
              exit lp
           elseif ( (tensor_inform%convergence_normf == 1) &
                .or.(tensor_inform%convergence_normg == 1) &
@@ -4035,13 +4035,8 @@ lp:    do i = 1, w%tensor_options%maxit
        call nlls_finalize(inner_workspace,w%tensor_options)
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
 
-       If (tensor_inform%status/=0) Then
-         inform%status = tensor_inform%status
-         Go To 100
-       End If
-
-        ! now we need to evaluate the model at the new point
-        w%tparams%extra = 0
+       ! now we need to evaluate the model at the new point
+       w%tparams%extra = 0
 
         call evaltensor_f(inform%external_return, n, m, d, &
              w%model_tensor, w%tparams)
