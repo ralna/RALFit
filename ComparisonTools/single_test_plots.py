@@ -21,6 +21,7 @@ def main():
     parser.add_argument("-lw","--linewidth",help="set the line width parameter",default=1.0)
     parser.add_argument("-ms","--markersize", help="set the markersize paramer",default=10.0)
     parser.add_argument("-nt","--no_title",help="If present, no title will be printed", action="store_true")
+    parser.add_argument("-pl","--print_level",help="What is print level shall we use?",default=0)
     args = parser.parse_args()
     control_files = args.control_files
     no_tests = len(control_files) #!len(sys.argv)-1
@@ -58,10 +59,18 @@ def main():
             package = "ral_nlls"
 
         try:
-            subprocess.call(["cp", "control_files/"+control_files[i], \
-                             "cutest/sif/"+package.upper()+".SPC"])
+            master_file = open("control_files/{}".format(control_files[i]),'r')
         except:
-            print("Error: No control file " + control_files[i] + "found")
+            print("Error: No control file {} found".format(control_files[i]))
+
+        current_file = open("cutest/sif/{}.SPC".format(package.upper() ), 'w')
+        for line in master_file:
+            if ("print_level" in line) and "args.print_level":
+                current_file.write("{}                     print_level\n".format(args.print_level))
+            else:
+                current_file.write(line)
+        master_file.close()
+        current_file.close()
 
         os.chdir("cutest/sif/")
 
