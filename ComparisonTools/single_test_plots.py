@@ -26,20 +26,20 @@ def main():
     no_tests = len(control_files) #!len(sys.argv)-1
     problem = args.problem
 
-    print "Solving problem " + problem + " (starting point "+str(args.starting_point)+")"
+    print("Solving problem " + problem + " (starting point "+str(args.starting_point)+")")
 
     # read the cutest directory from the environment variables
     try:
         cutestdir = os.environ.get("CUTEST")
     except:
-        print "ERROR: the CUTEST environment variable doesn't appear to be set"
+        print("ERROR: the CUTEST environment variable doesn't appear to be set")
     
     # copy the ral_nlls files to cutest
     subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_test.f90",cutestdir+"/src/ral_nlls/"])
     subprocess.call(["cp","cutest/src/ral_nlls/ral_nlls_main.f90",cutestdir+"/src/ral_nlls/"])
         
     # get the current git hash
-    short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip()
+    short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD']).strip().decode("utf-8")
 
     # setup the datatype that we'll store the results in
     datatype = np.dtype({'names' : ('res','grad'),
@@ -61,7 +61,7 @@ def main():
             subprocess.call(["cp", "control_files/"+control_files[i], \
                              "cutest/sif/"+package.upper()+".SPC"])
         except:
-            print "Error: No control file " + control_files[i] + "found"
+            print("Error: No control file " + control_files[i] + "found")
 
         os.chdir("cutest/sif/")
 
@@ -79,7 +79,7 @@ def main():
         progress[i] = np.loadtxt(filename,dtype = datatype)
         all_min[i] = progress[i]['res'].min()
 
-    print all_min
+    print(all_min)
 
     minvalue = all_min.min()
     mineps = minvalue - np.finfo(float).eps
@@ -104,21 +104,21 @@ def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args
     
     plt.figure(1,figsize=(8,12.5))
     for i in range(no_tests):
-        plt.semilogy(progress[i]['grad'], label=control_files[i], marker=marker.next(), markersize=args.markersize,markevery=0.4, linestyle=linestyle.next(),linewidth=args.linewidth, dash_capstyle='round',markeredgewidth=1.5)
+        plt.semilogy(progress[i]['grad'], label=control_files[i], marker=next(marker), markersize=args.markersize,markevery=0.4, linestyle=next(linestyle),linewidth=args.linewidth, dash_capstyle='round',markeredgewidth=1.5)
     if not args.no_legend:
         plt.legend()
-    print os.getcwd()
+    print(os.getcwd())
     if not args.no_title:
         plt.title(problem+': gradients')
     plt.xlabel('Iteration number')
     plt.ylabel('$||J^Tr||_2$')
 
-    plt.savefig('data/img/'+problem+'_'+short_hash+'.png')
+    plt.savefig('data/img/{}_{}.png'.format(problem, short_hash))
 
     plt.figure(2)
     for i in range(no_tests):
         # plt.semilogy(progress[i]['res']-mineps, label=control_files[i])
-        plt.semilogy(progress[i]['res'], label=control_files[i], marker=marker.next(), markersize=args.markersize,markevery=0.4, linestyle=linestyle.next(),linewidth=args.linewidth)
+        plt.semilogy(progress[i]['res'], label=control_files[i], marker=next(marker), markersize=args.markersize,markevery=0.4, linestyle=next(linestyle),linewidth=args.linewidth)
     if not args.no_legend:
         plt.legend()
     if not args.no_title:
@@ -126,7 +126,7 @@ def plot(no_tests,control_files,progress,short_hash,problem,mineps,minvalue,args
     plt.xlabel('Iteration number')
     #plt.ylabel('$1/2||r_k||^2_2 - 1/2||r_*||^2_2$')
     plt.ylabel('$1/2||r_k||^2_2$')
-    plt.savefig('data/img/'+problem+'_res_'+short_hash+'.png')
+    plt.savefig('data/img/{}_res_{}.png'.format(problem,short_hash))
 
     plt.show()
 
