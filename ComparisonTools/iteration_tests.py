@@ -113,8 +113,8 @@ def main():
             InnerResults = 0
             # we want to put this back into a file that *does* have inner iterations,
             # so that the performance profiles work below...
-            add_inner_information(args.control_files[j],data[j])
-        metadata = np.genfromtxt("data/"+args.control_files[j]+".hash", dtype = hashinfo)
+            add_inner_information(filename,data)
+        metadata = np.genfromtxt("data/"+filename.split(".")[0]+".hash", dtype = hashinfo)
         return data,metadata
     
     for j in range(no_tests):
@@ -170,9 +170,9 @@ def main():
     all_func = [data[j]['func'] for j in range(no_tests_displayed)]
     all_status = [data[j]['status'] for j in range(no_tests_displayed)]
     all_solve_time = [data[j]['solve_time'] for j in range(no_tests_displayed)]
-    if InnerResults:
+    try:
         all_inner = [data[j]['inner'] for j in range(no_tests_displayed)]
-    else:
+    except:
         # since there's no inner iterations, set the number of inner iterations 
         # to equal the number inner iterations
         all_inner = all_iterates
@@ -207,7 +207,15 @@ def main():
 
     for i in range(0,no_probs):     
         for j in range (0,no_tests_displayed):
-            if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
+            # test if test failed
+            test_failed = False
+            if ("levmar" in args.control_files[j].lower()):
+                if (all_status[j][i] < 0) and (all_status[j][i] != too_many_its[j]):
+                    test_failed = True
+            else:
+                if (all_status[j][i] != 0) and (all_status[j][i] != too_many_its[j]):
+                    test_failed = True
+            if test_failed:
                 # if failed, then overwrite with default numbers
                 all_iterates[j][i] = -9999 
                 failure[i][j] = 1 
@@ -429,7 +437,7 @@ def add_inner_information(method_name,data):
     # and add it in.
     # This is needed so that the output file is the same as that for RALFit, and
     # therefore pypprof can compare them
-    copy_file = open("data/"+method_name+".out","w")
+    copy_file = open("data/"+method_name,"w")
     space = "   "
     for i in range(len(data['pname'])):
         line_to_print = (data['pname'][i]+
@@ -476,11 +484,12 @@ def run_cutest_and_copy_results_locally(args,problems):
         # copy the data file locally
         subprocess.call(["mv", "cutest/sif/"+test+".out", \
                          "data/"+test+".out"])
-        if "gsl" in test.lower(): # == "gsl":
+        if any (x in test.lower() for x in ["gsl","levmar"]): # == gsl/levmar
             # c doesn't end with a newline, so add one
-            gslresults = open("data/gsl.out","a")
-            gslresults.write("\n")
-            gslresults.close()
+            cresults = open("data/{}.out".format(test.lower()),"a")
+            cresults.write("\n")
+            cresults.close()
+
         # get the hash of the git version
         short_hash = subprocess.check_output(['git','rev-parse','--short','HEAD'],
                            universal_newlines=True).strip()
@@ -506,6 +515,8 @@ def compute(no_tests,control_files,problems,i,starting_point):
         j += 1
         if "gsl" in test.lower(): # == "gsl":
             package = "gsl"
+        elif "levmar" in test.lower():
+            package = "levmar"
         else: # assume ral_nlls is being called
             package = "ral_nlls"
             
@@ -540,9 +551,9 @@ def compute(no_tests,control_files,problems,i,starting_point):
 
 def plot_prof(control_files,no_tests,prob_list,np,cr):
     # performance profiles for iterations
-    Strings = ["python pypprof -ne -c 5 -s iterations ",
-               "python pypprof -ne -c 6 -s fevals ",
-               "python pypprof -ne -nf --log -c 13 -s time "]
+    Strings = ["python pypprof -c 5 -s iterations ",
+               "python pypprof -c 6 -s fevals ",
+               "python pypprof --log -c 13 -s time "]
     data_files = ""
     for j in range(no_tests):
         if cr:
