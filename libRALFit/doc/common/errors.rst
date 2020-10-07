@@ -18,8 +18,6 @@ Possible values are:
       -  Maximum number of reductions of the trust radius reached.
     * - -8
       -  No progress being made in the solution.
-    * - -9
-      -  **n** :math:`>` **m**.
     * - -10
       -  Unsupported trust region update strategy.
     * - -11
