@@ -1,1 +1,0 @@
-/home/trees/soft/cutest_svn/cutest/src/gsl/GSL.SPC
