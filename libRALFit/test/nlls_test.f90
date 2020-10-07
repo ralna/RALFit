@@ -893,29 +893,8 @@ program nlls_test
      call print_line(options%out)
      write(options%out,*) "Parameter errors"
      call print_line(options%out)
-
      
      options%print_level = 3
-
-     ! test n > m
-     If (allocated(x)) Then
-       deallocate(x)
-     End if
-     n = 100
-     allocate(x(n))
-     x = 0.0_wp
-     m = 3
-     call  nlls_solve(n, m, X,                         &
-                    eval_F, eval_J, eval_H, params,  &
-                    options, status )
-     if (status%status .ne. NLLS_ERROR_N_GT_M) then
-        write(*,*) 'Error: wrong error return, n > m'
-        no_errors_main = no_errors_main + 1
-     end if
-     deallocate(x)
-     n = 2
-     allocate(x(n))
-     m = 67
      
     ! test for unsupported method
      call reset_default_options(options)

@@ -252,11 +252,6 @@ contains
        !! This is the first call...allocate arrays, and get initial !!
        !! function evaluations and see if problem is already solved !!
        !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
-       ! first, check if n < m
-       If (n > m) Then
-         inform%status = NLLS_ERROR_N_GT_M
-         goto 100
-       End If
        ! set scalars...
        w%first_call = 0
        w%tr_nu = options%radius_increase
@@ -1212,8 +1207,6 @@ lp: do while (.not. success)
        inform%error_message = 'The trust region was reduced the maximum number of times'
     elseif ( inform%status == NLLS_ERROR_X_NO_PROGRESS ) then
        inform%error_message = 'No progress made in X'
-    elseif ( inform%status == NLLS_ERROR_N_GT_M ) then
-       inform%error_message = 'The problem is overdetermined'
     elseif ( inform%status == NLLS_ERROR_BAD_TR_STRATEGY ) then
        inform%error_message = 'Unsupported tr_update_stategy passed in options'
     elseif ( inform%status == NLLS_ERROR_FIND_BETA ) then

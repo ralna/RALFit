@@ -27,7 +27,6 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_ALLOCATION               =   -6
   Integer, Parameter, Public :: NLLS_ERROR_MAX_TR_REDUCTIONS        =   -7
   Integer, Parameter, Public :: NLLS_ERROR_X_NO_PROGRESS            =   -8
-  Integer, Parameter, Public :: NLLS_ERROR_N_GT_M                   =   -9
   Integer, Parameter, Public :: NLLS_ERROR_BAD_TR_STRATEGY          =  -10
   Integer, Parameter, Public :: NLLS_ERROR_FIND_BETA                =  -11
   Integer, Parameter, Public :: NLLS_ERROR_BAD_SCALING              =  -12

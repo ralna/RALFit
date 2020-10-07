@@ -2721,17 +2721,6 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          fails = fails + 1
      end if
 
-
-     status%status = NLLS_ERROR_N_GT_M
-     call nlls_strerror(status)
-     expected_string = 'The problem is overdetermined'
-     if (status%error_message .ne. expected_string) then 
-         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
-              status%status
-         fails = fails + 1
-     end if
-
-
      status%status = NLLS_ERROR_BAD_TR_STRATEGY
      call nlls_strerror(status)
      expected_string = 'Unsupported tr_update_stategy passed in options'
