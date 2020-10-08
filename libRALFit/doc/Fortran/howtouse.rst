@@ -207,12 +207,12 @@ A subroutine must be supplied to calculate
 
    :p real X(n) [in]: |eval_J_X|
 
-   :p real J(m*n) [out]: |eval_J_r|
+   :p real J(m*n) [out]: |eval_J_r| ``J((i-1)*n+j)`` must be set to hold :math:`\nabla_{x_j} r_i(  {\bm x} _{k}^{})`  if the option ``Fortran_Jacobian=.true.``.
 
    :p params_base_type params [in]: |eval_J_params|
 
 
-For evaluating the function :math:`Hf = \sum_{i=1}^m r_i( {\bm x} )  {\bm W} \nabla^2 r_i( {\bm x} )`
+For evaluating the function :math:`Hf = \sum_{i=1}^m r_i( {\bm x} )  \nabla^2 r_i( {\bm x} )`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A subroutine must be supplied to calculate
@@ -253,11 +253,11 @@ subroutine must implement the following interface:
 
    :p params_base_type params [in]: |eval_Hf_params|
 
-For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
+For evaluating the function :math:`P({\bm x},{\bm y}) := (  \nabla^2 r_1({\bm x}){\bm y} \dots   \nabla^2 r_m({\bm x}){\bm y})`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A subroutine may be supplied to calculate
-:math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})` for
+:math:`P({\bm x},{\bm y}) := ( \nabla^2 r_1({\bm x}){\bm y} \dots  \nabla^2 r_m({\bm x}){\bm y})` for
 given vectors :math:`{\bm x}, {\bm y} \in \mathbb{R}^n`. The
 subroutine must implement the following interface:
 

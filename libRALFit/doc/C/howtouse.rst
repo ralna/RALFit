@@ -191,13 +191,13 @@ It must have the following signature:
 
    :param x: |eval_J_X|
 
-   :param J: |eval_J_r|
+   :param J: |eval_J_r| ``J(i*n+j)`` must be set to hold :math:`\nabla_{x_{j+1}} r_{i+1}( {\bm x} _{k}^{})`.
 
    :param status: |eval_J_status|
 
 
-For evaluating the function :math:`Hf = \sum_{i=1}^m r_i( {\bm x} )  {\bm W} \nabla^2 r_i( {\bm x} )`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+For evaluating the function :math:`Hf = \sum_{i=1}^m r_i( {\bm x} )  \nabla^2 r_i( {\bm x} )`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A subroutine must be supplied to calculate
 :math:`Hf = \sum_{i=1}^m ( {\bm r} )_i \nabla^2 r_i( {\bm x} )` for
