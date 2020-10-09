@@ -18,8 +18,6 @@ Possible values are:
       -  Maximum number of reductions of the trust radius reached.
     * - -8
       -  No progress being made in the solution.
-    * - -9
-      -  **n** :math:`>` **m**.
     * - -10
       -  Unsupported trust region update strategy.
     * - -11
@@ -32,6 +30,12 @@ Possible values are:
       -  Unsupported value in ``type_of_method``.
     * - -15
       -  Unsupported value of ``inner_method`` passed in options.
+    * - -16
+      -  Initial iterate x0 is not usable as starting point
+    * - -17
+      -  Unsupported value of linesearch type (``box_linesearch_type``)
+    * - -18
+      -  Bad bound constraints (blx <= bux)
     * - -101
       -  Unsupported model in dogleg (``nlls_method=1``).
     * - -201
@@ -45,10 +49,10 @@ Possible values are:
     * - -303
       -  No progress being made in ``more_sorensen`` subroutine (``nlls_method=3``).
     * - -401
-      - ``model = 4`` selected, but ``exact_second_derivatives`` is set to ``false``. 
+      - ``model = 4`` selected, but ``exact_second_derivatives`` is set to ``false``.
+    * - -501
+      - Linesearch in projected gradient direction failed
     * - -900
       - Illegal value of ``print_level`` in options array. Valid range is 0 to 5. 
-    * - -950
-      - Combination of method/regularization options not yet implemented
     * - -999
       - Unexpected error occured

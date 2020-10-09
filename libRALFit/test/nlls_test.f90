@@ -12,13 +12,14 @@ program nlls_test
   type( NLLS_inform )  :: status
   type( NLLS_options ) :: options
   type( user_type ), target :: params
-  real(wp), allocatable :: w(:),x(:)
+!  type( user_box_type ), target :: params_box
+  real(wp), allocatable :: w(:),x(:),blx(:),bux(:)
   real(wp), allocatable :: resvec(:)
   real(wp) :: resvec_error
   integer :: m, n, i, no_errors_helpers, no_errors_main
   integer :: nlls_method, model, tr_update, inner_method
   logical :: test_all, test_subs
-  integer :: fails
+  integer :: fails, exp_status
 
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
@@ -30,7 +31,7 @@ program nlls_test
   
   test_all = .true.
   test_subs = .true.
-
+  exp_status = 0
   no_errors_main = 0
 
   if (test_all) then
@@ -690,6 +691,7 @@ program nlls_test
            call print_line(options%out)
            write(options%out,*) "Error in eval_F"
            call print_line(options%out)
+           exp_status = NLLS_ERROR_INITIAL_GUESS
 
            call nlls_solve(n, m, X,                         &
                 eval_F_error, eval_J, eval_H, params,  &
@@ -698,6 +700,7 @@ program nlls_test
            call print_line(options%out)
            write(options%out,*) "Error in eval_J"
            call print_line(options%out)
+           exp_status = NLLS_ERROR_INITIAL_GUESS
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J_error, eval_H, params,  &
@@ -706,6 +709,7 @@ program nlls_test
            call print_line(options%out)
            write(options%out,*) "Error in eval_HF"
            call print_line(options%out)
+           exp_status = NLLS_ERROR_EVALUATION
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H_error, params,  &
@@ -716,6 +720,7 @@ program nlls_test
            write(options%out,*) "Error in eval_HF"
            write(options%out,*) "model = ", options%model
            call print_line(options%out)
+           exp_status = NLLS_ERROR_EVALUATION
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H_error, params,  &
@@ -725,13 +730,14 @@ program nlls_test
            write(options%out,*) "Error in eval_HF"
            write(options%out,*) "model = ", options%model
            call print_line(options%out)
+           exp_status = NLLS_ERROR_INITIAL_GUESS
 
            options%model = 4
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J, eval_H_error, params,  &
                 options, status )
         end select
-        if ( status%status .ne. NLLS_ERROR_EVALUATION ) then 
+        if ( status%status .ne. exp_status ) then 
            write(*,*) 'Error: error return from eval_x not caught'
            no_errors_main = no_errors_main + 1
         end if
@@ -887,28 +893,8 @@ program nlls_test
      call print_line(options%out)
      write(options%out,*) "Parameter errors"
      call print_line(options%out)
-
      
      options%print_level = 3
-
-     ! test n > m
-     If (allocated(x)) Then
-       deallocate(x)
-     End if
-     n = 100
-     allocate(x(n))
-     m = 3
-     call  nlls_solve(n, m, X,                         &
-                    eval_F, eval_J, eval_H, params,  &
-                    options, status )
-     if (status%status .ne. NLLS_ERROR_N_GT_M) then
-        write(*,*) 'Error: wrong error return, n > m'
-        no_errors_main = no_errors_main + 1
-     end if
-     deallocate(x)
-     n = 2
-     allocate(x(n))
-     m = 67
      
     ! test for unsupported method
      call reset_default_options(options)
@@ -963,6 +949,121 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
      status%status = 0
+
+     ! Test for initial point being a solution
+     ! Two cases:
+     ! 1. x is solution point
+     ! 2. x is active and projected gradient is zero
+     deallocate(params%x_values, params%y_values)
+     call generate_data_example_box(params)
+     call reset_default_options(options)
+     options%maxit = 2
+     options%print_level=0
+     x(:) = (/0.3199787042575630E+00, 0.2752509146444680E-01/)
+     call solve_basic(X,params,options,status,.True.)
+     if ( .Not. (status%status == 0 .And. status%iter == 0) ) then 
+        write(*,*) 'Error: x0 solution but not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+     Allocate(blx(n), bux(n))
+     blx(1:n) = -1.0
+     bux(1:n) = blx(1:n)
+     call solve_basic(X,params,options,status,blx=blx,bux=bux)
+     if ( .Not. (status%status == 0 .And. status%iter == 0 .And.               &
+       status%norm_g==0.0) ) then 
+        write(*,*) 'Error: Proj grd at x0 is zero, but not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Unsupported Line Search
+     call reset_default_options(options)
+     options%box_linesearch_type = 3
+     options%print_level = 5
+     call solve_basic(X,params,options,status,blx=blx,bux=bux)
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
+        write(*,*) 'Error: unsupported Linesearch type passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Unsupported Print Level
+     call reset_default_options(options)
+     options%print_level = 7
+     call solve_basic(X,params,options,status)
+     if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL ) then 
+        write(*,*) 'Error: unsupported print level passed and not caught'
+        no_errors_main = no_errors_main + 1
+     end if
+     options%print_level = 0
+     status%status = 0
+
+     ! Bad box constraints
+     call reset_default_options(options)
+     blx(1:n) = 1.0
+     bux(1:n) = -1.0
+     call solve_basic(X,params,options,status,blx=blx,bux=bux)
+     if ( status%status /= NLLS_ERROR_BAD_BOX_BOUNDS ) then 
+        write(*,*) 'Error: Illegal box, but not caught.  Status = ', status%status
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Projected Gradient Linesearch recovery error after LS D-S failure
+     call reset_default_options(options)
+     x(1) = 1.3_wp
+     x(2) = -2.0_wp
+     blx(1:n) = (/1.2_wp,-10.0_wp/)
+     bux(1:n) = (/1.2_wp,10.0_wp/)
+     call nlls_solve(n, m, x,                         &
+          eval_F_pg, eval_J, eval_H, params,  &
+          options, status,                 &
+          lower_bounds=blx, upper_bounds=bux )     
+     if ( status%status /= NLLS_ERROR_PG_STEP ) then 
+        write(*,*) 'Error: PG step failed, but not caught'
+        write(*,*) 'status = ', status%status, ' returned'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+
+     ! Line-search HZ supported but not yet available LINE SEARCH ERROR
+     call reset_default_options(options)
+     x(1) = 1.3_wp
+     x(2) = -2.0_wp
+     blx(1:n) = (/1.2_wp,-10.0_wp/)
+     bux(1:n) = (/1.2_wp,10.0_wp/)     
+     options%box_linesearch_type = 2
+     options%maxit = 10
+     call solve_basic(X,params,options,status,warm_start=.True.,blx=blx,bux=bux)
+     if ( status%status /= NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
+        write(*,*) 'Error: HZLS unsupported, but not caught.'
+        write(*,*) 'status = ', status%status, ' returned'
+        no_errors_main = no_errors_main + 1
+     end if
+     status%status = 0
+     options%print_level = 0
+     options%out = 17
+
+     ! Excercise Print Level logic, this is not a test
+     call reset_default_options(options)
+     blx(1:n) = (/1.2_wp,-10.0_wp/)
+     bux(1:n) = (/1.2_wp,10.0_wp/)     
+     Do i = 1, 5
+       options%print_level = i
+       Write(options%out, '(80(''=''))')
+       Write(options%out, *) 'Exercising Print Level = ', options%print_level
+       Write(options%out, '(80(''=''))')
+       Call reset_default_options(options)
+       options%print_header = 4
+       options%print_options = .True.
+       x(1) = 1.3_wp
+       x(2) = -2.0_wp
+       call solve_basic(X,params,options,status,blx=blx,bux=bux)
+       status%status = 0
+     End Do
+     Write(options%out, '(80(''=''))')
+     options%print_level = 0
 
      if (no_errors_main == 0) then
         write(*,*) '*** All (main) tests passed successfully! ***'
@@ -1045,10 +1146,10 @@ program nlls_test
      call switch_to_quasi_newton_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
-     call solve_spd_tests(options,fails)
+     call minus_solve_spd_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
-     call solve_general_tests(options,fails)
+     call minus_solve_general_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
      call matmult_inner_tests(options,fails)

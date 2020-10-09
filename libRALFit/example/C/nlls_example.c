@@ -77,7 +77,9 @@ int main(void) {
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
    struct ral_nlls_inform inform;
-   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform, NULL);
+   printf("sending to nlls_solve\n");
+   nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform,
+	      NULL, NULL, NULL, NULL);
    if(inform.status != 0) {
       printf("ral_nlls() returned with error flag %d\n", inform.status);
       return 1; // Error

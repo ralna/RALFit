@@ -9,6 +9,8 @@
 .. |nlls_iterate| replace:: :f:subr:`nlls_iterate`
 
 .. |nlls_solve| replace:: :f:subr:`nlls_solve`
+			    
+.. |nlls_setup_bounds| replace:: :f:subr:`nlls_setup_bounds`
 
 .. |eval_r| replace:: :f:subr:`eval_r`
 

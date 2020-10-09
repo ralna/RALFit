@@ -713,7 +713,7 @@
 
    END MODULE RAL_NLLS_ROOTS_double
 
-! THIS VERSION: RAL_NLLS 1.0 - 22/12/2015 AT 14:15 GMT.
+! THIS VERSION: RAL_NLLS 1.2 - 04/03/2020 AT 13:15 GMT.
 
 !-*-*-*-*-*-*-*-  R A L _ N L L S _ D T R S  double  M O D U L E  *-*-*-*-*-*-*-
 
@@ -959,7 +959,8 @@
 
 !-*-*-*-*-*-*-*-*-  D T R S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-
 
-      SUBROUTINE DTRS_solve( n, radius, f, C, H, X, control, inform )
+      SUBROUTINE DTRS_solve( n, radius, f, C, H, X, control, inform,           &
+                             C_scale, H_scale )
 
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
@@ -991,6 +992,8 @@
 !
 !   inform - a structure containing information. See DTRS_inform_type
 !
+!   C_scale, H_scale - workspace arrays
+!
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 !-----------------------------------------------
@@ -1004,12 +1007,12 @@
       REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
       TYPE ( DTRS_control_type ), INTENT( IN ) :: control
       TYPE ( DTRS_inform_type ), INTENT( INOUT ) :: inform
+      REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: C_scale, H_scale
 
 !  local variables
 
       INTEGER :: i
       REAL ( KIND = wp ) :: scale_h, scale_c, f_scale, radius_scale
-      REAL ( KIND = wp ), DIMENSION( n ) :: C_scale, H_scale
       TYPE ( DTRS_control_type ) :: control_scale
 
 !  scale the problem to solve instead
@@ -1032,7 +1035,12 @@
 
 !  scale H by the largest H and remove relatively tiny H
 
-      scale_h = MAXVAL( ABS( H ) )
+     !scale_h = MAXVAL( ABS( H ) )
+      scale_h = zero
+      DO i = 1, n
+        scale_h = MAX( scale_h, ABS( H( i ) ) )
+      END DO
+
       IF ( scale_h > zero ) THEN
         DO i = 1, n
           IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
@@ -1048,7 +1056,12 @@
 
 !  scale c by the largest c and remove relatively tiny c
 
-      scale_c = MAXVAL( ABS( C ) )
+     !scale_c = MAXVAL( ABS( C ) )
+      scale_c = zero
+      DO i = 1, n
+        scale_c = MAX( scale_c, ABS( C( i ) ) )
+      END DO
+
       IF ( scale_c > zero ) THEN
         DO i = 1, n
           IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
@@ -1148,11 +1161,12 @@
       INTEGER :: max_order, n_lambda, i_hard, n_sing
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda
       REAL ( KIND = wp ) :: alpha, utx, distx, x_big
-      REAL ( KIND = wp ) :: c_norm, c_norm_over_radius, v_norm2, w_norm2
+      REAL ( KIND = wp ) :: c_norm, c_norm_over_radius, v_norm2, w_norm2, h_norm
       REAL ( KIND = wp ) :: beta, z_norm2, root1, root2, root3
       REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, c2
       REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max
       REAL ( KIND = wp ), DIMENSION( 3 ) :: lambda_new
+      INTEGER, DIMENSION( 1 ) :: mloc
       REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: x_norm2, pi_beta
       LOGICAL :: printi, printt, printd, problem_file_exists
       CHARACTER ( LEN = 1 ) :: region
@@ -1205,11 +1219,11 @@
       printt = out > 0 .AND. print_level > 1
       printd = out > 0 .AND. print_level > 2
 
-!  check for n < 0 or Delta < 0
+!  check for n < 0 or radius < 0
 
       IF ( n < 0 .or. radius < 0 ) THEN
-         inform%status = RAL_NLLS_error_restrictions
-         RETURN
+        inform%status = RAL_NLLS_error_restrictions
+        RETURN
       END IF
 
 !  compute the two-norm of c and the extreme eigenvalues of H
@@ -1217,10 +1231,13 @@
       c_norm = TWO_NORM( C )
       lambda_min = MINVAL( H( : n ) )
       lambda_max = MAXVAL( H( : n ) )
-
+      h_norm = zero
+      DO i = 1, n
+        h_norm = MAX( h_norm, ABS( H( i ) ) )
+      END DO
       IF ( printt ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
      &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
-          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
+          prefix, c_norm, h_norm, lambda_min
 
       region = 'L'
       IF ( printt )                                                            &
@@ -1245,7 +1262,7 @@
           lambda = zero
         END IF
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,             &
+          WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,             &
           0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
           WRITE( out, "( A,                                                    &
        &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1323,7 +1340,7 @@
             inform%obj =                                                       &
                 f + half * ( DOT_PRODUCT( C, X ) - lambda * radius ** 2 )
             IF ( printi ) THEN
-              WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,         &
+              WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,         &
               0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
               WRITE( out, "( A,                                                &
            &    ' Hard-case stopping criteria satisfied' )" ) prefix
@@ -1371,6 +1388,7 @@
 
       DO
         it = it + 1
+!       IF ( it > 10 ) stop
 
 !  if H(lambda) is positive definite, solve  H(lambda) x = - c
 
@@ -1403,7 +1421,7 @@
           inform%status = RAL_NLLS_ok
           region = 'L'
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 2ES22.13 )" ) prefix,                    &
+            WRITE( out, "( A, A2, I4, 2ES22.15 )" ) prefix,                    &
               region, it, inform%x_norm - radius, lambda
             WRITE( out, "( A, ' Interior stopping criteria satisfied')" ) prefix
           END IF
@@ -1423,7 +1441,7 @@
           END IF
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 3ES22.13 )" )  prefix, region,           &
+            WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,           &
             it, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
             WRITE( out, "( A,                                                  &
          &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -1442,7 +1460,7 @@
           WRITE( out, "( A, 3ES20.12 )") prefix, lambda, inform%x_norm, radius
         ELSE IF ( printi ) THEN
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
-          WRITE( out, "( A, A2, I4, 3ES22.13 )" ) prefix, region, it,          &
+          WRITE( out, "( A, A2, I4, 3ES22.15 )" ) prefix, region, it,          &
             ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
         END IF
 
@@ -1563,11 +1581,9 @@
 !  record all of the estimates of the optimal lambda
 
         IF ( printd ) THEN
+          MLOC(:) = MAXLOC( lambda_new( : n_lambda ) )
           WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
-            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
-            lambda_new( : MIN( 3, n_lambda ) )
-          IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
-            prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+            prefix, MLOC(1), lambda_new( : MIN( 3, n_lambda ) )
         END IF
 
 !  compute the best Taylor improvement
@@ -1760,7 +1776,7 @@
 
 
 
-! THIS VERSION: RAL_NLLS 1.1 - 04/03/2016 AT 14:00 GMT.
+! THIS VERSION: RAL_NLLS 1.2 - 04/03/2020 AT 13:15 GMT.
 
 !-*-*-*-*-*-*-*-  R A L _ N L L S _ R Q S  double  M O D U L E  *-*-*-*-*-*-*-
 
@@ -2016,7 +2032,8 @@
 
 !-*-*-*-*-*-*-*-*-  D R Q S _ S O L V E   S U B R O U T I N E  -*-*-*-*-*-*-*-*-
 
-      SUBROUTINE DRQS_solve( n, p, sigma, f, C, H, X, control, inform )
+      SUBROUTINE DRQS_solve( n, p, sigma, f, C, H, X, control, inform,         &
+                             C_scale, H_scale )
 
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 !
@@ -2049,6 +2066,8 @@
 !
 !   inform - a structure containing information. See DRQS_inform_type
 !
+!   C_scale, H_scale - workspace arrays
+!
 ! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 !-----------------------------------------------
@@ -2061,12 +2080,12 @@
       REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: X
       TYPE ( DRQS_control_type ), INTENT( IN ) :: control
       TYPE ( DRQS_inform_type ), INTENT( INOUT ) :: inform
+      REAL ( KIND = wp ), INTENT( OUT ), DIMENSION( n ) :: C_scale, H_scale
 
 !  local variables
 
       INTEGER :: i
       REAL ( KIND = wp ) :: scale_h, scale_c, f_scale, sigma_scale
-      REAL ( KIND = wp ), DIMENSION( n ) :: C_scale, H_scale
       TYPE ( DRQS_control_type ) :: control_scale
 
 !  scale the problem to solve instead
@@ -2090,7 +2109,11 @@
 
 !  scale H by the largest H and remove relatively tiny H
 
-      scale_h = MAXVAL( ABS( H ) )
+     !scale_h = MAXVAL( ABS( H ) )
+      scale_h = zero
+      DO i = 1, n
+        scale_h = MAX( scale_h, ABS( H( i ) ) )
+      END DO
       IF ( scale_h > zero ) THEN
         DO i = 1, n
           IF ( ABS( H( i ) ) >= control%h_min * scale_h ) THEN
@@ -2106,7 +2129,11 @@
 
 !  scale c by the largest c and remove relatively tiny c
 
-      scale_c = MAXVAL( ABS( C ) )
+     !scale_c = MAXVAL( ABS( C ) )
+      scale_c = zero
+      DO i = 1, n
+        scale_c = MAX( scale_c, ABS( C( i ) ) )
+      END DO
       IF ( scale_c > zero ) THEN
         DO i = 1, n
           IF ( ABS( C( i ) ) >= control%h_min * scale_c ) THEN
@@ -2207,12 +2234,13 @@
 
       INTEGER :: i, it, out, nroots, print_level, max_order, n_lambda, i_hard
       REAL ( KIND = wp ) :: lambda, lambda_l, lambda_u, delta_lambda, target
-      REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2
+      REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2, h_norm
       REAL ( KIND = wp ) :: beta, z_norm2, pm2, oopm2, oos, oos2
       REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, topm2
       REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max, c2
       REAL ( KIND = wp ), DIMENSION( 4 ) :: roots
       REAL ( KIND = wp ), DIMENSION( 9 ) :: lambda_new
+      INTEGER, DIMENSION( 1 ) :: mloc
       REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: x_norm2
       REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: pi_beta, theta_beta
       LOGICAL :: printi, printt, printd, problem_file_exists
@@ -2229,7 +2257,7 @@
 
 !  output problem data
 
-      IF ( control%problem > 0 ) THEN
+4      IF ( control%problem > 0 ) THEN
         INQUIRE( FILE = control%problem_file, EXIST = problem_file_exists )
         IF ( problem_file_exists ) THEN
           OPEN( control%problem, FILE = control%problem_file,                  &
@@ -2283,10 +2311,14 @@
       c_norm = TWO_NORM( C )
       lambda_min = MINVAL( H( : n ) )
       lambda_max = MAXVAL( H( : n ) )
+      h_norm = zero
+      DO i = 1, n
+        h_norm = MAX( h_norm, ABS( H( i ) ) )
+      END DO
 
       IF ( printi ) WRITE( out, "( A, ' ||c|| = ', ES10.4, ', ||H|| = ',       &
      &                             ES10.4, ', lambda_min = ', ES11.4 )" )      &
-          prefix, c_norm, MAXVAL( ABS( H( : n ) ) ), lambda_min
+          prefix, c_norm, h_norm, lambda_min
 
       region = 'L'
       IF ( printt )                                                            &
@@ -2298,7 +2330,7 @@
       IF ( c_norm == zero .AND. lambda_min >= zero ) THEN
         lambda = zero ; target = zero
         IF ( printi ) THEN
-          WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,          &
+          WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,          &
             it, inform%x_norm - target, lambda, ABS( delta_lambda )
           WRITE( out, "( A,                                                    &
       &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -2432,7 +2464,7 @@
             inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
 
             IF ( printi ) THEN
-              WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,      &
+              WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,      &
                 it, inform%x_norm - target, lambda, ABS( delta_lambda )
               WRITE( out, "( A,                                                &
           &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -2581,7 +2613,7 @@
           END IF
           IF ( printt .AND. it > 1 ) WRITE( out, 2030 ) prefix
           IF ( printi ) THEN
-            WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix, region,        &
+            WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix, region,        &
               it, inform%x_norm - target, lambda, ABS( delta_lambda )
             WRITE( out, "( A,                                                  &
         &    ' Normal stopping criteria satisfied' )" ) prefix
@@ -2595,7 +2627,7 @@
 !  a lambda in L has been found. It is now simply a matter of applying
 !  a variety of Taylor-series-based methods starting from this lambda
 
-        IF ( printi ) WRITE( out, "( A, A2, I4, 1X, 3ES22.13 )" ) prefix,      &
+        IF ( printi ) WRITE( out, "( A, A2, I4, 1X, 3ES22.15 )" ) prefix,      &
           region, it, inform%x_norm - target, lambda, ABS( delta_lambda )
 
 !  precaution against rounding producing lambda outside L
@@ -2604,7 +2636,7 @@
           inform%status = RAL_NLLS_error_ill_conditioned
           IF ( printi ) THEN
             WRITE( out, 2030 ) prefix
-            WRITE( out, "( A, 2X, I4, 3ES22.13, /, A,                          &
+            WRITE( out, "( A, 2X, I4, 3ES22.15, /, A,                          &
            &               ' normal exit with lambda outside L' )" )           &
               prefix, it, inform%x_norm - target, lambda, ABS( delta_lambda ), &
               prefix
@@ -2932,11 +2964,13 @@
 !  record all of the estimates of the optimal lambda
 
         IF ( printd ) THEN
+          MLOC(:) = MAXLOC( lambda_new( : n_lambda ) )
           WRITE( out, "( A, ' lambda_t (', I1, ')', 3ES20.13 )" )              &
-            prefix, MAXLOC( lambda_new( : n_lambda ) ),                        &
-            lambda_new( : MIN( 3, n_lambda ) )
+            prefix, MLOC(1), lambda_new( : MIN( 3, n_lambda ) )
           IF ( n_lambda > 3 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
             prefix, lambda_new( 4 : MIN( 6, n_lambda ) )
+          IF ( n_lambda > 6 ) WRITE( out, "( A, 13X, 3ES20.13 )" )             &
+            prefix, lambda_new( 7 : MIN( 9, n_lambda ) )
         END IF
 
 !  compute the best Taylor improvement
@@ -3346,4 +3380,3 @@
 !-*-*-*-*-*-  End of R A L _ N L L S _ R Q S  double  M O D U L E  *-*-*-*-*-*-
 
    END MODULE RAL_NLLS_DRQS_double
-
