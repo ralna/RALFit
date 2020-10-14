@@ -1018,7 +1018,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       call nlls_solve(n, m, X,                         &
            eval_F, eval_J, eval_H, params,  &
            options, inform,                 &
-           lower_bounds=blx, upper_bounds=bux )       
+           lower_bounds=blx, upper_bounds=bux )
       
      end subroutine solve_basic
 
@@ -1096,7 +1096,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           inform%status = 0
        end if
      
-       call nlls_finalize(w,options)
+       call nlls_finalize(w,options,inform)
      
        call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%calculate_step_ws%dogleg_ws)
        if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
@@ -1231,7 +1231,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%scale_trim_max = .true.
 
 
-     call nlls_finalize(w,options)
+     call nlls_finalize(w,options,inform)
      call generate_scaling(J,A,n,m,scale,scale_extra,& 
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
@@ -1282,7 +1282,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
      
-     call nlls_finalize(w,options)
+     call nlls_finalize(w,options,inform)
      
      call aint_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,& 
           w%calculate_step_ws%aint_tr_ws)
@@ -1405,7 +1405,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = 0
      options%more_sorensen_maxits = 10
      
-     call nlls_finalize(work,options)
+     call nlls_finalize(work,options,status)
      call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
@@ -1648,7 +1648,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         end if
         status%status = 0
 
-        call nlls_finalize(work,options)
+        call nlls_finalize(work,options,status)
                 
      end do
 
@@ -1792,7 +1792,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
      status%status = 0
 
-     call nlls_finalize(work, options)
+     call nlls_finalize(work, options, status)
      
      call solve_LLS(J,f,n,m,d,status, & 
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
@@ -2241,7 +2241,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
 
-     call nlls_finalize(work,options)
+     call nlls_finalize(work,options,status)
      call reset_default_options(options)
      
    end subroutine minus_solve_general_tests
@@ -2402,7 +2402,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            fails = fails +1 
         end if
 
-        call nlls_finalize(work,options)
+        call nlls_finalize(work,options,status)
 
         call min_eig_symm(A,n,ew,ev,options,status, & 
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
@@ -2536,7 +2536,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
      status%status = 0
 
-     call nlls_finalize(work,options)
+     call nlls_finalize(work,options,status)
 
      ! now let's check for workspace error
      call max_eig(A,B,2*n+1,ew,ev,nullevs, options,status, &
