@@ -167,7 +167,7 @@ contains
 
 100 continue
 
-     call nlls_finalize(w,options)
+     call nlls_finalize(w,options,inform)
      If (inform%status /= 0) then
        call nlls_strerror(inform)
      End If
@@ -212,7 +212,6 @@ contains
     real(wp) :: rho, rho_gn, normFnew, normJFnew, md, md_gn, Jmax, JtJdiag
     real(wp) :: FunctionValue, normX
     logical :: success
-    logical :: bad_allocate
     character :: second
     integer :: num_successful_steps
     integer :: nrec, ierr_dummy
@@ -226,10 +225,8 @@ contains
     Logical       :: takestep, wolfe
     Integer       :: ntrfail, nlab, lstype
     
-
     ! todo: make max_tr_decrease a control variable
     max_tr_decrease = 100
-    bad_allocate = .false.
     num_successful_steps = 0
     ! it_type: Iteration type: R = regular, I = inner
     it_type = 'R'
@@ -1111,33 +1108,6 @@ lp: do while (.not. success)
 100  Continue
 !   generic end of algorithm
 !   all (final) exits should pass through here...
-    if (allocated(w%resvec)) then
-       if( allocated(inform%resvec)) deallocate(inform%resvec, stat=ierr_dummy)
-       allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
-       if (inform%alloc_status == 0) Then
-         inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
-       else
-         bad_allocate = .true.
-       end if
-    end if
-    if ( (.not.bad_allocate) .And. allocated(w%gradvec)) then
-       if (allocated(inform%gradvec)) deallocate(inform%gradvec, stat=ierr_dummy)
-       allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
-       if (inform%alloc_status == 0) then
-         inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
-       else
-         bad_allocate = .true.
-       end if
-    end if
-
-    if (bad_allocate) then
-       if (allocated(inform%resvec)) deallocate(inform%resvec ,stat=ierr_dummy)
-       if (allocated(inform%gradvec)) deallocate(inform%gradvec ,stat=ierr_dummy)
-!      if (allocated(inform%smallest_sv)) deallocate(inform%smallest_sv ,stat=ierr_dummy)
-!      if (allocated(inform%largest_sv)) deallocate(inform%largest_sv ,stat=ierr_dummy)
-       inform%status = NLLS_ERROR_ALLOCATION
-       inform%bad_alloc = 'nlls_iterate'
-    end if
 
 8000 Format(99('-'))
 9000 Format(1X,' Iter |   error  |   optim    |  rel optim |  Delta  |   rho   |&
@@ -1162,11 +1132,44 @@ lp: do while (.not. success)
   !!******************************************************!!
   !!******************************************************!!
 
-  subroutine nlls_finalize(w,options)
+  subroutine nlls_finalize(w,options,inform)
     implicit none
     type( nlls_workspace ), intent(inout) :: w
     type( nlls_options ), intent(in) :: options
-    ! reset all the scalars
+    type( nlls_inform ), intent(inout) :: inform
+
+    logical :: bad_allocate=.false.
+    integer :: ierr_dummy=0
+
+    ! copy resvec if needed
+    if (allocated(w%resvec)) then
+       if( allocated(inform%resvec)) deallocate(inform%resvec, stat=ierr_dummy)
+       allocate(inform%resvec(w%iter + 1), stat = inform%alloc_status)
+       if (inform%alloc_status == 0) Then
+          inform%resvec(1:w%iter + 1) = w%resvec(1:w%iter + 1)
+       else
+          bad_allocate = .true.
+       end if
+    end if
+    
+    if ( (.not.bad_allocate) .And. allocated(w%gradvec)) then
+       if (allocated(inform%gradvec)) deallocate(inform%gradvec, stat=ierr_dummy)
+       allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
+       if (inform%alloc_status == 0) then
+         inform%gradvec(1:w%iter + 1) = w%gradvec(1:w%iter + 1)
+       else
+         bad_allocate = .true.
+       end if
+    end if
+
+    if (bad_allocate) then
+       if (allocated(inform%resvec)) deallocate(inform%resvec ,stat=ierr_dummy)
+       if (allocated(inform%gradvec)) deallocate(inform%gradvec ,stat=ierr_dummy)
+       inform%status = NLLS_ERROR_ALLOCATION
+       inform%bad_alloc = 'nlls_finalize'
+    end if
+
+    ! now reset all the scalars
     w%first_call = 1
     w%iter = 0
     w%calculate_step_ws%reg_order = 0.0
@@ -4025,7 +4028,7 @@ lp:    do i = 1, w%tensor_options%maxit
        inform%h_eval = inform%h_eval + tensor_inform%h_eval
 
 
-       call nlls_finalize(inner_workspace,w%tensor_options)
+       call nlls_finalize(inner_workspace,w%tensor_options,tensor_inform)
        inform%inner_iter = inform%inner_iter + tensor_inform%iter
 
        ! now we need to evaluate the model at the new point
