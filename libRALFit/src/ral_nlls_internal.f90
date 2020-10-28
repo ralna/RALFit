@@ -1137,9 +1137,10 @@ lp: do while (.not. success)
     type( nlls_workspace ), intent(inout) :: w
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
-
-    logical :: bad_allocate=.false.
-    integer :: ierr_dummy=0
+    logical :: bad_allocate
+    integer :: ierr_dummy
+    bad_allocate = .false.
+    ierr_dummy = 0
 
     ! copy resvec if needed
     if (allocated(w%resvec)) then
