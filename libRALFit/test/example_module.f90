@@ -10,6 +10,10 @@ module example_module
      real(wp), allocatable :: y_values(:)
      integer :: iter = 0 
      integer :: m
+     ! used in lanczos_ user call-backs
+     real(wp), allocatable :: t(:)
+     real(wp), allocatable :: y(:)
+     logical :: fortran_jacobian
   end type user_type
 
 contains
@@ -592,6 +596,117 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        
      end subroutine eval_HP
 
+     
+  subroutine lanczos_eval_r(status, n, m, x, r, params)
+    ! r_i = y_i - x_1 e^(-x_2 t_i) - x_3 e^(-x_4 t_i) - x_5 e^(-x_6 t_i)
+    integer, intent(out) :: status
+    integer, intent(in) :: n
+    integer, intent(in) :: m
+    real(wp), dimension(*), intent(in) :: x
+    real(wp), dimension(*), intent(out) :: r
+    class(params_base_type), intent(inout) :: params
+    
+
+    select type(params)
+    type is(user_type)
+        r(1:m) = params%y(:) &
+            - x(1)*exp(-x(2)*params%t(:)) &
+            - x(3)*exp(-x(4)*params%t(:)) &
+            - x(5)*exp(-x(n)*params%t(:))
+    end select
+
+    status = 0 ! success
+    
+  end subroutine lanczos_eval_r
+
+  subroutine lanczos_eval_J(status, n, m, x, J, params)
+    integer, intent(out) :: status
+    integer, intent(in) :: n
+    integer, intent(in) :: m
+    real(wp), dimension(*), intent(in) :: x
+    real(wp), dimension(*), intent(out) :: J
+    class(params_base_type), intent(inout) :: params
+    Integer :: i
+    select type(params)
+    type is(user_type)
+      if (params%fortran_jacobian) Then
+         J(    1:  m) = -exp(-x(2)*params%t(1:m))                     ! J_i1
+         J(  m+1:2*m) = params%t(1:m) * x(1) * exp(-x(2)*params%t(1:m))! J_i2
+         J(2*m+1:3*m) = -exp(-x(4)*params%t(1:m))                     ! J_i3
+         J(3*m+1:4*m) = +params%t(1:m) * x(3) * exp(-x(4)*params%t(1:m))! J_i4
+         J(4*m+1:5*m) = -exp(-x(6)*params%t(1:m))                     ! J_i5
+         J(5*m+1:6*m) = +params%t(1:m) * x(5) * exp(-x(n)*params%t(1:m))! J_i6
+      else
+        Do i = 1, m
+          J((i-1)*n+1) = -exp(-x(2)*params%t(i))
+          J((i-1)*n+2) = params%t(i)*x(1)*exp(-x(2)*params%t(i))
+          J((i-1)*n+3) = -exp(-x(4)*params%t(i))
+          J((i-1)*n+4) = params%t(i)*x(3)*exp(-x(4)*params%t(i))
+          J((i-1)*n+5) = -exp(-x(6)*params%t(i))
+          J((i-1)*n+6) = params%t(i)*x(5)*exp(-x(6)*params%t(i))
+        End Do
+      End If
+    end select
+
+    status = 0 ! Success
+  end subroutine lanczos_eval_J
+
+  subroutine lanczos_eval_HF(status, n, m, x, r, HF, params)
+      integer, intent(out) :: status
+      integer, intent(in) :: n
+      integer, intent(in) :: m
+      real(wp), dimension(*), intent(in) :: x
+      real(wp), dimension(*), intent(in) :: r
+      real(wp), dimension(*), intent(out) :: HF
+      class(params_base_type), intent(inout) :: params
+
+      HF(1:n*n) = 0.0
+      select type(params)
+      type is(user_type)
+         HF(    2) = sum( r(1:m) * params%t(1:m) * exp(-x(2)*params%t(1:m)))  ! H_21
+         HF(1*n+1) = HF(2)                                                     ! H_12
+         HF(1*n+2) = sum(-r(1:m) * (params%t(1:m)**2) * x(1) * exp(-x(2)*params%t(1:m)))! H_22
+         HF(2*n+4) = sum( r(1:m) * params%t(1:m) * exp(-x(4)*params%t(1:m)))  ! H_43
+         HF(3*n+3) = HF(2*n+4)                                                 ! H_34
+         HF(3*n+4) = sum(-r(1:m) * (params%t(1:m)**2) * x(3) * exp(-x(4)*params%t(1:m)))! H_44
+         HF(4*n+6) = sum( r(1:m) * params%t(1:m) * exp(-x(6)*params%t(1:m)))  ! H_65
+         HF(5*n+5) = HF(4*n + 6)                                                     ! H_56
+         HF(5*n+6) = sum(-r(1:m) * (params%t(1:m)**2) * x(5) * exp(-x(6)*params%t(1:m)))! H_66
+      end select
+
+      status = 0 ! Success
+    end subroutine lanczos_eval_HF
+
+    subroutine lanczos_eval_HP(status, n, m, x, y, HP, params)
+      integer, intent(out) :: status
+      integer, intent(in) :: n
+      integer, intent(in) :: m
+      real(wp), dimension(*), intent(in) :: x
+      real(wp), dimension(*), intent(in) :: y
+      real(wp), dimension(*), intent(out) :: HP
+      class(params_base_type), intent(inout) :: params
+
+      integer :: i
+      status = 0
+      HP(1:n*m) = 0.0
+      select type(params)
+      type is (user_type)
+         do i = 1, m
+            HP((i-1)*n + 1) = params%t(i) * exp(-x(2)*params%t(i)) * y(2)
+            HP((i-1)*n + 2) = params%t(i) * exp(-x(2)*params%t(i)) * y(1) - &
+                 (params%t(i)**2) * x(1) * exp(-x(2)*params%t(i)) * y(2)
+            HP((i-1)*n + 3) = params%t(i) * exp(-x(4)*params%t(i)) * y(4)
+            HP((i-1)*n + 4) = params%t(i) * exp(-x(4)*params%t(i)) * y(3) - &
+                 (params%t(i)**2) * x(3) * exp(-x(4)*params%t(i)) * y(4)
+            HP((i-1)*n + 5) = params%t(i) * exp(-x(6)*params%t(i)) * y(6)
+            HP((i-1)*n + 6) = params%t(i) * exp(-x(6)*params%t(i)) * y(5) - &
+                 (params%t(i)**2) * x(5) * exp(-x(6)*params%t(i)) * y(6)
+         end do
+      end select
+         
+      
+    end subroutine lanczos_eval_HP
+
      subroutine generate_data_example_box(params)
 
             Class ( params_base_type ), intent(out) :: params
@@ -905,6 +1020,72 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            stop "Wrong class"
          End Select
      end subroutine generate_data_example
+
+     subroutine generate_data_lanczos(params)
+       ! Load Lanczos 3 example data:
+       !  Vectors y and t from StRD
+       !  https://www.itl.nist.gov/div898/strd/nls/data/LINKS/v-lanczos3.shtml
+
+     Class ( params_base_type ), intent(out) :: params
+
+       select type(params)
+       type is(user_type)
+         params%m = 24
+         allocate(params%t(params%m), params%y(params%m))
+  ! Data from Lanczos 3
+  params%t(:) = (/ 0.00000E+00, &
+                   5.00000E-02, &
+                   1.00000E-01, &
+                   1.50000E-01, &
+                   2.00000E-01, &
+                   2.50000E-01, &
+                   3.00000E-01, &
+                   3.50000E-01, &
+                   4.00000E-01, &
+                   4.50000E-01, &
+                   5.00000E-01, &
+                   5.50000E-01, &
+                   6.00000E-01, &
+                   6.50000E-01, &
+                   7.00000E-01, &
+                   7.50000E-01, &
+                   8.00000E-01, &
+                   8.50000E-01, &
+                   9.00000E-01, &
+                   9.50000E-01, &
+                   1.00000E+00, &
+                   1.05000E+00, &
+                   1.10000E+00, &
+                   1.15000E+00 /)
+  params%y(:) = (/ 2.5134E+00, &
+                   2.0443E+00, &
+                   1.6684E+00, &
+                   1.3664E+00, &
+                   1.1232E+00, &
+                   0.9269E+00, &
+                   0.7679E+00, &
+                   0.6389E+00, &
+                   0.5338E+00, &
+                   0.4479E+00, &
+                   0.3776E+00, &
+                   0.3197E+00, &
+                   0.2720E+00, &
+                   0.2325E+00, &
+                   0.1997E+00, &
+                   0.1723E+00, &
+                   0.1493E+00, &
+                   0.1301E+00, &
+                   0.1138E+00, &
+                   0.1000E+00, &
+                   0.0883E+00, &
+                   0.0783E+00, &
+                   0.0698E+00, &
+                   0.0624E+00 /)
+         Class default
+           stop "Wrong class"
+         End Select
+     end subroutine generate_data_lanczos
+
      
      subroutine reset_default_options(options)
        type( nlls_options ), intent(inout) :: options
@@ -2860,5 +3041,206 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      
    end subroutine print_line
 
+
+
+
+
+  Subroutine covariance_matrix_tests(options, fails)
+  implicit none
+  integer, intent(out) :: fails
+  Character(Len=18), parameter :: covm_lab(0:4) = (/'None (opt=0)      ', &
+                                   'Covariance (opt=1)', &
+                                   'Variance (opt=2)  ', &
+                                   'J^T*J (opt=3)     ', &
+                                   'Invalid           '/)
+  real(wp), parameter :: tol = 5.0e-5_wp
+  real(wp), parameter :: cert_x(6) = (/ 8.6816414977E-02, 9.5498101505E-01,    &
+    8.4400777463E-01, 2.9515951832E+00, 1.5825685901E+00, 4.9863565084E+00 /)
+  real(wp), parameter :: cert_sd(6) = (/ 1.7197908859E-02, 9.7041624475E-02,   &
+    4.1488663282E-02, 1.0766312506E-01, 5.8371576281E-02, 3.4436403035E-02/)
+  real(wp), parameter :: cert_SoS = 1.6117193594E-08_wp
+! real(wp), parameter :: cert_stdev = 2.9923229172E-05_wp
+
+  type(nlls_options),intent(inout) :: options
+  type(nlls_inform) :: inform
+
+  integer :: m,n,i, status, k, jtype, opt
+  real(wp), allocatable :: x(:), j(:)
+  type(user_type) :: params
+  real(wp) :: sd, abserr, JTJ_ik
+  logical :: ok, testok
+  fails = 0
+  ! data to be fitted
+  ! m = 24
+  Call generate_data_lanczos(params)
+  m = params%m
+  ! call fitting routine
+  n = 6
+  allocate(x(n),J(n*m))
+  x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
+
+!  options%print_level = 2
+!  options%out = 6
+!  options%stop_f_absolute = 1.0e-3_wp
+!  options%exact_second_derivatives = .true.
+!  options%model = 4
+!  options%nlls_method = 3
+!  options%use_ews_subproblem = .true.
+!  options%type_of_method = 2
+!  options%regularization_term = 1.0e-2
+!  options%regularization_power = 2.0
+!  options%reg_order = -1.0
+!  options%inner_method = 2
+!  options%maxit = 100
+
+  Do jtype = 1, 2
+    options%fortran_jacobian = merge(.True., .False., jtype==1)
+    params%fortran_jacobian = options%fortran_jacobian
+  
+    Do opt = 0, 4
+      options%save_covm = opt
+      testok = .True.
+
+      call nlls_solve(n,m,x, lanczos_eval_r, lanczos_eval_J, lanczos_eval_HF,      &
+        params, options, inform, eval_HP=eval_HP)
+      if(inform%status.ne.0) then
+         print *, "ral_nlls() returned with error flag ", inform%status
+         stop
+      endif
+      abserr = abs(cert_SoS - 2.0_wp * inform%obj)
+      ok = abserr < tol
+      if (.not. ok) then
+        Write(*,Fmt=20000) "Idx", "SoS", "Cert val", "Abs Error", "Ok?"
+        Write(*, Fmt=10000) 0, 2.0_wp*inform%obj, cert_SoS, abserr, &
+          merge('PASSED', 'FAILED', ok)
+      end if
+
+      Do i = 1, n
+        abserr = abs(x(i) - cert_x(i))
+        ok = abserr <= tol
+        testok = testok .And. ok
+        if (.Not. Ok) Then
+          Write(*,Fmt=20000) "Idx", "Variable X", "Cert val", "Abs Error", "Ok?"
+          Write(*, Fmt=10000) i, x(i), cert_x(i), abserr, merge('PASSED', 'FAILED', ok)
+        end if
+      End Do
+
+      Select Case (options%save_covm)
+      Case (0)
+        testok = testok .And. .Not. ( Allocated(inform%cov) .Or. Allocated(inform%var) )
+      Case (1)
+        If (allocated(inform%cov)) Then
+          Do i = 1, n
+            sd = sqrt(abs(inform%cov(i,i)))
+            abserr = abs(sd-cert_sd(i))
+            ok = abserr <= tol
+            testok = testok .And. ok
+            if (.Not. Ok) then
+              print *, "Variance (from covariance) on the parameters are:"
+              Write(*,Fmt=20000) "Idx", "Std Dev", "Cert Std Dev", "Abs Error", "Ok?"
+              Write(*, Fmt=10000) i, sd, cert_sd(i), abserr, merge('PASSED', 'FAILED', ok) 
+            end if
+          End Do
+          ! Make sure inform%var is not allocated
+          ok = .Not. Allocated(inform%var)
+          testok = testok .And. ok
+        else
+          testok = .False.
+        End If
+      Case (2)
+        If (allocated(inform%var)) Then
+          Do i = 1, n
+            sd = sqrt(abs(inform%var(i)))
+            abserr = abs(sd-cert_sd(i))
+            ok = abserr <= tol
+            testok = testok .And. ok
+            if (.Not. Ok) then
+              print *, "Variance (from inform%var) on the parameters are:"
+              Write(*,Fmt=20000) "Idx", "Std Dev", "Cert Std Dev", "Abs Error", "Ok?"
+              Write(*, Fmt=10000) i, sd, cert_sd(i), abserr, merge('PASSED', 'FAILED', ok) 
+            end if
+          End Do
+          ! Make sure inform%cov is not allocated
+          ok = .Not. Allocated(inform%cov)
+          testok = testok .And. ok
+        else
+          testok = .False.
+        End If
+      Case (3)
+        status = 0
+        Call lanczos_eval_J(status, n, m, x, J, params)
+        if (status /= 0) then
+          stop "ERROR: Jacobian could not be evaluated!"
+        end if
+        abserr = 0.0_wp
+        if (options%fortran_jacobian) then
+          ! Need to calculate H = Transpose(J) * J
+          Do i = 1, n
+            Do k = 1, n ! either k = 1:n or k = i:n (check only simmetric part?)
+                        ! = dot column-i with column-k
+              JTJ_ik = dot_product(J( (i-1)*m+1 : i*m ), J( (k-1)*m+1 : k*m ) )
+              abserr =  max (abserr, abs (JTJ_ik - inform%cov(i,k)))
+            End Do
+          End Do
+          ok = abserr <= tol
+          if (.Not. Ok) then
+            print *, 'comparing J^T*J matrix with stored version in inform%cov:'
+            Write(*,Fmt=20000) "Idx", "JT*J", "i%cov", "Max Abs Error", "Ok?"
+            Write(*, Fmt=30000) '---', '---', '---', abserr, merge('PASSED', 'FAILED', ok)
+          end if
+          testok = testok .And. ok
+        else
+          ! Need to calculate H = J * Transpose(J)
+          Do i = 1, n 
+            Do k = 1, n
+              JTJ_ik = dot_product( J(i:m*n:n), J(k:m*n:n) )
+              abserr =  max (abserr, abs (JTJ_ik - inform%cov(i,k)))
+            End Do
+          End Do
+          ok = abserr <= tol
+          if (.Not. Ok) then
+            print *, 'comparing J^T*J matrix with stored version in inform%cov:'
+            Write(*,Fmt=20000) "Idx", "JT*J", "i%cov", "Max Abs Error", "Ok?"
+            Write(*, Fmt=30000) '---','---','---',abserr, merge('PASSED', 'FAILED', ok)
+          end if
+          testok = testok .And. ok
+        end if
+        ! Make sure inform%var is not allocated
+        ok = .Not. Allocated(inform%var)
+        testok = testok .And. ok
+      Case Default
+        testok = testok .And. .Not. ( Allocated(inform%cov) .Or. Allocated(inform%var) )
+      End Select
+
+      if (.Not. testok) then
+        Write(*, Fmt='(A,/,10X,A,I1,/,10X,A,A)') ' *** Config for previous error(s):',  &
+          'opt%save_covm        = ', options%save_covm,                                 &
+          'opt%fortran_jacobian = ', merge('T','F',options%fortran_jacobian)
+      end if
+
+      fails = fails + merge(0, 1, testok)
+
+    end do
+  end do
+
+  ! Free memory
+  if (allocated(x)) then
+    deallocate(x)
+  end if
+  if (allocated(j)) then
+    deallocate(j)
+  end if
+  if (allocated(inform%cov)) then
+    deallocate(inform%cov)
+  end if
+  if (allocated(inform%var)) then
+    deallocate(inform%var)
+  end if
+
+30000 Format (1X,A3,2(3X,A17),1(3X,Es17.10e2),1X,A6)
+20000 Format (1X,A3,3(3X,A17),1X,A6)
+10000 Format (1X,I3,3(3X,Es17.10e2),1X,A6)
+10001 Format (1X,A,1X,A6)
+end subroutine covariance_matrix_tests
    
  end module example_module

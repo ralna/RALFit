@@ -1173,6 +1173,8 @@ program nlls_test
      call error_message_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
+     call covariance_matrix_tests(options,fails)
+     no_errors_helpers = no_errors_helpers + fails
 
      ! Report back results....
 

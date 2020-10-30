@@ -487,6 +487,10 @@ module ral_nlls_workspaces
      Integer :: f_eval_pg = 0
      Integer :: g_eval_pg = 0
 
+! COVARIANCE MATRIX (VARIANCE vector or J^T*J)
+     real(wp), allocatable :: cov(:,:)
+     real(wp), allocatable :: var(:)
+
   END TYPE nlls_inform
 
   type, public :: params_base_type
