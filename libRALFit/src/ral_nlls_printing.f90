@@ -96,6 +96,9 @@
       Write (adj,Fmt=99999) 'nlls_method'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%nlls_method
+      Write (adj,Fmt=99999) 'allow_fallback_method'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99996) adjustl(adj), options%allow_fallback_method
       Write (adj,Fmt=99999) 'lls_solver'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%lls_solver
@@ -114,9 +117,6 @@
       Write (adj,Fmt=99999) 'stop_s'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99998) adjustl(adj), options%stop_s
-      Write (adj,Fmt=99999) 'allow_fallback_method'
-      nrec = nrec + 1
-      Write (rec(nrec),Fmt=99996) adjustl(adj), options%allow_fallback_method
       Write (adj,Fmt=99999) 'relative_tr_radius'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%relative_tr_radius
@@ -242,7 +242,7 @@
       Write (adj,Fmt=99999) 'box_nfref_max'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_nfref_max
-      Write (adj,Fmt=99999) 'box_ntrfail'
+      Write (adj,Fmt=99999) 'box_gamma'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99998) adjustl(adj), options%box_gamma
       Write (adj,Fmt=99999) 'box_decmin'
@@ -302,6 +302,9 @@
       Write (adj,Fmt=99999) 'box_linesearch_type'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%box_linesearch_type
+      Write (adj,Fmt=99999) 'save_covm'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%save_covm
 
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99994)
