@@ -147,3 +147,14 @@
 
 .. |output_progress_vectors| replace:: if true, outputs the progress vectors ``nlls_inform%resvec`` and ``nlls_inform%gradvec`` at the end of the routine.
 
+.. |save_covm| replace:: Determines whether to return information about the covariance matrix in ``nlls_informm``.  Options are:
+
+.. !+----+------------------------------------------------------------------------+
+.. !|  0 | Do not return covariance matrix (default)                              |
+.. !+----+------------------------------------------------------------------------+
+.. !|  1 | Returns C = inv(sigma*J^T J) in ``nlls_inform%cov``                    |
+.. !+----+------------------------------------------------------------------------+
+.. !|  2 | Returns the diagonal of C in ``nlls_inform%var``                       |
+.. !+----+------------------------------------------------------------------------+
+.. !|  3 | Returns J^T J in ``nlls_inform%cov``                                   |
+.. !+----+------------------------------------------------------------------------+
