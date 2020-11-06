@@ -368,7 +368,7 @@ module ral_nlls_workspaces
      Integer       :: box_linesearch_type = 1
 !       Save covariance matrix type
 !         0: None
-!         1: C = inv(sigma * J^T J)
+!         1: C = sigma^2 * inv(J^T J)
 !         2: only diagonal of C
 !         3: only J^T J
      Integer       :: save_covm = 0
