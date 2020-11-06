@@ -2,7 +2,7 @@ Module NAG_EXPORT_MOD
       Use ral_nlls_workspaces, Only: wp
       Implicit None
       Private
-      Public :: e04rlln, e04rlpn
+      Public :: e04rlln, e04rlpn, calculate_covm
 
       Integer, Parameter :: nps_ils_alpnorig = 1
       Integer, Parameter :: nps_ils_alporig = 2
@@ -33,6 +33,7 @@ Module NAG_EXPORT_MOD
       Integer, Parameter :: nps_rls_pi0 = 14
       Integer, Parameter, Public :: nps_rls_len = 15
 
+      Real (Kind=wp), Parameter :: x02ajfn_nag = epsilon(1.0E0_wp)/2.0_wp
     Contains
 
     Subroutine e04rlpn(f0,pi0,dirnrm,alpn,maxalp,eta,mu1,mu2,maxit,ils,rls,    &
@@ -149,7 +150,7 @@ Module NAG_EXPORT_MOD
 !     If 'flat evaluation' is expected, reduce number of LS iterations
 !     and let LS now - it can either accept the step based on gradient
 !     changes or perform extrapolation or something.
-      epsmach = 1.0e-15_wp
+      epsmach = x02ajfn_nag
       If (abs(pi0)<=1E+3_wp*epsmach*abs(f0)) Then
         ils(nps_ils_wrnflat) = 1
         ils(nps_ils_maxit) = min(maxit,max(5,maxit/4))
@@ -158,7 +159,7 @@ Module NAG_EXPORT_MOD
       Return
     End Subroutine e04rlpn
     
-        Subroutine e04rlln(armijo,evalok,alpn,falp,ils,rls,iflag)
+    Subroutine e04rlln(armijo,evalok,alpn,falp,ils,rls,iflag)
 !     NAG COPYRIGHT 2015.
 
 !     > ls_test_simple/e04rlln - main line search procedure for either simple
@@ -236,7 +237,7 @@ Module NAG_EXPORT_MOD
       ils(nps_ils_alporig) = ils(nps_ils_alpnorig)
 
 !     almost not distinquishable function value from f0?
-      epsmach = 1.0e-15_wp
+      epsmach = x02ajfn_nag
       evalflat = abs(falp-rls(nps_rls_f0)) <= 10.0_wp*epsmach*(abs(falp)+abs(  &
         rls(nps_rls_f0)))
       If (evalflat) Then
@@ -299,5 +300,134 @@ Module NAG_EXPORT_MOD
 100   Continue
       Return
     End Subroutine e04rlln
+
+    Subroutine calculate_covm(m,n,j,inform,options,iflag)
+!     Build Covariance Matrix
+
+!     Returns one of the following elements:
+!     iflag       Return
+!       0         do nothing
+!       1         covariance matrix: COV = sigma2 * (J^T J)^-1
+!       2         diagonal elements of COV matrix
+!       3         product COV = J^T J
+
+!     Notes:
+!      * On error cov is not allocated
+
+!     NAG COPYRIGHT 2020.
+!     .. Use Statements ..
+      Use ral_nlls_workspaces, Only: nlls_options, nlls_inform
+!     .. Implicit None Statement ..
+      Implicit None
+!     .. Scalar Arguments ..
+      Type (nlls_options), Intent (In) :: options
+      Integer, Intent (In)             :: iflag
+      Integer, Intent (In)             :: m, n
+!     .. Array Arguments ..
+      Type (nlls_inform), Intent (Inout) :: inform
+      Real (Kind=wp), Intent (In)      :: j(*)
+!     .. Local Scalars ..
+      Real (Kind=wp)                   :: sigma2
+      Integer                          :: ierr, irank, i, ld
+      Character (1)                    :: transa, transb
+!     .. Intrinsic Procedures ..
+      Intrinsic                        :: allocated, merge, real
+!     real(wp) :: dlange
+      External dgemm, dpotrf, dpotri
+!     .. Executable Statements ..
+
+      Continue
+
+      If (iflag<=0 .Or. inform%obj<=0.0_wp .Or. iflag>3) Then
+!       Wrong param inputs, signal cov matrix is not available
+!       LCOV_EXCL_START
+        If (allocated(inform%cov)) Then
+          Deallocate(inform%cov, stat=ierr)
+        End If
+        Go To 100
+!       LCOV_EXCL_STOP
+      End If
+
+      Allocate(inform%cov(n, n), stat=ierr)
+      If (ierr/=0) Then
+!       LCOV_EXCL_START
+        Go To 100
+!       LCOV_EXCL_STOP
+      End If
+
+!     inform%cov(:,:) = 0.0_wp
+      If (options%fortran_jacobian) Then
+        transa = 'T'
+        transb = 'N'
+        ld = m
+      Else
+        transa = 'N'
+        transb = 'T'
+        ld = n
+      End if
+
+!     Build cov = J^T J
+      Call dgemm(transa, transb, n, n, m, 1.0_wp, j, ld, j, ld, 0.0_wp, inform%cov, n)
+      If (iflag==3) Then
+!       Return  only cov = H = J^T J
+        Go To 100
+      End If
+
+!     Invert J^T J using LAPACK
+      Call dpotrf('u', n, inform%cov, n, ierr)
+      if (ierr /= 0) Then
+!       Cholesky factorization failed
+        Deallocate(inform%cov, stat=ierr)
+        Go To 100
+      End If
+
+      Call dpotri('u', n, inform%cov, n, ierr)
+      if (ierr /= 0) Then
+!       Inverse of Cholesky factor failed
+        Deallocate(inform%cov, stat=ierr)
+        Go To 100
+      End If
+
+!     If Cholesky does not breakdown, then
+      irank = n
+      If (irank < m) Then
+        sigma2 = 2.0_wp*inform%obj/real(m-irank,kind=wp)
+!       multiply by sigma^2 = 2*obj / (m-k)
+        inform%cov(:,:) = sigma2*inform%cov(:,:)
+      Else
+!       covariance not available for underdetermined system
+        Deallocate(inform%cov, stat=ierr)
+        Go To 100
+      End If
+
+      If (iflag==2) Then
+        If (Allocated(inform%var)) Then
+          Deallocate(inform%var, stat=ierr)
+          If (ierr/=0) Then
+!           LCOV_EXCL_START
+!           Allocation error
+            Deallocate(inform%cov, stat=ierr)
+            Go To 100
+!           LCOV_EXCL_STOP
+          End If
+        End If
+        Allocate(inform%var(n), stat=ierr)
+        If (ierr/=0) Then
+!         LCOV_EXCL_START
+!         Allocation error
+          Deallocate(inform%cov, stat=ierr)
+          Go To 100
+!         LCOV_EXCL_STOP
+        End If
+!       Copy only diagonal elements
+        Do i = 1, n
+          inform%var(i) = inform%cov(i,i)
+        End Do 
+        Deallocate(inform%cov, stat=ierr)
+      End If
+
+100   Continue
+
+    End Subroutine calculate_covm
 
 End Module NAG_EXPORT_MOD

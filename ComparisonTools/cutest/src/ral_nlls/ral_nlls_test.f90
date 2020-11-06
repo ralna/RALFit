@@ -368,6 +368,13 @@ module ral_nlls_workspaces
      Integer       :: box_ls_step_maxit = 20
 !    LS type: 1 => Dennis-Schnabel; 2 => Hager-Zhang
      Integer       :: box_linesearch_type = 1
+!       Save covariance matrix type
+!         0: None
+!         1: C = inv(sigma * J^T J)
+!         2: only diagonal of C
+!         3: only J^T J
+     Integer       :: save_covm = 0
+
   END TYPE nlls_options
 
 !  - - - - - - - - - - - - - - - - - - - - - - -
@@ -481,6 +488,9 @@ module ral_nlls_workspaces
      Integer :: f_eval_pg = 0
      Integer :: g_eval_pg = 0
 
+! COVARIANCE MATRIX (VARIANCE vector or J^T*J)
+     real(wp), allocatable :: cov(:,:)
+     real(wp), allocatable :: var(:)
      
   END TYPE nlls_inform
 

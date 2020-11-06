@@ -1,0 +1,14 @@
+.. list-table::
+   :widths: 1 5
+   
+   * - 0
+     - Do not return covariance matrix. (default)
+     
+   * - 1
+     - Returns :math:`C = \sigma^2 (J^T J)^{-1}` in ``nlls_inform%cov``, where :math:`\sigma^2` is the estimated variance of the residual at the solution.
+     
+   * - 2
+     - Returns the diagonal of :math:`C` in ``nlls_inform%var``.
+     
+   * - 3
+     - Returns :math:`J^T J` in ``nlls_inform%cov``.

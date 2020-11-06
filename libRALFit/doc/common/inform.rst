@@ -37,3 +37,7 @@
 .. |external_name| replace:: holds the name of the external code that flagged an error.
 
 .. |step| replace:: holds the size of the last step taken.
+
+.. |cov| replace:: On exit, optionally contains information about the covariance matrix, as requested by ``nlls_options%save_covm``.
+
+.. |var| replace::  On exit, optionally contains information about the diagonal of the covariance matrix, as requested by ``nlls_options%save_covm``.

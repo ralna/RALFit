@@ -147,3 +147,5 @@
 
 .. |output_progress_vectors| replace:: if true, outputs the progress vectors ``nlls_inform%resvec`` and ``nlls_inform%gradvec`` at the end of the routine.
 
+.. |save_covm| replace:: Determines whether to return information about the covariance matrix in ``nlls_informm``.  Options are:
+

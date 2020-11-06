@@ -471,6 +471,10 @@ The derived data type for holding options
    **Other options**
 					     
    :f logical output_progress_vectors [default=false]: |output_progress_vectors|
+
+   :f integer save_covm [default=0]: |save_covm|
+				     
+				     .. include:: ../common/options_save_covm.txt
    
    **Internal options to help solving a regularized problem implicitly**
 
@@ -532,6 +536,10 @@ The derived data type for holding information
    :f character external_name(80): |external_name|
 
    :f real step: |step|
+
+   :f real cov: |cov|
+
+   :f real var: |var|
    
 
 The workspace derived data type
