@@ -1789,7 +1789,7 @@ lp: do while (.not. success)
      select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws) ! <--- TODO how does it know if J is transposed ???
+        call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws,options%Fortran_Jacobian)
         if ( inform%status /= 0 ) goto 100
      case default
         inform%status = NLLS_ERROR_DOGLEG_MODEL
@@ -2908,8 +2908,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      End If
    end subroutine regularization_solver
 
-   SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
-   ! TODO JACOBIAN: this routine needs to know the leading dim of J !!!
+   SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w,Fortran_Jacobian)
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
 !  -----------------------------------------------------------------
@@ -2920,10 +2919,11 @@ lp:  do i = 1, options%more_sorensen_maxits
        INTEGER, INTENT(IN) :: n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
        type(NLLS_inform), INTENT(INOUT) :: inform
+       logical, Intent(In) :: Fortran_Jacobian
 
        character(1), Parameter :: trans = 'N'
        integer, Parameter :: nrhs = 1
-       integer :: lwork, lda, ldb
+       integer :: lwork, lda, ldb, i, k
        type( solve_LLS_work ), Intent(inout) :: w
 
        If (.not. w%allocated) Then
@@ -2936,7 +2936,14 @@ lp:  do i = 1, options%more_sorensen_maxits
        w%temp(1:m) = f(1:m)
        lwork = size(w%work)
 
-       w%Jlls(:) = J(:)
+       If (Fortran_Jacobian) Then
+         w%Jlls(:) = J(:)
+       Else
+         ! transpose and store into Jlls
+         Do i = 1, m
+           w%Jlls( (/(k, k = i, m*n, m)/) ) = J( (i-1)*n + 1 : i*n )
+         End Do
+       End If
 
        call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
             inform%external_return)
@@ -3947,7 +3954,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        md = 0.0_wp
 
        if (.not. w%tparams%eval_hp_provided) then
-          ! let's get all the Hi's...
+          ! let's get all the Hi's... and temporarily make use of tparams%f...
           w%tparams%f(:) = 0.0_wp
           do i = 1, m
              ! get_Hi expects ei=w%tparams%f to be a zero-filled vector
@@ -3960,7 +3967,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        end if
 
        ! save to params
-       w%tparams%f(1:m) = f(1:m) ! TODO why is this being overwritten from the previous call to get_Hi???
+       w%tparams%f(1:m) = f(1:m)
        w%tparams%Delta = Delta
        w%tparams%J(1:n*m) = J(1:n*m)
        w%tparams%X(1:n) = X(1:n)
@@ -4141,7 +4148,7 @@ lp:    do i = 1, w%tensor_options%maxit
      end subroutine calculate_sHs
 
      Recursive subroutine evaltensor_J(status, n, m, s, J, params)
-       ! FIXME Add test for this routine (checks for 
+       ! TODO Add tests for this routine: check for 
        ! * params%extra = 0, 1, 2
        ! * params%Fortran_Jacobian = T, F
        Implicit None

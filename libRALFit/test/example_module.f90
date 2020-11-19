@@ -1934,12 +1934,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call setup_workspaces(work,n,m,options,status) 
 
      allocate(J(n*m), f(m), d(n), Jd(m))
-     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, & 
+     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
            6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
      f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
 
      call solve_LLS(J,f,n,m,d,status, & 
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if ( status%status .ne. 0 ) then 
         write(*,*) 'solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -1954,6 +1954,36 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) '||Jd - f|| = ', normerror
         fails = fails + 1
      end if
+
+!    J = [ 1.0_wp,  6.0_wp,
+!          2.0_wp,  7.0_wp,
+!          3.0_wp,  8.0_wp,
+!          4.0_wp,  9.0_wp,
+!          5.0_wp, 10.0_wp ]
+!    Jacobian Transpose:
+     J = [ 1.0_wp, 6.0_wp, 2.0_wp, 7.0_wp, 3.0_wp, &
+           8.0_wp, 4.0_wp, 9.0_wp, 5.0_wp, 10.0_wp ]
+     f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
+
+     call solve_LLS(J,f,n,m,d,status, &
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.False.)
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'solve_LLS test failed: wrong error message returned'
+        write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
+        fails = fails + 1
+     end if
+     ! check answer using J and not JT!!!
+     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
+           6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
+     call mult_J(J,n,m,d,Jd,.True.)
+     normerror = norm2(Jd + f)
+     if ( normerror > 1.0e-12_wp ) then
+        ! wrong answer, as data chosen to fit
+        write(*,*) 'solve_LLS transpose test failed: wrong solution returned'
+        write(*,*) '||J^Td - f|| = ', normerror
+        fails = fails + 1
+     end if
+
      
      n = 100 
      m = 20
@@ -1965,7 +1995,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      J = 1.0_wp
      f = 1.0_wp
      call solve_LLS(J,f,n,m,d,status, & 
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then 
         write(*,*) 'solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -1976,7 +2006,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call nlls_finalize(work, options, status)
      
      call solve_LLS(J,f,n,m,d,status, & 
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
