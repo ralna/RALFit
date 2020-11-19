@@ -1015,8 +1015,8 @@ lp: do while (.not. success)
 !   ! Description of columns                                               !
 !   ! * Iter:  current iteration counter valuei                            !
 !   ! * error: objective value (F)                                         !
-!   ! * grad:  norm-two of gradient (JF)                                   !
-!   ! * rel grad: relative gradient norm-two (F/JF)                        !
+!   ! * optim:  norm-two of gradient (JF)                                  !
+!   ! * rel optim: relative gradient norm-two (F/JF)                       !
 !   ! * Delta: TR radius                                                   !
 !   ! * rho: quantity: actual_reduction / predicted_reduction              !
 !   ! * S2IF: flags:                                                       !
@@ -1032,6 +1032,9 @@ lp: do while (.not. success)
 !   !       indicate information is not available.                         !
 !   ! * inn it: inner iteration cummulative counter                        !
 !   ! * step: size of last step                                            !
+!   ! * loop: trust region loop exit status                                !
+!   ! * LS: iteration counter for linesearch algorithms                    !
+!   ! * tau: the projection factor over the constraints |P(X+d)-X| / |d|   !
 !   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
     prncnt = inform%inner_iter + w%iter
     If ( options%model == 4 ) then
