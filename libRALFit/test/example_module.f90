@@ -1946,7 +1946,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
      ! check answer
-     call mult_J(J,n,m,d,Jd)
+     call mult_J(J,n,m,d,Jd,.True.)
      normerror = norm2(Jd + f)
      if ( normerror > 1.0e-12_wp ) then
         ! wrong answer, as data chosen to fit
@@ -2258,7 +2258,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
-     call mult_J(J,m,n,x,Jx)
+     call mult_J(J,m,n,x,Jx,.True.)
      if ( norm2( Jx - [16.0, 20.0 ] ) > 1e-12) then
         write(*,*) 'error :: mult_J test failed'
         fails = fails + 1
@@ -2286,7 +2286,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
-     call mult_Jt(J,n,m,x,Jtx)
+     call mult_Jt(J,n,m,x,Jtx,.True.)
      if ( norm2( Jtx - [10.0, 26.0 ] ) > 1e-12) then
         write(*,*) 'error :: mult_Jt test failed'
         fails = fails + 1

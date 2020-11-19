@@ -537,6 +537,7 @@ module ral_nlls_workspaces
      procedure( eval_hp_type ), pointer, nopass :: eval_HP
      logical :: eval_hp_provided = .false.
      class( params_base_type ), pointer :: parent_params
+     logical :: Fortran_Jacobian
      type( tenJ_type ), pointer :: tenJ
   end type tensor_params_type
 
