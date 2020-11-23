@@ -122,10 +122,12 @@ program nlls_test
               ! check that the results are consistent with
               ! both c and fortran jacobians
               if ( c_status%iter == status%iter ) then
-                 if (norm2(c_status%resvec(1:c_status%iter+1) - &
-                      status%resvec(1:status%iter+1)) > 1e-16) then
+                 resvec_error = norm2(c_status%resvec(1:c_status%iter+1) - &
+                      status%resvec(1:status%iter+1))
+                 if (resvec_error > 1e-10) then
                     write(*,*) 'error: fortran and c jacobians'
                     write(*,*) 'have different resvecs'
+                    write(*,*) '||r_f - r_c|| = ', resvec_error
                     no_errors_main = no_errors_main + 1
                  end if
               else
