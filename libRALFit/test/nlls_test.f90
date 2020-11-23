@@ -9,7 +9,7 @@ program nlls_test
   implicit none
 
 
-  type( NLLS_inform )  :: status
+  type( NLLS_inform )  :: status, c_status
   type( NLLS_options ) :: options
   type( user_type ), target :: params
 !  type( user_box_type ), target :: params_box
@@ -70,6 +70,7 @@ program nlls_test
               options%tr_update_strategy = tr_update
               options%model = model_to_test(model)
               options%exact_second_derivatives = .true.
+              options%output_progress_vectors = .true.
               
               call print_line(options%out)
               write(options%out,*) "tr_update_strategy = ", options%tr_update_strategy
@@ -77,6 +78,7 @@ program nlls_test
               write(options%out,*) "model              = ", options%model
               call print_line(options%out)
 
+              options%fortran_jacobian = .true.
               call solve_basic(X,params,options,status)
               if ( options%model == 0 ) then
                  if ( status%status .ne. -3 ) then
@@ -95,6 +97,43 @@ program nlls_test
                  write(*,*) 'scale? ', options%scale
                  no_errors_main = no_errors_main + 1
               end if
+
+              ! run the same test with a c jacobian
+              options%fortran_jacobian = .false.
+              call solve_basic_c(X,params,options,c_status)
+              if ( options%model == 0 ) then
+                 if ( c_status%status .ne. -3 ) then
+                    write(*,*) 'incorrect error return from nlls_solve:'
+                    write(*,*) 'NLLS_METHOD = ', nlls_method
+                    write(*,*) 'MODEL = ', options%model
+                    no_errors_main = no_errors_main + 1
+                 end if
+              else if ( c_status%status .ne. 0 ) then
+                 write(*,*) 'nlls_solve failed to converge:'
+                 write(*,*) c_status%error_message
+                 write(*,*) 'NLLS_METHOD = ', nlls_method
+                 write(*,*) 'MODEL = ', options%model
+                 write(*,*) 'TR_UPDATE = ', tr_update
+                 write(*,*) 'info%status = ', c_status%status
+                 write(*,*) 'scale? ', options%scale
+                 no_errors_main = no_errors_main + 1
+              end if
+
+              ! check that the results are consistent with
+              ! both c and fortran jacobians
+              if ( c_status%iter == status%iter ) then
+                 if (norm2(c_status%resvec(1:c_status%iter+1) - &
+                      status%resvec(1:status%iter+1)) > 1e-16) then
+                    write(*,*) 'error: fortran and c jacobians'
+                    write(*,*) 'have different resvecs'
+                    no_errors_main = no_errors_main + 1
+                 end if
+              else
+                 write(*,*) 'error: fortran and c jacobians'
+                 write(*,*) 'took different numbers of iterations'
+                 no_errors_main = no_errors_main + 1
+              end if
+              
            end do
         end do
      end do

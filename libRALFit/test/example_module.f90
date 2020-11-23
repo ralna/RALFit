@@ -1202,7 +1202,39 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            lower_bounds=blx, upper_bounds=bux )
       
      end subroutine solve_basic
+     
+     subroutine solve_basic_c(X,params,options,inform,warm_start,blx,bux)
+       
+       real(wp), intent(inout) :: X(:)
+       !      type( user_type ), intent(inout) :: params
+       Class ( params_base_type ), intent(inout) :: params
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(inout) :: inform
+       Logical, Optional, Intent(In) :: warm_start
+       real(wp), intent(inout),optional :: blx(:), bux(:)
 
+       integer :: n, m
+       
+       n = 2 
+       m = 67
+       
+       If (present(warm_start)) Then
+         If(.Not. warm_start) Then
+           X(1) = 1.0
+           X(2) = 2.0
+         End If
+       Else
+         X(1) = 1.0
+         X(2) = 2.0
+      End if
+      call nlls_solve(n, m, X,                         &
+           eval_F, eval_J_c, eval_H, params,  &
+           options, inform,                 &
+           lower_bounds=blx, upper_bounds=bux )
+      
+    end subroutine solve_basic_c
+
+     
      subroutine dogleg_tests(options,fails)
        
        type( nlls_options ), intent(inout) :: options       
