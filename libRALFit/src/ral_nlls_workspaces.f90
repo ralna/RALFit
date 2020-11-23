@@ -1312,6 +1312,9 @@ contains
     end if
 
     w%allocated = .true.
+    ! zero-out y_hardcase
+    w%y_hardcase(:,:) = 0.0_wp
+
 
 100 continue
 
