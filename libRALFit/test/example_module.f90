@@ -3304,5 +3304,116 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 10000 Format (1X,I3,3(3X,Es17.10e2),1X,A6)
 10001 Format (1X,A,1X,A6)
 end subroutine covariance_matrix_tests
-   
+
+subroutine evaltensor_tests(options, fails)
+  implicit none
+  type( nlls_options ), intent(inout) :: options
+  integer, intent(out) :: fails
+
+  type(nlls_inform) :: inform
+  integer :: status, status_f, status_c, n, m, iloop, jloop
+  real(wp), allocatable :: s(:)
+  real(wp), allocatable :: J(:), J_c(:), f(:), f_c(:)
+  real(wp) :: norm_J_diff, norm_f_diff
+  type(user_type), target :: params
+  type( nlls_workspace), target :: work 
+  type( nlls_workspace ), Target :: iw
+!  Type( tenJ_type ), pointer :: tenJ
+
+  fails = 0
+!      Link the inner_workspace to the main workspace
+  work%iw_ptr => iw
+!      Self reference for inner workspace so recursive call does not fail
+  iw%iw_ptr => iw
+  
+  n = 2
+  m = 67
+
+  options%model = 4
+  call setup_workspaces(work,n,m,options,inform)
+  
+  allocate(J(n*m),J_c(n*m),s(m),f(m),f_c(m))
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%X(1:n) = 1.0_wp
+
+  call generate_data_example(params)
+
+  call eval_f(status, n, m, &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams%X(1:n), &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams%f(1:m), params)
+
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%Delta = 10.0_wp
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HF => eval_H
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%parent_params => params
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%tenJ => work%tenJ
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .false.
+  
+  ! check the fortran jacobian
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%Fortran_Jacobian = .true.
+  call eval_J ( status_f, n, m, &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams%X(1:n), &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams%J(1:n*m), &
+       params) 
+  if (status_f .ne. 0) then
+     write(*,*) 'eval_j failed'
+     fails = fails + 1
+  end if
+  call evaltensor_f(status, n, m, s, f, &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams)
+  if (status .ne. 0) then
+     write(*,*) 'evaltensor_J call (fortran) failed'
+     fails = fails + 1
+  end if
+  call evaltensor_J(status, n, m, s, J, &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams)
+  if (status .ne. 0) then
+     write(*,*) 'evaltensor_J call (fortran) failed'
+     fails = fails + 1
+  end if
+  
+  ! check the c jacobian
+  work%calculate_step_ws%solve_newton_tensor_ws%tparams%Fortran_Jacobian = .false.
+  call eval_J_c ( status_c, n, m, &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams%X(1:n), &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams%J(1:n*m), &
+       params) 
+  if (status_c .ne. 0) then
+     write(*,*) 'eval_j_c failed'
+     fails = fails + 1
+  end if
+  call evaltensor_f(status, n, m, s, f_c, &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams)
+  if (status .ne. 0) then
+     write(*,*) 'evaltensor_J call (fortran) failed'
+     fails = fails + 1
+  end if
+  
+  norm_J_diff = norm2(f - f_c)
+  if (norm_f_diff > 1e-10) then
+     write(*,*) 'C and Fortran function evaluations are different'
+     write(*,*) 'the difference is ', norm_f_diff
+     fails= fails+1
+  end if
+
+  call evaltensor_J(status, n, m, s, J_c, &
+       work%calculate_step_ws%solve_newton_tensor_ws%tparams)
+  if (status .ne. 0) then
+     write(*,*) 'evaltensor_J call (c) failed'
+     fails = fails + 1
+  end if
+
+  do iloop  = 1, m
+     do jloop  = 1, n
+        norm_J_diff = norm_J_diff + (J_c((iloop-1)*n +jloop)-J((jloop-1)*m+iloop))**2
+     end do
+  end do
+  norm_J_diff = sqrt(norm_J_diff)
+  if (norm_J_diff > 1e-10) then
+     write(*,*) 'C and Fortran Jacobians are different'
+     write(*,*) 'the difference is ', norm_J_diff
+     fails= fails+1
+  end if
+ 
+  
+end subroutine evaltensor_tests
+
  end module example_module

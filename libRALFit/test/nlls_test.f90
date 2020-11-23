@@ -1217,6 +1217,9 @@ program nlls_test
      call covariance_matrix_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
+     call evaltensor_tests(options,fails)
+     no_errors_helpers = no_errors_helpers + fails
+
      ! Report back results....
 
      if (no_errors_helpers == 0) then
