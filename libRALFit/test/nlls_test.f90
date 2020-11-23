@@ -124,7 +124,7 @@ program nlls_test
               if ( c_status%iter == status%iter ) then
                  resvec_error = norm2(c_status%resvec(1:c_status%iter+1) - &
                       status%resvec(1:status%iter+1))
-                 if (resvec_error > 1e-10) then
+                 if (resvec_error > 1e-8) then
                     write(*,*) 'error: fortran and c jacobians'
                     write(*,*) 'have different resvecs'
                     write(*,*) '||r_f - r_c|| = ', resvec_error
