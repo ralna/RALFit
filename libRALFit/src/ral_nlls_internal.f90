@@ -4214,17 +4214,6 @@ lp:    do i = 1, w%tensor_options%maxit
             end if
           end if
 
-!         print *, 'JT = '
-!         if (params%Fortran_Jacobian) then
-!           Do jj = 1, n
-!             Write( *, '(*(F12.7,2X))') J( (jj-1)*m + 1 : jj*m )
-!           End Do
-!         else
-!           Do jj = 1, n
-!             Write( *, '(*(F12.7,2X))') J( (/ (kk, kk=jj,m*n,n) /) )
-!           End Do
-!         End if
-
        end select
      end subroutine evaltensor_J
 
