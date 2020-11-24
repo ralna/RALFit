@@ -4151,9 +4151,7 @@ lp:    do i = 1, w%tensor_options%maxit
      end subroutine calculate_sHs
 
      Recursive subroutine evaltensor_J(status, n, m, s, J, params)
-       ! TODO Add tests for this routine: check for 
-       ! * params%extra = 0, 1, 2
-       ! * params%Fortran_Jacobian = T, F
+
        Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n

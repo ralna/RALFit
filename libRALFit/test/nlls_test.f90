@@ -9,7 +9,7 @@ program nlls_test
   implicit none
 
 
-  type( NLLS_inform )  :: status, c_status
+  type( NLLS_inform )  :: status
   type( NLLS_options ) :: options
   type( user_type ), target :: params
 !  type( user_box_type ), target :: params_box
@@ -63,7 +63,7 @@ program nlls_test
      do tr_update = 1,2
         do nlls_method = 1,4
            do model = 1,number_of_models
-
+              
               call reset_default_options(options)
               options%print_options = .True.
               options%nlls_method = nlls_method
@@ -71,71 +71,21 @@ program nlls_test
               options%model = model_to_test(model)
               options%exact_second_derivatives = .true.
               options%output_progress_vectors = .true.
-              
               call print_line(options%out)
               write(options%out,*) "tr_update_strategy = ", options%tr_update_strategy
               write(options%out,*) "nlls_method        = ", options%nlls_method
               write(options%out,*) "model              = ", options%model
               call print_line(options%out)
-
-              options%fortran_jacobian = .true.
-              call solve_basic(X,params,options,status)
-              if ( options%model == 0 ) then
-                 if ( status%status .ne. -3 ) then
-                    write(*,*) 'incorrect error return from nlls_solve:'
-                    write(*,*) 'NLLS_METHOD = ', nlls_method
-                    write(*,*) 'MODEL = ', options%model
-                    no_errors_main = no_errors_main + 1
-                 end if
-              else if ( status%status .ne. 0 ) then
-                 write(*,*) 'nlls_solve failed to converge:'
-                 write(*,*) status%error_message
-                 write(*,*) 'NLLS_METHOD = ', nlls_method
-                 write(*,*) 'MODEL = ', options%model
-                 write(*,*) 'TR_UPDATE = ', tr_update
-                 write(*,*) 'info%status = ', status%status
-                 write(*,*) 'scale? ', options%scale
-                 no_errors_main = no_errors_main + 1
-              end if
-
-              ! run the same test with a c jacobian
-              options%fortran_jacobian = .false.
-              call solve_basic_c(X,params,options,c_status)
-              if ( options%model == 0 ) then
-                 if ( c_status%status .ne. -3 ) then
-                    write(*,*) 'incorrect error return from nlls_solve:'
-                    write(*,*) 'NLLS_METHOD = ', nlls_method
-                    write(*,*) 'MODEL = ', options%model
-                    no_errors_main = no_errors_main + 1
-                 end if
-              else if ( c_status%status .ne. 0 ) then
-                 write(*,*) 'nlls_solve failed to converge:'
-                 write(*,*) c_status%error_message
-                 write(*,*) 'NLLS_METHOD = ', nlls_method
-                 write(*,*) 'MODEL = ', options%model
-                 write(*,*) 'TR_UPDATE = ', tr_update
-                 write(*,*) 'info%status = ', c_status%status
-                 write(*,*) 'scale? ', options%scale
-                 no_errors_main = no_errors_main + 1
-              end if
-
-              ! check that the results are consistent with
-              ! both c and fortran jacobians
-              if ( c_status%iter == status%iter ) then
-                 resvec_error = norm2(c_status%resvec(1:c_status%iter+1) - &
-                      status%resvec(1:status%iter+1))
-                 if (resvec_error > 1e-8) then
-                    write(*,*) 'error: fortran and c jacobians'
-                    write(*,*) 'have different resvecs'
-                    write(*,*) '||r_f - r_c|| = ', resvec_error
-                    no_errors_main = no_errors_main + 1
-                 end if
+              if (nlls_method == 4) then
+                 do inner_method = 1,3
+                    ! check the tests with c and fortran jacobians
+                    ! pass individually, and give consistent results.
+                    options%inner_method = inner_method
+                    call c_fortran_tests(options,no_errors_main)
+                 end do
               else
-                 write(*,*) 'error: fortran and c jacobians'
-                 write(*,*) 'took different numbers of iterations'
-                 no_errors_main = no_errors_main + 1
+                 call c_fortran_tests(options,no_errors_main)
               end if
-              
            end do
         end do
      end do
@@ -1215,9 +1165,6 @@ program nlls_test
      no_errors_helpers = no_errors_helpers + fails
 
      call covariance_matrix_tests(options,fails)
-     no_errors_helpers = no_errors_helpers + fails
-
-     call evaltensor_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
      ! Report back results....
