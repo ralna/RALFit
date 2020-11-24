@@ -2924,7 +2924,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        type(NLLS_inform), INTENT(INOUT) :: inform
        logical, Intent(In) :: Fortran_Jacobian
 
-       character(1), Parameter :: trans = 'N'
        integer, Parameter :: nrhs = 1
        integer :: lwork, lda, ldb, i, k
        type( solve_LLS_work ), Intent(inout) :: w
@@ -2934,22 +2933,21 @@ lp:  do i = 1, options%more_sorensen_maxits
          goto 100
        End If
 
-       lda = m
-       ldb = max(m,n)
        w%temp(1:m) = f(1:m)
        lwork = size(w%work)
 
+       w%Jlls(:) = J(:)
        If (Fortran_Jacobian) Then
-         w%Jlls(:) = J(:)
-       Else
-         ! transpose and store into Jlls
-         Do i = 1, m
-           w%Jlls( (/(k, k = i, m*n, m)/) ) = J( (i-1)*n + 1 : i*n )
-         End Do
-       End If
-
-       call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
-            inform%external_return)
+          lda = m
+          ldb = max(m,n)
+          call dgels('N', m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
+               inform%external_return)
+       else
+          lda = n
+          ldb = max(m,n)
+          call dgels('T', n, m, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
+               inform%external_return)
+       end If
        if (inform%external_return .ne. 0 ) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgels'
