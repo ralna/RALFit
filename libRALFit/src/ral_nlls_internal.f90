@@ -73,7 +73,7 @@ module ral_nlls_internal
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
-    public :: switch_to_quasi_newton, evaltensor_f, evaltensor_J
+    public :: switch_to_quasi_newton
 
 contains
 
