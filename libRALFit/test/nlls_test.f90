@@ -63,37 +63,28 @@ program nlls_test
      do tr_update = 1,2
         do nlls_method = 1,4
            do model = 1,number_of_models
-
+              
               call reset_default_options(options)
               options%print_options = .True.
               options%nlls_method = nlls_method
               options%tr_update_strategy = tr_update
               options%model = model_to_test(model)
               options%exact_second_derivatives = .true.
-              
+              options%output_progress_vectors = .true.
               call print_line(options%out)
               write(options%out,*) "tr_update_strategy = ", options%tr_update_strategy
               write(options%out,*) "nlls_method        = ", options%nlls_method
               write(options%out,*) "model              = ", options%model
               call print_line(options%out)
-
-              call solve_basic(X,params,options,status)
-              if ( options%model == 0 ) then
-                 if ( status%status .ne. -3 ) then
-                    write(*,*) 'incorrect error return from nlls_solve:'
-                    write(*,*) 'NLLS_METHOD = ', nlls_method
-                    write(*,*) 'MODEL = ', options%model
-                    no_errors_main = no_errors_main + 1
-                 end if
-              else if ( status%status .ne. 0 ) then
-                 write(*,*) 'nlls_solve failed to converge:'
-                 write(*,*) status%error_message
-                 write(*,*) 'NLLS_METHOD = ', nlls_method
-                 write(*,*) 'MODEL = ', options%model
-                 write(*,*) 'TR_UPDATE = ', tr_update
-                 write(*,*) 'info%status = ', status%status
-                 write(*,*) 'scale? ', options%scale
-                 no_errors_main = no_errors_main + 1
+              if (nlls_method == 4) then
+                 do inner_method = 1,3
+                    ! check the tests with c and fortran jacobians
+                    ! pass individually, and give consistent results.
+                    options%inner_method = inner_method
+                    call c_fortran_tests(options,no_errors_main)
+                 end do
+              else
+                 call c_fortran_tests(options,no_errors_main)
               end if
            end do
         end do

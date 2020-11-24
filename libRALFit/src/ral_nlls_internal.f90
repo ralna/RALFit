@@ -351,7 +351,7 @@ contains
        w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp)
 
        !    g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g,options)
+       call mult_Jt(w%J,n,m,w%f,w%g,options%Fortran_Jacobian)
        w%g(:) = -w%g(:)
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = norm2(w%g)
@@ -689,7 +689,7 @@ lp: do while (.not. success)
              ! save the value of g_mixed, which is needed for
              ! call to rank_one_update
              ! g_mixed = -J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
              w%g_mixed(:) = -w%g_mixed(:)
            end if
 
@@ -705,10 +705,9 @@ lp: do while (.not. success)
              end if
 
              ! g = -J^Tf
-             call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+             call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
              w%g(:) = -w%g(:)
              if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
-
              normJFnew = norm2(w%g)
 
              If ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
@@ -852,7 +851,7 @@ lp: do while (.not. success)
           ! gradient is not available
           ! Note: if evalJ fails we recover by taking a PG step
           if (.not. options%exact_second_derivatives) then
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
              w%g_mixed(:) = -w%g_mixed(:)
           end if
           ! evaluate J
@@ -867,7 +866,7 @@ lp: do while (.not. success)
             call scale_J_by_weights(w%J,n,m,weights,options)
          end if
          ! g = -J^Tf
-         call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+         call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
          w%g(:) = -w%g(:)
          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
          normJFnew = norm2(w%g)
@@ -1016,8 +1015,8 @@ lp: do while (.not. success)
 !   ! Description of columns                                               !
 !   ! * Iter:  current iteration counter valuei                            !
 !   ! * error: objective value (F)                                         !
-!   ! * grad:  norm-two of gradient (JF)                                   !
-!   ! * rel grad: relative gradient norm-two (F/JF)                        !
+!   ! * optim:  norm-two of gradient (JF)                                  !
+!   ! * rel optim: relative gradient norm-two (F/JF)                       !
 !   ! * Delta: TR radius                                                   !
 !   ! * rho: quantity: actual_reduction / predicted_reduction              !
 !   ! * S2IF: flags:                                                       !
@@ -1033,6 +1032,9 @@ lp: do while (.not. success)
 !   !       indicate information is not available.                         !
 !   ! * inn it: inner iteration cummulative counter                        !
 !   ! * step: size of last step                                            !
+!   ! * loop: trust region loop exit status                                !
+!   ! * LS: iteration counter for linesearch algorithms                    !
+!   ! * tau: the projection factor over the constraints |P(X+d)-X| / |d|   !
 !   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++!
     prncnt = inform%inner_iter + w%iter
     If ( options%model == 4 ) then
@@ -1776,8 +1778,8 @@ lp: do while (.not. success)
        goto 100
      End If
 
-     !     Jg = J * g
-     call mult_J(J,n,m,g,w%Jg,options)
+     ! Jg = J * g
+     call mult_J(J,n,m,g,w%Jg,options%Fortran_Jacobian)
 
     !alpha = norm2(g)**2 / norm2( w%Jg )**2
      nrmg = norm2(g)
@@ -1790,7 +1792,7 @@ lp: do while (.not. success)
      select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws)
+        call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws,options%Fortran_Jacobian)
         if ( inform%status /= 0 ) goto 100
      case default
         inform%status = NLLS_ERROR_DOGLEG_MODEL
@@ -2800,7 +2802,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      ! <=>
 
      ! we need to get the transformed vector v
-     call mult_Jt(w%ev,n,n,v,w%v_trans)
+     call mult_Jt(w%ev,n,n,v,w%v_trans,.True.)
 
      ! we've now got the vectors we need, pass to dtrs_solve
 
@@ -2855,7 +2857,7 @@ lp:  do i = 1, options%more_sorensen_maxits
         end do
      end select
   ! and return the un-transformed vector
-     call mult_J(w%ev,n,n,w%d_trans,d)
+     call mult_J(w%ev,n,n,w%d_trans,d,.True.)
 
      normd = norm2(d) ! ||d||_D
 
@@ -2909,8 +2911,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      End If
    end subroutine regularization_solver
 
-   SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w)
-
+   SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w,Fortran_Jacobian)
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
 !  -----------------------------------------------------------------
@@ -2921,10 +2922,10 @@ lp:  do i = 1, options%more_sorensen_maxits
        INTEGER, INTENT(IN) :: n, m
        REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
        type(NLLS_inform), INTENT(INOUT) :: inform
+       logical, Intent(In) :: Fortran_Jacobian
 
-       character(1), Parameter :: trans = 'N'
        integer, Parameter :: nrhs = 1
-       integer :: lwork, lda, ldb
+       integer :: lwork, lda, ldb, i, k
        type( solve_LLS_work ), Intent(inout) :: w
 
        If (.not. w%allocated) Then
@@ -2932,15 +2933,21 @@ lp:  do i = 1, options%more_sorensen_maxits
          goto 100
        End If
 
-       lda = m
-       ldb = max(m,n)
        w%temp(1:m) = f(1:m)
        lwork = size(w%work)
 
        w%Jlls(:) = J(:)
-
-       call dgels(trans, m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
-            inform%external_return)
+       If (Fortran_Jacobian) Then
+          lda = m
+          ldb = max(m,n)
+          call dgels('N', m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
+               inform%external_return)
+       else
+          lda = n
+          ldb = max(m,n)
+          call dgels('T', n, m, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
+               inform%external_return)
+       end If
        if (inform%external_return .ne. 0 ) then
           inform%status = NLLS_ERROR_FROM_EXTERNAL
           inform%external_name = 'lapack_dgels'
@@ -3033,7 +3040,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        End If
 
        !Jd = J*d
-       call mult_J(J,n,m,d,w%Jd,options)
+       call mult_J(J,n,m,d,w%Jd,options%Fortran_Jacobian)
 
        !md_gn = 0.5_wp * norm2(f(1:m) + w%Jd(1:m))**2
        md_gn = 0.0_wp
@@ -3065,7 +3072,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        case default
           ! these have a dynamic H -- recalculate
           ! H = J^T J + HF, HF is (an approx?) to the Hessian
-          call mult_J(hf,n,n,d,w%Hd)
+          call mult_J(hf,n,n,d,w%Hd,.True.)
           md = md_gn + 0.5_wp * dot_product(d(1:n),w%Hd(1:n))
           ! regularized newton terms taken care of already in apply_second_order_info
        end select
@@ -3244,7 +3251,7 @@ lp:  do i = 1, options%more_sorensen_maxits
           Go To 100
        end if
 
-       call mult_J(hf,n,n,w%d,w%Sks) ! hfs = S_k * d
+       call mult_J(hf,n,n,w%d,w%Sks,.True.) ! hfs = S_k * d
 
        w%ysharpSks(:) = w%y_sharp - w%Sks
 
@@ -3415,12 +3422,12 @@ lp:  do i = 1, options%more_sorensen_maxits
       End If
      end subroutine test_convergence
 
-     subroutine mult_J(J,n,m,x,Jx,options)
+     subroutine mult_J(J,n,m,x,Jx,Fortran_Jacobian)
        Implicit None
        real(wp), intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        real(wp), intent(out) :: Jx(*)
-       type(nlls_options), intent(in), optional :: options
+       logical, intent(in) :: fortran_jacobian
 
        real(wp) :: alpha, beta
 
@@ -3428,26 +3435,20 @@ lp:  do i = 1, options%more_sorensen_maxits
        alpha = 1.0_wp
        beta  = 0.0_wp
 
-       ! Avoid short-circuit evaluation
-!      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
-       if (present(options)) Then
-         If (.not. options%Fortran_Jacobian) then
-           ! Jacobian held in row major format...
-           call dgemv('T',n,m,alpha,J,max(1,n),x,1,beta,Jx,1)
-         Else
-           call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
-         End If
-       else
-          call dgemv('N',m,n,alpha,J,m,x,1,beta,Jx,1)
-       end if
+       If (.not. Fortran_Jacobian) then
+         ! Jacobian held in row major format...
+         call dgemv('T',n,m,alpha,J,max(1,n),x,1,beta,Jx,1)
+       Else
+         call dgemv('N',m,n,alpha,J,max(1,m),x,1,beta,Jx,1)
+       End If
      end subroutine mult_J
 
-     subroutine mult_Jt(J,n,m,x,Jtx,options)
+     subroutine mult_Jt(J,n,m,x,Jtx,Fortran_Jacobian)
        Implicit None
        double precision, intent(in) :: J(*), x(*)
        integer, intent(in) :: n,m
        double precision, intent(out) :: Jtx(*)
-       type( nlls_options), intent(in), optional :: options
+       logical, intent(in) :: fortran_jacobian
 
        double precision :: alpha, beta
 
@@ -3455,18 +3456,12 @@ lp:  do i = 1, options%more_sorensen_maxits
        alpha = 1.0_wp
        beta  = 0.0_wp
 
-       ! Avoid short-circuit evaluation
-!      if (present(options).and. (.not. options%Fortran_Jacobian)) then
-       if (present(options)) Then
-         If (.not. options%Fortran_Jacobian) then
-           ! Jacobian held in row major format...
-           call dgemv('N',n,m,alpha,J,max(1,n),x,1,beta,Jtx,1)
-         Else
-           call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
-         End If
-       else
-          call dgemv('T',m,n,alpha,J,m,x,1,beta,Jtx,1)
-       end if
+       If (.not. Fortran_Jacobian) then
+         ! Jacobian held in row major format...
+         call dgemv('N',n,m,alpha,J,max(1,n),x,1,beta,Jtx,1)
+       Else
+         call dgemv('T',m,n,alpha,J,max(1,m),x,1,beta,Jtx,1)
+       End If
      end subroutine mult_Jt
 
      subroutine scale_J_by_weights(J,n,m,weights,options)
@@ -3521,7 +3516,7 @@ lp:  do i = 1, options%more_sorensen_maxits
           ! this is already saved...
           w%g(:) = w%g_old(:)
        else
-          call mult_Jt(w%J,n,m,w%f,w%g,options)
+          call mult_Jt(w%J,n,m,w%f,w%g,options%Fortran_Jacobian)
           w%g(:) = -w%g(:)
        end if
 
@@ -3960,7 +3955,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        md = 0.0_wp
 
        if (.not. w%tparams%eval_hp_provided) then
-          ! let's get all the Hi's...
+          ! let's get all the Hi's... and temporarily make use of tparams%f...
           w%tparams%f(:) = 0.0_wp
           do i = 1, m
              ! get_Hi expects ei=w%tparams%f to be a zero-filled vector
@@ -3980,6 +3975,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        w%tparams%eval_HF => eval_HF
        w%tparams%parent_params => params
        w%tparams%tenJ => tenJ
+       w%tparams%Fortran_Jacobian = options%Fortran_Jacobian
 
        d(1:n) = 0.0_wp
 
@@ -4092,8 +4088,7 @@ lp:    do i = 1, w%tensor_options%maxit
           ! 'm' here is m+n from the original problem
 
           ! First, calculate Js
-          call mult_J(params%J(1:n*params%m),n,params%m,s,params%tenJ%Js)
-          ! TODO: add options to allow calling from C
+          call mult_J(params%J(1:n*params%m),n,params%m,s,params%tenJ%Js,params%Fortran_Jacobian)
 
           ! Now, calculate s'Hs
           call calculate_sHs(n,m, s, params)
@@ -4154,6 +4149,7 @@ lp:    do i = 1, w%tensor_options%maxit
      end subroutine calculate_sHs
 
      Recursive subroutine evaltensor_J(status, n, m, s, J, params)
+
        Implicit None
        integer, intent(out) :: status
        integer, intent(in)  :: n
@@ -4174,28 +4170,48 @@ lp:    do i = 1, w%tensor_options%maxit
           ! if we're passing in the reg. factor via the function/Jacobian, then
           ! 'm' here is m+n from the original problem
           J(1:n*m) = 0.0_wp
-          do jj = 1,n ! columns
-             ! tenJ%Hs has been set by evaltensor_f, which is called first
-!             J( (jj-1)*m + 1 : (jj-1)*m + params%m) =                        &
-!               params%J((jj-1)*params%m + 1 : jj*params%m) + params%tenJ%Hs(jj,1:params%m)
-             offset_j = (jj-1) * m
-             offset_pj = (jj-1) * params%m
-             Do kk = 1, params%m
-               J(offset_j+kk) = params%J(offset_pj+kk) + params%tenJ%Hs(jj, kk)
-             End Do
-          end do
-          if (params%extra == 1) then
-             ! we're passing in the regularization via the function/Jacobian
-             do ii = 1,n ! loop over the columns...
-                J(m*(ii-1) + params%m + ii) = sqrt(1.0_wp/params%Delta)
-             end do
-          elseif (params%extra == 2) then
-             do ii = 1, n ! loop over the columns....
-                J(m*ii) = sqrt( (params%p)/(2.0_wp * params%Delta) ) * &
-                                      (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp)) * &
-                                      s(ii)
-             end do
+          if (params%Fortran_Jacobian) then
+            do jj = 1,n ! columns
+               ! tenJ%Hs has been set by evaltensor_f, which is called first
+  !             J( (jj-1)*m + 1 : (jj-1)*m + params%m) =                        &
+  !               params%J((jj-1)*params%m + 1 : jj*params%m) + params%tenJ%Hs(jj,1:params%m)
+               offset_j = (jj-1) * m
+               offset_pj = (jj-1) * params%m
+               Do kk = 1, params%m
+                 J(offset_j+kk) = params%J(offset_pj+kk) + params%tenJ%Hs(jj, kk)
+               End Do
+            end do
+            if (params%extra == 1) then
+               ! we're passing in the regularization via the function/Jacobian
+               do ii = 1,n ! loop over the columns...
+                  J(m*(ii-1) + params%m + ii) = sqrt(1.0_wp/params%Delta)
+               end do
+            elseif (params%extra == 2) then
+               do ii = 1, n ! loop over the columns....
+                  J(m*ii) = sqrt( (params%p)/(2.0_wp * params%Delta) ) * &
+                                        (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp)) * &
+                                        s(ii)
+               end do
+            end if
+          else
+            ! Jacobian is provided row-wise
+            Do jj = 1, params%m
+              J( ((jj-1) * n + 1) : jj*n ) = params%J( ((jj-1) * n + 1) : jj*n ) + params%tenJ%Hs(:,jj)
+            End Do
+            if (params%extra == 1) then
+               ! we're passing in the regularization via the function/Jacobian
+               ! Update the diagonal of the last nxn block
+               do ii = 1,n ! offset by params%m*n and loop over the rows...
+                  J(params%m*n + n*(ii-1) + ii) = sqrt(1.0_wp/params%Delta)
+               end do
+            elseif (params%extra == 2) then
+              ! Update last column of J
+                J((m-1)*n+1 : m*n) = sqrt( (params%p)/(2.0_wp * params%Delta) ) * &
+                                        (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp)) * &
+                                        s(1:n)
+            end if
           end if
+
        end select
      end subroutine evaltensor_J
 
@@ -4666,7 +4682,7 @@ lp:    do i = 1, w%tensor_options%maxit
            ! save the value of g_mixed, which is needed for
            ! call to rank_one_update
            ! g_mixed = -J_k^T r_{k+1}
-           call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+           call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
            w%g_mixed(:) = -w%g_mixed(:)
         end if
 
@@ -4694,7 +4710,7 @@ lp:    do i = 1, w%tensor_options%maxit
         End If
 
         ! g = -J^Tf
-        call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+        call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
         w%g(:) = -w%g(:)
         if ( options%regularization > 0 ) Then
           call update_regularized_gradient(w%g,w%Xnew,normX,options)
@@ -4777,7 +4793,7 @@ lp:    do i = 1, w%tensor_options%maxit
               ! save the value of g_mixed, which is needed for
               ! call to rank_one_update
               ! g_mixed = -J_k^T r_{k+1}
-              call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options)
+              call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
               w%g_mixed(:) = -w%g_mixed(:)
             end if
             ! evaluate J and hf at the new point
@@ -4795,7 +4811,7 @@ lp:    do i = 1, w%tensor_options%maxit
               call scale_J_by_weights(w%J,n,m,weights,options)
             end if
             ! g = -J^Tf
-            call mult_Jt(w%J,n,m,w%fnew,w%g,options)
+            call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
             w%g(:) = -w%g(:)
             if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
             normJFnew = norm2(w%g)

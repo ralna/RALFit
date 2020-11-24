@@ -34,7 +34,7 @@ nagfor-debug)
    export CC=gcc
    export F77=nagfor
    export FC=nagfor
-   export FFLAGS="-g -W0,-gline -nan -C=all -C=undefined -u -ieee=full -kind=unique"
+   export FFLAGS="-g -nan -C=all -C=undefined -u -ieee=full -kind=unique"
 esac
 
 

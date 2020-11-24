@@ -14,6 +14,8 @@ module example_module
      real(wp), allocatable :: t(:)
      real(wp), allocatable :: y(:)
      logical :: fortran_jacobian
+     ! needed for the evaltensor_J tests
+     real(wp), allocatable :: J
   end type user_type
 
 contains
@@ -1202,7 +1204,124 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            lower_bounds=blx, upper_bounds=bux )
       
      end subroutine solve_basic
+     
+     subroutine solve_basic_c(X,params,options,inform,warm_start,blx,bux)
+       
+       real(wp), intent(inout) :: X(:)
+       !      type( user_type ), intent(inout) :: params
+       Class ( params_base_type ), intent(inout) :: params
+       type( nlls_options ), intent(in) :: options
+       type( nlls_inform ), intent(inout) :: inform
+       Logical, Optional, Intent(In) :: warm_start
+       real(wp), intent(inout),optional :: blx(:), bux(:)
 
+       integer :: n, m
+       
+       n = 2 
+       m = 67
+       
+       If (present(warm_start)) Then
+         If(.Not. warm_start) Then
+           X(1) = 1.0
+           X(2) = 2.0
+         End If
+       Else
+         X(1) = 1.0
+         X(2) = 2.0
+      End if
+      call nlls_solve(n, m, X,                         &
+           eval_F, eval_J_c, eval_H, params,  &
+           options, inform,                 &
+           lower_bounds=blx, upper_bounds=bux )
+      
+    end subroutine solve_basic_c
+
+    subroutine c_fortran_tests(options,fails)
+      type( NLLS_options ), intent(inout) :: options
+      integer, intent(inout) :: fails
+
+      real(wp), allocatable :: x(:)
+      type( user_type ), target :: params
+      type( NLLS_inform )  :: status, c_status
+      real(wp) :: resvec_error
+      integer :: n
+
+      n = 2
+
+      allocate( x(n) )
+      call generate_data_example(params)
+      options%print_level = 5
+
+      
+      options%fortran_jacobian = .true.
+      call solve_basic(X,params,options,status)
+      if ( options%model == 0 ) then
+         if ( status%status .ne. -3 ) then
+            write(*,*) 'incorrect error return from nlls_solve:'
+            write(*,*) 'NLLS_METHOD = ', options%nlls_method
+            write(*,*) 'MODEL = ', options%model
+            fails = fails + 1
+         end if
+      else if ( status%status .ne. 0 ) then
+         write(*,*) 'nlls_solve failed to converge:'
+         write(*,*) status%error_message
+         write(*,*) 'NLLS_METHOD = ', options%nlls_method
+         write(*,*) 'MODEL = ', options%model
+         write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+         write(*,*) 'inner_method = ', options%inner_method
+         write(*,*) 'info%status = ', status%status
+         write(*,*) 'scale? ', options%scale
+         fails = fails + 1
+      end if
+      
+      ! run the same test with a c jacobian
+      options%fortran_jacobian = .false.
+      call solve_basic_c(X,params,options,c_status)
+      if ( options%model == 0 ) then
+         if ( c_status%status .ne. -3 ) then
+            write(*,*) 'incorrect error return from nlls_solve (c jac):'
+            write(*,*) 'NLLS_METHOD = ', options%nlls_method
+            write(*,*) 'MODEL = ', options%model
+            fails = fails + 1
+         end if
+      else if ( c_status%status .ne. 0 ) then
+         write(*,*) 'nlls_solve (c jac) failed to converge:'
+         write(*,*) c_status%error_message
+         write(*,*) 'NLLS_METHOD = ', options%nlls_method
+         write(*,*) 'MODEL = ', options%model
+         write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+         write(*,*) 'inner_method = ', options%inner_method
+         write(*,*) 'info%status = ', c_status%status
+         write(*,*) 'scale? ', options%scale
+         fails = fails + 1
+      end if
+      
+      ! check that the results are consistent with
+      ! both c and fortran jacobians
+      if ( c_status%iter == status%iter ) then
+         resvec_error = norm2(c_status%resvec(1:c_status%iter+1) - &
+              status%resvec(1:status%iter+1))
+         if (resvec_error > 1e-8) then
+            write(*,*) 'error: fortran and c jacobians'
+            write(*,*) 'have different resvecs'
+            write(*,*) 'NLLS_METHOD = ', options%nlls_method
+            write(*,*) 'MODEL = ', options%model
+            write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+            write(*,*) 'inner_method = ', options%inner_method
+            write(*,*) '||r_f - r_c|| = ', resvec_error
+            fails = fails + 1
+         end if
+      else
+         write(*,*) 'error: fortran and c jacobians'
+         write(*,*) 'took different numbers of iterations'
+         write(*,*) 'NLLS_METHOD = ', options%nlls_method
+         write(*,*) 'MODEL = ', options%model
+         write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+         write(*,*) 'inner_method = ', options%inner_method
+         fails = fails + 1
+      end if
+    end subroutine c_fortran_tests
+     
      subroutine dogleg_tests(options,fails)
        
        type( nlls_options ), intent(inout) :: options       
@@ -1934,19 +2053,19 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call setup_workspaces(work,n,m,options,status) 
 
      allocate(J(n*m), f(m), d(n), Jd(m))
-     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, & 
+     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
            6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
      f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
 
      call solve_LLS(J,f,n,m,d,status, & 
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if ( status%status .ne. 0 ) then 
         write(*,*) 'solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
      end if
      ! check answer
-     call mult_J(J,n,m,d,Jd)
+     call mult_J(J,n,m,d,Jd,.True.)
      normerror = norm2(Jd + f)
      if ( normerror > 1.0e-12_wp ) then
         ! wrong answer, as data chosen to fit
@@ -1954,6 +2073,36 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) '||Jd - f|| = ', normerror
         fails = fails + 1
      end if
+
+!    J = [ 1.0_wp,  6.0_wp,
+!          2.0_wp,  7.0_wp,
+!          3.0_wp,  8.0_wp,
+!          4.0_wp,  9.0_wp,
+!          5.0_wp, 10.0_wp ]
+!    Jacobian Transpose:
+     J = [ 1.0_wp, 6.0_wp, 2.0_wp, 7.0_wp, 3.0_wp, &
+           8.0_wp, 4.0_wp, 9.0_wp, 5.0_wp, 10.0_wp ]
+     f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
+
+     call solve_LLS(J,f,n,m,d,status, &
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.False.)
+     if ( status%status .ne. 0 ) then
+        write(*,*) 'solve_LLS test failed: wrong error message returned'
+        write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
+        fails = fails + 1
+     end if
+     ! check answer using J and not JT!!!
+     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
+           6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
+     call mult_J(J,n,m,d,Jd,.True.)
+     normerror = norm2(Jd + f)
+     if ( normerror > 1.0e-12_wp ) then
+        ! wrong answer, as data chosen to fit
+        write(*,*) 'solve_LLS transpose test failed: wrong solution returned'
+        write(*,*) '||J^Td - f|| = ', normerror
+        fails = fails + 1
+     end if
+
      
      n = 100 
      m = 20
@@ -1965,7 +2114,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      J = 1.0_wp
      f = 1.0_wp
      call solve_LLS(J,f,n,m,d,status, & 
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then 
         write(*,*) 'solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -1976,7 +2125,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call nlls_finalize(work, options, status)
      
      call solve_LLS(J,f,n,m,d,status, & 
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws)
+          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
@@ -2258,7 +2407,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
-     call mult_J(J,m,n,x,Jx)
+     call mult_J(J,m,n,x,Jx,.True.)
      if ( norm2( Jx - [16.0, 20.0 ] ) > 1e-12) then
         write(*,*) 'error :: mult_J test failed'
         fails = fails + 1
@@ -2286,7 +2435,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
-     call mult_Jt(J,n,m,x,Jtx)
+     call mult_Jt(J,n,m,x,Jtx,.True.)
      if ( norm2( Jtx - [10.0, 26.0 ] ) > 1e-12) then
         write(*,*) 'error :: mult_Jt test failed'
         fails = fails + 1
@@ -3242,5 +3391,5 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 10000 Format (1X,I3,3(3X,Es17.10e2),1X,A6)
 10001 Format (1X,A,1X,A6)
 end subroutine covariance_matrix_tests
-   
+
  end module example_module
