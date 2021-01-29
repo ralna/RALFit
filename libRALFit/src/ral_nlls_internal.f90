@@ -4163,7 +4163,7 @@ lp:    do i = 1, w%tensor_options%maxit
        status = 0
        ! The function we need to return is
        !  g_i + H_i s
-       ! where h_i and H_i are the gradient and hessians of the original problem
+       ! where g_i and H_i are the gradient and hessians of the original problem
 
        select type(params)
        type is(tensor_params_type)
@@ -4185,25 +4185,26 @@ lp:    do i = 1, w%tensor_options%maxit
             if (params%extra == 1) then
                ! we're passing in the regularization via the function/Jacobian
                v = sqrt(1.0_wp/params%Delta)
+               
                do ii = 1,n ! loop over the columns...
                   J(m*(ii-1) + params%m + ii) = v
                end do
             elseif (params%extra == 2) then
+               
                v = sqrt( (params%p)/(2.0_wp * params%Delta) ) *                &
-                     (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
-               do ii = 1, n ! loop over the columns....
-                  J(m*ii) =  v * s(ii)
-               end do
+                    (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
+               ! J(m*(ii-1) + params%m + ii) = v * s(ii)
+               call dcopy(n, s, 1, J(m), m) 
+               call dscal(n, v, J(m), m ) 
             end if
           else
-            ! Jacobian is provided row-wise
-            Do jj = 1, params%m
-              ! avoid auto allocation
-              ! J( (jj-1)*n+1 : jj*n ) = params%J( (jj-1)*n+1 : jj*n ) + params%tenJ%Hs(:,jj)
-              Do kk = 1, n
-                J( (jj-1)*n+kk ) = params%J( (jj-1)*n+kk ) + params%tenJ%Hs(kk,jj)
-              End Do
-            End Do
+             ! Jacobian is provided row-wise
+             !Do jj = 1, params%m
+             ! J( (jj-1)*n+1 : jj*n ) = params%J( (jj-1)*n+1 : jj*n ) + params%tenJ%Hs(:,jj)
+             !End Do
+             call dcopy(n*params%m,params%J,1,J,1)
+             call daxpy(n*params%m, 1.0_wp, params%tenJ%Hs(1,1),1, J, 1)
+           
             if (params%extra == 1) then
                ! we're passing in the regularization via the function/Jacobian
                ! Update the diagonal of the last nxn block
@@ -4217,9 +4218,8 @@ lp:    do i = 1, w%tensor_options%maxit
                     (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
               ! avoid auto allocation
               ! J((m-1)*n+1 : m*n) = v * s(1:n)
-              Do kk = 1, n
-                J((m-1)*n+kk) = v * s(kk)
-              End Do
+              call dcopy(n, s, 1, J((m-1)*n+1), 1 ) 
+              call dscal(n, v, J((m-1)*n+1), 1 ) 
             end if
           end if
 
