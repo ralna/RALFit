@@ -3392,4 +3392,115 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 10001 Format (1X,A,1X,A6)
 end subroutine covariance_matrix_tests
 
+
+subroutine evaltensor_J_tests(options, fails)
+  ! test the different branches of evaltensor_J
+  Implicit None
+  Integer, intent(out) :: fails
+  Type(nlls_options), Intent(inout) :: options
+  Integer :: status, m, n, ierr, i, k, extra
+  Real(wp), allocatable :: j(:), jt(:), s(:)
+  Type(tensor_params_type) :: params
+  Type(tenJ_type), Target :: tenJ
+  logical :: Ok
+
+  Continue
+  fails = 0
+  ! Path to test are
+  !  options%fortran_jacobian = .True. / .False.
+  !  params%extra = 0 / 1 / 2
+  ! Total of 6 paths via three tests
+  ! expected input:
+  ! * J allocated (m*n) where m is params%m + n
+  ! * params%m, params%J(:), params%tenJ%Hs(:,:), params%extra
+  ! * params%Delta=10.0_wp, params%p=
+  ! * params%s(1:n) = 3.0
+  ! expected output: updated J/JT which should match
+  ! === Setup =================================================================
+  ! params%extra = 0
+  params%m = 10
+  params%Delta = 2.0_wp
+  params%p = 3
+  n = 3
+  m = params%m + n
+
+  allocate(j(m*n), jt(n*m), params%j(params%m*n), tenJ%Hs(n,params%m), s(n),   &
+    stat=ierr)
+  if (ierr/=0) then
+!   LCOV_EXCL_START
+    Write(*,*) 'Error evaltensor_J_tests: Allocation failed...'
+    fails = fails + 1
+    Go To 100
+!   LCOV_EXCL_STOP
+  end if
+  params%tenJ => tenJ
+  s(1:n) = 3.0_wp
+  ! norm2(s) = sqrt(9*3)=6.0_wp
+  Do i = 1, n
+    Do k = 1, params%m
+      params%tenJ%Hs(i,k) = ( i*10000.0_wp + k*100_wp ) * 1.0_wp
+    End Do
+  End Do
+
+  Do extra = 0, 2
+    params%extra = extra
+    ! === Fortran Jacobian = TRUE =============================================
+    options%fortran_jacobian = .True.
+    params%fortran_jacobian = options%fortran_jacobian
+    !  fill params%j by COLUMNS
+    params%j(1:params%m*n) = (/(Real(i, Kind=wp), i=1,n*params%m)/)
+    !Print *, 'Matrix p%J'
+    !Do i = 1, params%m
+    !  Write(*,'(*(F8.1,2X))') params%J( (/(  (k-1)*params%m + i, k = 1, n )/) )
+    !End Do
+    Call evaltensor_J(status, n, m, s, J, params)
+
+    ! === Fortran Jacobian = FALSE ============================================
+    options%fortran_jacobian = .False.
+    params%fortran_jacobian = options%fortran_jacobian
+    !  fill params%j by ROWS
+    Do i = 1, params%m
+      params%j( (i-1) * n + 1 : i*n ) = (/( Real((k-1)*params%m+i, Kind=wp), k=1,n)/)
+    End Do
+    !Print *, 'Matrix p%JT'
+    !Do i = 1, n
+    !  Write(*,'(*(F8.1,2X))') params%J( (/(  (k-1)*n + i, k = 1, params%m )/) )
+    !End Do
+    Call evaltensor_J(status, n, m, s, Jt, params)
+
+    ! === COMPARE and TEST ====================================================
+    ok = .True.
+    Do i = 1, n
+      Ok = Ok .And. all ( J( (i-1)*m+1:i*m ) == JT( (/((k-1)*n+i, k = 1, m)/) )  )
+    End Do
+
+    If (.not. Ok) Then
+      fails = fails + 1
+      Print *, 'Error in evaltensor J (test: params%extra and opt%fortran_jacobian)'
+      Print *, 'Fail count = ', fails
+      Print *, 'params%extra = ', params%extra
+      Print *, 'Unexpected diff in comparing J with JT:'
+      Print *, ''
+      Print *, 'Matrix J'
+      Do i = 1, m
+        Write(*,'(*(F8.1,2X))') J( (/(  (k-1)*m + i, k = 1, n )/) )
+      End Do
+      Print *, ''
+      Print *, 'Matrix JT'
+      Do i = 1, n
+        Write(*,'(*(F8.1,2X))') Jt( (/(  (k-1)*n + i, k = 1, m )/) )
+      End Do
+    End If
+  End Do
+
+100 Continue
+
+  if (allocated(j)) deallocate(j)
+  if (allocated(jt)) deallocate(jt)
+  if (allocated(s)) deallocate(s)
+  if (allocated(params%j)) deallocate(params%j)
+  if (allocated(tenJ%Hs)) deallocate(tenJ%Hs)
+
+End subroutine evaltensor_J_tests
+
  end module example_module

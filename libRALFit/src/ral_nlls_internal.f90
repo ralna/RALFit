@@ -73,7 +73,7 @@ module ral_nlls_internal
     public :: test_convergence, calculate_rho
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
-    public :: switch_to_quasi_newton
+    public :: switch_to_quasi_newton, evaltensor_J
 
 contains
 
@@ -4158,11 +4158,12 @@ lp:    do i = 1, w%tensor_options%maxit
        real(wp), dimension(*), intent(out)   :: J
        class( params_base_type ), intent(inout) :: params
        integer :: ii, jj, kk, offset_j, offset_pj
+       real(wp) :: v
        ! Add default return value for status
        status = 0
        ! The function we need to return is
        !  g_i + H_i s
-       ! where h_i and H_i are the gradient and hessians of the original problem
+       ! where g_i and H_i are the gradient and hessians of the original problem
 
        select type(params)
        type is(tensor_params_type)
@@ -4183,36 +4184,47 @@ lp:    do i = 1, w%tensor_options%maxit
             end do
             if (params%extra == 1) then
                ! we're passing in the regularization via the function/Jacobian
+               v = sqrt(1.0_wp/params%Delta)
+               
                do ii = 1,n ! loop over the columns...
-                  J(m*(ii-1) + params%m + ii) = sqrt(1.0_wp/params%Delta)
+                  J(m*(ii-1) + params%m + ii) = v
                end do
             elseif (params%extra == 2) then
-               do ii = 1, n ! loop over the columns....
-                  J(m*ii) = sqrt( (params%p)/(2.0_wp * params%Delta) ) * &
-                                        (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp)) * &
-                                        s(ii)
-               end do
+               
+               v = sqrt( (params%p)/(2.0_wp * params%Delta) ) *                &
+                    (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
+               ! J(m*(ii-1) + params%m + ii) = v * s(ii)
+               call dcopy(n, s, 1, J(m), m) 
+               call dscal(n, v, J(m), m ) 
             end if
           else
-            ! Jacobian is provided row-wise
-            Do jj = 1, params%m
-              J( ((jj-1) * n + 1) : jj*n ) = params%J( ((jj-1) * n + 1) : jj*n ) + params%tenJ%Hs(:,jj)
-            End Do
+             ! Jacobian is provided row-wise
+             !Do jj = 1, params%m
+             ! J( (jj-1)*n+1 : jj*n ) = params%J( (jj-1)*n+1 : jj*n ) + params%tenJ%Hs(:,jj)
+             !End Do
+             call dcopy(n*params%m,params%J,1,J,1)
+             call daxpy(n*params%m, 1.0_wp, params%tenJ%Hs(1,1),1, J, 1)
+           
             if (params%extra == 1) then
                ! we're passing in the regularization via the function/Jacobian
                ! Update the diagonal of the last nxn block
+               v =  sqrt(1.0_wp/params%Delta)
                do ii = 1,n ! offset by params%m*n and loop over the rows...
-                  J(params%m*n + n*(ii-1) + ii) = sqrt(1.0_wp/params%Delta)
+                  J(params%m*n + n*(ii-1) + ii) = v
                end do
             elseif (params%extra == 2) then
               ! Update last column of J
-                J((m-1)*n+1 : m*n) = sqrt( (params%p)/(2.0_wp * params%Delta) ) * &
-                                        (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp)) * &
-                                        s(1:n)
+              v = sqrt( (params%p)/(2.0_wp * params%Delta) ) *                 &
+                    (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
+              ! avoid auto allocation
+              ! J((m-1)*n+1 : m*n) = v * s(1:n)
+              call dcopy(n, s, 1, J((m-1)*n+1), 1 ) 
+              call dscal(n, v, J((m-1)*n+1), 1 ) 
             end if
           end if
 
        end select
+
      end subroutine evaltensor_J
 
      Recursive subroutine evaltensor_HF(status, n, m, s, f, HF, params)
