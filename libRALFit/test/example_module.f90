@@ -3438,7 +3438,7 @@ subroutine evaltensor_J_tests(options, fails)
   ! norm2(s) = sqrt(9*3)=6.0_wp
   Do i = 1, n
     Do k = 1, params%m
-      params%tenJ%Hs(i,k) = ( i*10000.0_wp + k*100_wp ) * 1.0_wp
+      params%tenJ%Hs(i,k) = ( i*10000.0_wp + k*100.0_wp ) * 1.0_wp
     End Do
   End Do
 
