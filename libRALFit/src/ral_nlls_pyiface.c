@@ -1075,7 +1075,7 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
       
       // If we reach this point, unrecognised option
       char errmsg[200];
-      snprintf(errmsg, 200, "Badkkk key options['%s']\n", key_name);
+      snprintf(errmsg, 200, "Bad key options['%s']\n", key_name);
       PyErr_SetString(PyExc_RuntimeError, errmsg);
       return false;
    }
