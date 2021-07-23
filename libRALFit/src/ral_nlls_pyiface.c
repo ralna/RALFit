@@ -576,7 +576,19 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          continue;
       }
       // bool: exact_second_derivatives
-      
+      if(strcmp(key_name, "exact_second_derivatives")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	if (vint == 1){
+	  options->exact_second_derivatives=true;
+	}else if (vint == 0){
+	  options->exact_second_derivatives=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['exact_second_derivatives'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }
+
       if(strcmp(key_name, "subproblem_eig_fact")==0) {
 	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
 	printf("%d\n",vint);
@@ -1063,7 +1075,7 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
       
       // If we reach this point, unrecognised option
       char errmsg[200];
-      snprintf(errmsg, 200, "Bad key options['%s']\n", key_name);
+      snprintf(errmsg, 200, "Badkkk key options['%s']\n", key_name);
       PyErr_SetString(PyExc_RuntimeError, errmsg);
       return false;
    }
@@ -1219,7 +1231,6 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
     }
     upper_bounds_val = (double*) PyArray_DATA(upper_bounds);
   }
-
 
    /* Determine m by making call to f */
    arglist = build_arglist(1, data.params);
