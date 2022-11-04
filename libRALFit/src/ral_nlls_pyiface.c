@@ -86,7 +86,6 @@ int eval_f(int n, int m, void *params, const double *x, double *f) {
    return 0; // Success
 }
 
-
 ///
 /// the eval_J subroutine
 ///
