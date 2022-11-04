@@ -86,7 +86,6 @@ int eval_f(int n, int m, void *params, const double *x, double *f) {
    return 0; // Success
 }
 
-
 ///
 /// the eval_J subroutine
 ///
@@ -452,6 +451,17 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          continue;
       }
 
+      if(strcmp(key_name, "base_regularization")==0) {
+	long v = PyInt_AsLong(value);
+	if(v==-1 && PyErr_Occurred()) {
+	  PyErr_SetString(PyExc_RuntimeError, "options['base_regularization'] must be an integer.");
+	  return false;
+	}
+	options->base_regularization = (int) v;
+	continue;
+      }
+
+      
       if(strcmp(key_name, "regularization")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
@@ -602,38 +612,7 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	}
 	continue;
       }
-
-      // bool: user_ews_subproblem
-      if(strcmp(key_name, "use_ews_subproblem")==0) {
-	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
-	printf("%d\n",vint);
-	if (vint == 1){
-	  options->use_ews_subproblem=true;
-	}else if (vint == 0){
-	  options->use_ews_subproblem=false;
-	}else{
-	  PyErr_SetString(PyExc_RuntimeError, "options['use_ews_subproblem'] must be a bool.");
-	  return false;
-	}
-	continue;
-      }
-      
-      // bool: force_min_eig_symm
-      if(strcmp(key_name, "force_min_eig_symm")==0) {
-	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
-	printf("%d\n",vint);
-	if (vint == 1){
-	  options->force_min_eig_symm=true;
-	}else if (vint == 0){
-	  options->force_min_eig_symm=false;
-	}else{
-	  PyErr_SetString(PyExc_RuntimeError, "options['force_min_eig_symm'] must be a bool.");
-	  return false;
-	}
-	continue;
-      }
-
-      
+     
       if(strcmp(key_name, "scale")==0) {
 	long v = PyInt_AsLong(value);
 	if(v==-1 && PyErr_Occurred()) {
@@ -663,21 +642,6 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
          continue;
       }
 
-      if(strcmp(key_name, "scale_trim_min")==0) {
-	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
-	
-	if (vint == 1){
-	  options->scale_trim_min=true;
-	}else if (vint == 0){
-	  options->scale_trim_min=false;
-	}else{
-	  PyErr_SetString(PyExc_RuntimeError, "options['scale_trim_min'] must be a bool.");
-	  return false;
-	}
-	continue;
-      }
-
-      
       if(strcmp(key_name, "scale_trim_max")==0) {
 	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
 	
@@ -691,7 +655,20 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	}
 	continue;
       }
-
+      
+      if(strcmp(key_name, "scale_trim_min")==0) {
+	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
+	
+	if (vint == 1){
+	  options->scale_trim_min=true;
+	}else if (vint == 0){
+	  options->scale_trim_min=false;
+	}else{
+	  PyErr_SetString(PyExc_RuntimeError, "options['scale_trim_min'] must be a bool.");
+	  return false;
+	}
+	continue;
+      }     
       
       if(strcmp(key_name, "scale_require_increase")==0) {
 	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
@@ -826,21 +803,7 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	}
 	continue;
       }
-      
-      if(strcmp(key_name, "update_lower_order")==0) {
-	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
-	
-	if (vint == 1){
-	  options->update_lower_order=true;
-	}else if (vint == 0){
-	  options->update_lower_order=false;
-	}else{
-	  PyErr_SetString(PyExc_RuntimeError, "options['update_lower_order'] must be a bool.");
-	  return false;
-	}
-	continue;
-      }
-      
+            
       // bool: Fortran_Jacobian
       if(strcmp(key_name, "Fortran_Jacobian")==0) {
 	int vint = PyObject_IsTrue(value); // 1 if true, 0 otherwise
@@ -1263,8 +1226,14 @@ ral_nlls_solve(PyObject* self, PyObject* args, PyObject* keywds)
    struct ral_nlls_options options;
    if(!set_opts(&options, options_ptr)) goto fail;
    struct ral_nlls_inform inform;
+   if(data.Hp == NULL){
+     nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform,
+		  weights_val, NULL, lower_bounds_val, upper_bounds_val);
+   }
+   else{
    nlls_solve_d(n, m, xval, eval_f, eval_J, eval_Hr, &data, &options, &inform,
-		  weights_val, eval_Hp, lower_bounds_val, upper_bounds_val);
+   		  weights_val, eval_Hp, lower_bounds_val, upper_bounds_val);
+   }
    switch(inform.status) {
    case 0: // Clean exit
      break;

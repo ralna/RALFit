@@ -32,9 +32,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   set(TestCoverage On)
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
   message("WARNING: Debug version - not to be used in production code.")	
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O3")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg -g -O3")
-  set(CMAKE_LDFLAGS "${CMAKE_Fortran_FLAGS} -pg -g -O3")		    
 endif()
 
 
@@ -45,9 +42,9 @@ set(CMAKE_C_STANDARD 99) # SET -std=c99
 if(TestCoverage)
    set( CMAKE_VERBOSE_MAKEFILE on )
    INCLUDE(CodeCoverage)
-   set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage")
-   set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage")
-   set(CMAKE_LDFLAGS_DEBUG "-g -fprofile-arcs -ftest-coverage")
+   set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
+   set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
+   set(CMAKE_LDFLAGS_DEBUG "-g -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
    SETUP_TARGET_FOR_COVERAGE(test_coverage test/nlls_f90_test coverage)
 endif(TestCoverage)
 
