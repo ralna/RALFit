@@ -3,6 +3,7 @@
 #
 
 sphinx-fortran
+six
 # We seem to need v1.6.7 due to
 # "cannot import name Directive"
 # error
