@@ -3,7 +3,9 @@
 #
 
 sphinx-fortran
+six
+sphinx-rtd-theme
 # We seem to need v1.6.7 due to
 # "cannot import name Directive"
 # error
-Sphinx==1.6.7
+#Sphinx==1.6.7
