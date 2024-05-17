@@ -557,7 +557,7 @@ subroutine ral_nlls_free_workspace_d(cw) bind(C)
 
    type(f_nlls_workspace), pointer :: fw
 
-   if(c_associated(cw)) return ! Nothing to do
+   if(.not. c_associated(cw)) return ! Nothing to do
 
    call c_f_pointer(cw, fw)
    deallocate(fw)
