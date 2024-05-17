@@ -17,6 +17,4 @@ sphinx:
 # install RALFit and rtd-related requirements
 python:
   install:
-    - requirements: libRALFit/doc/requirements.txt
-    - method: pip
-      path: .
+  - requirements: libRALFit/doc/requirements.txt
