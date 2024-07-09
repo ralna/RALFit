@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 #
 # Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 # For parameters x_1 and x_2, and input data (t_i, y_i)

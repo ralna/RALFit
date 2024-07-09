@@ -1,3 +1,7 @@
+! Copyright (c) 2020, The Numerical Algorithms Group Ltd (NAG)
+! All rights reserved.
+! Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 module example_module
 
   use :: ral_nlls_double
@@ -1936,9 +1940,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            end if
         end if
 
-        
+
         Delta = -100.0_wp
-        call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
+        call solve_galahad(A,g,n,m,Delta,num_successful_steps,&
              d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then
@@ -1949,18 +1953,18 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         status%status = 0
 
         call nlls_finalize(work,options,status)
-                
+
      end do
 
      call reset_default_options(options)
-     
+
    end subroutine solve_galahad_tests
 
    subroutine solve_newton_tensor_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: J(:), f(:), X(:), d(:)
      real(wp) :: Delta, md
      integer :: n, m, num_successful_steps
@@ -1971,13 +1975,13 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( tenJ_type ), Pointer :: tenJ_pointer
      type( NLLS_workspace ), Target :: inner_workspace
      real(wp) :: one = 1.0_wp
-     
+
      fails = 0
      tenJ_pointer => tenJ
      work%iw_ptr => inner_workspace
      inner_workspace%iw_ptr => inner_workspace
-     
-     n = 3 
+
+     n = 3
      m = 5
      allocate(J(n*m),f(m),X(n),d(n))
      J = one
@@ -1985,31 +1989,31 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      X = one
 
      num_successful_steps = 0
-     
-     call solve_newton_tensor(J, f, eval_H, X, n, m, Delta, num_successful_steps, & 
-                                    d, md, params, options, status, & 
+
+     call solve_newton_tensor(J, f, eval_H, X, n, m, Delta, num_successful_steps, &
+                                    d, md, params, options, status, &
                                     work%calculate_step_ws%solve_newton_tensor_ws,&
                                     tenJ_pointer, inner_workspace)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
-         
-     
+
+
      call reset_default_options(options)
-     
+
    end subroutine solve_newton_tensor_tests
 
    subroutine all_eig_symm_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), ew(:), ev(:,:)
      integer :: n
      type( nlls_workspace ) :: work
      type( nlls_inform ) :: status
-     
+
      real(wp) :: one = 1.0_wp
 
      fails = 0
@@ -2018,25 +2022,25 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      allocate(A(n,n), ew(n), ev(n,n))
      A = one
 
-     call all_eig_symm(A,n,ew,ev, & 
+     call all_eig_symm(A,n,ew,ev, &
              work%calculate_step_ws%solve_galahad_ws%all_eig_symm_ws, status)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
-          
+
      call reset_default_options(options)
-     
+
    end subroutine all_eig_symm_tests
 
    subroutine solve_LLS_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: J(:), f(:), d(:), Jd(:)
      real(wp) :: normerror
-     integer :: n,m 
+     integer :: n,m
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
      type( nlls_inform ) :: status
@@ -2050,16 +2054,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      n = 2
      m = 5
 
-     call setup_workspaces(work,n,m,options,status) 
+     call setup_workspaces(work,n,m,options,status)
 
      allocate(J(n*m), f(m), d(n), Jd(m))
      J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
            6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
      f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
 
-     call solve_LLS(J,f,n,m,d,status, & 
+     call solve_LLS(J,f,n,m,d,status, &
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
-     if ( status%status .ne. 0 ) then 
+     if ( status%status .ne. 0 ) then
         write(*,*) 'solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
@@ -2103,19 +2107,19 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
 
-     
-     n = 100 
+
+     n = 100
      m = 20
      deallocate(J,f,Jd,d)
      allocate(J(n*m), f(m), d(n)) ! f has wrong size
-     
-     call setup_workspaces(work,n,m,options,status) 
+
+     call setup_workspaces(work,n,m,options,status)
 
      J = 1.0_wp
      f = 1.0_wp
-     call solve_LLS(J,f,n,m,d,status, & 
+     call solve_LLS(J,f,n,m,d,status, &
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
-     if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then 
+     if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then
         write(*,*) 'solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
@@ -2123,31 +2127,31 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = 0
 
      call nlls_finalize(work, options, status)
-     
-     call solve_LLS(J,f,n,m,d,status, & 
+
+     call solve_LLS(J,f,n,m,d,status, &
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
 
-     
+
      call reset_default_options(options)
-     
+
    end subroutine solve_LLS_tests
 
 
    subroutine findbeta_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: a(:), b(:)
      real(wp) :: Delta, beta
      type( nlls_inform ) :: status
      integer :: n
-     
-     fails = 0 
+
+     fails = 0
 
      n = 3
      allocate(a(n), b(n))
@@ -2164,12 +2168,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) '|| x + beta y|| = ', norm2( (a + beta * b)-10.0_wp)
         fails = fails + 1
      end if
-     
+
      deallocate(a,b)
-     
+
      n = 2
      allocate(a(n),b(n))!,z(n))
-     
+
      a(1) = 1e25_wp
      a(2) = 0.0_wp
      b(1) = 0.0_wp
@@ -2187,17 +2191,17 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
 
      call reset_default_options(options)
-     
+
    end subroutine findbeta_tests
 
    subroutine calculate_rho_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp) :: normf, normfnew, md, rho
 
-     fails = 0 
+     fails = 0
 
      normf = 2.0_wp
      normfnew = 1.0_wp
@@ -2208,7 +2212,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'Expected 3.0, got ', rho
         fails = fails + 1
      end if
-     
+
      ! now, let's check one is returned if alpha = beta
      normfnew = 2.0_wp
      call calculate_rho(normf, normfnew, md, rho,options)
@@ -2227,26 +2231,26 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'Expected 1.0, got ', rho
         fails = fails + 1
      end if
-     
+
      call reset_default_options(options)
-     
+
    end subroutine calculate_rho_tests
 
    subroutine update_trust_region_radius_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp) :: rho
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
-     
-     fails = 0 
+
+     fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
 
-     call setup_workspaces(work,2,2,options,status) 
+     call setup_workspaces(work,2,2,options,status)
      work%Delta = 100.0_wp ! Delta
      work%tr_nu = 2.0_wp ! nu
      work%tr_p = 3 ! p
@@ -2254,7 +2258,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      options%tr_update_strategy = 1
      ! let's go through the options
-     
+
      options%eta_success_but_reduce = 0.25_wp
      options%eta_very_successful = 0.75_wp
      options%eta_too_successful = 2.0_wp
@@ -2268,7 +2272,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
      work%Delta = 100.0_wp
-     
+
      ! check if rho stays the same...
      rho = (options%eta_success_but_reduce + options%eta_very_successful) / 2
      call update_trust_region_radius(rho,options,status,work)
@@ -2290,7 +2294,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
      work%Delta = 100.0_wp
 
-     
+
      ! check if rho stays the same because too successful...
      rho = options%eta_too_successful + 1.0_wp
      call update_trust_region_radius(rho,options,status,work)
@@ -2305,7 +2309,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      !! now, let's check the other option....
      options%tr_update_strategy = 2
-     
+
      ! check if rho increases...
      rho = (options%eta_very_successful + options%eta_too_successful) / 2
      call update_trust_region_radius(rho,options,status,work)
@@ -2315,7 +2319,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
      work%Delta = 100.0_wp
-     
+
      ! check if rho stays the same because too successful...
      rho = options%eta_too_successful + 1.0_wp
      call update_trust_region_radius(rho,options,status,work)
@@ -2343,11 +2347,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
      work%Delta = 100.0_wp
-     
+
      ! again...NaN test should go here!!!
 
      !Finally, check the error cases...
-     
+
      options%tr_update_strategy = 18
      call update_trust_region_radius(rho,options,status,work)
      if ( status%status .ne. NLLS_ERROR_BAD_TR_STRATEGY ) then
@@ -2359,22 +2363,22 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      work%Delta = 100.0_wp
 
 
-     
+
      call reset_default_options(options)
-     
+
    end subroutine update_trust_region_radius_tests
 
    subroutine test_convergence_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp) :: normF, normJf, normF0, normJF0, normd
      type( nlls_inform ) :: status
 
      fails = 0
-     
-     ! hit the case where f = 0 
+
+     ! hit the case where f = 0
      normF = 0.0_wp
      normJf = 0.0_wp
      normF0 = 1.0_wp
@@ -2388,23 +2392,23 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
 
      call reset_default_options(options)
-     
+
    end subroutine test_convergence_tests
 
-   subroutine mult_J_tests(options,fails)     
+   subroutine mult_J_tests(options,fails)
 
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
-     real(wp), allocatable :: J(:), x(:), Jx(:)
-     integer :: n, m 
 
-     fails = 0 
-     
+     real(wp), allocatable :: J(:), x(:), Jx(:)
+     integer :: n, m
+
+     fails = 0
+
      n = 2
      m = 4
      allocate(J(n*m), x(m), Jx(n))
-     
+
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
      call mult_J(J,m,n,x,Jx,.True.)
@@ -2412,27 +2416,27 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'error :: mult_J test failed'
         fails = fails + 1
      end if
-     
+
      call reset_default_options(options)
-     
+
    end subroutine mult_J_tests
 
    subroutine mult_Jt_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: J(:), x(:), Jtx(:)
-     integer :: n, m 
-     
+     integer :: n, m
+
      fails = 0
 
      n = 2
      m = 4
-     allocate( J(n*m) ) 
-     allocate( x(m) ) 
+     allocate( J(n*m) )
+     allocate( x(m) )
      allocate( Jtx(n) )
-     
+
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
      call mult_Jt(J,n,m,x,Jtx,.True.)
@@ -2440,16 +2444,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'error :: mult_Jt test failed'
         fails = fails + 1
      end if
-     
+
      call reset_default_options(options)
-     
+
    end subroutine mult_Jt_tests
 
 
-   
+
 
    subroutine switch_to_quasi_newton_tests(options,fails)
-     
+
      type( nlls_options), intent(inout) :: options
      integer, intent(out) :: fails
 
@@ -2464,7 +2468,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      n = 2
      m = 4
-     
+
      options%type_of_method = 2
      options%reg_order = 0.0_wp
      call setup_workspaces(w,n,m,options,inform)
@@ -2475,21 +2479,21 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call remove_workspaces(w,options)
 
      call reset_default_options(options)
-     
+
    end subroutine switch_to_quasi_newton_tests
 
-   
+
    subroutine minus_solve_spd_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), b(:), LtL(:,:), x_calc(:), x_true(:)
      integer :: n
      type( nlls_inform ) :: status
-     
+
      fails = 0
-    
+
      n = 2
      allocate(A(n,n), b(n), LtL(n,n), x_calc(n), x_true(n))
      A = reshape([ 4.0, 1.0, 1.0, 2.0 ], shape(A))
@@ -2515,41 +2519,41 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'Error: incorrect value returned from minus_solve_spd_nocopy'
         fails = fails + 1
      end if
-          
+
      call reset_default_options(options)
-     
+
    end subroutine minus_solve_spd_tests
 
    subroutine minus_solve_general_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), b(:), x_calc(:), x_true(:)
      integer :: n,m
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
-     
+
      fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
-     
+
      n = 2
      m = 3
-     
+
      allocate(A(n,n), b(n), x_calc(n), x_true(n))
-     
+
      options%nlls_method = 2
      options%model = 2
      call setup_workspaces(work,n,m,options,status)
 
      A = reshape([4.0, 1.0, 2.0, 2.0], shape(A))
-     x_true = [1.0, 1.0] 
+     x_true = [1.0, 1.0]
      b = [6.0, 3.0]
      ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
      b(:) = -b(:)
-     call minus_solve_general(A,b,x_calc,n,status,& 
+     call minus_solve_general(A,b,x_calc,n,status,&
           work%calculate_step_ws%AINT_tr_ws%minus_solve_general_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: info = ', status%status, ' returned from minus_solve_general'
@@ -2564,7 +2568,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      b = [ 6.0, 3.0 ]
      ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
      b(:) = -b(:)
-     call minus_solve_general(A,b,x_calc,n,status,& 
+     call minus_solve_general(A,b,x_calc,n,status,&
           work%calculate_step_ws%AINT_tr_ws%minus_solve_general_ws)
      if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
         write(*,*) 'Error: expected error return from minus_solve_general, got info = ', status%status
@@ -2573,19 +2577,19 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      call nlls_finalize(work,options,status)
      call reset_default_options(options)
-     
+
    end subroutine minus_solve_general_tests
 
    subroutine matmult_inner_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), AtA(:,:), AtA_expected(:,:), diff(:)
      integer :: n, m, i
 
-     fails = 0 
-     
+     fails = 0
+
 
      n = 2
      m = 3
@@ -2604,21 +2608,21 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'error :: matmult_inner test failed'
         fails = fails + 1
      end if
-     
+
      call reset_default_options(options)
-     
+
    end subroutine matmult_inner_tests
 
-   
+
    subroutine matmult_outer_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), AAt(:,:), AAt_expected(:,:), diff(:)
      integer :: n, m, i
-     
-     fails = 0 
+
+     fails = 0
 
      n = 2
      m = 3
@@ -2628,7 +2632,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
                    shape(A))
      call matmult_outer(A,n,m,AAt)
      AAt_expected = reshape( [  5.0, 10.0, 15.0,  &
-                               10.0, 20.0, 30.0, & 
+                               10.0, 20.0, 30.0, &
                                15.0, 30.0, 45.0 ] &
                                , shape(AAt_expected))
      do i = 1,m
@@ -2638,19 +2642,19 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'error :: matmult_outer test failed'
         fails = fails + 1
      end if
-     
+
      call reset_default_options(options)
-     
+
    end subroutine matmult_outer_tests
 
    subroutine outer_product_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: x(:), xxt(:,:), xxt_exact(:,:), diff(:)
-     integer :: n, i 
-     
+     integer :: n, i
+
      fails = 0
 
      n = 4
@@ -2658,7 +2662,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      x = [ 1.0, 2.0, 3.0, 4.0 ]
      xxt_exact = reshape( [1.0, 2.0,  3.0,  4.0, &
                            2.0, 4.0,  6.0,  8.0, &
-                           3.0, 6.0,  9.0, 12.0, & 
+                           3.0, 6.0,  9.0, 12.0, &
                            4.0, 8.0, 12.0, 16.0], shape(xxt_exact))
      call outer_product(x,n,xxt)
      do i = 1, n
@@ -2669,32 +2673,32 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails +1
      end if
 
-     
+
      call reset_default_options(options)
-     
+
    end subroutine outer_product_tests
 
    subroutine min_eig_symm_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), ev(:)
      real(wp) :: ew
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
-     integer :: n, m, i 
-     
-     fails = 0 
+     integer :: n, m, i
+
+     fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
-     
+
      n = 4
      m = 4
 
      allocate(ev(n), A(n,n))
-     
+
      ! make sure min_eig_symm gets called
      do i = 1, 2
         ! Setup workspace for n = 4
@@ -2710,70 +2714,70 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
         ! first, remove previous workspace
         call remove_workspaces(work,options)
-        call setup_workspaces(work,n,m,options,status) 
+        call setup_workspaces(work,n,m,options,status)
         if (status%status .ne. 0) then
            write(*,*) 'Error: info = ', status%status, ' when setting up workspace'
-           fails = fails +1 
+           fails = fails +1
         end if
-                
+
         A = reshape( [-5.0, 1.0, 0.0, 0.0, &
                       1.0, -5.0, 0.0, 0.0, &
-                      0.0,  0.0, 4.0, 2.0, & 
+                      0.0,  0.0, 4.0, 2.0, &
                       0.0,  0.0, 2.0, 4.0], shape(A))
 
-        call min_eig_symm(A,n,ew,ev,options,status, & 
+        call min_eig_symm(A,n,ew,ev,options,status, &
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
 
         if ( (abs( ew + 6.0 ) > 1e-12).or.(status%status .ne. 0) ) then
            write(*,*) 'error :: min_eig_symm test failed -- wrong eig found'
-           fails = fails +1 
+           fails = fails +1
         elseif ( norm2(matmul(A,ev) - ew*ev) > 1e-12 ) then
            write(*,*) 'error :: min_eig_symm test failed -- not an eigenvector'
-           fails = fails +1 
+           fails = fails +1
         end if
 
         call nlls_finalize(work,options,status)
 
-        call min_eig_symm(A,n,ew,ev,options,status, & 
+        call min_eig_symm(A,n,ew,ev,options,status, &
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
-        if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+        if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
            write(*,*) 'Error: workspace error not flagged when workspaces not setup'
            fails = fails + 1
         end if
-        
+
      end do
 
      call reset_default_options(options)
-     
+
    end subroutine min_eig_symm_tests
 
    subroutine max_eig_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), B(:,:), ev(:), nullevs(:,:), shapenull(:), diff(:)
      real(wp) :: ew
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
-     integer :: n, m, i 
-     
-     fails = 0 
+     integer :: n, m, i
+
+     fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
-     
+
      n = 2
      m = 2
 
      allocate(ev(2*n), A(2*n,2*n), B(2*n,2*n),nullevs(n,2))
-     
+
      options%nlls_method = 2
      call setup_workspaces(work,n,m,options,status)
-     
+
      A = reshape( [ 1.0, 2.0, 3.0,  4.0, &
                     2.0, 4.0, 6.0,  8.0, &
-                    3.0, 6.0, 9.0, 12.0, & 
+                    3.0, 6.0, 9.0, 12.0, &
                     4.0, 8.0, 12.0,16.0 ], shape(A))
      B = 0.0_wp
      do i = 1,2*n
@@ -2781,11 +2785,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end do
      !alpha = 1.0_wp
      !x = 0.0_wp
-     call max_eig(A,B,2*n,ew,ev,nullevs,options,status, & 
+     call max_eig(A,B,2*n,ew,ev,nullevs,options,status, &
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
      if ( status%status .ne. 0 ) then
         write(*,*) 'error :: max_eig test failed, status = ', status%status
-        fails = fails + 1 
+        fails = fails + 1
      elseif ( (abs( ew - 10.0_wp) > 1e-12) ) then
         write(*,*) 'error :: max_eig test failed, incorrect answer'
         write(*,*) 'expected 10.0, got ', ew
@@ -2797,11 +2801,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      A(1,3) = A(3,1); A(1,4) = A(4,1); A(2,3) = A(3,2); A(2,4) = A(4,2)
      B = A
      A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
-     
+
      deallocate(nullevs)
-     call max_eig(A,B,2*n,ew,ev,nullevs,options,status, & 
+     call max_eig(A,B,2*n,ew,ev,nullevs,options,status, &
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     if (.not. allocated(nullevs)) then ! check C returned 
+     if (.not. allocated(nullevs)) then ! check C returned
         write(*,*) 'error :: hard case of max_eig test failed - C not returned'
         fails = fails + 1
      else
@@ -2814,7 +2818,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         else
            allocate(diff(n))
            ! Repopulate A (was overwritten by eig routine)
-           A = 0.0_wp  
+           A = 0.0_wp
            A(3,1) = 1.0_wp; A(4,1) = 2.0_wp; A(3,2) = 3.0_wp; A(4,2) = 4.0_wp
            A(1,3) = A(3,1); A(1,4) = A(4,1); A(2,3) = A(3,2); A(2,4) = A(4,2)
            B = A
@@ -2822,7 +2826,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            do i = 1, n
               diff(i) = norm2(                        &
                    matmul( A(3:4,3:4),nullevs(1:2,i) )         &
-                   - ew * matmul(B(3:4,3:4),nullevs(1:2,i)) & 
+                   - ew * matmul(B(3:4,3:4),nullevs(1:2,i)) &
                    )
            end do
            if (norm2(diff) > 1e-10) then
@@ -2832,11 +2836,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            end if
         end if
      end if
-     
+
      call remove_workspaces(work, options)
 
      deallocate(ev,A,B)
-     
+
      n = 1
      m = 1
      call setup_workspaces(work, n, m, options, status)
@@ -2850,7 +2854,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      B(1,1) = 1.0_wp
      B(2,2) = 1.0_wp
 
-     call max_eig(A,B,2*n,ew,ev,nullevs,options,status, & 
+     call max_eig(A,B,2*n,ew,ev,nullevs,options,status, &
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
      if (status%status .ne. NLLS_ERROR_AINT_EIG_IMAG) then
         write(*,*) 'error :: all complex part of max_eig test failed'
@@ -2871,26 +2875,26 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! now let's check for workspace error
      call max_eig(A,B,2*n+1,ew,ev,nullevs, options,status, &
                   work%calculate_step_ws%AINT_tr_ws%max_eig_ws)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
-        fails = fails + 1 
+        fails = fails + 1
      end if
 
-     
+
      call reset_default_options(options)
-     
+
    end subroutine max_eig_tests
 
    subroutine shift_matrix_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: A(:,:), AplusSigma(:,:)
      real(wp) :: sigma
      integer :: n
-     
-     fails = 0 
+
+     fails = 0
 
      n = 2
 
@@ -2903,29 +2907,29 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           ((AplusSigma(2,2) - 6.0_wp) > 1e-12) ) then
         write(*,*) 'Error: incorrect return from shift_matrix'
         fails = fails + 1
-     elseif ( ( (AplusSigma(1,2)-1.0_wp) > 1e-12) .or. & 
+     elseif ( ( (AplusSigma(1,2)-1.0_wp) > 1e-12) .or. &
           ((AplusSigma(2,1) - 1.0_wp) > 1e-12) ) then
         write(*,*) 'Error: incorrect return from shift_matrix'
         fails = fails + 1
      end if
-     
+
      call reset_default_options(options)
-     
+
    end subroutine shift_matrix_tests
-   
-   
+
+
    subroutine error_message_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: X(:)
      type( user_type ) :: params
      type( nlls_inform ) :: status
      character (len = 80) :: expected_string
-     
+
      integer :: n, m
-     
+
 
      fails = 0
      n = 2
@@ -2933,10 +2937,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      allocate(params%x_values(m))
      allocate(params%y_values(m))
-     
+
      call generate_data_example(params)
-     
-     ! let's check the workspace errors 
+
+     ! let's check the workspace errors
      ! first, let's do the main workspace...
      allocate(X(n))
      X = 1.0_wp
@@ -2944,18 +2948,18 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call nlls_solve(n, m, X,                   &
                     eval_F, eval_J, eval_H, params, &
                     options, status)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         write(*,*) 'status = ', status%status
         fails = fails + 1
      end if
 
-     
+
      ! nlls_strerror
      status%status = NLLS_ERROR_MAXITS
      call nlls_strerror(status)
      expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -2964,11 +2968,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_EVALUATION
      status%external_name = 'nlls_test'
      status%external_return = -1
-     write(expected_string,'(a,a,a,i0)') & 
-                'Error code from user-supplied subroutine ',trim(status%external_name), & 
+     write(expected_string,'(a,a,a,i0)') &
+                'Error code from user-supplied subroutine ',trim(status%external_name), &
                 ' passed error = ', status%external_return
      call nlls_strerror(status)
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -2977,7 +2981,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_UNSUPPORTED_MODEL
      call nlls_strerror(status)
      expected_string = 'Unsupported model passed in options'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -2985,10 +2989,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      status%status = NLLS_ERROR_FROM_EXTERNAL
      call nlls_strerror(status)
-     write(expected_string,'(a,a,a,i0)') & 
-                'The external subroutine ',trim(status%external_name), & 
+     write(expected_string,'(a,a,a,i0)') &
+                'The external subroutine ',trim(status%external_name), &
                 ' passed error = ', status%external_return
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -2997,16 +3001,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_MAXITS
      call nlls_strerror(status)
      expected_string = 'Maximum number of iterations reached'
-     if (status%error_message .ne. 'Maximum number of iterations reached') then 
+     if (status%error_message .ne. 'Maximum number of iterations reached') then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
      end if
-     
+
      status%status = NLLS_ERROR_UNSUPPORTED_METHOD
      call nlls_strerror(status)
      expected_string = 'Unsupported nlls_method passed in options'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3017,7 +3021,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call nlls_strerror(status)
      write(expected_string,'(a,a)') &
                 'Bad allocation of memory in ', trim(status%bad_alloc)
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3026,16 +3030,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_MAX_TR_REDUCTIONS
      call nlls_strerror(status)
      expected_string = 'The trust region was reduced the maximum number of times'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
      end if
-     
+
      status%status = NLLS_ERROR_MAX_TR_REDUCTIONS
      call nlls_strerror(status)
      expected_string = 'The trust region was reduced the maximum number of times'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3045,7 +3049,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_X_NO_PROGRESS
      call nlls_strerror(status)
      expected_string = 'No progress made in X'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3054,7 +3058,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_BAD_TR_STRATEGY
      call nlls_strerror(status)
      expected_string = 'Unsupported tr_update_stategy passed in options'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3064,7 +3068,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_FIND_BETA
      call nlls_strerror(status)
      expected_string = 'Unable to find suitable scalar in findbeta subroutine'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3074,7 +3078,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_BAD_SCALING
      call nlls_strerror(status)
      expected_string = 'Unsupported value of scale passed in options'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3084,7 +3088,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_WORKSPACE_ERROR
      call nlls_strerror(status)
      expected_string =  'Error accessing pre-allocated workspace'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
         write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
              status%status
         fails = fails + 1
@@ -3093,7 +3097,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
      call nlls_strerror(status)
      expected_string =  'Unsupported value of type_of_method passed in options'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3102,7 +3106,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_DOGLEG_MODEL
      call nlls_strerror(status)
      expected_string = 'Model not supported in dogleg (nlls_method=1)'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3112,7 +3116,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_AINT_EIG_IMAG
      call nlls_strerror(status)
      expected_string = 'All eigenvalues are imaginary (nlls_method=2)'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3122,7 +3126,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_AINT_EIG_ODD
      call nlls_strerror(status)
      expected_string = 'Odd matrix sent to max_eig subroutine (nlls_method=2)'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3132,7 +3136,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_MS_MAXITS
      call nlls_strerror(status)
      expected_string = 'Maximum iterations reached in more_sorensen (nlls_method=3)'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3142,7 +3146,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
      call nlls_strerror(status)
      expected_string = 'Too many shifts taken in more_sorensen (nlls_method=3)'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3152,7 +3156,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_MS_NO_PROGRESS
      call nlls_strerror(status)
      expected_string = 'No progress being made in more_sorensen (nlls_method=3)'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
@@ -3161,33 +3165,33 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      status%status = NLLS_ERROR_NO_SECOND_DERIVATIVES
      call nlls_strerror(status)
      expected_string = 'Exact second derivatives needed for tensor model'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
      end if
-     
-     
+
+
 
 
      status%status = -2355
      call nlls_strerror(status)
      expected_string = 'Unknown error number'
-     if (status%error_message .ne. expected_string) then 
+     if (status%error_message .ne. expected_string) then
          write(*,*) 'Error: incorrect string returned from nlls_strerror when status = ', &
               status%status
          fails = fails + 1
      end if
 
      call reset_default_options(options)
-     
+
    end subroutine error_message_tests
 
    subroutine print_line(unit)
      integer, intent(in) :: unit
-     
+
      write(unit,*) "=================================================="
-     
+
    end subroutine print_line
 
 
@@ -3245,7 +3249,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
   Do jtype = 1, 2
     options%fortran_jacobian = merge(.True., .False., jtype==1)
     params%fortran_jacobian = options%fortran_jacobian
-  
+
     Do opt = 0, 4
       options%save_covm = opt
       testok = .True.
@@ -3287,7 +3291,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
             if (.Not. Ok) then
               print *, "Variance (from covariance) on the parameters are:"
               Write(*,Fmt=20000) "Idx", "Std Dev", "Cert Std Dev", "Abs Error", "Ok?"
-              Write(*, Fmt=10000) i, sd, cert_sd(i), abserr, merge('PASSED', 'FAILED', ok) 
+              Write(*, Fmt=10000) i, sd, cert_sd(i), abserr, merge('PASSED', 'FAILED', ok)
             end if
           End Do
           ! Make sure inform%var is not allocated
@@ -3306,7 +3310,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
             if (.Not. Ok) then
               print *, "Variance (from inform%var) on the parameters are:"
               Write(*,Fmt=20000) "Idx", "Std Dev", "Cert Std Dev", "Abs Error", "Ok?"
-              Write(*, Fmt=10000) i, sd, cert_sd(i), abserr, merge('PASSED', 'FAILED', ok) 
+              Write(*, Fmt=10000) i, sd, cert_sd(i), abserr, merge('PASSED', 'FAILED', ok)
             end if
           End Do
           ! Make sure inform%cov is not allocated
@@ -3340,7 +3344,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           testok = testok .And. ok
         else
           ! Need to calculate H = J * Transpose(J)
-          Do i = 1, n 
+          Do i = 1, n
             Do k = 1, n
               JTJ_ik = dot_product( J(i:m*n:n), J(k:m*n:n) )
               abserr =  max (abserr, abs (JTJ_ik - inform%cov(i,k)))

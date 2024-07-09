@@ -1,11 +1,13 @@
 #!/bin/bash
+# Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 
 # tests to be run before a commit
-# to enable, run 
+# to enable, run
 #  ln -s pre-commit.sh ../../.git/hooks/pre-commit
 
 # stash uncommitted code
-git stash -q --keep-index 
+git stash -q --keep-index
 
 # run the tests
 ./run_tests.sh

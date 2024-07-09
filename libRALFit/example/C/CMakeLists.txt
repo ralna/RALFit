@@ -1,3 +1,5 @@
+# Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 # Examples build
 
 # lm_example requires GSL libraries!

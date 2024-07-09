@@ -1,3 +1,6 @@
+! Copyright (C) 2015 Science and Technology Facilities Council (STFC).
+! All rights reserved.
+
 !   ( Last modified on 6 Oct 2015 at 15:50:00 )
 
       PROGRAM RAL_NLLS_main

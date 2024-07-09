@@ -1,3 +1,7 @@
+! Copyright (c) 2020, The Numerical Algorithms Group Ltd (NAG)
+! All rights reserved.
+! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 Module NAG_EXPORT_MOD
       Use ral_nlls_workspaces, Only: wp
       Implicit None
@@ -158,7 +162,7 @@ Module NAG_EXPORT_MOD
 
       Return
     End Subroutine e04rlpn
-    
+
     Subroutine e04rlln(armijo,evalok,alpn,falp,ils,rls,iflag)
 !     NAG COPYRIGHT 2015.
 
@@ -422,7 +426,7 @@ Module NAG_EXPORT_MOD
 !       Copy only diagonal elements
         Do i = 1, n
           inform%var(i) = inform%cov(i,i)
-        End Do 
+        End Do
         Deallocate(inform%cov, stat=ierr)
       End If
 

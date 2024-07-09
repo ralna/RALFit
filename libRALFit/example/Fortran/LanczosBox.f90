@@ -1,3 +1,7 @@
+! Copyright (c) 2019, The Numerical Algorithms Group Ltd (NAG)
+! All rights reserved.
+! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 ! examples/Fortran/LanczosBox.f90
 
 module lanczos_box_module
@@ -20,13 +24,13 @@ contains
     real(wp), dimension(*), intent(in) :: x
     real(wp), dimension(*), intent(out) :: r
     class(params_base_type), intent(inout) :: params
-    
+
     select type(params)
     type is(params_type)
        r(1:m) = params%y(:) &
             - x(1)*exp(-x(2)*params%t(:)) &
             - x(3)*exp(-x(4)*params%t(:)) &
-            - x(5)*exp(-x(6)*params%t(:)) 
+            - x(5)*exp(-x(6)*params%t(:))
       status = 0 ! success
       return
     Class Default
@@ -88,7 +92,7 @@ contains
     end select
     status = -1 ! fail
   end subroutine eval_HF
-  
+
 end module lanczos_box_module
 
 program lanczos_box
@@ -104,7 +108,7 @@ program lanczos_box
   type(params_type) :: params
   integer :: i
   real(wp) :: tic, toc
- 
+
   ! data to be fitted
   m = 24
   allocate(params%t(m), params%y(m))
@@ -161,7 +165,7 @@ program lanczos_box
   n = 6
   allocate(x(n))
   x = (/ 0.44, -0.2408, 2.598, 3.44, -6.199, 0.0977 /)
- 
+
   ! Add bounds on the variables
   Allocate(blx(n),bux(n),xnew(n))
   blx(1:n) = -1.0

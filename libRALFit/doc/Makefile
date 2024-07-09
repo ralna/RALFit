@@ -1,3 +1,5 @@
+# Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 # Makefile for Sphinx documentation
 #
 

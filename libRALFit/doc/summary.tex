@@ -1,3 +1,5 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 % The beginning summary section
 {\tt \fullpackagename} computes a solution $\vx$ to the non-linear least-squares problem
 \begin{equation}
@@ -8,7 +10,7 @@ where $\vW\in\mathbb{R}^{m\times m}$ is a diagonal, non-negative, weighting matr
 
 A typical use may be to fit a function $f(\vx)$ to the data $y_i, \ t_i$, weighted by the uncertainty of the data, $\sigma_i$, so that
 $$r_i(\vx) := y_i - f(\vx;t_i),$$
-and $\vW$ is the diagonal matrix such that $\vW_{ii} = (1/\sqrt{\sigma_i}).$  For this reason 
+and $\vW$ is the diagonal matrix such that $\vW_{ii} = (1/\sqrt{\sigma_i}).$  For this reason
 we refer to the function $\vr$ as the \emph{residual} function.
 % the fit of the data $y$ to some non-linear function ${\bm f} : \mathbb{R}^n \rightarrow \mathbb{R}^m$
 % ($m>n$).
@@ -16,13 +18,13 @@ we refer to the function $\vr$ as the \emph{residual} function.
 % \textcolor{blue}{Some confusion: the $y_i$ don't appear again.}
 
 The algorithm is iterative.
-At each point, $\iter{\vx}$, the algorithm builds a model of the function at the next step, $F({\iter{\vx}+\iter{\vs}})$, which we refer to as $m_k(\cdot)$.  We allow either a Gauss-Newton model, a (quasi-)Newton model, or a Newton-tensor model; see Section \ref{sec:model_description} for more details about these models.  
+At each point, $\iter{\vx}$, the algorithm builds a model of the function at the next step, $F({\iter{\vx}+\iter{\vs}})$, which we refer to as $m_k(\cdot)$.  We allow either a Gauss-Newton model, a (quasi-)Newton model, or a Newton-tensor model; see Section \ref{sec:model_description} for more details about these models.
 
 Once the model has been formed we find a candidate for the next step by either solving a trust-region sub-problem of the form
 \begin{equation}
 \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs) \quad \mathrm{s.t.} \quad  \|\vs\|_B \leq \Delta_k,\label{eq:tr_subproblem}
 \end{equation}
-or by solving the regularized problem 
+or by solving the regularized problem
 \begin{equation}
 \iter{\vs} = \arg \min_{\vs} \ \iter{m} (\vs)  + \frac{1}{\Delta_k}\cdot \frac{1}{p} \|\vs\|_B^p,\label{eq:reg_subproblem}
 \end{equation}
@@ -38,7 +40,7 @@ This process continues until either the residual, $\|\vr(\iter{\vx})\|_\vW$, or 
 $\|{\iter{\vJ}}^T\vW\vr(\iter{\vx})\|_2 / \|\vr(\iter{\vx})\|_\vW$, is sufficiently small.
 
 
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "nlls_fortran"
-%%% End: 
+%%% End:

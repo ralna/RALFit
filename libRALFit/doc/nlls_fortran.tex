@@ -1,3 +1,5 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 \documentclass{spec}
 
 \usepackage{amsfonts,bm,amsmath}
@@ -12,7 +14,7 @@
 \newcommand{\scalarinteger}[1]{\itt{#1} is a scalar of type {\tt INTEGER} }
 \newcommand{\scalarlogical}[1]{\itt{#1} is a scalar of type {\tt LOGICAL} }
 \newcommand{\scalarcharacter}[2]{
-  \itt{#1} is a scalar of type {\tt CHARACTER} and length {\tt #2} 
+  \itt{#1} is a scalar of type {\tt CHARACTER} and length {\tt #2}
 }
 \newcommand{\scalarreal}[1]{\itt{#1} is a scalar of package type}
 \newcommand{\ronearrayinteger}[1]{is a rank-1 array of type {\tt INTEGER} and size {\tt #1} }
@@ -77,7 +79,7 @@ Access to the package requires a {\tt USE} statement \\ \\
 \label{derived types}
 For each problem, the user must employ the derived types defined by the
 module to declare scalars of the types {\tt NLLS\_inform} and
-{\tt NLLS\_options}.  If {\tt nlls\_iterate} is to be used, then 
+{\tt NLLS\_options}.  If {\tt nlls\_iterate} is to be used, then
 a scalar of the type {\tt NLLS\_workspace} must also be defined.
 The following pseudocode illustrates this.
 \begin{verbatim}
@@ -121,7 +123,7 @@ To solve the non-linear least squares problem a call of the following form shoul
 
 \begin{description}
 \itt{n} \scalarintegerii that holds the number $n$ of
-variables to be fitted; i.e., $n$ is the length of the unknown vector $\bm x$. 
+variables to be fitted; i.e., $n$ is the length of the unknown vector $\bm x$.
 \textbf{Restriction:} \texttt{n}$>${\tt 0}.
 
 \itt{m} \scalarintegerii that holds the number $m$ of
@@ -154,7 +156,7 @@ Further details of its use are given in Section~\ref{sec::function_eval}.
 {\tt NLLS\_inform}. Its components provide information about the execution
 of the subroutine, as explained in Section~\ref{typeinform}.
 
-\itt{weights} \ronearrayrealiiopt{m}.  If present, {\tt weights} holds the square-roots of the 
+\itt{weights} \ronearrayrealiiopt{m}.  If present, {\tt weights} holds the square-roots of the
 diagonal entries of the weighting matrix, $\vW$, in (\ref{eq:nlls_problem}).  If absent, then the norm in (\ref{eq:nlls_problem}) is taken to be the 2-norm, that is, $\vW = I$.
 
 \end{description}
@@ -213,7 +215,7 @@ construct:
 
 \subsubsection{For evaluating the function $\vr(\vx)$}
 
-A subroutine must be supplied to calculate $\vr(\vx)$ for a given vector $\vx$. 
+A subroutine must be supplied to calculate $\vr(\vx)$ for a given vector $\vx$.
 It must implement the following interface:
 
 \begin{verbatim}

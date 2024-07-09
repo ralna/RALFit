@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+# Copyright (C) 2015 Science and Technology Facilities Council (STFC).
+# All rights reserved.
+
 import sys
 import numpy as np
 import matplotlib.pyplot as plt

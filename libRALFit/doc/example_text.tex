@@ -1,3 +1,5 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 % setup the example problem
 
 Consider fitting the function $y(t) = x_1e^{x_2 t}$ to data $(\bm{t}, \bm{y})$
@@ -25,13 +27,13 @@ $$  \vr(\vx) = \begin{bmatrix}
       r_1(\vx)\\
       \vdots \\
       r_m(\vx)
-    \end{bmatrix}, \quad   \vJ(\vx) = 
+    \end{bmatrix}, \quad   \vJ(\vx) =
     \begin{bmatrix}
       \nabla r_1(\vx) \\
       \vdots \\
       \nabla r_m(\vx) \\
-    \end{bmatrix}, \quad 
-    Hf(\vx) = 
+    \end{bmatrix}, \quad
+    Hf(\vx) =
     \sum_{i=1}^m
     (\vr)_i \nabla^2 r_i(\vx),
 $$
@@ -46,10 +48,10 @@ Given the data
       $y_i$ & 3 & 4 & 6 & 11 & 20
    \end{tabular}
 \end{center}
-and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit (with no 
+and initial guess $\vx = (2.5, 0.25)$, the following code performs the fit (with no
 weightings, i.e., $\vW = \vI$).
 
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "nlls_fortran"
-%%% End: 
+%%% End:

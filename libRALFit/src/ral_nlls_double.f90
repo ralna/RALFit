@@ -1,3 +1,6 @@
+! Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
+! Copyright (C) 2020 Numerical Algorithms Group (NAG). All rights reserved.
 ! ral_nlls_double :: a nonlinear least squares solver
 
 module ral_nlls_double

@@ -1,5 +1,7 @@
+! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 ! examples/Fortran/nlls_example.f90
-! 
+!
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 ! For parameters x_1 and x_2, and input data (t_i, y_i)
 module fndef_example
@@ -103,7 +105,7 @@ program nlls_example
    allocate(params%t(m), params%y(m))
    params%t(:) = (/ 1.0, 2.0, 4.0,  5.0,  8.0 /)
    params%y(:) = (/ 3.0, 4.0, 6.0, 11.0, 20.0 /)
-   
+
    ! Call fitting routine
    n = 2
    allocate(x(n))

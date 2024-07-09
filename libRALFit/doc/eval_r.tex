@@ -1,3 +1,5 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 % description of eval_r
 
 \begin{description}
@@ -8,11 +10,11 @@
 
    \itt{r} must be set by the routine to hold the residual function
       evaluated at the current point $\iter{\vx}$, $\vr(\iter{\vx})$.
-      
+
    \fortranonly{
    \itt{status} is initialised to \texttt{0} before the routine is
-      called. If it is set to a non-zero value by the routine, then \newline 
-      \mainroutine /\onestep \ 
+      called. If it is set to a non-zero value by the routine, then \newline
+      \mainroutine /\onestep \
       will exit with an error.
     }
 \end{description}
@@ -20,7 +22,7 @@
 \textbf{Return value:} The function should return \texttt{0} on success. A non-zero return value will cause the least squares fitting to abort with an error code.
 }
 
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "nlls_fortran"
-%%% End: 
+%%% End:

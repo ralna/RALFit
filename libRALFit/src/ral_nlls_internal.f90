@@ -1,3 +1,5 @@
+! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 ! ral_nlls_internal :: internal subroutines for ral_nlls
 
 module ral_nlls_internal
@@ -128,7 +130,7 @@ contains
     If (inform%status/=0) Then
        Go To 100
     End If
-    
+
     If (buildmsg(1, .False., options)) Then
       Write(rec(1),Fmt=6000)
       Write(rec(2),Fmt=6001)
@@ -230,7 +232,7 @@ contains
     Real(Kind=wp) :: tau, gtd_new, pgtd, wgtd
     Logical       :: takestep, wolfe
     Integer       :: ntrfail, nlab, lstype
-    
+
     ! todo: make max_tr_decrease a control variable
     max_tr_decrease = 100
     num_successful_steps = 0
@@ -288,7 +290,7 @@ contains
           ! make initial point feasible by projecting into the box
           Call box_proj(w%box_ws, n, x)
        end if
-              
+
        ! evaluate the residual
        ! Note: Assumes X is x0 and is feasible
        call eval_F(inform%external_return, n, m, X, w%f, params)
@@ -364,7 +366,7 @@ contains
          inform%status = NLLS_ERROR_INITIAL_GUESS
          Go To 100
        End If
-          
+
        ! save some data
        if ( w%box_ws%has_box ) then
           ! store current merit, used to see how well a quadratic fits
@@ -626,7 +628,7 @@ lp: do while (.not. success)
               End Do
            End If
         End If
-        
+
        !++++++++++++++++++!
        ! Accept the step? !
        !++++++++++++++++++!
@@ -748,7 +750,7 @@ lp: do while (.not. success)
        call update_trust_region_radius(rho,options,inform,w)
        if (inform%status /= 0) goto 100
 
-       if (w%box_ws%has_box) then 
+       if (w%box_ws%has_box) then
           ! Only run the box logic if the projected TR step differs from
           ! the unconstrained step
           If (w%box_ws%prjchd) Then
@@ -845,7 +847,7 @@ lp: do while (.not. success)
        end if
     end do lp
 
-    if( w%box_ws%has_box ) then  
+    if( w%box_ws%has_box ) then
        If (takestep .And. .Not. success) Then
           ! We need to take the projected TR step but
           ! gradient is not available
@@ -875,7 +877,7 @@ lp: do while (.not. success)
             takestep = .False.
          end if
       End If
-      
+
       If (.Not. takestep) Then
          If (present(weights)) Then
             Call linesearch_steps(n,m,success,tau,X,normX,normFnew,normJFnew,eval_F,   &
@@ -888,7 +890,7 @@ lp: do while (.not. success)
             goto 100
          End If
       End If
-      
+
       ! update LS metrics if actual box is finite
       w%box_ws%normFold = w%normF
       w%box_ws%nFref = max(1, min(w%box_ws%nFref + 1, options%box_nFref_max))
@@ -1160,7 +1162,7 @@ lp: do while (.not. success)
           bad_allocate = .true.
        end if
     end if
-    
+
     if ( (.not.bad_allocate) .And. allocated(w%gradvec)) then
        if (allocated(inform%gradvec)) deallocate(inform%gradvec, stat=ierr_dummy)
        allocate(inform%gradvec(w%iter + 1), stat = inform%alloc_status)
@@ -1478,7 +1480,7 @@ lp: do while (.not. success)
                    call setup_workspace_more_sorensen(n,m,w%more_sorensen_ws, &
                         options, inform)
                 end if
-                subproblem_method = 4 ! try gltr next 
+                subproblem_method = 4 ! try gltr next
 
                 call more_sorensen(w%A,w%v,n,m,Delta,d,norm_S_d, &
                      options,inform,w%more_sorensen_ws)
@@ -1492,7 +1494,7 @@ lp: do while (.not. success)
                 if (use_second_derivatives) then
                    subproblem_method = 2 ! try aint next
                    ! dogleg doesn't work with Hessians...
-                else 
+                else
                    subproblem_method = 1 ! try dogleg next
                 end if
                 if (.not. w%solve_galahad_ws%allocated) then
@@ -1511,7 +1513,7 @@ lp: do while (.not. success)
                 goto 100
              end select ! nlls_method
           elseif (options%type_of_method == 2) then
-             
+
              select case (subproblem_method)
              case (3) ! home-rolled regularization solver
                 If (buildmsg(5,.False.,options)) Then
@@ -1521,14 +1523,14 @@ lp: do while (.not. success)
                 if (.not. w%regularization_solver_ws%allocated) then
                    call setup_workspace_regularization_solver(n,m, &
                         w%regularization_solver_ws, options, inform)
-                end if               
+                end if
                 subproblem_method = 4
-                
+
                 call regularization_solver(w%A,w%v,n,m,Delta,      &
                      num_successful_steps, d,norm_S_d,w%reg_order, &
                      options,inform,w%regularization_solver_ws)
                 if (inform%status == 0) subproblem_success = .true.
-                
+
              case(4) ! Galahad
                 If (buildmsg(5,.False.,options)) Then
                    Write(rec(1), Fmt=3020) 'Galahad DRQS'
@@ -1539,7 +1541,7 @@ lp: do while (.not. success)
                         w%solve_galahad_ws, options, inform)
                 end if
                 subproblem_method = 3
-                
+
                 call solve_galahad(w%A,w%v,n,m,Delta,num_successful_steps, &
                      d,norm_S_d,w%reg_order,options,inform,w%solve_galahad_ws)
                 if (inform%status == 0) subproblem_success = .true.
@@ -1550,16 +1552,16 @@ lp: do while (.not. success)
                 inform%status = NLLS_ERROR_UNSUPPORTED_METHOD
                 goto 100
              end select ! nlls_method
-             
+
           else
              inform%status = NLLS_ERROR_UNSUPPORTED_TYPE_METHOD
              goto 100
           end if ! type_of_method
-          if (.not. subproblem_success) then 
+          if (.not. subproblem_success) then
              num_methods_tried = num_methods_tried + 1
           end if
        end do
-       
+
         ! reverse the scaling on the step
         if ( (scaling_used) ) then
            ! recalculate ||d||
@@ -3639,7 +3641,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        ! Calculates norm_A_x = ||x||_A = sqrt(x'*A*x)
        ! assumes dimension match !
        ! norm_A_x = sqrt(dot_product(x,matmul(A,x)))
-       ! trivial version that does not trigger automatic 
+       ! trivial version that does not trigger automatic
        ! array allocation for MV product, can be done better...
        n = size(x)
        norm_A_x = 0.0_wp
@@ -4185,17 +4187,17 @@ lp:    do i = 1, w%tensor_options%maxit
             if (params%extra == 1) then
                ! we're passing in the regularization via the function/Jacobian
                v = sqrt(1.0_wp/params%Delta)
-               
+
                do ii = 1,n ! loop over the columns...
                   J(m*(ii-1) + params%m + ii) = v
                end do
             elseif (params%extra == 2) then
-               
+
                v = sqrt( (params%p)/(2.0_wp * params%Delta) ) *                &
                     (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
                ! J(m*(ii-1) + params%m + ii) = v * s(ii)
-               call dcopy(n, s, 1, J(m), m) 
-               call dscal(n, v, J(m), m ) 
+               call dcopy(n, s, 1, J(m), m)
+               call dscal(n, v, J(m), m )
             end if
           else
              ! Jacobian is provided row-wise
@@ -4204,7 +4206,7 @@ lp:    do i = 1, w%tensor_options%maxit
              !End Do
              call dcopy(n*params%m,params%J,1,J,1)
              call daxpy(n*params%m, 1.0_wp, params%tenJ%Hs(1,1),1, J, 1)
-           
+
             if (params%extra == 1) then
                ! we're passing in the regularization via the function/Jacobian
                ! Update the diagonal of the last nxn block
@@ -4218,8 +4220,8 @@ lp:    do i = 1, w%tensor_options%maxit
                     (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
               ! avoid auto allocation
               ! J((m-1)*n+1 : m*n) = v * s(1:n)
-              call dcopy(n, s, 1, J((m-1)*n+1), 1 ) 
-              call dscal(n, v, J((m-1)*n+1), 1 ) 
+              call dcopy(n, s, 1, J((m-1)*n+1), 1 )
+              call dscal(n, v, J((m-1)*n+1), 1 )
             end if
           end if
 
@@ -4347,9 +4349,9 @@ lp:    do i = 1, w%tensor_options%maxit
       Logical                          :: take_pg_step
       Integer                          :: ierr
       Real(Kind=wp)                    :: alpha
-      
+
       Continue
-      
+
       take_pg_step = .True.
 
 !       Box descent conditions were not met.
@@ -4411,7 +4413,7 @@ lp:    do i = 1, w%tensor_options%maxit
             Go To 100
           End If
        End If
-       
+
        If (take_pg_step) Then
           !         Nonmonotone Projected Gradient Linesearch ----------------------------
           lstype = lstype + 2
@@ -4433,7 +4435,7 @@ lp:    do i = 1, w%tensor_options%maxit
        !       Update TR radius with LS/PG step !
        !       ---------------------------------!
        w%Delta = options%box_delta_scale*w%norm_2_d
-       
+
 100    Continue
 
 
@@ -4518,7 +4520,7 @@ lp:    do i = 1, w%tensor_options%maxit
         Do j = 1, options%box_ls_step_maxit
            ! xpls(i) = P(x(i) + alpha*scl*p(i))
            Call box_proj(box_ws, n, x, xpls, p, alpha*scl)
-           
+
 !         evaluate function at new point */
           If (.Not. present(sx)) Then
             Call eval_f(inform%external_return,n,m,xpls,fnew,params)
@@ -4690,7 +4692,7 @@ lp:    do i = 1, w%tensor_options%maxit
         normfnew = sqrt(2.0_wp*fpls)
 
         ! step seems to be good -- calculate the Jacobian
-        if (.not. options%exact_second_derivatives) then 
+        if (.not. options%exact_second_derivatives) then
            ! save the value of g_mixed, which is needed for
            ! call to rank_one_update
            ! g_mixed = -J_k^T r_{k+1}

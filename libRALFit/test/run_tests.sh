@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 
 NLLS_BASE=$RAL_NLLS..
 NLLS_DEBUG=$NLLS_BASE/build/
@@ -28,9 +30,9 @@ cp $NLLS_TEST_SRC/RALFit_tools/control_files/TESTSPEC \
 cp $NLLS_TEST_SRC/RALFit_tools/cutest/src/ral_nlls/*.f90 \
    $CUTEST/src/ral_nlls/
 cd $NLLS_TEST_SRC/RALFit_tools/cutest/sif/
-runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF > output.temp 
+runcutest --package ral_nlls --architecture pc64.lnx.gfo --decode RAT43.SIF > output.temp
 diff <(head -n 70 $NLLS_TEST_SRC/rat43.output) <(head -n 70 $NLLS_TEST_SRC/RALFit_tools/cutest/sif/output.temp)
-# skip the final few lines, so as to avoid the timings 
+# skip the final few lines, so as to avoid the timings
 RESULT=$?
 [ $RESULT -ne 0 ] && echo "ERROR: output differs to rat43.output" && exit 2
 echo "passed"

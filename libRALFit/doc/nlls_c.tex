@@ -1,3 +1,5 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 \documentclass{spec}
 
 \usepackage{amsfonts,bm,amsmath}
@@ -13,8 +15,8 @@
 \newcommand{\scalarcharacter}[2]{
   % need to advance the size by one for the c version compared to the fortran version...
   \newcount\charsize
-  \charsize=#2 
-  \advance\charsize by 1 % 
+  \charsize=#2
+  \advance\charsize by 1 %
   \itt{character #1[\the\charsize]}
 }
 \newcommand{\mainroutine}{{\tt nlls\_solve}}
@@ -153,7 +155,7 @@ of the subroutine, as explained in Section~\ref{typeinform}.
 \itt{options} specifies options that control the execution of the subroutine,
 see Section~\ref{typeoptions}.
 
-\itt{weights} may be {\tt NULL}, otherwise it is a rank-1 array of size {\tt m}. If present, {\tt weights} holds the square-roots of the 
+\itt{weights} may be {\tt NULL}, otherwise it is a rank-1 array of size {\tt m}. If present, {\tt weights} holds the square-roots of the
 diagonal entries of the weighting matrix, $\vW$, in (\ref{eq:nlls_problem}).  If absent, then the norm in (\ref{eq:nlls_problem}) is taken to be the 2-norm, that is, $\vW = I$.
 \end{description}
 
@@ -220,7 +222,7 @@ will be a pointer to a user defined structure that stores the data to be fitted.
 
 \subsubsection{For evaluating the function $\vr(\vx)$}
 
-A subroutine must be supplied to calculate $\vr(\vx)$ for a given vector $\vx$. 
+A subroutine must be supplied to calculate $\vr(\vx)$ for a given vector $\vx$.
 It must have the following signature:
 \begin{verbatim}
   int eval_r (int n, int m, void const* params, double const* x, double* r);
@@ -238,7 +240,7 @@ A subroutine must be supplied to calculate $J = \nabla \vr(\iter{\vx})$ for a gi
 \input{eval_j.tex}
 
 \subsubsection{For evaluating the function $Hf = \sum_{i=1}^m r_i(\vx) \vW  \nabla^2 \vr_i(x)$}
-A subroutine must be supplied to calculate $Hf = \sum_{i=1}^m (\vr)_i \nabla^2 r_i(\vx)$ for given vectors $\vx \in \mathbb{R}^n$ and $\vr \in \mathbb{R}^m$; here \((\vr)_i\) denotes the $i$th component of the vector $\vr$.  
+A subroutine must be supplied to calculate $Hf = \sum_{i=1}^m (\vr)_i \nabla^2 r_i(\vx)$ for given vectors $\vx \in \mathbb{R}^n$ and $\vr \in \mathbb{R}^m$; here \((\vr)_i\) denotes the $i$th component of the vector $\vr$.
 It must have the following signature
 
 \begin{verbatim}
@@ -268,7 +270,7 @@ int eval_hf (int n, int m, void const* params, double const* x, double const* r,
 A successful return from a subroutine in the package is indicated by
 {\tt inform.status} having the value zero.
 A non-zero value is associated with an error message that by default will
-be output on the Fortran unit {\tt inform.error}.  This string is also passed to the 
+be output on the Fortran unit {\tt inform.error}.  This string is also passed to the
 calling routine in {\tt inform.error\_message}.
 
 \input{errors.tex}
