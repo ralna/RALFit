@@ -1,4 +1,8 @@
 #!/usr/bin/python
+
+# Copyright (C) 2015 Science and Technology Facilities Council (STFC).
+# All rights reserved.
+
 from __future__ import print_function, unicode_literals
 
 import sys
