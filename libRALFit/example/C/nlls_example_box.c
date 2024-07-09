@@ -1,5 +1,11 @@
+/* Copyright (c) 2019, The Numerical Algorithms Group Ltd (NAG)
+ * All rights reserved.
+ * Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
+ * All rights reserved.
+ */
+
 // examples/Fortran/nlls_example2.f90
-// 
+//
 // Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 // For parameters x_1 and x_2, and input data (t_i, y_i)
 #include "ral_nlls.h"
@@ -82,21 +88,21 @@ int main(void) {
 
    // init workspace allocates and links together workspace with inner_workspace
    ral_nlls_init_workspace(&workspace, &inner_workspace);
-   
+
    // Call fitting routine
    double x[2] = { 1.0, 1.0 }; // Initial guess
 
    double lower_bounds[2] = { 0.0, 1.0};
    double upper_bounds[2] = { 1.0, 10.0};
-   
+
    struct ral_nlls_inform inform;
 
    nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params,
 	      &options, &inform, NULL, NULL, lower_bounds, upper_bounds);
-   
+
    ral_nlls_free_workspace(&workspace);
    ral_nlls_free_workspace(&inner_workspace);
-   
+
    // Print result
    printf ("Found a local optimum at x = %e %e\n", x[0], x[1]);
    printf ("Took %d iterations\n", inform.iter);

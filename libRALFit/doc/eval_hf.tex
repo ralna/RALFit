@@ -1,14 +1,16 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 % subroutine for eval_j
 
 
 \begin{description}
   \itt{n, m, params} are passed unchanged as provided in the call to \mainroutine/\onestep.
-  
+
   \itt{x} holds the current point $\iter{\vx}$ at which to evaluate $\sum_{i=1}^m (\vr)_i \nabla^2 r_i(\vx)$.
 
   \itt{r} holds $\vW\vr(\vx)$, the (weighted) residual, as computed from vector returned by the last call to \texttt{eval\_r}.
 
-  \itt{Hf} must be set by the routine to hold the matrix $\sum_{i = 1}^m (\vr)_{i}\nabla^2\comp{r}(\iter{\vx})$, 
+  \itt{Hf} must be set by the routine to hold the matrix $\sum_{i = 1}^m (\vr)_{i}\nabla^2\comp{r}(\iter{\vx})$,
   held by columns as a vector, where $(\vr)_i$ denotes the $i$th component of  $\texttt{r}$, the vector passed to the routine.
 
   \fortranonly{
@@ -22,7 +24,7 @@
 non-zero return value will cause the least squares fitting to abort with an
 error code.
 }
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "nlls_fortran"
-%%% End: 
+%%% End:

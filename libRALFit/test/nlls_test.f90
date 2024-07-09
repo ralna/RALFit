@@ -1,5 +1,10 @@
+! Copyright (c) 2019, The Numerical Algorithms Group Ltd (NAG)
+! All rights reserved.
+! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
+
 program nlls_test
-  
+
 ! Test deck for nlls_module
 
 ! use ral_nlls_double
@@ -28,7 +33,7 @@ program nlls_test
   options%out   = 17
   options%print_level = 0
   open(unit = options%out, file="nlls_test.out")
-  
+
   test_all = .true.
   test_subs = .true.
   exp_status = 0
@@ -45,25 +50,25 @@ program nlls_test
      n = 2
 
      m = 67
-          
+
      number_of_models = 4
      allocate(model_to_test(number_of_models))
      model_to_test = (/ 0, 1, 2, 3 /)
 
-     allocate( x(n) )  
-     
+     allocate( x(n) )
+
 !!$     ! Get params for the function evaluations
 !!$     allocate(params%x_values(m))
 !!$     allocate(params%y_values(m))
-!!$     
-!!$     call generate_data_example(params%x_values,params%y_values,m)      
+!!$
+!!$     call generate_data_example(params%x_values,params%y_values,m)
      call generate_data_example(params)
      options%print_level = 5
 
      do tr_update = 1,2
         do nlls_method = 1,4
            do model = 1,number_of_models
-              
+
               call reset_default_options(options)
               options%print_options = .True.
               options%nlls_method = nlls_method
@@ -97,11 +102,11 @@ program nlls_test
      options%model = 2 ! newton
      options%allow_fallback_method = .false.
      options%print_level = 1
-     
+
      call print_line(options%out)
      write(options%out,*) "dogleg, model = 2, no fallback"
      call print_line(options%out)
-          
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. NLLS_ERROR_DOGLEG_MODEL ) then
         write(*,*) 'incorrect error return from nlls_solve:'
@@ -110,11 +115,11 @@ program nlls_test
         write(*,*) 'status returned = ', status%status
         no_errors_main = no_errors_main + 1
      end if
-     
+
      ! now, let's test the regularization method
      call reset_default_options(options)
      options%type_of_method = 2 ! regularization
-     options%inner_method = 2 
+     options%inner_method = 2
      options%print_level = 1
      options%exact_second_derivatives = .true.
 
@@ -122,7 +127,7 @@ program nlls_test
      write(options%out,*) "type_of_method = ", options%type_of_method
      call print_line(options%out)
 
-     
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: regularization'
@@ -141,8 +146,8 @@ program nlls_test
         call print_line(options%out)
         write(options%out,*) "print_level = ", options%print_level
         call print_line(options%out)
-        
-        
+
+
         call solve_basic(X,params,options,status)
         if ( i == 6) then
            if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL) then
@@ -160,11 +165,11 @@ program nlls_test
      ! and the print options with regularization....
      call reset_default_options(options)
      options%type_of_method = 2 ! regularization
-     options%inner_method = 2 
+     options%inner_method = 2
      options%exact_second_derivatives = .true.
 
      do i = 1,6
-        
+
         options%print_level = i
 
         call print_line(options%out)
@@ -183,12 +188,12 @@ program nlls_test
            write(*,*) 'info%status = ', status%status
            no_errors_main = no_errors_main + 1
         end if
-        
+
      end do
-     
+
      options%print_level = 1
 
-     
+
      do i = 1,2
         ! Let's do a test where the regularization weight is non-zero
         call reset_default_options(options)
@@ -199,7 +204,7 @@ program nlls_test
         call print_line(options%out)
         write(options%out,*) "Regularization power is two, weight is non-zero"
         call print_line(options%out)
-        
+
         call solve_basic(X,params,options,status)
         if ( status%status .ne. 0 ) then
            write(*,*) 'nlls_solve failed to converge: non-zero regularization weight'
@@ -212,7 +217,7 @@ program nlls_test
         call print_line(options%out)
         write(options%out,*) "Regularization power is three, weight is non-zero"
         call print_line(options%out)
-        
+
         ! and, the same test with a regularization power of three:
         call reset_default_options(options)
         options%regularization = i
@@ -258,7 +263,7 @@ program nlls_test
      write(options%out,*) "Optimal regularization order"
      call print_line(options%out)
 
-     
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: negative reg_order'
@@ -274,11 +279,11 @@ program nlls_test
      options%model = 3
      options%reg_order = -1.0
 
-     
+
      call print_line(options%out)
      write(options%out,*) "Optimal regularization order with hybrid model"
      call print_line(options%out)
-     
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge: negative reg_order'
@@ -334,19 +339,19 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
 
-     
+
      ! now, let's do the tensor model...
      call reset_default_options(options)
      options%type_of_method = 2 ! regularization
      options%model = 4 ! hybrid model
      options%exact_second_derivatives = .true.
      options%print_level = 4
-     
+
      call print_line(options%out)
      write(options%out,*) "Regularization"
      write(options%out,*) "model = ", options%model
      call print_line(options%out)
-    
+
      do inner_method = 1,4
         options%inner_method = inner_method
         call solve_basic(X,params,options,status)
@@ -378,7 +383,7 @@ program nlls_test
         write(*,*) 'info%status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
-     
+
 
      ! and HP + weights....
      options%inner_method = 2
@@ -394,7 +399,7 @@ program nlls_test
      write(options%out,*) "Pass in eval_HP and weights"
      call print_line(options%out)
 
-     
+
      call nlls_solve(n, m, X,                        &
           eval_F,eval_J,eval_H, params,   &
           options, status, weights=w, eval_HP=eval_HP)
@@ -406,7 +411,7 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
      deallocate(w)
-     
+
      ! now, let's get an error return...
      call reset_default_options(options)
      options%model = 4
@@ -433,7 +438,7 @@ program nlls_test
      call print_line(options%out)
      write(options%out,*) "Reach maxits"
      call print_line(options%out)
-     
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. NLLS_ERROR_MAXITS) then
         write(*,*) 'Error: incorrect error return when maxits expected to be reached'
@@ -448,7 +453,7 @@ program nlls_test
      options%model = 1
      options%nlls_method = 1
      options%output_progress_vectors = .true.
-     
+
      call print_line(options%out)
      write(options%out,*) "output_progress_vectors = ", options%output_progress_vectors
      call print_line(options%out)
@@ -489,7 +494,7 @@ program nlls_test
      call print_line(options%out)
      write(options%out,*) "Pass in weights"
      call print_line(options%out)
-     
+
      call nlls_solve(n, m, X,                         &
                     eval_F, eval_J, eval_H, params,  &
                     options, status, w )
@@ -505,7 +510,7 @@ program nlls_test
      options%exact_second_derivatives = .true.
      do model = 2,4
         options%model = model
-        
+
         call print_line(options%out)
         write(options%out,*) "Pass in weights"
         write(options%out,*) "model = ", options%model
@@ -523,7 +528,7 @@ program nlls_test
      end do
      deallocate(w)
 
-     ! Let's do one run with non-exact second derivatives 
+     ! Let's do one run with non-exact second derivatives
      call reset_default_options(options)
      options%exact_second_derivatives = .false.
 
@@ -531,7 +536,7 @@ program nlls_test
      write(options%out,*) "exact_second_derivatives = ", options%exact_second_derivatives
      call print_line(options%out)
 
-     
+
      call solve_basic(X,params,options,status)
      if ( status%status .ne. 0 ) then
         write(*,*) 'nlls_solve failed to converge:'
@@ -556,7 +561,7 @@ program nlls_test
         write(*,*) 'MODEL = ', options%model
         no_errors_main = no_errors_main + 1
      end if
-     
+
      ! Let's get the method to switch to second-order
      call reset_default_options(options)
      options%exact_second_derivatives = .true.
@@ -580,7 +585,7 @@ program nlls_test
      end if
      options%relative_tr_radius = 0
 
-     ! Let's get one where ||f|| = 0 
+     ! Let's get one where ||f|| = 0
      call reset_default_options(options)
      options%model = 2
      options%stop_g_absolute = 1e-4
@@ -602,7 +607,7 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
      options%relative_tr_radius = 0
-     
+
      ! test for c-based Jabobians
      ! run fortran based and c based, and check the resvecs are the same
      call reset_default_options(options)
@@ -610,12 +615,12 @@ program nlls_test
      call print_line(options%out)
      write(options%out,*) "C-based Jacobians: get standard output"
      call print_line(options%out)
-     
+
      n = 2
      m = 67
      X =[1.0, 2.0]
      options%output_progress_vectors = .true.
-     
+
      call nlls_solve(n, m, X,                         &
                      eval_F, eval_J, eval_H, params,  &
                      options, status )
@@ -648,10 +653,10 @@ program nlls_test
         write(*,*) 'resvec = ', resvec
         no_errors_main = no_errors_main + 1
      end if
-     
-     
+
+
      deallocate(resvec)
-     
+
      ! now run with a row-major ordered Jacobian
      ! and also with a relative tr radius
      X = [1.0, 2.0]
@@ -669,13 +674,13 @@ program nlls_test
         write(*,*) 'C Jacobian, relative_tr_radius test failed'
         no_errors_main = no_errors_main + 1
      end if
-   
+
      ! three tests for incorrect returns from eval_f/J/H
      call reset_default_options(options)
      n = 2
      m = 67
      options%exact_second_derivatives = .true.
-     do i = 1,5       
+     do i = 1,5
         X = [1.0, 2.0]
         select case (i)
         case (1)
@@ -695,7 +700,7 @@ program nlls_test
 
            call nlls_solve(n, m, X,                         &
                 eval_F, eval_J_error, eval_H, params,  &
-                options, status )   
+                options, status )
         case (3)
            call print_line(options%out)
            write(options%out,*) "Error in eval_HF"
@@ -728,7 +733,7 @@ program nlls_test
                 eval_F, eval_J, eval_H_error, params,  &
                 options, status )
         end select
-        if ( status%status .ne. exp_status ) then 
+        if ( status%status .ne. exp_status ) then
            write(*,*) 'Error: error return from eval_x not caught'
            no_errors_main = no_errors_main + 1
         end if
@@ -742,7 +747,7 @@ program nlls_test
      n = 2
      m = 67
 !     options%exact_second_derivatives = .true.
-     do i = 1,3       
+     do i = 1,3
         X = [1.0, 2.0]
         params%iter = 0
         select case (i)
@@ -766,9 +771,9 @@ program nlls_test
            call print_line(options%out)
            call nlls_solve(n, m, X,                        &
                 eval_F, eval_J, eval_H_one_error, params,  &
-                options, status )           
+                options, status )
         end select
-        if ( status%status .ne. 0 ) then 
+        if ( status%status .ne. 0 ) then
            write(*,*) 'Error: single error return from eval_x should have worked'
            write(*,*) '       but status = ', status%status, ' returned'
            no_errors_main = no_errors_main + 1
@@ -777,7 +782,7 @@ program nlls_test
      status%status = 0
 
 
-     ! tests for too many reductions of tr 
+     ! tests for too many reductions of tr
      call reset_default_options(options)
      n = 2
      m = 67
@@ -790,7 +795,7 @@ program nlls_test
      call nlls_solve(n, m, X,                         &
           eval_F_allbutone_error, eval_J, eval_H, params,  &
           options, status )
-     if ( status%status .ne. NLLS_ERROR_MAX_TR_REDUCTIONS ) then 
+     if ( status%status .ne. NLLS_ERROR_MAX_TR_REDUCTIONS ) then
         write(*,*) 'Error: expected to many reductions error'
         write(*,*) '       but status = ', status%status, ' returned'
         no_errors_main = no_errors_main + 1
@@ -811,7 +816,7 @@ program nlls_test
      call nlls_solve(n, m, X,                         &
           eval_F_large, eval_J_large, eval_H, params,  &
           options, status )
-     if ( status%status .ne. 0 ) then 
+     if ( status%status .ne. 0 ) then
         write(*,*) 'Error: Large JtF test failed, but pass expected'
         write(*,*) '       status = ', status%status, ' returned'
         write(*,*) status%error_message
@@ -835,12 +840,12 @@ program nlls_test
      call nlls_solve(n, m, X,                         &
           eval_F, eval_J, eval_H, params,  &
           options, status )
-     
+
      X = [1.0, 2.0]
      call nlls_solve(n, m, X,                         &
           eval_F_large, eval_J_large, eval_H, params,  &
           options, status )
-     if ( status%status .ne. 0 ) then 
+     if ( status%status .ne. 0 ) then
         write(*,*) 'Error: Large JtF test (exact H) failed, but pass expected'
         write(*,*) '       status = ', status%status, ' returned'
         write(*,*) status%error_message
@@ -868,7 +873,7 @@ program nlls_test
      call nlls_solve(n, m, X,                         &
           eval_F_large, eval_J_large, eval_H, params,  &
           options, status, weights=w )
-     if ( status%status .ne. 0 ) then 
+     if ( status%status .ne. 0 ) then
         write(*,*) 'Error: Large JtF (with weights) test failed, but pass expected'
         write(*,*) '       status = ', status%status, ' returned'
         write(*,*) status%error_message
@@ -877,21 +882,21 @@ program nlls_test
      deallocate(w)
      status%status = 0
 
-     
-     
+
+
      ! now let's check errors on the parameters passed to the routine...
 
      call print_line(options%out)
      write(options%out,*) "Parameter errors"
      call print_line(options%out)
-     
+
      options%print_level = 3
-     
+
     ! test for unsupported method
      call reset_default_options(options)
      options%nlls_method = 3125
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_METHOD ) then 
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_METHOD ) then
         write(*,*) 'Error: unsupported method passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -902,7 +907,7 @@ program nlls_test
      options%model = 4
      options%inner_method = 3125
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. NLLS_ERROR_WRONG_INNER_METHOD ) then 
+     if ( status%status .ne. NLLS_ERROR_WRONG_INNER_METHOD ) then
         write(*,*) 'Error: wrong inner method passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -913,7 +918,7 @@ program nlls_test
      options%type_of_method = 2
      options%nlls_method = 3125
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_METHOD ) then 
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_METHOD ) then
         write(*,*) 'Error: unsupported method (nlls_method=2) passed and not caught'
         write(*,*) 'status = ', status%status
         no_errors_main = no_errors_main + 1
@@ -924,7 +929,7 @@ program nlls_test
      call reset_default_options(options)
      options%type_of_method = 2343
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_TYPE_METHOD ) then 
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_TYPE_METHOD ) then
         write(*,*) 'Error: unsupported type_of_method passed and not caught'
         write(*,*) 'status = ', status%status
         no_errors_main = no_errors_main + 1
@@ -935,7 +940,7 @@ program nlls_test
      call reset_default_options(options)
      options%tr_update_strategy = 323
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. NLLS_ERROR_BAD_TR_STRATEGY ) then 
+     if ( status%status .ne. NLLS_ERROR_BAD_TR_STRATEGY ) then
         write(*,*) 'Error: unsupported TR strategy passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -952,7 +957,7 @@ program nlls_test
      options%print_level=0
      x(:) = (/0.3199787042575630E+00, 0.2752509146444680E-01/)
      call solve_basic(X,params,options,status,.True.)
-     if ( .Not. (status%status == 0 .And. status%iter == 0) ) then 
+     if ( .Not. (status%status == 0 .And. status%iter == 0) ) then
         write(*,*) 'Error: x0 solution but not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -962,7 +967,7 @@ program nlls_test
      bux(1:n) = blx(1:n)
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( .Not. (status%status == 0 .And. status%iter == 0 .And.               &
-       status%norm_g==0.0) ) then 
+       status%norm_g==0.0) ) then
         write(*,*) 'Error: Proj grd at x0 is zero, but not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -973,7 +978,7 @@ program nlls_test
      options%box_linesearch_type = 3
      options%print_level = 5
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
-     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
+     if ( status%status .ne. NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then
         write(*,*) 'Error: unsupported Linesearch type passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -983,7 +988,7 @@ program nlls_test
      call reset_default_options(options)
      options%print_level = 7
      call solve_basic(X,params,options,status)
-     if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL ) then 
+     if ( status%status .ne. NLLS_ERROR_PRINT_LEVEL ) then
         write(*,*) 'Error: unsupported print level passed and not caught'
         no_errors_main = no_errors_main + 1
      end if
@@ -995,7 +1000,7 @@ program nlls_test
      blx(1:n) = 1.0
      bux(1:n) = -1.0
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
-     if ( status%status /= NLLS_ERROR_BAD_BOX_BOUNDS ) then 
+     if ( status%status /= NLLS_ERROR_BAD_BOX_BOUNDS ) then
         write(*,*) 'Error: Illegal box, but not caught.  Status = ', status%status
         no_errors_main = no_errors_main + 1
      end if
@@ -1010,8 +1015,8 @@ program nlls_test
      call nlls_solve(n, m, x,                         &
           eval_F_pg, eval_J, eval_H, params,  &
           options, status,                 &
-          lower_bounds=blx, upper_bounds=bux )     
-     if ( status%status /= NLLS_ERROR_PG_STEP ) then 
+          lower_bounds=blx, upper_bounds=bux )
+     if ( status%status /= NLLS_ERROR_PG_STEP ) then
         write(*,*) 'Error: PG step failed, but not caught'
         write(*,*) 'status = ', status%status, ' returned'
         no_errors_main = no_errors_main + 1
@@ -1023,11 +1028,11 @@ program nlls_test
      x(1) = 1.3_wp
      x(2) = -2.0_wp
      blx(1:n) = (/1.2_wp,-10.0_wp/)
-     bux(1:n) = (/1.2_wp,10.0_wp/)     
+     bux(1:n) = (/1.2_wp,10.0_wp/)
      options%box_linesearch_type = 2
      options%maxit = 10
      call solve_basic(X,params,options,status,warm_start=.True.,blx=blx,bux=bux)
-     if ( status%status /= NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then 
+     if ( status%status /= NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then
         write(*,*) 'Error: HZLS unsupported, but not caught.'
         write(*,*) 'status = ', status%status, ' returned'
         no_errors_main = no_errors_main + 1
@@ -1039,7 +1044,7 @@ program nlls_test
      ! Excercise Print Level logic, this is not a test
      call reset_default_options(options)
      blx(1:n) = (/1.2_wp,-10.0_wp/)
-     bux(1:n) = (/1.2_wp,10.0_wp/)     
+     bux(1:n) = (/1.2_wp,10.0_wp/)
      Do i = 1, 5
        options%print_level = i
        Write(options%out, '(80(''=''))')
@@ -1065,15 +1070,15 @@ program nlls_test
      deallocate(model_to_test)
      deallocate(x)
      deallocate(params%x_values, params%y_values)
-     
+
   end if
 
- 
+
   no_errors_helpers = 0
- 
 
 
-  if ( test_subs ) then 
+
+  if ( test_subs ) then
 
      !###############################!
      !###############################!
@@ -1084,56 +1089,56 @@ program nlls_test
      write(*,*) '============================='
      write(*,*) '=--Testing the subroutines--='
      write(*,*) '============================='
-     
+
 
      call dogleg_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
      call generate_scaling_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call aint_tr_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call more_sorensen_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
      call trust_region_subproblem_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call evaluate_model_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call solve_galahad_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
      call solve_newton_tensor_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call all_eig_symm_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call solve_LLS_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call findbeta_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call calculate_rho_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call update_trust_region_radius_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call test_convergence_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
      call mult_J_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call mult_Jt_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call switch_to_quasi_newton_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
@@ -1160,7 +1165,7 @@ program nlls_test
 
      call shift_matrix_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
-     
+
      call error_message_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
@@ -1176,10 +1181,10 @@ program nlls_test
      else
         write(*,*) 'There were ', no_errors_helpers,' errors'
      end if
-     
+
   end if
 
-  
+
 close(unit = 17)
 !
 !no_errors_helpers = 1
@@ -1189,10 +1194,10 @@ close(unit = 17)
     write(*,*) '*** All tests passed successfully! ***'
     write(*,*) '**************************************'
     stop 0    ! needed for talking with ctest
- else 
+ else
     stop 1    ! needed for talking with ctest
   end if
-  
+
 
 
 end program nlls_test

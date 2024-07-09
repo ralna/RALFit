@@ -1,3 +1,6 @@
+/* Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
+ * All rights reserved.
+ */
 // test/nlls_c_test.c
 //
 // Test basic functionality of the c interface, plus any C-specific routines
@@ -73,14 +76,14 @@ int generic_test(int model, int method){
     .t = (double []) { 1.0, 2.0, 4.0,  5.0,  8.0 },
     .y = (double []) { 3.0, 4.0, 6.0, 11.0, 20.0 }
   };
-  
+
   // Initialize options values
   struct ral_nlls_options options;
   ral_nlls_default_options(&options);
-  
+
   options.model = model;
   options.nlls_method = method;
-  
+
   // Call fitting routine
   double x[2] = { 2.5, 0.25 }; // Initial guess
   struct ral_nlls_inform inform;
@@ -102,13 +105,13 @@ int generic_test(int model, int method){
 
   // If model is expected to pass,
   // call fitting routine with weights and bounds
-  if (model > 0) { 
+  if (model > 0) {
     x[0] =  2.5;
     x[1] =  0.25; // Reset Initial guess
     double weights[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
     double lower_bounds[2] = {0.0, 0.0};
     double upper_bounds[2] = {10.0, 10.0};
-    
+
     nlls_solve(2, m, x, eval_r, eval_J, eval_HF, &params, &options, &inform,
 	       weights, NULL, lower_bounds, upper_bounds);
     if(inform.status != 0) {
@@ -116,12 +119,12 @@ int generic_test(int model, int method){
       return inform.status; // Error
     }
   }
-    
+
   return 0; // Success!
 }
 
 int main(void){
-  
+
   int no_errors = 0;
   int no_methods = 4;
   int status = 0;
@@ -137,11 +140,11 @@ int main(void){
       }
     }
   }
-  
+
   if (no_errors > 0) {
     return no_errors;
   }
   printf("** C tests passed succcessfully! **\n");
-  return 0; // success! 
+  return 0; // success!
 }
 

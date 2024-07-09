@@ -1,6 +1,8 @@
+# Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 
 
-set( source_files 
+set( source_files
   ral_nlls_double.f90
   ral_nlls_internal.f90
   ral_nlls_dtrs_double.f90
@@ -11,7 +13,7 @@ set( source_files
   ral_nlls_bounds.f90
   nag_export_mod.f90
 
-  ) 
+  )
 
 add_library (ral_nlls-static STATIC ${source_files})
 add_library (ral_nlls SHARED ${source_files})

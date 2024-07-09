@@ -1,3 +1,7 @@
+/* Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
+ * All rights reserved.
+ */
+
 /* expfit.c -- model functions for exponential + background */
 
 #include <math.h>
@@ -11,7 +15,7 @@ struct usertype {
   double * sigma;
 };
 
-int expb_f (const gsl_vector * x, void *data, 
+int expb_f (const gsl_vector * x, void *data,
         gsl_vector * f) {
   size_t n = ((struct usertype *)data)->n;
   double *y = ((struct usertype *)data)->y;
@@ -34,11 +38,11 @@ int expb_f (const gsl_vector * x, void *data,
   return GSL_SUCCESS;
 }
 
-int expb_df (const gsl_vector * x, void *params, 
+int expb_df (const gsl_vector * x, void *params,
          gsl_matrix * J) {
 
   struct usertype *myparams = (struct usertype *) params;
-  
+
   int n = myparams->n;
   double *sigma = myparams->sigma;
 
@@ -47,11 +51,11 @@ int expb_df (const gsl_vector * x, void *params,
   double lambda = gsl_vector_get (x, 1);
 
   size_t i;
-  
+
   /*for (i = 0; i<10; i++){
     printf("sigma[%z] = %5.3f\n",i,sigma[i]);
     }*/
-  
+
   for (i = 0; i < n; i++)
     {
       /* Jacobian matrix J(i,j) = dfi / dxj, */
@@ -61,7 +65,7 @@ int expb_df (const gsl_vector * x, void *params,
       double t = i;
       double s = sigma[i];
       double e = exp(-lambda * t);
-      gsl_matrix_set (J, i, 0, e/s); 
+      gsl_matrix_set (J, i, 0, e/s);
       gsl_matrix_set (J, i, 1, -t * A * e/s);
       gsl_matrix_set (J, i, 2, 1/s);
     }
@@ -77,10 +81,10 @@ int expb_fdf (const gsl_vector * x, void *data,
   return GSL_SUCCESS;
 }
 
-void eval_F ( int fstatus, const int n, const int m, 
+void eval_F ( int fstatus, const int n, const int m,
 	      const double *x, double *f, const void *params){
-  
-  // first, convert x from an array into a gsl_vector...  
+
+  // first, convert x from an array into a gsl_vector...
   gsl_vector * x_gsl = gsl_vector_alloc(n);
   int i;
   for (i = 0; i < n; i++) {
@@ -91,21 +95,21 @@ void eval_F ( int fstatus, const int n, const int m,
   gsl_vector * f_gsl =  gsl_vector_alloc(m);
 
   expb_f ( x_gsl,  params,  f_gsl);
-  
+
   // then convert f back into an array...
   //  f = f_gsl->data;
   for (i = 0; i < m; i++){
     f[i] = gsl_vector_get( f_gsl,i);
     //    f[i] = f_gsl->data[i];
   }
-  
+
   gsl_vector_free(x_gsl);
   gsl_vector_free(f_gsl);
 
 }
 
 
-void eval_J  ( int fstatus, const int n, const int m, 
+void eval_J  ( int fstatus, const int n, const int m,
 	       const double *x, double *J, const void *params){
 
   // first, convert x from an array into a gsl_vector...
@@ -115,11 +119,11 @@ void eval_J  ( int fstatus, const int n, const int m,
   for (i = 0; i < n; i++) {
     gsl_vector_set(x_gsl,i,x[i]);
   }
-  
+
   // then call the expb_f function
   gsl_matrix * J_gsl = gsl_matrix_alloc(40,3);
   expb_df (x_gsl, params, J_gsl);
-  
+
   // then convert J into an array...
   // (find better way...)
   gsl_matrix * J_gsl_t = gsl_matrix_alloc(3,40);
@@ -132,12 +136,12 @@ void eval_J  ( int fstatus, const int n, const int m,
   gsl_vector_free(x_gsl);
   gsl_matrix_free(J_gsl);
   gsl_matrix_free(J_gsl_t);
-  
-  
-  
+
+
+
 }
 
-void eval_HF ( int fstatus, const int n, const int m, 
+void eval_HF ( int fstatus, const int n, const int m,
 	       const double *x, const double *f, double *hf, const void *params){
-  
+
 }

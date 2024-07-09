@@ -1,3 +1,7 @@
+! Copyright (c) 2016, The Numerical Algorithms Group Ltd (NAG)
+! All rights reserved.
+! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 ! ral_nlls_workspaces :: module to keep all the workspaces
 
 module ral_nlls_workspaces
@@ -131,7 +135,7 @@ module ral_nlls_workspaces
 
      LOGICAL :: allow_fallback_method = .true.
 
-     
+
 !  which linear least squares solver should we use?
 
      INTEGER :: lls_solver = 1
@@ -334,7 +338,7 @@ module ral_nlls_workspaces
 !    See LS STEP Section 4 p392 Kanzow 2014
      Real(Kind=wp) :: box_kanzow_power = 2.1_wp
 !    sqrt(mcheps)
-     Real(Kind=wp) :: box_kanzow_descent = toltm8 
+     Real(Kind=wp) :: box_kanzow_descent = toltm8
 !    sqrt(mcheps)
      Real(Kind=wp) :: box_quad_model_descent = toltm8
 !    Take projected TR step when TR test is Ok?
@@ -457,12 +461,12 @@ module ral_nlls_workspaces
 
      REAL ( KIND = wp ) :: obj = infinity
 
-!  the norm of the gradient or projected gradient of the objective function 
+!  the norm of the gradient or projected gradient of the objective function
 !  at the current best estimate of the solution determined by NLLS_solve
 
      REAL ( KIND = wp ) :: norm_g = infinity
 
-! the norm of the gradient (or projected gradient), scaled by the norm of 
+! the norm of the gradient (or projected gradient), scaled by the norm of
 ! the residual
 
      REAL ( KIND = wp ) :: scaled_g = infinity
@@ -1796,7 +1800,7 @@ contains
     Real(Kind=wp), Intent(In), Optional       :: lower_bounds(n), upper_bounds(n)
     Type(NLLS_options), Intent(In)            :: options
     Type(NLLS_inform), Intent(InOut)          :: inform
-    
+
     Integer                                   :: i, ierr
     Logical                                   :: has_box, lower_usr, upper_usr
     Real(wp)                                  :: lower, upper
@@ -1813,7 +1817,7 @@ contains
     if ( (.Not. lower_usr) .And. (.Not. upper_usr) ) Then
       Go To 100
     end if
-    
+
     Do i = 1, n
         If (lower_usr) Then
           lower = lower_bounds(i)

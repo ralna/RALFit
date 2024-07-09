@@ -1,3 +1,5 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 % the options derived data type
 
 \fortranonly{
@@ -19,7 +21,7 @@ controlling data. The components must be initialised through a call to
 \scalarinteger{out}
 with default value {\tt 6} that is used as the \conly{Fortran }unit number for general messages. If it is negative, these messages will be suppressed.
 
-\scalarinteger{print\_level} 
+\scalarinteger{print\_level}
 with default value {\tt 0} that controls the level of output required.
 \begin{description}
 \item{\tt $\leq$ 0} No informational output will occur.
@@ -40,7 +42,7 @@ with default value {\tt 30}, it will print the column header every 30 iterations
 
 \begin{description}
 
-\scalarinteger{maxit} 
+\scalarinteger{maxit}
 of iterations the algorithm is allowed to take before being stopped.  The default value is {\tt 100}.  This is not accessed if {\tt nlls\_iterate} is used.
 
 \scalarinteger{model}
@@ -106,11 +108,11 @@ that specifies the initial trust-region radius, $\Delta$.
 The default value is {\tt initial\_radius = 100.0}.
 
 \scalarreal{regularization\_weight}
-that specifies the regularization weight, $\sigma$, used in the least-squares problem (\ref{eq:nlls_problem}).  
+that specifies the regularization weight, $\sigma$, used in the least-squares problem (\ref{eq:nlls_problem}).
 The default value is {\tt regularization\_weight = 0.0}.
 
 \scalarreal{regularization\_power}
-that specifies the regularization weight, $p$, used in the least-squares problem (\ref{eq:nlls_problem}).  
+that specifies the regularization weight, $p$, used in the least-squares problem (\ref{eq:nlls_problem}).
 The default value is {\tt regularization\_power = 0.0}.
 
 
@@ -158,7 +160,7 @@ that, if {\tt true}, signifies that the exact second derivatives are available (
 The default value is {\tt false}.
 
 \scalarinteger{scale}
-that specifies how, if at all, we scale the Jacobian.  We calculate a diagonal scaling matrix, ${\tt D}$, as follows: 
+that specifies how, if at all, we scale the Jacobian.  We calculate a diagonal scaling matrix, ${\tt D}$, as follows:
 \begin{description}
 \item{\tt 0} No scaling is applied ${\tt D} ={\tt I}$.
 \item{\tt = 1} Scale using the rows of the Jacobian, \({\tt D}_{i,i} = \|{\tt J}(i,:)\|_2^2\).
@@ -190,7 +192,7 @@ The default value is {\tt false}.
 
 \scalarlogical{calculate\_svd\_J}
 that specifies whether or not to calculate the singular value decomposition of ${\tt J}$
-at each iteration.  
+at each iteration.
 The default value is {\tt false}.
 
 % \scalarlogical{setup\_workspaces}
@@ -226,9 +228,9 @@ The default value is {\tt hybrid\_switch\_its = 1}.
 that, if {\tt nlls\_method = 2}, the order of the regularization used ($p$ in (\ref{eq:reg_subproblem})).  If {\tt reg\_order = 0.0}, then the algorithm
 chooses an appropriate value of $p$. The default is {\tt reg\_order = 0.0}.
 
-\scalarinteger{inner\_method} 
-that, if {\tt nlls\_method = 4}, specifies the method used to pass in 
-the regularization parameter to the inner non-linear least squares solver.  
+\scalarinteger{inner\_method}
+that, if {\tt nlls\_method = 4}, specifies the method used to pass in
+the regularization parameter to the inner non-linear least squares solver.
 Possible values are:
 \begin{description}
   \item {\tt 1} The current regularization parameter is passed in as a base regularization parameter.
@@ -245,7 +247,7 @@ The default value is {\tt false}.
 \end{description}
 
 
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "nlls_fortran"
-%%% End: 
+%%% End:

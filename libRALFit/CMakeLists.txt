@@ -1,3 +1,5 @@
+# Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 # CMake project file for libral_nlls
 cmake_minimum_required (VERSION 3.1)
 
@@ -21,7 +23,7 @@ set ( SRC_FILES
 	src/ral_nlls_ciface.f90
 	src/ral_nlls_workspaces.f90
   src/ral_nlls_printing.f90
-	)	
+	)
 
 # Support for CMAKE_BUILD_TYPE={Debug,Release,Profile}
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -31,7 +33,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   # set the test coverage switch
   set(TestCoverage On)
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
-  message("WARNING: Debug version - not to be used in production code.")	
+  message("WARNING: Debug version - not to be used in production code.")
 endif()
 
 
@@ -74,19 +76,19 @@ if(CompileMiniLAPACK)
    find_package(BLAS REQUIRED)
    if ( NOT BLAS_FOUND )
      message( FATAL_ERROR "BLAS required, but not found!")
-   endif ( NOT BLAS_FOUND ) 	    
+   endif ( NOT BLAS_FOUND )
    message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )
    set(LIBS ${LIBS} ${BLAS_LIBRARIES})
    add_subdirectory(lapack)
-   set(LAPACK_LIBRARIES ral_nlls_lapack)		   
-   set(LIBS ${LIBS} ${LAPACK_LIBRARIES})   
+   set(LAPACK_LIBRARIES ral_nlls_lapack)
+   set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 endif()
 
 # Python interface
 find_package (PythonInterp)
 
 if (PYTHONINTERP_FOUND)
-   message( STATUS "looking for file in ${CMAKE_CURRENT_SOURCE_DIR}")	
+   message( STATUS "looking for file in ${CMAKE_CURRENT_SOURCE_DIR}")
    set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
    set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
    set(OUTPUT   "${CMAKE_CURRENT_BINARY_DIR}/build/timestamp")
@@ -110,7 +112,7 @@ if (PYTHONINTERP_FOUND)
 
    install(CODE "execute_process(
    	    COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --user
-	    )"	    
+	    )"
 	   )
 endif()
 

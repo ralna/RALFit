@@ -1,3 +1,5 @@
+# Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 # Examples build
 
 add_executable (nlls_example nlls_example.f90)

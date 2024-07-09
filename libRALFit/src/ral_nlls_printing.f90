@@ -1,3 +1,8 @@
+! Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
+! Copyright (c) 2020, The Numerical Algorithms Group Ltd (NAG)
+! All rights reserved.
+
     Module ral_nlls_printing
       Use ral_nlls_workspaces, Only: wp, nlls_options, nlls_inform
       Implicit None

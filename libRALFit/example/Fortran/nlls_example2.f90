@@ -1,3 +1,5 @@
+! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 ! examples/Fortran/nlls_example2.f90
 ! 
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)

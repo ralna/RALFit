@@ -1,3 +1,5 @@
+# Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 # build instructions for test codes
 
 add_executable (nlls_f90_test nlls_test.f90 example_module.f90 )

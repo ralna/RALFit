@@ -1,3 +1,6 @@
+/* Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
+ * All rights reserved.
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <gsl/gsl_rng.h>
@@ -50,7 +53,7 @@ main (void)
   for (i = 0; i < n; i++)
     {
       double t = i;
-      y[i] = 1.0 + 5 * exp (-0.1 * t) 
+      y[i] = 1.0 + 5 * exp (-0.1 * t)
                  + gsl_ran_gaussian (r, 0.1);
       sigma[i] = 0.1;
       printf ("data: %u %g %g\n", i, y[i], sigma[i]);
@@ -84,10 +87,10 @@ main (void)
 #define FIT(i) gsl_vector_get(s->x, i)
 #define ERR(i) sqrt(gsl_matrix_get(covar,i,i))
 
-  { 
+  {
     double chi = gsl_blas_dnrm2(s->f);
     double dof = n - p;
-    double c = GSL_MAX_DBL(1, chi / sqrt(dof)); 
+    double c = GSL_MAX_DBL(1, chi / sqrt(dof));
 
     printf("chisq/dof = %g\n",  pow(chi, 2.0) / dof);
 
@@ -110,7 +113,7 @@ main (void)
   //  struct usertype ral_params;
 
   nlls_default_control(&ral_options);
-  
+
   ral_options.print_level = 3;
   ral_options.maxit = 100;
   ral_options.model = 1;
@@ -133,8 +136,8 @@ print_state (unsigned int iter, gsl_multifit_fdfsolver * s)
   printf ("iter: %3u x = % 15.8f % 15.8f % 15.8f "
           "|f(x)| = %g\n",
           iter,
-          gsl_vector_get (s->x, 0), 
+          gsl_vector_get (s->x, 0),
           gsl_vector_get (s->x, 1),
           gsl_vector_get (s->x, 2),
-	  gsl_blas_dnrm2 (s->f)); 
+	  gsl_blas_dnrm2 (s->f));
 }

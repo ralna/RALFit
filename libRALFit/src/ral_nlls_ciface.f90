@@ -1,3 +1,5 @@
+! Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 module ral_nlls_ciface
 
   use iso_c_binding
@@ -238,7 +240,7 @@ contains
     foptions%inner_method = coptions%inner_method
     foptions%output_progress_vectors = coptions%output_progress_vectors
     foptions%Fortran_Jacobian = coptions%Fortran_Jacobian
-    foptions%box_nFref_max = coptions%box_nFref_max 
+    foptions%box_nFref_max = coptions%box_nFref_max
     foptions%box_gamma = coptions%box_gamma
     foptions%box_decmin = coptions%box_decmin
     foptions%box_bigbnd = coptions%box_bigbnd
@@ -366,7 +368,7 @@ contains
 
   end subroutine c_eval_hp
 
-  
+
 end module ral_nlls_ciface
 
 subroutine ral_nlls_default_options_d(coptions) bind(C)
@@ -431,7 +433,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%update_lower_order = foptions%update_lower_order
   coptions%Fortran_Jacobian = foptions%Fortran_Jacobian
 
-  coptions%box_nFref_max = foptions%box_nFref_max 
+  coptions%box_nFref_max = foptions%box_nFref_max
   coptions%box_gamma = foptions%box_gamma
   coptions%box_decmin = foptions%box_decmin
   coptions%box_bigbnd = foptions%box_bigbnd
@@ -476,12 +478,12 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
   type( C_FUNPTR ), value :: hp
   real( c_double ), dimension(:), pointer :: flower_bounds
   real( c_double ), dimension(:), pointer :: fupper_bounds
-  
+
 !  real( wp ), dimension(*), optional :: cweights
 
   logical :: f_arrays
   logical :: hp_sent_in = .false.
-  
+
   ! copy data in and associate pointers correctly
   call copy_options_in(coptions, foptions, f_arrays)
 
@@ -490,7 +492,7 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
   call c_f_procpointer(hf, fparams%hf)
   fparams%params = params
   if (C_ASSOCIATED(hp)) hp_sent_in = .true.
-  
+
   ! the following steps for passing optional arguments
   ! requires a compiler compatible with Fortran 2008+TS29113
   nullify(fweights)
@@ -510,7 +512,7 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
      call f_nlls_solve( n, m, cx, &
           c_eval_r, c_eval_j,   &
           c_eval_hf, fparams,   &
-          foptions,finform, & 
+          foptions,finform, &
           weights=fweights, &
           eval_hp=c_eval_hp, &
           lower_bounds=flower_bounds, &
@@ -519,10 +521,10 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
      call f_nlls_solve( n, m, cx, &
           c_eval_r, c_eval_j,   &
           c_eval_hf, fparams,   &
-          foptions,finform, & 
+          foptions,finform, &
           weights=fweights, &
           lower_bounds=flower_bounds, &
-          upper_bounds=fupper_bounds)     
+          upper_bounds=fupper_bounds)
   end if
 
   ! Copy data out
@@ -620,8 +622,8 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   call f_nlls_iterate( n, m, cx, fw, &
        c_eval_r, c_eval_j,           &
        c_eval_hf, fparams,           &
-       finform, foptions,            & 
-       weights=fweights,             & 
+       finform, foptions,            &
+       weights=fweights,             &
        eval_hp=c_eval_hp,            &
        lower_bounds=flower_bounds,   &
        upper_bounds=fupper_bounds)

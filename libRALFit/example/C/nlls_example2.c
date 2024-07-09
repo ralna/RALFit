@@ -1,5 +1,9 @@
+/* Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+ * All rights reserved.
+ */
+
 // examples/Fortran/nlls_example2.f90
-// 
+//
 // Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 // For parameters x_1 and x_2, and input data (t_i, y_i)
 #include "ral_nlls.h"
@@ -83,7 +87,7 @@ int main(void) {
 
    // init workspace allocates and links together workspace with inner_workspace
    ral_nlls_init_workspace(&workspace, &inner_workspace);
-   
+
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
    struct ral_nlls_inform inform;
@@ -95,7 +99,7 @@ int main(void) {
 		      &options, &inform, weights, NULL, NULL, NULL);
      if(inform.status != 0) {
        printf("ral_nlls() returned with error flag %d\n", inform.status);
-       return 1; 
+       return 1;
      } // error return
      if ((inform.convergence_normf >0)||(inform.convergence_normg>0)||(inform.convergence_norms>0)){
        break; // converged!
@@ -104,7 +108,7 @@ int main(void) {
 
    ral_nlls_free_workspace(&workspace);
    ral_nlls_free_workspace(&inner_workspace);
-   
+
    // Print result
    printf ("Found a local optimum at x = %e %e\n", x[0], x[1]);
    printf ("Took %d iterations\n", inform.iter);

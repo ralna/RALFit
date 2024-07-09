@@ -1,3 +1,5 @@
+# Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+# All rights reserved.
 # -*- coding: utf-8 -*-
 #
 # RALFit documentation build configuration file, created by
@@ -263,7 +265,7 @@ latex_elements = {
 latex_elements['preamble'] = r'\usepackage{amsmath}\n\usepackage{amssymb}\n'
 
 #####################################################
-# add LaTeX macros 
+# add LaTeX macros
 
 f = open('common/RALFit_header.sty', 'r')
 flines = f.readlines()

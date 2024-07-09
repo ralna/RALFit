@@ -1,8 +1,10 @@
+% Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
+% All rights reserved.
 \label{sec:Method}
 % describe the method we use
 
 Algorithm~\ref{alg:nlls_solve} describes the method used to minimize the cost function
-$F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, at each iteration, calculates and returns a step $\vs$ that reduces the model by an acceptable amount by solving (or approximating a solution to) either the trust-region subproblem (\ref{eq:tr_subproblem}) or a regularized problem (\ref{eq:reg_subproblem}). 
+$F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, at each iteration, calculates and returns a step $\vs$ that reduces the model by an acceptable amount by solving (or approximating a solution to) either the trust-region subproblem (\ref{eq:tr_subproblem}) or a regularized problem (\ref{eq:reg_subproblem}).
 
 \begin{algorithm}
 \caption{nlls\_solve}
@@ -13,17 +15,17 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
     \State ${\tt W=I}$
     \EndIf
     \State $\sigma = ${\tt options\ct regularization\_weight}, $p = ${\tt options\ct regularization\_power}
-    \State $\iter[0]{\tr} =  {\tt W * }${\tt eval\_r}$(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt W *}$ {\tt eval\_J}$(\iter[0]{\tx})$    
+    \State $\iter[0]{\tr} =  {\tt W * }${\tt eval\_r}$(\iter[0]{\tx})$, $\iter[0]{\tJ} = {\tt W *}$ {\tt eval\_J}$(\iter[0]{\tx})$
     \Comment Evaluate residual and Jacobian at initial guess
     \State $\Delta = ${\tt options\ct initial\_radius}
     \State $ \iter[0]{\tg} = - {\iter[0]{\tJ}}^T\iter[0]{\tr} - \sigma \|\iter[0]{\tx}\|^{p-2}\iter[0]{\tx}$
     \State $\tt normF_0 = 0.5\|\iter[0]{\tr}\|^2 + \frac{\sigma}{p} \|\iter[0]{\tx}\|^p$
     \If {{\tt options\ct model == 1}}
-    \Comment Gauss-Newton model 
+    \Comment Gauss-Newton model
     \State $\iter[0]{\thess} = {\tt 0}$
     \State {\tt use\_second\_derivatives = false}
     \ElsIf {{\tt options\ct model == 2}}
-    \Comment (Quasi-)Newton 
+    \Comment (Quasi-)Newton
     \State $\iter[0]{\thess} = ${\tt eval\_HF}${\tt (\iter[0]{\tx},W * \iter[0]{\tr})}$
     \State {\tt use\_second\_derivatives = true}
     \ElsIf {{\tt options\ct model == 3}}
@@ -45,15 +47,15 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
     \State {\tt use\_second\_derivatives = true}
     \EndIf
     \For { $k = {\tt 0}, \dots, \text{\tt options\ct maxit}$}
-      \While{ ${\tt success} \ne  1$ } 
-        \State ${\td}$ = \Call{{\tt calculate\_step}}{{$\tt 
+      \While{ ${\tt success} \ne  1$ }
+        \State ${\td}$ = \Call{{\tt calculate\_step}}{{$\tt
             \iter[k]{\tJ}, \iter[k]{\tr}, \iter[k]{\thess},\iter[k]{\tg},\Delta$}}
         \Comment Calculate a potential step $\td$
         \State $\iter[k+1]{\tx} = \iter[k]{\tx} + \td$
         \State $\iter[k+1]{\tr} = {\tt W * \text{\tt eval\_r}}(\iter[k]{\tx})$
         \State ${\tt normF_{k+1}}  = 0.5\|\iter[k+1]{\tr}\|^2 + \frac{\sigma}{p} \|\iter[k+1]{\tx}\|^p$
         \Comment Evaluate the residual at the new point
-        \State $\rho = \tt (normF_{k+1} - normF_k)/(m_k(0) - m_k(\td)) $ 
+        \State $\rho = \tt (normF_{k+1} - normF_k)/(m_k(0) - m_k(\td)) $
         \Comment If model is good, $\rho$ should be close to one
           \If{ ${\tt \rho } >$ {\tt control\ct eta\_successful}}
           \State ${\tt success} = 1$
@@ -74,14 +76,14 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
         \Else
       \algstore{myalg}
   \end{algorithmic}
-  
+
 \end{algorithm}
 
 \begin{algorithm}
   \ContinuedFloat
   \begin{algorithmic}
     \algrestore{myalg}
-    
+
           \If { $ \tt \|\iter[k+1]{\tg}\| / normF_{k+1} < \text{\tt hybrid\_tol}$}
           \State {\tt hybrid\_count = hybrid\_count + 1}
           \Comment Update the number of steps in a row this has failed
@@ -98,7 +100,7 @@ $F(\vx)$ in equation (\ref{eq:nlls_problem}). This is an iterative method that, 
       \EndIf
     \EndIf
 
-    \If { {\tt use\_second\_derivatives} } 
+    \If { {\tt use\_second\_derivatives} }
       \If { {\tt options\ct exact\_second\_derivatives} }
         \State $\iter[k+1]{\thess} = {\tt \text{\tt eval\_HF}(\iter[0]{\tx},W\iter[0]{\tr})}$
       \Else
@@ -127,7 +129,7 @@ The subroutine \texttt{nlls\_iterate} performs one iteration of the algorithm
 \subsection{Incorporating the regularization term}
 \label{sec:reg_problem}
 
-If a non-zero regularization term is required in (\ref{eq:nlls_problem}), then this is handled by transforming the problem internally into a least squares problem.  The 
+If a non-zero regularization term is required in (\ref{eq:nlls_problem}), then this is handled by transforming the problem internally into a least squares problem.  The
 formulation used will depend on the value of $p$.
 
 {\bf If $\bf p = 2$}, we solve a least squares problem with $n$ additional degrees of freedom.
@@ -135,13 +137,13 @@ The new function, $\widehat{\vr} : \mathbb{R}^{n}\rightarrow\mathbb{R}^{m+n}$, t
 \sqrt{\sigma}[\vx]_j$ for $j = 1,\dots, n$, where $[\vx]_j$ denotes the $j$th component of $\vx$.  We therefore have that $\nabla \widehat{\vr}_{m+j}(\vx) = \sqrt{\sigma}\ve^j$ (where $[\ve^j]_i = \delta_{ij}$), and the second derivatives vanish.
 
 {\bf If $\bf p \ne 2$}, then we solve a least squares problem
- with one additional degree of freedom.  In this case the new function, $\widehat{\vr} : \mathbb{R}^{n}\rightarrow\mathbb{R}^{m+1}$, again takes $\widehat{\vr}_i(\vx) = \vr_i(\vx)$, for $i = 1,\dots, m$, but now $\widehat{\vr}_{m+1}(\vx) = \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p}{2}}.$  We therefore have that 
-$\nabla \widehat{\vr}_{m+1}(\vx) = \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p-4}{2}}\vx^T$.  
+ with one additional degree of freedom.  In this case the new function, $\widehat{\vr} : \mathbb{R}^{n}\rightarrow\mathbb{R}^{m+1}$, again takes $\widehat{\vr}_i(\vx) = \vr_i(\vx)$, for $i = 1,\dots, m$, but now $\widehat{\vr}_{m+1}(\vx) = \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p}{2}}.$  We therefore have that
+$\nabla \widehat{\vr}_{m+1}(\vx) = \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p-4}{2}}\vx^T$.
 The second derivative is given by %on the value of $p$:
 \(
 \nabla^2\widehat{\vr}_{m+1} =
 %\begin{cases}
-%   \hspace{1.5cm}\sigma^{\frac{1}{2}} I & \text{if } p = 2 \\ 
+%   \hspace{1.5cm}\sigma^{\frac{1}{2}} I & \text{if } p = 2 \\
    \left(\frac{2\sigma}{p}\right)^{\frac{1}{2}}\|\vx\|^{\frac{p-4}{2}}\left(I + \frac{\vx\vx^T}{\|\vx\|^2}\right).% & \text{otherwise}
 %\end{cases}.
 \)
@@ -160,31 +162,31 @@ available, controlled by the parameter {\tt  nlls\_method\ct model}.
 m_k^{GN}(\vs) = \frac{1}{2} \|\vr(\iter{\vx}) + \iter{\vJ}\vs\|_\vW^2.
 \label{eq:gauss-newton-model}
 \end{equation}
-\item {\tt options\ct model = 2}: this implements the {\bf Newton} model.  
-Here, instead of approximating the residual, $\vr(\cdot)$, we take as our model the second-order Taylor approximation of the function, $F(\iter[k+1]{\vx}).$  Namely, we use 
+\item {\tt options\ct model = 2}: this implements the {\bf Newton} model.
+Here, instead of approximating the residual, $\vr(\cdot)$, we take as our model the second-order Taylor approximation of the function, $F(\iter[k+1]{\vx}).$  Namely, we use
 \begin{equation}
   \label{eq:newton-model}
   m_k^{N}(\vs) = F(\iter{\vx}) + {\iter{\vg}}^T\vs + \frac{1}{2}\vs^T\left( {\iter{\vJ}}^T \vW \iter{\vJ} + \iter{\vH}\right) \vs,
 \end{equation}
 where $\iter{\vg} = {\iter{\vJ}}^T\vW \vr(\iter{\vx})$ and $\iter{\vH} = \sum_{i=1}^m\iter[i]{r}(\iter{\vx}) \vW \nabla^2 \iter[i]{r}(\iter{\vx}).$
-Note that $m_k^{N}(\vs) = m_k^{GN}(\vs) + \frac{1}{2}\vs^T\iter{\vH} \vs$.  
+Note that $m_k^{N}(\vs) = m_k^{GN}(\vs) + \frac{1}{2}\vs^T\iter{\vH} \vs$.
 
-If the second derivatives of $\vr(\cdot)$ are not available 
-(i.e., {\tt options\ct exact\_second\_derivatives = false}), 
-then the method approximates the matrix $\iter{\vH}$ using the method of Dennis, Gay, and Welsch [4, Chapter 10]; 
+If the second derivatives of $\vr(\cdot)$ are not available
+(i.e., {\tt options\ct exact\_second\_derivatives = false}),
+then the method approximates the matrix $\iter{\vH}$ using the method of Dennis, Gay, and Welsch [4, Chapter 10];
 see Algorithm~\ref{alg:rank_one_update}.
 
 
-\item {\tt options\ct model = 3}: this implements a {\bf hybrid} model.  
+\item {\tt options\ct model = 3}: this implements a {\bf hybrid} model.
 In practice the Gauss-Newton model tends to work well far away from the solution, whereas
-Newton performs better once we are near to the minimum (particularly if the residual is 
-large at the solution).  
-This option will try to switch between these two models, picking the model that is most appropriate for the step.  
-In particular, we start using $m_k^{GN}(\cdot)$, 
-and switch to $m_k^{N}(\cdot)$ if $\|{\iter{\vg}}\|_2 \leq ${\tt options\ct hybrid\_tol}$\frac{1}{2}\|\vr(\iter{\vx})\|^2_\vW$ for more than {\tt options\ct hybrid\_switch\_its} iterations in a row. If, in subsequent iterations, we fail to get 
+Newton performs better once we are near to the minimum (particularly if the residual is
+large at the solution).
+This option will try to switch between these two models, picking the model that is most appropriate for the step.
+In particular, we start using $m_k^{GN}(\cdot)$,
+and switch to $m_k^{N}(\cdot)$ if $\|{\iter{\vg}}\|_2 \leq ${\tt options\ct hybrid\_tol}$\frac{1}{2}\|\vr(\iter{\vx})\|^2_\vW$ for more than {\tt options\ct hybrid\_switch\_its} iterations in a row. If, in subsequent iterations, we fail to get
 a decrease in the function value, then the algorithm interprets this as being not sufficiently close to the solution, and thus switches back to using the Gauss-Newton model.
 
-\item {\tt options\ct model = 4}: this implements a {\bf Newton-tensor} model.  
+\item {\tt options\ct model = 4}: this implements a {\bf Newton-tensor} model.
 This uses a second order Taylor approximation to the residual, namely
 \[r_i(\iter{\vx} + \vs) \approx (\iter{\vt}(\vs))_i := r_i(\iter{\vx}) + (\iter{\vJ})_i\vs + \frac{1}{2}\vs^T B_{ik}\vs,\]
 where $(\iter{\vJ})_i$ is the {\tt i}th row of $\iter{\vJ}$, and $B_{ik}$ is $\nabla^2 r_i(\iter{\vx})$.  We use this to define our model
@@ -217,22 +219,22 @@ where $(\iter{\vJ})_i$ is the {\tt i}th row of $\iter{\vJ}$, and $B_{ik}$ is $\n
 \label{sec:subproblem solves}
 
 
-The main algorithm (Algorithm \ref{alg:nlls_solve}) calls a number of subroutines.  
-The most vital is the subroutine {\tt calculate\_step}, which finds a step that 
-minimizes the model chosen, subject to a globalization strategy.  The algorithm 
+The main algorithm (Algorithm \ref{alg:nlls_solve}) calls a number of subroutines.
+The most vital is the subroutine {\tt calculate\_step}, which finds a step that
+minimizes the model chosen, subject to a globalization strategy.  The algorithm
 supports the use of two such strategies: using a trust-region, and regularization.
-If Gauss-Newton, (quasi-)Newton, or a hybrid method is used 
-({\tt options\ct model = 1,2,3}), then the model function is quadratic, and 
-the methods available to solve the subproblem are described in 
-Sections \ref{sec:trust-region} and \ref{sec:regularization}.  
-If the Newton-Tensor model is selected ({\tt options\ct model = 4}), then this 
+If Gauss-Newton, (quasi-)Newton, or a hybrid method is used
+({\tt options\ct model = 1,2,3}), then the model function is quadratic, and
+the methods available to solve the subproblem are described in
+Sections \ref{sec:trust-region} and \ref{sec:regularization}.
+If the Newton-Tensor model is selected ({\tt options\ct model = 4}), then this
 model is not quadratic, and the methods available are described in Section~\ref{sec:newton_tensor_subproblem}.
 
-Note that, when calculating the step, if the initial regularization parameter $\sigma$ in (\ref{eq:nlls_problem}) is 
-non-zero, then we must modify ${\iter[k]{\tJ}}^T\iter[k]{\tJ}$  to take into 
+Note that, when calculating the step, if the initial regularization parameter $\sigma$ in (\ref{eq:nlls_problem}) is
+non-zero, then we must modify ${\iter[k]{\tJ}}^T\iter[k]{\tJ}$  to take into
 account the Jacobian of the modified least squares problem being solved.  Practically, this amounts to making the change
 \[
-{\iter[k]{\tJ}}^T\iter[k]{\tJ} = {\iter[k]{\tJ}}^T\iter[k]{\tJ} + 
+{\iter[k]{\tJ}}^T\iter[k]{\tJ} = {\iter[k]{\tJ}}^T\iter[k]{\tJ} +
  \begin{cases}
    \sigma I & \text{if }p = 2\\
    \frac{\sigma p}{2} \|\iter[k]{\vx}\|^{p-4}\iter[k]{\vx}{\iter[k]{\vx}}^T & \text{otherwise}
@@ -247,17 +249,17 @@ the minimum of the model within some radius of the current point.  The method us
 this is dependent on the control parameter {\tt options\ct nlls\_method}. The algorithms called for each of the options are listed below:
 \begin{description}
 \item {\tt options\ct nlls\_method = 1}: this approximates the solution to (\ref{eq:tr_subproblem}) by using Powell's dogleg method.  This takes as the step a linear combination of the Gauss-Newton step and the steepest descent step, and the method used is described in Algorithm \ref{alg:dogleg}.
-\item {\tt options\ct nlls\_method = 2}: this solves the trust region subproblem using the trust region solver of  Adachi, Iwata, Nakatsukasa, and Takeda.  This reformulates the 
+\item {\tt options\ct nlls\_method = 2}: this solves the trust region subproblem using the trust region solver of  Adachi, Iwata, Nakatsukasa, and Takeda.  This reformulates the
 problem (\ref{eq:tr_subproblem}) as a generalized eigenvalue problem, and solves that.  See
 [1] for more details.
-\item {\tt options\ct nlls\_method = 3}: this solves the trust region subproblem using 
+\item {\tt options\ct nlls\_method = 3}: this solves the trust region subproblem using
 a variant of the More-Sorensen method.  In particular, we implement Algorithm 7.3.6
  in Trust Region Methods by Conn, Gould and Toint [2].
-\item {\tt options\ct nlls\_method = 4}: this solves the trust region subproblem by first 
+\item {\tt options\ct nlls\_method = 4}: this solves the trust region subproblem by first
 converting the problem into the form
 $$\min_\vp \vw^T \vp + \frac{1}{2} \vp^T \vD \vp \quad {\rm s.t.} \quad \|\vp\| \leq \Delta,$$
-where $\vD$ is a diagonal matrix.  We do this by performing an eigen-decomposition of 
-the Hessian in the model.  Then, we call the {\sc Galahad} routine {\sc DTRS}; see 
+where $\vD$ is a diagonal matrix.  We do this by performing an eigen-decomposition of
+the Hessian in the model.  Then, we call the {\sc Galahad} routine {\sc DTRS}; see
 the {\sc Galahad} [3] documentation for further details.
 \end{description}
 
@@ -265,7 +267,7 @@ the {\sc Galahad} [3] documentation for further details.
 \caption{dogleg}
 \label{alg:dogleg}
   \begin{algorithmic}[1]
-    \State {\bf function} \Call{{\tt dogleg}}{{$\tt 
+    \State {\bf function} \Call{{\tt dogleg}}{{$\tt
             \tJ, {\tr}, \thess, \tg,\Delta$}}
         \State $\alpha = \|\tg\|^2 / \|\tJ * \tg\|^2$
         \State $\td_{\rm sd} = \alpha \,\tg$
@@ -279,20 +281,20 @@ the {\sc Galahad} [3] documentation for further details.
         \EndIf
   \end{algorithmic}
 \end{algorithm}
- 
+
 \subsubsection{Regularization ({\tt options\ct type\_of\_method = 2})}
 \label{sec:regularization}
 
 If {\tt options\ct type\_of\_method = 2}, then the next step is taken to be the minimum
-of the model with a regularization term added (\ref{eq:reg_subproblem}).  At present, 
+of the model with a regularization term added (\ref{eq:reg_subproblem}).  At present,
 only one method of solving this subproblem is supported:
 
 \begin{description}
-\item {\tt options\ct nlls\_method = 4}: this solves the regularized subproblem by first 
+\item {\tt options\ct nlls\_method = 4}: this solves the regularized subproblem by first
 converting the problem into the form
 $$\min_\vp \vw^T \vp + \frac{1}{2} \vp^T \vD \vp + \frac{1}{p}\|\vp\|_2^p,$$
-where $\vD$ is a diagonal matrix.  We do this by performing an eigen-decomposition of 
-the Hessian in the model.  Then, we call the {\sc Galahad} routine {\sc DRQS}; see 
+where $\vD$ is a diagonal matrix.  We do this by performing an eigen-decomposition of
+the Hessian in the model.  Then, we call the {\sc Galahad} routine {\sc DRQS}; see
 the {\sc Galahad} [3] documentation for further details.
 \end{description}
 
@@ -306,34 +308,34 @@ If we use regularization (with $p=2$), then the subproblem we need to solve is o
 \min_\vs \frac{1}{2}\sum_{i=1}^mW_{ii}{(\vt_k(\vs))_i}^2 + \frac{1}{2\Delta_k}\|\vs\|_2^2
 \label{eq:reg_newton_tensor_subproblem}
 \end{equation}
-Note that (\ref{eq:reg_newton_tensor_subproblem}) is a sum-of-squares, 
-and as such can be solved by calling {\tt ral\_nlls} recursively.  
+Note that (\ref{eq:reg_newton_tensor_subproblem}) is a sum-of-squares,
+and as such can be solved by calling {\tt ral\_nlls} recursively.
 We support two options:
 \begin{description}
-  \item {\tt options\ct inner\_method = 1}: 
-    if this option is selected, then {\tt nlls\_solve} is called to 
+  \item {\tt options\ct inner\_method = 1}:
+    if this option is selected, then {\tt nlls\_solve} is called to
     solve (\ref{eq:newton-tensor-model}) directly.  The current regularization parameter
-    of the `outer' method is used as a base regularization in the `inner' method, 
+    of the `outer' method is used as a base regularization in the `inner' method,
     so that the (quadratic) subproblem being solved in the `inner' call is of the form
     \[ \min_\vs \, m_k(\vs) + \frac{1}{2}\left(\frac{1}{\Delta_k} + \frac{1}{\delta_k}\right)\|\vs\|_B^2, \]
-    where $m_k(\vs)$ is a quadratic model of (\ref{eq:newton-tensor-model}), $\Delta_k$ is the 
-    (fixed) regularization parameter of the outer iteration, and $\delta_k$ the regularization 
+    where $m_k(\vs)$ is a quadratic model of (\ref{eq:newton-tensor-model}), $\Delta_k$ is the
+    (fixed) regularization parameter of the outer iteration, and $\delta_k$ the regularization
     parameter of the inner iteration, which is free to be updated as required by the method.
 
   \item {\tt options\ct inner\_method = 2}: in this case we use {\tt ral\_nlls} to solve
     the regularized model (\ref{eq:reg_newton_tensor_subproblem}) directly.
-    The number of parameters for this subproblem is $n+m$.  Specifically, we have a 
-    problem of the form 
+    The number of parameters for this subproblem is $n+m$.  Specifically, we have a
+    problem of the form
     \[
     \min_\vs \frac{1}{2} \|\widehat{\vr}(\vs)\|_\vW^2,
-    \quad \text{where }   
+    \quad \text{where }
     (\widehat{\vr}(\vs))_i =
     \begin{cases}
       (\vt_k(\vs))_i &  1 \leq i \leq m \\
       \frac{1}{\sqrt{\Delta_k}}s_i& m+1 \leq i \leq n+m
     \end{cases}.
-    \]  
-    This subproblem can then be solved using any of the methods described in 
+    \]
+    This subproblem can then be solved using any of the methods described in
     Sections~\ref{sec:trust-region} or \ref{sec:regularization}.
 \end{description}
 
@@ -342,25 +344,25 @@ We support two options:
 \label{sec:step_accept}
 
 
-Once a step has been suggested, we must decide whether or not to accept the step, and whether the trust region radius or regularization parameter, as appropriate, should grow, shrink, or remain the same.  
+Once a step has been suggested, we must decide whether or not to accept the step, and whether the trust region radius or regularization parameter, as appropriate, should grow, shrink, or remain the same.
 
-These decisions are made with reference to a parameter, $\rho$, which measures the 
+These decisions are made with reference to a parameter, $\rho$, which measures the
 ratio of the actual reduction in the model to the predicted reduction in the model.
-If this is larger than {\tt options\ct eta\_successful}, then the is step accepted (see Line 28 of Algorithm~\ref{alg:nlls_solve}). 
+If this is larger than {\tt options\ct eta\_successful}, then the is step accepted (see Line 28 of Algorithm~\ref{alg:nlls_solve}).
 
-The value of $\Delta_k$ then needs to be updated, if appropriate.  
+The value of $\Delta_k$ then needs to be updated, if appropriate.
 The package supports two options: if
 \begin{description}
-\item  {\tt options\ct tr\_update\_strategy = 1:} in this case a step-function is used to decide whether or not to increase or decrease $\Delta_k$.  
+\item  {\tt options\ct tr\_update\_strategy = 1:} in this case a step-function is used to decide whether or not to increase or decrease $\Delta_k$.
 \item {\tt options\ct tr\_update\_strategy = 2}, then a continuous function is used to
-  make the decision.  
+  make the decision.
 \end{description}
 The method used is outlined in Algorithm~\ref{alg:update_tr}.
 
 \begin{algorithm}
 \caption{update\_trust\_region}
 \label{alg:update_tr}
-\begin{algorithmic}[1]    
+\begin{algorithmic}[1]
   \State {\bf function} $\Delta = $ \Call{{\tt update\_trust\_region\_radius}}{{$\Delta, \rho$}}
     \If {{\tt options\ct tr\_update\_strategy == 1}}
       \If {{$\tt \rho \leq \text{\tt options\ct eta\_success\_but\_reduce}$}}
@@ -382,7 +384,7 @@ The method used is outlined in Algorithm~\ref{alg:update_tr}.
         \State $\Delta = \Delta$
         \Comment $\Delta$ stays unchanged
       \ElsIf{{$\tt \rho > \text{\tt options\ct eta\_successful}$}}
-        \State $\tt \Delta = \Delta * \min\left(\text{\tt options\ct radius\_increase},  
+        \State $\tt \Delta = \Delta * \min\left(\text{\tt options\ct radius\_increase},
           1 - \left( (\text{\tt options\ct radius\_increase} -1)*((1 - 2*\rho)^3)  \right)\right)$
         \State $\tt \nu = \text{\tt options\ct radius\_reduce}$
       \ElsIf{{$\tt \rho \leq \text{\tt options\ct eta\_successful}$}}
@@ -392,7 +394,7 @@ The method used is outlined in Algorithm~\ref{alg:update_tr}.
     \EndIf
   \end{algorithmic}
 \end{algorithm}
- 
+
 
 
 \hslreferences\\
@@ -403,7 +405,7 @@ $[2]$ Conn, A. R., Gould, N. I., \& Toint, P. L. (2000). Trust region methods. S
 $[3]$ Gould, N. I., Orban, D., \& Toint, P. L. (2003). GALAHAD, a library of thread-safe Fortran 90 packages for large-scale nonlinear optimization. ACM Transactions on Mathematical Software (TOMS), 29(4), 353-372.\\
 $[4]$ Nocedal, J., \& Wright, S. (2006). Numerical optimization. Springer Science \& Business Media.
 
-%%% Local Variables: 
+%%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "nlls_fortran"
-%%% End: 
+%%% End:

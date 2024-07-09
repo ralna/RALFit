@@ -1,3 +1,7 @@
+! Copyright (c) 2020, The Numerical Algorithms Group Ltd (NAG)
+! All rights reserved.
+! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
 Module ral_nlls_bounds
 Implicit None
 Private
@@ -9,7 +13,7 @@ Contains
 Subroutine box_proj(w, n, x, xnew, dir, alpha)
     Use ral_nlls_workspaces, Only: box_type, wp
 !   Two modes
-!   If xnew and d are present, then project x+alpha*dir, otherwise just 
+!   If xnew and d are present, then project x+alpha*dir, otherwise just
 !   make x feasible (ignoring either dir or xnew) and return
 !   In either case flag in params%prjchd if the projection altered any entry
     Implicit None
@@ -36,7 +40,7 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
       End If
       Go To 100
     End If
-    
+
     If (present(alpha)) Then
       alp = alpha
     Else
@@ -53,26 +57,26 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
     Else
       xnew(1:n) = x(1:n) + alp* dir(1:n)
     End If
-    
+
 100 Continue
- 
+
   End Subroutine box_proj
 
   Subroutine box_projdir(w, n, x, dir, normg, sigma)
     Use ral_nlls_workspaces, Only: wp, box_type
     !   Calculate the projected dir and it's two-norm
     !   Assumes dir = -fdx
-    !   If there is no box, then normPD=normg and if pdir is allocated then 
+    !   If there is no box, then normPD=normg and if pdir is allocated then
     !   copy dir to it.
     Implicit None
     type( box_type ), Intent(InOut)       :: w
     Integer, Intent(In)                   :: n
     Real(Kind=wp), Intent(In)             :: x(n), dir(n), normg
     Real(Kind=wp), Intent(In), Optional   :: sigma
-    
+
     Real(Kind=wp)                         :: alpb
     Integer                               :: i
-    
+
     If (w%has_box) Then
        If (Present(sigma)) Then
           alpb = sigma
@@ -83,7 +87,7 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
        do i = 1, n
           If (w%bux(i)/=w%blx(i)) Then
              w%pdir(i) = max(min(w%bux(i), x(i)+alpb*dir(i)), w%blx(i))-x(i)
-             w%normPD = w%normPD + (w%pdir(i))**2 
+             w%normPD = w%normPD + (w%pdir(i))**2
           Else
              w%pdir(i) = 0.0_wp
           End If
@@ -96,6 +100,6 @@ Subroutine box_proj(w, n, x, xnew, dir, alpha)
        w%normPD = normg
     End If
   End Subroutine box_projdir
-  
-  
+
+
 End Module ral_nlls_bounds
