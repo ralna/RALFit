@@ -1,5 +1,6 @@
 ! Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 module ral_nlls_ciface
 
   use iso_c_binding
@@ -92,6 +93,7 @@ module ral_nlls_ciface
      real(wp) :: box_tau_min
      integer(c_int):: box_ls_step_maxit
      integer(c_int):: box_linesearch_type
+     real(wp) :: fd_step
   end type nlls_options
 
   type, bind(C) :: nlls_inform
@@ -122,6 +124,7 @@ module ral_nlls_ciface
      Integer(c_int) :: pg_step_iter
      Integer(c_int) :: f_eval_pg
      Integer(c_int) :: g_eval_pg
+     Integer(c_int) :: fd_f_eval
   end type nlls_inform
 
   abstract interface
@@ -259,6 +262,7 @@ contains
     foptions%box_tau_min = coptions%box_tau_min
     foptions%box_ls_step_maxit = coptions%box_ls_step_maxit
     foptions%box_linesearch_type = coptions%box_linesearch_type
+    foptions%fd_step = coptions%fd_step
 
   end subroutine copy_options_in
 
@@ -307,6 +311,7 @@ contains
     cinfo%pg_step_iter = finfo%pg_step_iter
     cinfo%f_eval_pg = finfo%f_eval_pg
     cinfo%g_eval_pg = finfo%g_eval_pg
+    cinfo%fd_f_eval = finfo%fd_f_eval
 
   end subroutine copy_info_out
 
@@ -368,7 +373,30 @@ contains
 
   end subroutine c_eval_hp
 
+  integer(c_int) function c_eval_j_dummy(n, m, params, x, j) bind(c)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(c_int), value :: n,m
+       type(C_PTR), value :: params
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(out) :: j
+    
+       continue
+       c_eval_j_dummy = -45544554 ! Magic number to request FD
+  end function c_eval_j_dummy
 
+  integer(c_int) function c_eval_hf_dummy(n, m, params, x, f, hf) bind(c)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(c_int), value :: n,m
+       type(C_PTR), value :: params
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(in) :: f
+       real(c_double), dimension(*), intent(out) :: hf
+       continue
+       c_eval_hf_dummy =  -1023
+  end function c_eval_hf_dummy
+  
 end module ral_nlls_ciface
 
 subroutine ral_nlls_default_options_d(coptions) bind(C)
@@ -453,11 +481,14 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%box_ls_step_maxit = foptions%box_ls_step_maxit
   coptions%box_linesearch_type = foptions%box_linesearch_type
 
+  coptions%fd_step = foptions%fd_step
+
 end subroutine ral_nlls_default_options_d
 
 subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
      cweights, hp, clower_bounds, cupper_bounds) bind(C)
   use ral_nlls_ciface
+  use ral_nlls_double, only: ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy
   implicit none
 
   integer( C_INT ) , INTENT( IN ), value :: n, m
@@ -488,8 +519,19 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
   call copy_options_in(coptions, foptions, f_arrays)
 
   call c_f_procpointer(r, fparams%r)
-  call c_f_procpointer(j, fparams%j)
-  call c_f_procpointer(hf, fparams%hf)
+
+  if (c_associated(j)) then
+    call c_f_procpointer(j, fparams%j)
+  else
+    fparams%j => c_eval_j_dummy
+  end if
+
+  if (c_associated(hf)) then
+    call c_f_procpointer(hf, fparams%hf)
+  else
+    fparams%hf => c_eval_hf_dummy
+  endif
+
   fparams%params = params
   if (C_ASSOCIATED(hp)) hp_sent_in = .true.
 

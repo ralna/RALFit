@@ -2,7 +2,7 @@
 ! All rights reserved.
 ! Copyright (c) 2020, The Numerical Algorithms Group Ltd (NAG)
 ! All rights reserved.
-
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
     Module ral_nlls_printing
       Use ral_nlls_workspaces, Only: wp, nlls_options, nlls_inform
       Implicit None
@@ -413,8 +413,13 @@
             Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
               inform%f_eval_pg, 100.0_wp*real(inform%f_eval_pg)/inform%f_eval
             nrec = nrec + 1
-            Write (rec(nrec),Fmt=99996) 'Gradient evaluations          ',      &
-              inform%g_eval
+            If (inform%fd_f_eval == 0) Then
+              Write (rec(nrec),Fmt=99996) 'Gradient evaluations          ',    &
+                inform%g_eval
+            Else
+              Write (rec(nrec),Fmt=89996) 'Gradient evaluations (FD)     ',    &
+                inform%g_eval, inform%fd_f_eval
+            End If
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    Trust region step         ',      &
               inform%g_eval - inform%g_eval_ls - inform%g_eval_pg,             &
@@ -440,6 +445,7 @@
 99998   Format (2X,'Status:',1X,A)
 99997   Format (1X,A30,4X,Es12.5e2)
 99996   Format (1X,A30,4X,I12)
+89996   Format (1X,A30,4X,I12,1X,'(func: ',I12,')')
 99995   Format (1X,A30,4X,I12,1X,'(',F5.1,'%)')
 99994   Format (1X,A,4X,I0)
 99993   Format (1X,58('-'))

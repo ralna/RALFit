@@ -1,5 +1,7 @@
 ! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2020 Numerical Algorithms Group (NAG). All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! ral_nlls_internal :: internal subroutines for ral_nlls
 
 module ral_nlls_internal
@@ -76,6 +78,7 @@ module ral_nlls_internal
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton, evaltensor_J
+    public :: setup_iparams_type, free_iparams_type
 
 contains
 
@@ -100,17 +103,18 @@ contains
 !                         Jennifer Scott)
 !  -----------------------------------------------------------------------------
     Use nag_export_mod, Only: calculate_covm
+    Use ral_nlls_fd, Only: eval_f_wrap, eval_j_wrap, eval_hf_wrap
 !   Dummy arguments
     implicit none
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( NLLS_inform ), INTENT( OUT ) :: inform
-    TYPE( NLLS_options ), INTENT( IN ) :: options
+    TYPE( NLLS_inform ), TARGET, INTENT( OUT ) :: inform
+    TYPE( NLLS_options ), TARGET, INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
     procedure( eval_hf_type ) :: eval_HF
-    class( params_base_type ), intent(inout) :: params
+    class( params_base_type ), target, intent(inout) :: params
     real( wp ), dimension( m ), intent(in), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
     real( wp ), dimension( n ), intent(inout), optional :: lower_bounds
@@ -119,8 +123,11 @@ contains
     integer  :: i, nrec
     Character(Len=80) :: rec(3)
 
-    type ( NLLS_workspace ) :: w
+    type ( NLLS_workspace ), target :: w
     Type ( NLLS_workspace ), target :: inner_workspace
+    ! internal envelope params
+    Type ( params_internal_type ) :: iparams
+
 !   Link the inner_workspace to the main workspace
     w%iw_ptr => inner_workspace
 !   Self reference inner workspace so recursive call does not fail
@@ -144,12 +151,16 @@ contains
       Call print_options(options)
     End If
 
+    call setup_iparams_type(iparams, params, eval_F, eval_J, eval_HF, &
+            inform, options, w%box_ws, x)
+
     main_loop: do i = 1,options%maxit
-       call nlls_iterate(n, m, X,                                 &
-            w,                                                    &
-            eval_F, eval_J, eval_HF,                              &
-            params,                                               &
-            inform, options, weights=weights,eval_HP=eval_HP,     &
+       call nlls_iterate(n, m, X,                                     &
+            w,                                                        &
+            eval_F_wrap, eval_J_wrap, eval_HF_wrap,                   &
+            iparams,                                                  &
+            inform, options, weights=weights,                         &
+            eval_HP=eval_HP,                                          &
             lower_bounds=lower_bounds, upper_bounds=upper_bounds)
 
        ! test the returns to see if we've converged
@@ -175,6 +186,8 @@ contains
        call calculate_covm(m, n, w%j, inform, options, options%save_covm)
      end if
 
+     ! Free iparams and get save info
+     call free_iparams_type(iparams)
      call nlls_finalize(w,options,inform)
      If (inform%status /= 0) then
        call nlls_strerror(inform)
@@ -201,12 +214,13 @@ contains
                           inform, options, weights,  &
                           eval_HP,                   &
                           lower_bounds, upper_bounds)
+    Use ral_nlls_fd, Only: eval_hp_wrap
     implicit none
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( nlls_options ), INTENT( IN ) :: options
-    type( NLLS_workspace ), INTENT( INOUT ) :: w
+    type( NLLS_workspace ), TARGET, INTENT( INOUT ) :: w
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
     procedure( eval_hf_type ) :: eval_HF
@@ -273,10 +287,23 @@ contains
           goto 100
        end if
 
+       ! attach allocated f for FD
+       select type (params)
+          type is (params_internal_type)
+            params%f => w%f
+       end select
+
        ! if needed, setup assign eval_Hp
        if (options%model==4 .and. present(eval_HP)) then
-          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .true.
+          ! assign wrapper for eval_HP depending on class of params
+          select type (params)
+            type is (params_internal_type)
+              w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP_wrap
+              params%user%eval_HP => eval_HP
+            class is (params_base_type)
+              w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP
+          end select
        else
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .false.
        end if

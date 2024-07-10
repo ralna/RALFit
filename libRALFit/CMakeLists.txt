@@ -1,5 +1,6 @@
 # Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
 # All rights reserved.
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 # CMake project file for libral_nlls
 cmake_minimum_required (VERSION 3.1)
 
@@ -22,8 +23,9 @@ set ( SRC_FILES
 	src/ral_nlls_symbols.f90
 	src/ral_nlls_ciface.f90
 	src/ral_nlls_workspaces.f90
-  src/ral_nlls_printing.f90
-	)
+    src/ral_nlls_printing.f90
+    src/ral_nlls_fd.f90
+	)	
 
 # Support for CMAKE_BUILD_TYPE={Debug,Release,Profile}
 if(CMAKE_BUILD_TYPE MATCHES Debug)

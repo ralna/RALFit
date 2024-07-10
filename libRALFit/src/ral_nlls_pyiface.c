@@ -1,5 +1,6 @@
 // Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
 // All rights reserved.
+// Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <Python.h>
@@ -1038,6 +1039,17 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 	continue;
       }
 
+      /* 	real(wp) :: fd_step */
+      if(strcmp(key_name, "fd_step")==0) {
+	double v = PyFloat_AsDouble(value);
+	if(v<=0 || PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['fd_step'] must be a positve float.");
+            return false;
+	}
+         options->fd_step = v;
+         continue;
+      }
+
       // If we reach this point, unrecognised option
       char errmsg[200];
       snprintf(errmsg, 200, "Bad key options['%s']\n", key_name);
@@ -1078,6 +1090,7 @@ make_info_dict(const struct ral_nlls_inform *inform) {
    PyDict_SetItemString(pyinfo, "pg_step_iter", PyInt_FromLong(inform->pg_step_iter));
    PyDict_SetItemString(pyinfo, "f_eval_pg", PyInt_FromLong(inform->f_eval_pg));
    PyDict_SetItemString(pyinfo, "g_eval_pg", PyInt_FromLong(inform->g_eval_pg));
+   PyDict_SetItemString(pyinfo, "fd_f_eval", PyInt_FromLong(inform->fd_f_eval));
 
    return pyinfo;
 }

@@ -1,5 +1,6 @@
 ! Copyright (c) 2017, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! examples/Fortran/Lanczos.f90
 
 module lanczos_module
@@ -219,4 +220,8 @@ program lanczos
   print *, "     ", inform%g_eval, " gradient evaluations"
   print *, "     ", inform%h_eval, " hessian evaluations"
   print *, "     ", toc-tic, " seconds"
+
+  if (allocated(x)) deallocate(x)
+  if (allocated(params%t)) deallocate(params%t)
+  if (allocated(params%y)) deallocate(params%y)
 end program lanczos
