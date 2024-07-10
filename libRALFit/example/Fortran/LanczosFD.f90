@@ -157,7 +157,6 @@ program lanczos_fd
    print *, ""
 
    ! Print result
-   print *, "Found a local optimum at x = ", x
    print *, "Took ", inform%iter, " iterations"
    print *, "     ", inform%f_eval, " function evaluations"
    print *, "     ", inform%g_eval, " gradient evaluations (FD)"
