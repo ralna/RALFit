@@ -599,9 +599,9 @@ module ral_nlls_workspaces
     procedure( eval_hp_type ), pointer, nopass :: eval_HP => Null()
     ! user params
     class( params_base_type ), pointer :: params => Null()
-     
+
   end type
-  ! internal envelope for user-params_base_type, used for e.g. 
+  ! internal envelope for user-params_base_type, used for e.g.
   ! passing finite-differences related information
   type, extends (params_base_type), public :: params_internal_type
     ! finite-differences

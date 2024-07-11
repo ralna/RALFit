@@ -1,7 +1,8 @@
 ! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! examples/Fortran/nlls_example2.f90
-! 
+!
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 ! For parameters x_1 and x_2, and input data (t_i, y_i)
 module fndef_example
@@ -86,7 +87,7 @@ contains
 
       status = 0 ! Success
     end subroutine eval_HF
-    
+
     subroutine eval_HP(status, n, m, x, y, HP, params)
       integer, intent(out) :: status
       integer, intent(in) :: n
@@ -97,7 +98,7 @@ contains
       class(params_base_type), intent(inout) :: params
 
       real(wp) :: x1, x2
-      integer :: i 
+      integer :: i
 
       x1 = x(1)
       x2 = x(2)
@@ -112,7 +113,7 @@ contains
 
       status = 0 ! Success
     end subroutine eval_HP
-    
+
 end module fndef_example
 
 program nlls_example2
@@ -136,23 +137,23 @@ program nlls_example2
    ! Call fitting routine
    n = 2
    allocate(x(n))
-   
+
    options%model = 4
    options%type_of_method = 2
    options%nlls_method = 4
-   options%exact_second_derivatives = .true. 
+   options%exact_second_derivatives = .true.
    options%maxit = 50
    options%print_level = 4
 
    do inner_method = 1,3
-      
+
       options%inner_method = inner_method
 
       x = (/ 2.5, 0.25 /) ! Initial guess
       call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform)
       if(inform%status.ne.0) then
          print *, "ral_nlls() returned with error flag ", inform%status
-         stop
+         goto 100
       endif
 
       ! Print result
@@ -163,12 +164,12 @@ program nlls_example2
       print *, "     ", inform%h_eval, " hessian evaluations"
 !!$
 !!$      print *, "===== passing eval_HP ====="
-!!$      
+!!$
 !!$      x = (/ 2.5, 0.25 /) ! Initial guess
 !!$      call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform,eval_HP=eval_HP)
 !!$      if(inform%status.ne.0) then
 !!$         print *, "ral_nlls() returned with error flag ", inform%status
-!!$         stop
+!!$         goto 100
 !!$      endif
 !!$
 !!$      ! Print result
@@ -179,5 +180,11 @@ program nlls_example2
 !!$      print *, "     ", inform%h_eval, " hessian evaluations"
 
    end do
-   
+
+100 Continue
+
+   if (allocated(x)) deallocate(x)
+   if (allocated(params%t)) deallocate(params%t)
+   if (allocated(params%y)) deallocate(params%y)
+
 end program nlls_example2

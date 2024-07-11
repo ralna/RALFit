@@ -12,6 +12,7 @@ set( source_files
   ral_nlls_printing.f90
   ral_nlls_bounds.f90
   nag_export_mod.f90
+  ral_nlls_types.F90
   ral_nlls_fd.f90
   )
 
