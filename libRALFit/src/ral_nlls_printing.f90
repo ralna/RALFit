@@ -310,6 +310,9 @@
       Write (adj,Fmt=99999) 'save_covm'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99997) adjustl(adj), options%save_covm
+      Write (adj,Fmt=99999) 'fd_step'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%fd_step
 
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99994)
@@ -441,7 +444,6 @@
           End If
         End If
 
-99999   Format (A)
 99998   Format (2X,'Status:',1X,A)
 99997   Format (1X,A30,4X,Es12.5e2)
 99996   Format (1X,A30,4X,I12)

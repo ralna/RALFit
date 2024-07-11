@@ -58,6 +58,7 @@ int main(void) {
   options.print_level = 3;
   options.maxit = 100;
   options.fd_step = 1.0e-6;
+  options.print_options = true;
 
   // initialize the workspace
   void *workspace;

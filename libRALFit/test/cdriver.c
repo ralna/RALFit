@@ -1,5 +1,6 @@
 /* Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
  * All rights reserved.
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -52,6 +53,7 @@ int main(void) {
   ral_nlls_default_options(&options);
 
   options.print_level = 3;
+  options.print_options = true;
 
   nlls_solve(n, m, x,
 	   eval_F, eval_J, eval_HF, &params,
