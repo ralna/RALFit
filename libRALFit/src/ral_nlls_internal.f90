@@ -214,7 +214,7 @@ contains
                           inform, options, weights,  &
                           eval_HP,                   &
                           lower_bounds, upper_bounds)
-    Use ral_nlls_fd, Only: eval_hp_wrap
+    Use ral_nlls_fd, Only: eval_hp_wrap, check_jacobian
     implicit none
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
@@ -357,6 +357,18 @@ contains
          inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
+
+       select type (params)
+          type is (params_internal_type)
+!            Is user requesting to check the Jacobian derivatives and fd not activated
+             If (options%check_derivatives /= 0 .And. params%fd_type == 'N') Then
+                call check_jacobian(n, m, w%J, params)
+                If (params%inform%status /= 0) Then
+                   goto 100
+                End if
+             End If
+       end select
+
        if ( present(weights) ) then
           call scale_J_by_weights(w%J,n,m,weights,options)
        end if
@@ -1282,6 +1294,8 @@ lp: do while (.not. success)
        inform%error_message = 'Linesearch in projected gradient direction failed'
     elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then
        inform%error_message = 'Unsupported value of linesearch type (box_linesearch_type)'
+    elseif ( inform%status ==  NLLS_ERROR_BAD_JACOBIAN) then
+       inform%error_message = 'One or more elements in the Jacobian appear to be wrong'
     elseif ( inform%status ==  NLLS_ERROR_UNEXPECTED) then
        inform%error_message = 'Unexpected error occured'
     else

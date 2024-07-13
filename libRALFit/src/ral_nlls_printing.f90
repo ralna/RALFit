@@ -313,6 +313,12 @@
       Write (adj,Fmt=99999) 'fd_step'
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99998) adjustl(adj), options%fd_step
+      Write (adj,Fmt=99999) 'check_derivatives'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99997) adjustl(adj), options%check_derivatives
+      Write (adj,Fmt=99999) 'derivative_test_tol'
+      nrec = nrec + 1
+      Write (rec(nrec),Fmt=99998) adjustl(adj), options%derivative_test_tol
 
       nrec = nrec + 1
       Write (rec(nrec),Fmt=99994)

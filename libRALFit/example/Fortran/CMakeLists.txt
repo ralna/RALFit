@@ -18,6 +18,9 @@ target_link_libraries(LanczosBox ral_nlls)
 add_executable (LanczosFD LanczosFD.f90)
 target_link_libraries(LanczosFD ral_nlls)
 
+add_executable (LanczosFD2 LanczosFD2.f90)
+target_link_libraries(LanczosFD2 ral_nlls)
+
 add_executable (stp_x0sol stp_x0sol.f90)
 target_link_libraries(stp_x0sol ral_nlls)
 

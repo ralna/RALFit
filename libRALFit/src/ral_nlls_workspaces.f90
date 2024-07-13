@@ -41,6 +41,7 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_INITIAL_GUESS            =  -16
   Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -17
   Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -18
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_JACOBIAN             =  -19
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -379,6 +380,16 @@ module ral_nlls_workspaces
      Integer       :: save_covm = 0
 !    FINITE DIFFERENCE STEP
      Real(Kind=wp) :: fd_step = 10.0_wp * sqrt(epsmch)
+!    Check derivatives (Jacobian only)
+!       0 - No
+!       1 - Yes (expensive)
+!       2 - Cheap (not yet implemented)
+!    If print level <  2  prints only derivatives deviations
+!                         that are deemed to be too large
+!    If print level >= 2  print all derivatives deviations
+     Integer       :: check_derivatives = 0
+!    Tolerance to issue a warning when checking user-provided derivatives
+     Real(Kind=wp) :: derivative_test_tol = 1.0e-4_wp
 
   END TYPE nlls_options
 
@@ -1970,7 +1981,7 @@ contains
       TYPE( NLLS_inform ), TARGET, INTENT( In ) :: inform
       TYPE( NLLS_options ), TARGET, INTENT( IN ) :: options
       TYPE( box_type ), TARGET, INTENT( IN ) :: box_ws
-      Real(Kind=wp), Target :: x(:)
+      Real(Kind=wp), Optional, Target :: x(:)
       Continue
 !     Encapsulate user-params and call-backs for finite-differences
       Select Type (iparams)
@@ -1983,7 +1994,9 @@ contains
          iparams%options => options
          iparams%box => box_ws
          iparams%fd_type = 'N'
-         iparams%x => x
+         if (present(x)) then
+            iparams%x => x
+         end if
          if (Allocated(iparams%f_pert)) Deallocate(iparams%f_pert)
       End Select
    end subroutine setup_iparams_type

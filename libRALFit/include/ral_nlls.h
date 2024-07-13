@@ -107,6 +107,8 @@ struct ral_nlls_options_d {
   ral_int box_ls_step_maxit;
   ral_int box_linesearch_type;
   ral_nllspkgtype_d_ fd_step;
+  ral_int check_derivatives;
+  ral_nllspkgtype_d_ derivative_test_tol;
 };
 
 struct ral_nlls_inform_d {

@@ -9,7 +9,8 @@ module ral_nlls_double
   use ral_nlls_internal
   use ral_nlls_workspaces, only : params_base_type,           &
     nlls_options, nlls_inform, nlls_workspace
-  use ral_nlls_fd, only: ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy
+  use ral_nlls_fd, only: ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, &
+    jacobian_handle, jacobian_setup, jacobian_calc, jacobian_free
 
   implicit none
 
@@ -56,6 +57,7 @@ module ral_nlls_double
   public :: nlls_options, nlls_inform, nlls_workspace
   public :: params_base_type
   public :: ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy
+  public :: jacobian_handle, jacobian_setup, jacobian_calc, jacobian_free
 
 end module ral_nlls_double
 

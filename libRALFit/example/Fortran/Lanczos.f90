@@ -194,6 +194,7 @@ program lanczos
   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
 
   options%print_level = 4
+  options%check_derivatives = 2
   options%exact_second_derivatives = .true.
   options%model = 4
   options%nlls_method = 3

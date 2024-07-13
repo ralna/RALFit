@@ -376,6 +376,12 @@ module ral_nlls_workspaces
 !         2: only diagonal of C
 !         3: only J^T J
      Integer       :: save_covm = 0
+!    If print level <  2  prints only derivatives deviations
+!                         that are deemed to be too large
+!    If print level >= 2  print all derivatives deviations
+     Integer       :: check_derivatives = 0
+!    Tolerance to issue a warning when checking user-provided derivatives
+     Real(Kind=wp) :: derivative_test_tol = 1.0e-4_wp
 
   END TYPE nlls_options
 

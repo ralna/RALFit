@@ -30,7 +30,7 @@ module ral_nlls_fd
 
    Implicit None
 
-   Public :: eval_f_wrap, eval_j_wrap, eval_hf_wrap, eval_hp_wrap
+   Public :: eval_f_wrap, eval_j_wrap, eval_hf_wrap, eval_hp_wrap, check_jacobian
    ! Public interface to estimate the jacobian
    Public :: jacobian_calc, jacobian_setup, jacobian_free, jacobian_handle
    ! Public convinience default dummies for call-backs
@@ -92,16 +92,15 @@ module ral_nlls_fd
    Type, Public :: jacobian_handle
       Logical :: setup = .False.
       Integer :: n, m
-      Procedure(eval_f_type), NoPass, Pointer :: eval_f
-      Class(params_base_type), Pointer :: params
-      Real(Kind=wp), Pointer :: lower, upper
+      Procedure(eval_f_type), NoPass, Pointer :: eval_f => Null()
+      Class(params_base_type), Pointer :: params => Null()
+      Real(Kind=wp), Pointer :: lower => Null(), upper => Null()
       Logical :: f_storage
       ! private elements for internal params
       Type(params_internal_type) :: iparams
       Type(nlls_inform) :: inform
       Type(NLLS_options) :: options
       Type(box_type) :: box
-      Real(Kind=wp), Dimension(:), Allocatable :: f
    End Type jacobian_handle
 
 Contains
@@ -137,28 +136,16 @@ Contains
       Integer, Intent(out) :: status
       Type(jacobian_handle), Intent(Inout) :: handle
       Integer, Intent(in) :: n, m
-      Real(Kind=wp), Dimension(n) :: x
-      Procedure( eval_f_type ), Pointer :: eval_f
+      Real(Kind=wp), Dimension(n), Intent(In) :: x
+      Procedure( eval_f_type ) :: eval_f
       Class(params_base_type), Intent(inout), Optional :: params
       Real(Kind=wp), Dimension(n), Intent(in), Target, Optional :: lower, upper
-      Logical, Optional :: f_storage
+      Logical, Optional, Intent(in) :: f_storage
 
       Type(params_base_type) :: no_params
       Integer :: ierr_dummy
 
       Continue
-
-      Allocate(handle%f(m), Stat=status)
-      If (status /= 0) Then
-         status = -99
-         GoTo 100
-      End If
-
-      Allocate(handle%iparams%f_pert(m), Stat=status)
-      If (status /= 0) Then
-         status = -99
-         GoTo 100
-      End If
 
       If (n<1 .Or. m <1) Then
          status = 1
@@ -180,12 +167,20 @@ Contains
       If (allocated(handle%box%sk)) deallocate(handle%box%sk, Stat=ierr_dummy)
       If (allocated(handle%box%g)) deallocate(handle%box%g, Stat=ierr_dummy)
 
+      ! Note x is not passed to setup iparams, it is assigned along with f in jacobian_calc
       If (Present(params)) Then
          Call setup_iparams_type(handle%iparams, params, eval_f,   &
-            ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box, x)
+            ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box)
       Else
          Call setup_iparams_type(handle%iparams, no_params, eval_f,   &
-            ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box, x)
+            ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box)
+      End If
+
+      ! Allocation must come AFTER call to setup_iparams_type()
+      Allocate(handle%iparams%f_pert(m) ,Stat=status)
+      If (status /= 0) Then
+         status = -99
+         GoTo 100
       End If
 
       If (Present(f_storage)) Then
@@ -207,18 +202,23 @@ Contains
       Continue
 
       handle%setup = .False.
-      If (Allocated(handle%f)) Deallocate(handle%f)
       Call free_iparams_type(handle%iparams)
       Call remove_workspace_bounds(handle%box)
+      handle%eval_f => Null()
+      handle%params => Null()
+      handle%lower => Null()
+      handle%upper => Null()
    End Subroutine jacobian_free
 
-   subroutine jacobian_calc(status, handle, x, J, fd_step)
+   ! Assumes x and f are allocated and than f = f(x)
+   subroutine jacobian_calc(status, handle, x, f, J, fd_step)
       use ral_nlls_workspaces, only : wp
       implicit none
       integer, intent(out) :: status
       Type(jacobian_handle), Intent(Inout) :: handle
-      Real(Kind=wp), dimension(handle%n), intent(in)  :: x
-      Real(Kind=wp), dimension(handle%m*handle%n), intent(out) :: J
+      Real(Kind=wp), dimension(*), intent(in), target :: x
+      Real(Kind=wp), dimension(*), intent(in), target :: f
+      Real(Kind=wp), dimension(*), intent(out) :: J
       Real(Kind=wp), optional :: fd_step
 
       Continue
@@ -231,6 +231,10 @@ Contains
       If (present(fd_step)) Then
          handle%iparams%options%fd_step = fd_step
       End If
+
+      ! Assign x and f
+      handle%iparams%x => x(1:handle%n)
+      handle%iparams%f => f(1:handle%m)
 
       Call fd_jacobian(status, handle%n, handle%m, J, handle%iparams)
 
@@ -336,9 +340,167 @@ Contains
       status = -2021 ! Inform call-back could not be evaluated
    end subroutine eval_hp_wrap
 
+   ! JACOBIAN DERIVATIVE CHECKER
+   ! Compares the user call-back provided Jacobian agains a FD approximation
+   ! The check is done is the caller is from nlls_solve only
+   Subroutine check_jacobian(n, m, J, iparams)
+      Use ral_nlls_workspaces, only: NLLS_ERROR_UNEXPECTED, &
+         NLLS_ERROR_ALLOCATION, NLLS_ERROR_FROM_EXTERNAL, &
+         NLLS_ERROR_BAD_JACOBIAN
+      Use ral_nlls_printing, only: printmsg
+      Implicit None
+      Integer, Intent(In) :: n, m
+      Real(Kind=wp), Dimension(:), Intent(In) :: J
+      Type(params_internal_type), Intent(Inout) :: iparams
+
+      Real(Kind=wp), Allocatable, Dimension(:) :: J_fd
+      Integer :: ierr, ivar, jcon, iivar, jjcon, idx, idx_tran, prlvl,tcnt
+      Real(Kind=wp) :: perturbation, this_perturbation, relerr, relerr_tran, test_tol
+      Logical :: Fortran_Jacobian, box, okgap, oklo, okup, okij, ok_tran, prn, ok
+      Character(Len=1) :: flagv, flagt, flagg
+      Character(Len=200) :: rec
+      Continue
+
+      test_tol = iparams%options%derivative_test_tol
+      perturbation = iparams%options%fd_step
+      Fortran_Jacobian = iparams%options%Fortran_Jacobian
+      box = iparams%box%has_box
+      prlvl = iparams%options%print_level
+      ok = .True.
+
+      ! Consistency check
+      if (Allocated(iparams%f_pert)) Then
+         iparams%inform%status = NLLS_ERROR_UNEXPECTED
+         goto 100
+      end if
+
+      Allocate(iparams%f_pert(m), stat=ierr)
+      if (ierr /= 0) Then
+         iparams%inform%status = NLLS_ERROR_ALLOCATION
+         goto 100
+      end if
+
+      Allocate(J_fd(n * m), Stat=ierr)
+      if (ierr /= 0) then
+         iparams%inform%status = NLLS_ERROR_ALLOCATION
+         goto 100
+      end if
+
+      Call fd_jacobian(ierr, n, m, J_fd, iparams)
+      if (ierr == -2031 ) then
+         iparams%inform%status = NLLS_ERROR_BAD_JACOBIAN
+         goto 100
+      elseif (ierr /= 0) then
+         ! error from user eval_F callback
+         iparams%inform%external_name = 'eval_F'
+         iparams%inform%external_return = 2101
+         iparams%inform%status = NLLS_ERROR_FROM_EXTERNAL
+         goto 100
+      end if
+
+      Call printmsg(0,.False.,iparams%options,1, '')
+      Write(rec, Fmt=99999)
+      Call printmsg(0,.False.,iparams%options,1, rec)
+      Call printmsg(0,.False.,iparams%options,1, '')
+      Write(rec, Fmt=99997) merge('Fortran (column-major)', &
+         'C (row-major)         ', Fortran_Jacobian)
+      Call printmsg(0,.False.,iparams%options,1, rec)
+      Call printmsg(0,.False.,iparams%options,1, '')
+
+      ierr = 0
+      tcnt = 0
+      Do ivar = 1, n
+         this_perturbation = perturbation * max(1.0_wp, abs(iparams%x(ivar)));
+         okgap = .True.
+         oklo = .True.
+         okup = .True.
+         if (box) then
+            okgap = iparams%box%blx(ivar) < iparams%box%bux(ivar)
+            oklo = iparams%box%blx(ivar) <= iparams%x(ivar) - this_perturbation
+            okup = iparams%x(ivar) + this_perturbation <= iparams%box%bux(ivar)
+            okgap = okgap .and. (oklo .or. okup)
+         end if
+
+         Do jcon = 1, m
+            if (Fortran_Jacobian) then
+               idx = (ivar-1) * m + jcon
+               idx_tran = (jcon-1) * n + ivar ! get also the transpose
+               iivar = ivar ! Fortran indexing
+               jjcon = jcon
+            else
+               idx_tran = (ivar-1) * m + jcon ! get also the transpose
+               idx = (jcon-1) * n + ivar
+               iivar = ivar - 1 ! C indexing
+               jjcon = jcon - 1
+            end if
+            relerr = abs(J_fd(idx) - J(idx)) / max(abs(J_fd(idx)), test_tol)
+            relerr_tran = abs(J_fd(idx) - J(idx_tran)) / max(abs(J_fd(idx)), test_tol)
+            okij = relerr <= test_tol
+            ok = ok .And. okij
+            if (.not. okij) ierr = ierr + 1 ! Tally derivatives to verify
+            prn = (.not. okij ) .or. prlvl >= 2
+            if (prn) then
+               ok_tran = relerr_tran <= test_tol
+               flagv = ''
+               flagt = ''
+               flagg = ''
+               if (.not. okij) flagv = 'X'
+               if (.not. okij .and. ok_tran) then
+                  flagt = 'T'
+                  tcnt = tcnt + 1
+               end if
+               if (.not. okgap) flagg = 'B'
+               Write(rec, Fmt=99900) iivar, jjcon, J(idx), J_fd(idx), relerr, &
+                  this_perturbation, flagv, flagt, flagg
+               Call printmsg(0,.False.,iparams%options,1, rec)
+            end if
+         End Do
+      End Do
+
+      ! Print summary
+
+      Call printmsg(0,.False.,iparams%options,1, '')
+      if (ierr == 0) then
+         Write(rec, Fmt=80001)
+      else
+         Write(rec, Fmt=80000) ierr
+      end if
+      Call printmsg(0,.False.,iparams%options,1, rec)
+
+      if (tcnt > 0) then
+         Call printmsg(0,.False.,iparams%options,1, '')
+         Write(rec, Fmt=80002) tcnt
+         Call printmsg(0,.False.,iparams%options,1, rec)
+         Write(rec, Fmt=80003)
+         Call printmsg(0,.False.,iparams%options,1, rec)
+      end if
+
+      Write(rec, Fmt=99998)
+      Call printmsg(0,.False.,iparams%options,1, '')
+      Call printmsg(0,.False.,iparams%options,1, rec)
+      Call printmsg(0,.False.,iparams%options,1, '')
+
+      if (.not. ok) iparams%inform%status = NLLS_ERROR_BAD_JACOBIAN
+
+100   continue
+
+      If (Allocated(J_fd)) Deallocate(J_fd)
+      ! Note iparams%f_pert will be deallocated by nlls_solve
+
+99999 Format (1X,'Begin Derivative Checker')
+99998 Format (1X,'End Derivative Checker')
+99997 Format (4X,'Jacobian storage scheme (Fortran_Jacobian) = ',A)
+99900 Format (4X,'Jac[',I6,',',I6,'] = ',Es20.12e2,' ~ ', Es20.12e2, 2X,'[',E10.3e2,'], (',E10.3e2,')',2X,3(A1))
+80000 Format (4X,'Derivative checker detected ',I6,1X,'likely error(s)')
+80001 Format (4X,'It seems that derivatives are OK.')
+80002 Format (4X,'Note: derivative checker detected that ',I6,' entries may correspond to the transpose.')
+80003 Format (4X,'Verify the Jacobian storage ordering is correct.')
+
+   End Subroutine check_jacobian
 
    ! FINITE DIFFERENCE DRIVER for the JACOBIAN
    ! This is a Fortran version of IpOpt TNLPAdapter::internal_eval_jac_g
+   ! Assumes iparams%f(:) contains already eval_f(iparams%x)
    Subroutine fd_jacobian(status, n, m, J, iparams)
       Implicit None
       integer, intent(out) :: status
@@ -377,7 +539,7 @@ Contains
             ! either okup or oklo or both are good to use
             iparams%x(ivar) = iparams%x(ivar) + merge(this_perturbation, -this_perturbation, okup)
 
-            Call iparams%user%eval_F(status, n, m, iparams%x, iparams%f_pert, iparams%user%params)
+            Call iparams%user%eval_F(status, n, m, iparams%x(1:n), iparams%f_pert(1:m), iparams%user%params)
             iparams%inform%f_eval = iparams%inform%f_eval + 1 ! gloval F ledger
             iparams%inform%fd_f_eval = iparams%inform%fd_f_eval + 1 ! legder for FD calls
             iparams%x(ivar) = xorig

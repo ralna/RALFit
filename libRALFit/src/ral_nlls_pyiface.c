@@ -1041,12 +1041,34 @@ bool set_opts(struct ral_nlls_options *options, PyObject *pyoptions) {
 
       /* 	real(wp) :: fd_step */
       if(strcmp(key_name, "fd_step")==0) {
-	double v = PyFloat_AsDouble(value);
-	if(v<=0 || PyErr_Occurred()) {
+	     double v = PyFloat_AsDouble(value);
+	     if(v<=0 || PyErr_Occurred()) {
             PyErr_SetString(PyExc_RuntimeError, "options['fd_step'] must be a positve float.");
             return false;
-	}
+	     }
          options->fd_step = v;
+         continue;
+      }
+
+     /* Integer       :: check_derivatives = 0 */
+      if(strcmp(key_name, "check_derivatives")==0) {
+	    long v = PyInt_AsLong(value);
+	       if(v==-1 && PyErr_Occurred()) {
+	          PyErr_SetString(PyExc_RuntimeError, "options['check_derivatives'] must be an integer.");
+	          return false;
+	       }
+	    options->check_derivatives = (int) v;
+	    continue;
+      }
+
+     /* Real(Kind=wp) :: derivative_test_tol = 1.0e-4_wp */
+      if(strcmp(key_name, "derivative_test_tol")==0) {
+	     double v = PyFloat_AsDouble(value);
+	     if(v<=0 || PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "options['derivative_test_tol'] must be a positve float.");
+            return false;
+	     }
+         options->derivative_test_tol = v;
          continue;
       }
 

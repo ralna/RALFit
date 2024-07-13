@@ -93,6 +93,8 @@ module ral_nlls_ciface
      integer(ral_c_int):: box_ls_step_maxit
      integer(ral_c_int):: box_linesearch_type
      real(ral_c_real) :: fd_step
+     Integer(ral_c_int) :: check_derivatives
+     Real(ral_c_real) :: derivative_test_tol
   end type nlls_options
 
   type, bind(C) :: nlls_inform
@@ -270,6 +272,8 @@ contains
     foptions%box_ls_step_maxit = coptions%box_ls_step_maxit
     foptions%box_linesearch_type = coptions%box_linesearch_type
     foptions%fd_step = coptions%fd_step
+    foptions%check_derivatives = coptions%check_derivatives
+    foptions%derivative_test_tol = coptions%derivative_test_tol
 
   end subroutine copy_options_in
 
@@ -493,6 +497,8 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%box_linesearch_type = foptions%box_linesearch_type
 
   coptions%fd_step = foptions%fd_step
+  coptions%check_derivatives = foptions%check_derivatives
+  coptions%derivative_test_tol = foptions%derivative_test_tol
 
 end subroutine ral_nlls_default_options_d
 
