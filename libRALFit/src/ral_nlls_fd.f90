@@ -354,10 +354,10 @@ Contains
       Type(params_internal_type), Intent(Inout) :: iparams
 
       Real(Kind=wp), Allocatable, Dimension(:) :: J_fd
-      Integer :: ierr, ivar, jcon, iivar, jjcon, idx, idx_tran, prlvl,tcnt
+      Integer :: ierr, ivar, jcon, iivar, jjcon, idx, idx_tran, prlvl, tcnt, skip
       Real(Kind=wp) :: perturbation, this_perturbation, relerr, relerr_tran, test_tol
       Logical :: Fortran_Jacobian, box, okgap, oklo, okup, okij, ok_tran, prn, ok
-      Character(Len=1) :: flagv, flagt, flagg
+      Character(Len=1) :: flagx, flagt
       Character(Len=200) :: rec
       Continue
 
@@ -366,7 +366,6 @@ Contains
       Fortran_Jacobian = iparams%options%Fortran_Jacobian
       box = iparams%box%has_box
       prlvl = iparams%options%print_level
-      ok = .True.
 
       ! Consistency check
       if (Allocated(iparams%f_pert)) Then
@@ -409,6 +408,7 @@ Contains
 
       ierr = 0
       tcnt = 0
+      skip = 0
       Do ivar = 1, n
          this_perturbation = perturbation * max(1.0_wp, abs(iparams%x(ivar)));
          okgap = .True.
@@ -436,22 +436,21 @@ Contains
             relerr = abs(J_fd(idx) - J(idx)) / max(abs(J_fd(idx)), test_tol)
             relerr_tran = abs(J_fd(idx) - J(idx_tran)) / max(abs(J_fd(idx)), test_tol)
             okij = relerr <= test_tol
-            ok = ok .And. okij
-            if (.not. okij) ierr = ierr + 1 ! Tally derivatives to verify
+            if (okgap) then
+               ! Only tally if there is a gap to calculate the FD approximation
+               ! and allow to solve a problems with fixed variables
+               if (.not. okij) ierr = ierr + 1 ! Tally derivatives to verify/fix
+               if (.not. okij .and. ok_tran) tcnt = tcnt + 1 ! Tally transpose
+            else
+               skip = skip + 1
+            end if
             prn = (.not. okij ) .or. prlvl >= 2
             if (prn) then
+               flagx = merge(' ', 'X', okij)
                ok_tran = relerr_tran <= test_tol
-               flagv = ''
-               flagt = ''
-               flagg = ''
-               if (.not. okij) flagv = 'X'
-               if (.not. okij .and. ok_tran) then
-                  flagt = 'T'
-                  tcnt = tcnt + 1
-               end if
-               if (.not. okgap) flagg = 'B'
+               flagt = merge('T', ' ', .Not. okij .And. ok_tran)
                Write(rec, Fmt=99900) iivar, jjcon, J(idx), J_fd(idx), relerr, &
-                  this_perturbation, flagv, flagt, flagg
+                  this_perturbation, flagx, flagt, merge('    ', 'Skip', okgap)
                Call printmsg(0,.False.,iparams%options,1, rec)
             end if
          End Do
@@ -467,6 +466,12 @@ Contains
       end if
       Call printmsg(0,.False.,iparams%options,1, rec)
 
+      if (skip > 0) then
+         Call printmsg(0,.False.,iparams%options,1, '')
+         Write(rec, Fmt=70000) skip
+         Call printmsg(0,.False.,iparams%options,1, rec)
+      end if
+
       if (tcnt > 0) then
          Call printmsg(0,.False.,iparams%options,1, '')
          Write(rec, Fmt=80002) tcnt
@@ -475,12 +480,13 @@ Contains
          Call printmsg(0,.False.,iparams%options,1, rec)
       end if
 
+
       Write(rec, Fmt=99998)
       Call printmsg(0,.False.,iparams%options,1, '')
       Call printmsg(0,.False.,iparams%options,1, rec)
       Call printmsg(0,.False.,iparams%options,1, '')
 
-      if (.not. ok) iparams%inform%status = NLLS_ERROR_BAD_JACOBIAN
+      if (ierr > 0) iparams%inform%status = NLLS_ERROR_BAD_JACOBIAN
 
 100   continue
 
@@ -490,11 +496,12 @@ Contains
 99999 Format (1X,'Begin Derivative Checker')
 99998 Format (1X,'End Derivative Checker')
 99997 Format (4X,'Jacobian storage scheme (Fortran_Jacobian) = ',A)
-99900 Format (4X,'Jac[',I6,',',I6,'] = ',Es20.12e2,' ~ ', Es20.12e2, 2X,'[',E10.3e2,'], (',E10.3e2,')',2X,3(A1))
+99900 Format (4X,'Jac[',I6,',',I6,'] = ',Es20.12e2,' ~ ', Es20.12e2, 2X,'[',E10.3e2,'], (',E10.3e2,')',2X,2(A1),1X,A)
 80000 Format (4X,'Derivative checker detected ',I6,1X,'likely error(s)')
 80001 Format (4X,'It seems that derivatives are OK.')
 80002 Format (4X,'Note: derivative checker detected that ',I6,' entries may correspond to the transpose.')
 80003 Format (4X,'Verify the Jacobian storage ordering is correct.')
+70000 Format (4X,'Warning: derivative checker skipped ',I6,' entries that have too tight bounds on the variable(s).')
 
    End Subroutine check_jacobian
 
@@ -537,7 +544,8 @@ Contains
          if (okgap) then
             xorig = iparams%x(ivar)
             ! either okup or oklo or both are good to use
-            iparams%x(ivar) = iparams%x(ivar) + merge(this_perturbation, -this_perturbation, okup)
+            if (.not. okup) this_perturbation = -this_perturbation ! reverse direction
+            iparams%x(ivar) = iparams%x(ivar) + this_perturbation
 
             Call iparams%user%eval_F(status, n, m, iparams%x(1:n), iparams%f_pert(1:m), iparams%user%params)
             iparams%inform%f_eval = iparams%inform%f_eval + 1 ! global F ledger

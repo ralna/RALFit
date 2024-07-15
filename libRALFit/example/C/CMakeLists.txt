@@ -18,3 +18,6 @@ target_link_libraries(nlls_c_example_box ral_nlls -lm)
 
 add_executable (nlls_c_example_fd nlls_example_fd.c)
 target_link_libraries(nlls_c_example_fd ral_nlls -lm)
+
+add_executable (nlls_c_example_chk nlls_example_chk.c)
+target_link_libraries(nlls_c_example_chk ral_nlls -lm)

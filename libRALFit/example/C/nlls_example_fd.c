@@ -53,12 +53,9 @@ int main(void) {
   // Initialize options values
   struct ral_nlls_options options;
   ral_nlls_default_options(&options);
-  // options.model = 4;
-  // options.exact_second_derivatives = true;
   options.print_level = 3;
-  options.maxit = 100;
   options.fd_step = 1.0e-6;
-  options.print_options = true;
+  options.check_derivatives = 2; // ignored since not providing J call-back
 
   // initialize the workspace
   void *workspace;
@@ -80,21 +77,20 @@ int main(void) {
   nlls_solve(2, m, x, eval_r, NULL, NULL, &params, &options, &inform, NULL,
              NULL, lower_bounds, upper_bounds);
 
-  int ok = 1;
+  int ok = 0;
   if (inform.status != 0) {
     printf("Status = %i [%s]\n", inform.status, inform.error_message);
   } else {
     // Print result
     double tol = 1.0e-6;
-    char ok0 = (abs(x[0]-x_exp[0]) <= tol) ? ' ' : 'X';
-    char ok1 = (abs(x[1]-x_exp[1]) <= tol) ? ' ' : 'X';
+    char ok0 = (fabs(x[0]-x_exp[0]) <= tol) ? ' ' : 'X';
+    char ok1 = (fabs(x[1]-x_exp[1]) <= tol) ? ' ' : 'X';
     ok = ok0 == ' ' && ok1 == ' ';
     printf("Found a local optimum at x = %e, %e (expected: %e %c, %e %c)\n",
            x[0], x[1], x_exp[0], ok0, x_exp[1], ok1);
     printf("Took %d iterations\n", inform.iter);
     printf("     %d function evaluations\n", inform.f_eval);
     printf("     %d gradient evaluations\n", inform.g_eval);
-    printf("     %d hessian evaluations\n", inform.h_eval);
   }
 
   ral_nlls_free_workspace(&workspace);
