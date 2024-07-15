@@ -232,7 +232,7 @@ program lanczos_fd
    if (allocated(x)) deallocate(x)
    if (allocated(params%t)) deallocate(params%t)
    if (allocated(params%y)) deallocate(params%y)
-   if (allocated(params%y)) deallocate(params%r)
+   if (allocated(params%r)) deallocate(params%r)
 
    stop merge(0, 5, ok)
 

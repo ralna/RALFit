@@ -9,6 +9,9 @@ target_link_libraries(nlls_example ral_nlls)
 add_executable (nlls_example2 nlls_example2.f90)
 target_link_libraries(nlls_example2 ral_nlls)
 
+add_executable (jacobian jacobian.f90)
+target_link_libraries(jacobian ral_nlls)
+
 add_executable (lanczos Lanczos.f90)
 target_link_libraries(lanczos ral_nlls)
 

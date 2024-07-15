@@ -540,7 +540,7 @@ Contains
             iparams%x(ivar) = iparams%x(ivar) + merge(this_perturbation, -this_perturbation, okup)
 
             Call iparams%user%eval_F(status, n, m, iparams%x(1:n), iparams%f_pert(1:m), iparams%user%params)
-            iparams%inform%f_eval = iparams%inform%f_eval + 1 ! gloval F ledger
+            iparams%inform%f_eval = iparams%inform%f_eval + 1 ! global F ledger
             iparams%inform%fd_f_eval = iparams%inform%fd_f_eval + 1 ! legder for FD calls
             iparams%x(ivar) = xorig
             ! For now no recovery at this point
