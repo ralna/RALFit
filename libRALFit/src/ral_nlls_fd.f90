@@ -388,7 +388,10 @@ Contains
 
       Call fd_jacobian(ierr, n, m, iparams%x, iparams%f, J_fd, iparams)
       if (ierr == -2031 ) then
-         iparams%inform%status = NLLS_ERROR_BAD_JACOBIAN
+         ! eval_f provided a rubbish FD estimation
+         iparams%inform%external_name = 'eval_F/fd_jacobian'
+         iparams%inform%external_return = 2031
+         iparams%inform%status = NLLS_ERROR_FROM_EXTERNAL
          goto 100
       elseif (ierr /= 0) then
          ! error from user eval_F callback
@@ -437,6 +440,7 @@ Contains
             relerr = abs(J_fd(idx) - J(idx)) / max(abs(J_fd(idx)), test_tol)
             relerr_tran = abs(J_fd(idx) - J(idx_tran)) / max(abs(J_fd(idx)), test_tol)
             okij = relerr <= test_tol
+            ok_tran = .False.
             if (okgap) then
                ! Only tally if there is a gap to calculate the FD approximation
                ! and allow to solve a problems with fixed variables

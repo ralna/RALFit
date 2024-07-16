@@ -1971,23 +1971,23 @@ contains
 
   End Subroutine remove_workspace_bounds
 
-  subroutine iparams_set(params, x, f, weights, fd_check)
+  subroutine iparams_set(params, x, f, weights, check)
       Implicit None
       Class(params_base_type), Intent(InOut) :: params
       Real(Kind=wp), Dimension(:), Optional, Target, Intent(In) :: x
       Real(Kind=wp), Dimension(:), Optional, Target, Intent(Inout) :: f
       Real (Kind=wp), Dimension(:), Optional, Intent (In) :: weights
-      Logical, Optional, Intent(In) :: fd_check
+      Logical, Optional, Intent(In) :: check
       Integer :: m
-      Logical fd_chk
+      Logical chk
       Continue
-      ! if fd_check == .True. then copy f and set x, in preparation
-      ! for a special call to check_jacobian.
+      ! if check == .True. then copy f and set x, since we don't know yet
+      ! if FD is required...
       Select Type (params)
        Type Is(params_internal_type)
-         fd_chk = .False.
-         if (present(fd_check)) fd_chk = fd_check
-         if ( (.Not.fd_chk) .And. params%fd_type == 'N') return
+         chk = .True.
+         if (present(check)) chk = check
+         if ( chk .And. params%fd_type == 'N') return
          if (present(x)) params%x => x ! Point to interate
          if (present(f)) then
             m = params%m

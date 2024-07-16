@@ -324,7 +324,7 @@ contains
        End If
 
        ! Store a copy of f (before applying weights)
-       call iparams_set(params, x=x, f=w%f, fd_check=options%check_derivatives/=0)
+       call iparams_set(params, x=x, f=w%f, check=.False.)
 
        if ( present(weights)) then
           ! check that weights are positive

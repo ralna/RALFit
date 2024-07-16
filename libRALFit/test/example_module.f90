@@ -1,3 +1,4 @@
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! Copyright (c) 2020, The Numerical Algorithms Group Ltd (NAG)
 ! All rights reserved.
 ! Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
@@ -78,6 +79,34 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 ! end of subroutine eval_F
        
      END SUBROUTINE eval_F
+
+     SUBROUTINE eval_F_one_NaN( status, n_dummy, m, X, f, params)
+       USE ISO_FORTRAN_ENV
+       use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+       implicit None
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f
+       REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: X
+       class( params_base_type ), intent(inout) :: params
+       Real (Kind=wp) :: ex
+       integer :: i
+
+       select type(params)
+       type is(user_type)
+          params%iter = params%iter + 1
+          if (params%iter <= 2) then 
+            do i = 1,m
+                ! Avoid overflow
+                ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
+                f(i) = params%y_values(i) - exp( ex )
+            end do
+          else
+            f(1:m) = ieee_value(f(1), ieee_quiet_nan)
+          end if
+          status = 0
+       end select
+     END SUBROUTINE eval_F_one_NaN
 
      SUBROUTINE eval_F_one_error( status, n_dummy, m, X, f, params)
 
@@ -362,6 +391,27 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      
      END SUBROUTINE eval_J_one_error
 
+     SUBROUTINE eval_J_bad( status, n_dummy, m, X, J, params)
+       USE ISO_FORTRAN_ENV
+       Implicit None
+       INTEGER, INTENT( OUT ) :: status
+       INTEGER, INTENT( IN ) :: n_dummy, m
+       REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J
+       REAL ( wp ), DIMENSION( * ),INTENT( IN ) :: X
+       class( params_base_type ), intent(inout) :: params
+       integer :: i
+       Continue
+
+       select type(params)
+       type is(user_type)
+          do i = 1,m
+             J(i) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
+             J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
+             if (i == 3) J(i) = 2 * J(i)
+          end do
+       end select
+     
+     END SUBROUTINE eval_J_bad
      
      SUBROUTINE eval_J_c( status, n_dummy, m, X, J, params)
 
@@ -1176,23 +1226,31 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%box_tau_tr_step = default_options%box_tau_tr_step
        options%box_ls_step_maxit = default_options%box_ls_step_maxit
        options%box_linesearch_type = default_options%box_linesearch_type
+       ! Fin-Diff options
+       options%check_derivatives = default_options%check_derivatives
+       options%derivative_test_tol = default_options%derivative_test_tol
      end subroutine reset_default_options
 
-     subroutine solve_basic(X,params,options,inform,warm_start,blx,bux)
-      
+     subroutine solve_basic(X,params,options,inform,warm_start,blx,bux,weights,use_fd)
+
        real(wp), intent(inout) :: X(:)
 !      type( user_type ), intent(inout) :: params
        Class ( params_base_type ), intent(inout) :: params
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
-       Logical, Optional, Intent(In) :: warm_start
-       real(wp), intent(inout),optional :: blx(:), bux(:)
+       Logical, Optional, Intent(In) :: warm_start, use_fd
+       real(wp), intent(inout),optional :: blx(:), bux(:), weights(:)
 
+       logical fd
        integer :: n, m
-       
-       n = 2 
+
+       Continue
+
+       fd = .False.
+       if (present(use_fd)) fd = use_fd
+       n = 2
        m = 67
-       
+
        If (present(warm_start)) Then
          If(.Not. warm_start) Then
            X(1) = 1.0
@@ -1202,11 +1260,18 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          X(1) = 1.0
          X(2) = 2.0
       End if
-      call nlls_solve(n, m, X,                         &
+      if (fd) then
+        call nlls_solve(n, m, X,                                            &
+            eval_F, ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, params,  &
+            options, inform,                &
+            lower_bounds=blx, upper_bounds=bux, weights=weights )
+      else
+        call nlls_solve(n, m, X,            &
            eval_F, eval_J, eval_H, params,  &
            options, inform,                 &
-           lower_bounds=blx, upper_bounds=bux )
-      
+           lower_bounds=blx, upper_bounds=bux, weights=weights )
+      end if
+
      end subroutine solve_basic
      
      subroutine solve_basic_c(X,params,options,inform,warm_start,blx,bux)
