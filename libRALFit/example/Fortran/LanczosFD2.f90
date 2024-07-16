@@ -27,11 +27,21 @@ module lanczos_module_fd
       type(jacobian_handle) :: handle ! The FD handle
       integer :: cnt, reset ! counter and reset
       real(wp) :: fd_step
+      ! pointer to x(:)
+      real(wp), dimension(:), pointer :: x
       ! telemetry
       integer :: f_cnt = 0, j_cnt = 0
    end type params_type
 
 contains
+
+   subroutine assign(p, t)
+    Implicit None
+    Real(Kind=wp), Dimension(:), target :: t
+    Real(Kind=wp), Dimension(:), pointer :: p
+    continue
+    p => t
+   end subroutine assign
 
    subroutine eval_r(status, n, m, x, r, params)
       ! r_i = y_i - x_1 e^(-x_2 t_i) - x_3 e^(-x_4 t_i) - x_5 e^(-x_6 t_i)
@@ -65,6 +75,8 @@ contains
 
       continue
 
+      status = 0
+
       select type(params)
        type is(params_type)
          params%cnt = params%cnt - 1
@@ -82,13 +94,13 @@ contains
             Call eval_r(status, n, m, x, params%r, params)
             params%f_cnt = params%f_cnt + 1
             if (status /= 0) return
-            Call jacobian_calc(status, params%handle, x(1:n), params%r(1:m), &
+            call assign(params%x, x(1:n))
+            Call jacobian_calc(status, params%handle, params%x(1:n), params%r(1:m), &
                J(1:n*m), params%fd_step)
             params%f_cnt = params%f_cnt + n ! FD issues n calls to eval_r
          end if
       end select
 
-      status = 0 ! Success
    end subroutine eval_J
 
 end module lanczos_module_fd
@@ -105,7 +117,8 @@ program lanczos_fd
    type(nlls_inform) :: inform
 
    integer :: m,n
-   real(wp), allocatable :: x(:)
+   real(wp), allocatable, target :: x(:)
+
    type(params_type) :: params
    real(wp) :: tic, toc
 
@@ -193,6 +206,7 @@ program lanczos_fd
    params%reset = 10 ! times FD is used before providing exact derivatives
    params%cnt = params%reset
    params%fd_step = options%fd_step
+
 
    call jacobian_setup(status, params%handle, n, m, x, eval_r, params)
    if (status /= 0) then

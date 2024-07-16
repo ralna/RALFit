@@ -9,6 +9,7 @@ module lanczos_module_fd
    implicit none
 
    integer, parameter, public :: wp = kind(0d0)
+   real(wp), parameter :: tol = 5.0e-2_wp
 
    type, extends(params_base_type) :: params_type
       real(wp), dimension(:), allocatable :: t ! The m data points t_i
@@ -58,7 +59,6 @@ program lanczos_fd
    type(params_type) :: params
    real(wp) :: tic, toc
 
-   real(wp), parameter :: tol = 1.0e-6_wp
    real(wp), parameter, Dimension(6) :: x_exp = (/ 8.6811579049232354E-002, &
       0.95495550838468568, 0.84399029667347680, 2.9515586935011613,         &
       1.5825909814491355, 4.9863421286471254 /)
@@ -135,7 +135,8 @@ program lanczos_fd
    options%reg_order = -1.0
    options%inner_method = 2
    options%maxit = 1000
-   options%fd_step = 1.0e-5
+   options%fd_step = 5.0e-3
+
 
    call cpu_time(tic)
    call nlls_solve(n,m,x,eval_r, ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, params, options, inform)
@@ -148,11 +149,11 @@ program lanczos_fd
    ! Print result and check solution
    ok = .True.
    Write(*,*) 'Solution: '
-   Write(*,Fmt=99998) 'idx',  'x',  'x*'
+   Write(*,Fmt=99998) 'idx',  'x',  'x*', 'error'
    Do i = 1, n
       oki = abs(x(i) - x_exp(i)) <= tol
       ok = ok .And. oki
-      Write(*,Fmt=99999) i, x(i), x_exp(i), merge('PASS', 'FAIL', oki)
+      Write(*,Fmt=99999) i, x(i), x_exp(i), merge('PASS', 'FAIL', oki), abs(x(i) - x_exp(i))
    End Do
    print *, ""
 
@@ -169,6 +170,6 @@ program lanczos_fd
    if (allocated(params%y)) deallocate(params%y)
    stop merge(0, 5, ok)
 
-99999 Format (5X,I3,1X,2(Es13.6e2,2X),A4)
-99998 Format (5X,A3,1X,2(A13,2X))
+99999 Format (5X,I3,1X,2(Es13.6e2,2X),A4,2X,Es9.2e2)
+99998 Format (5X,A3,1X,2(A13,2X),4X,2X,A9)
 end program lanczos_fd

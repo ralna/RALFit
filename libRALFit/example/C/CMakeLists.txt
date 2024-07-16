@@ -21,3 +21,6 @@ target_link_libraries(nlls_c_example_fd ral_nlls -lm)
 
 add_executable (nlls_c_example_chk nlls_example_chk.c)
 target_link_libraries(nlls_c_example_chk ral_nlls -lm)
+
+add_executable (tracks tracks.c)
+target_link_libraries(tracks ral_nlls -lm)

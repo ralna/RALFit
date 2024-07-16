@@ -131,7 +131,8 @@ Contains
    end subroutine ral_nlls_eval_hf_dummy
 
    Subroutine jacobian_setup(status, handle, n, m, x, eval_f, params, lower, upper, f_storage)
-      Use ral_nlls_workspaces, Only : params_internal_type, wp, NLLS_options, nlls_inform, setup_bounds_type, setup_iparams_type
+      Use ral_nlls_workspaces, Only : params_internal_type, wp, NLLS_options, &
+         nlls_inform, setup_bounds_type, setup_iparams_type, NLLS_ERROR_ALLOCATION
       Implicit None
       Integer, Intent(out) :: status
       Type(jacobian_handle), Intent(Inout) :: handle
@@ -169,17 +170,17 @@ Contains
 
       ! Note x is not passed to setup iparams, it is assigned along with f in jacobian_calc
       If (Present(params)) Then
-         Call setup_iparams_type(handle%iparams, params, eval_f,   &
+         Call setup_iparams_type(m, handle%iparams, params, eval_f,   &
             ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box)
       Else
-         Call setup_iparams_type(handle%iparams, no_params, eval_f,   &
+         Call setup_iparams_type(m, handle%iparams, no_params, eval_f,   &
             ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box)
       End If
 
       ! Allocation must come AFTER call to setup_iparams_type()
       Allocate(handle%iparams%f_pert(m) ,Stat=status)
       If (status /= 0) Then
-         status = -99
+         status = NLLS_ERROR_ALLOCATION
          GoTo 100
       End If
 
@@ -212,19 +213,19 @@ Contains
 
    ! Assumes x and f are allocated and than f = f(x)
    subroutine jacobian_calc(status, handle, x, f, J, fd_step)
-      use ral_nlls_workspaces, only : wp
+      use ral_nlls_workspaces, only : wp, NLLS_ERROR_WORKSPACE_ERROR
       implicit none
       integer, intent(out) :: status
       Type(jacobian_handle), Intent(Inout) :: handle
-      Real(Kind=wp), dimension(*), intent(in), target :: x
-      Real(Kind=wp), dimension(*), intent(in), target :: f
+      Real(Kind=wp), dimension(*), intent(inout) :: x
+      Real(Kind=wp), dimension(*), intent(in) :: f
       Real(Kind=wp), dimension(*), intent(out) :: J
       Real(Kind=wp), optional :: fd_step
 
       Continue
 
       If (.Not. handle%setup) Then
-         status =  -199
+         status =  NLLS_ERROR_WORKSPACE_ERROR
          return
       End If
 
@@ -232,11 +233,7 @@ Contains
          handle%iparams%options%fd_step = fd_step
       End If
 
-      ! Assign x and f
-      handle%iparams%x => x(1:handle%n)
-      handle%iparams%f => f(1:handle%m)
-
-      Call fd_jacobian(status, handle%n, handle%m, J, handle%iparams)
+      Call fd_jacobian(status, handle%n, handle%m, x, f, J, handle%iparams)
 
       return
    end subroutine jacobian_calc
@@ -268,14 +265,14 @@ Contains
                if (status /= 0) return
                params%fd_type = 'Y'
             else
-               ! User provided a custom eval_J return user status and J values
+               ! User provided a custom eval_J, return user status and J values
                return
             end if
          end if
          if ( params%fd_type /= 'N' ) then
             ! Finite-differences
             ! Assumes that eval_F was called previously and that f(:) is valid
-            Call fd_jacobian(status, n, m, J, params)
+            Call fd_jacobian(status, n, m, params%x, params%f, J, params)
             return
          end if
       End Select
@@ -372,6 +369,10 @@ Contains
          iparams%inform%status = NLLS_ERROR_UNEXPECTED
          goto 100
       end if
+      if (.Not. Allocated(iparams%f)) Then
+         iparams%inform%status = NLLS_ERROR_UNEXPECTED
+         goto 100
+      end if
 
       Allocate(iparams%f_pert(m), stat=ierr)
       if (ierr /= 0) Then
@@ -385,7 +386,7 @@ Contains
          goto 100
       end if
 
-      Call fd_jacobian(ierr, n, m, J_fd, iparams)
+      Call fd_jacobian(ierr, n, m, iparams%x, iparams%f, J_fd, iparams)
       if (ierr == -2031 ) then
          iparams%inform%status = NLLS_ERROR_BAD_JACOBIAN
          goto 100
@@ -440,15 +441,15 @@ Contains
                ! Only tally if there is a gap to calculate the FD approximation
                ! and allow to solve a problems with fixed variables
                if (.not. okij) ierr = ierr + 1 ! Tally derivatives to verify/fix
-               if (.not. okij .and. ok_tran) tcnt = tcnt + 1 ! Tally transpose
+               ok_tran = relerr_tran <= test_tol
+               if ((.not. okij) .and. ok_tran) tcnt = tcnt + 1 ! Tally transpose
             else
                skip = skip + 1
             end if
             prn = (.not. okij ) .or. prlvl >= 2
             if (prn) then
                flagx = merge(' ', 'X', okij)
-               ok_tran = relerr_tran <= test_tol
-               flagt = merge('T', ' ', .Not. okij .And. ok_tran)
+               flagt = merge('T', ' ', (.Not. okij) .And. ok_tran)
                Write(rec, Fmt=99900) iivar, jjcon, J(idx), J_fd(idx), relerr, &
                   this_perturbation, flagx, flagt, merge('    ', 'Skip', okgap)
                Call printmsg(0,.False.,iparams%options,1, rec)
@@ -491,7 +492,7 @@ Contains
 100   continue
 
       If (Allocated(J_fd)) Deallocate(J_fd)
-      ! Note iparams%f_pert will be deallocated by nlls_solve
+      If (Allocated(iparams%f_pert)) Deallocate(iparams%f_pert)
 
 99999 Format (1X,'Begin Derivative Checker')
 99998 Format (1X,'End Derivative Checker')
@@ -507,11 +508,14 @@ Contains
 
    ! FINITE DIFFERENCE DRIVER for the JACOBIAN
    ! This is a Fortran version of IpOpt TNLPAdapter::internal_eval_jac_g
-   ! Assumes iparams%f(:) contains already eval_f(iparams%x)
-   Subroutine fd_jacobian(status, n, m, J, iparams)
+   ! Assumes that eval_F was called previously and that f(:) = f(x), the residual
+   ! evaluate at x
+   Subroutine fd_jacobian(status, n, m, x, f, J, iparams)
       Implicit None
       integer, intent(out) :: status
       integer, intent(in) :: n, m
+      double precision, dimension(*), intent(inout) :: x
+      double precision, dimension(*), intent(in) :: f
       double precision, dimension(*), intent(out) :: J
       type(params_internal_type), intent(inout) :: iparams
 
@@ -528,29 +532,30 @@ Contains
       ! Compute the finite difference Jacobian
       ! Forward / Backward step
       Do ivar = 1, n
-         this_perturbation = perturbation * max(1.0_wp, abs(iparams%x(ivar)));
+         this_perturbation = perturbation * max(1.0_wp, abs(x(ivar)));
          okgap = .True.
          oklo = .True.
          okup = .True.
          if (box) then
             okgap = iparams%box%blx(ivar) < iparams%box%bux(ivar)
-            oklo = iparams%box%blx(ivar) <= iparams%x(ivar) - this_perturbation
-            okup = iparams%x(ivar) + this_perturbation <= iparams%box%bux(ivar)
+            oklo = iparams%box%blx(ivar) <= x(ivar) - this_perturbation
+            okup = x(ivar) + this_perturbation <= iparams%box%bux(ivar)
             okgap = okgap .and. (oklo .or. okup)
-            ! if okgap = FALSE then ith variable is fully constrained, or bounds a too tight to use
+            ! if okgap = FALSE then ith variable is fully constrained, or
+            ! bounds are too tight to use...
             ! a sensible step... Set derivatives to zero
          end if
 
          if (okgap) then
-            xorig = iparams%x(ivar)
+            xorig = x(ivar)
             ! either okup or oklo or both are good to use
             if (.not. okup) this_perturbation = -this_perturbation ! reverse direction
-            iparams%x(ivar) = iparams%x(ivar) + this_perturbation
+            x(ivar) = x(ivar) + this_perturbation
 
-            Call iparams%user%eval_F(status, n, m, iparams%x(1:n), iparams%f_pert(1:m), iparams%user%params)
+            Call iparams%user%eval_F(status, n, m, x(1:n), iparams%f_pert(1:m), iparams%user%params)
             iparams%inform%f_eval = iparams%inform%f_eval + 1 ! global F ledger
             iparams%inform%fd_f_eval = iparams%inform%fd_f_eval + 1 ! legder for FD calls
-            iparams%x(ivar) = xorig
+            x(ivar) = xorig
             ! For now no recovery at this point
             if (status /= 0) return
          end if
@@ -561,7 +566,7 @@ Contains
             else
                idx = (jcon-1) * n + ivar
             end if
-            J(idx) = merge(( iparams%f_pert(jcon) - iparams%f(jcon) ) / this_perturbation, 0.0_wp, okgap)
+            J(idx) = merge(( iparams%f_pert(jcon) - f(jcon) ) / this_perturbation, 0.0_wp, okgap)
             if (J(idx) /= J(idx)) then
                ! Estimate is rubbish
                status = -2031

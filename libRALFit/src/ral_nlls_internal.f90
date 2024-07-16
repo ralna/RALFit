@@ -151,7 +151,7 @@ contains
       Call print_options(options)
     End If
 
-    call setup_iparams_type(iparams, params, eval_F, eval_J, eval_HF, &
+    call setup_iparams_type(m, iparams, params, eval_F, eval_J, eval_HF, &
             inform, options, w%box_ws, x)
 
     main_loop: do i = 1,options%maxit
@@ -287,12 +287,6 @@ contains
           goto 100
        end if
 
-       ! attach allocated f for FD
-       select type (params)
-          type is (params_internal_type)
-            params%f => w%f
-       end select
-
        ! if needed, setup assign eval_Hp
        if (options%model==4 .and. present(eval_HP)) then
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .true.
@@ -328,7 +322,18 @@ contains
          inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
+
+       ! Store a copy of f (before applying weights)
+       call iparams_set(params, x=x, f=w%f, fd_check=options%check_derivatives/=0)
+
        if ( present(weights)) then
+          ! check that weights are positive
+          Do i = 1, m
+            if (weights(i) < 1.0e-8_wp) then
+                inform%status = NLLS_ERROR_BAD_WEIGHTS
+                goto 100
+            end if
+          End Do
           ! set f -> Wf
           w%f(1:m) = weights(1:m)*w%f(1:m)
           w%Wf(1:m) = weights(1:m)*w%f(1:m)
@@ -348,6 +353,7 @@ contains
        End If
 !      save objective
        inform%obj = 0.5_wp * ( w%normF**2 )
+
 !      and evaluate the jacobian
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
@@ -367,6 +373,10 @@ contains
                    goto 100
                 End if
              End If
+             if (params%fd_type == 'N') then
+                ! no FD -> free auxiliary storage
+                if (allocated(params%f)) deallocate(params%f)
+             end if
        end select
 
        if ( present(weights) ) then
@@ -678,6 +688,8 @@ lp: do while (.not. success)
          rho = -1.0_wp
          num_successful_steps = 0
        Else
+         ! Inform FD machinery to use xnew and copy fnew(:) before weights
+         call iparams_set(params, x=w%Xnew, f=w%fnew)
          if ( present(weights) ) then
            ! set f -> Wf
            w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
@@ -895,6 +907,8 @@ lp: do while (.not. success)
              call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
              w%g_mixed(:) = -w%g_mixed(:)
           end if
+
+          ! iparams_set(x=w%new f=w%fnew) already set in the previous call
           ! evaluate J
           call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
           inform%g_eval = inform%g_eval + 1
@@ -1298,6 +1312,8 @@ lp: do while (.not. success)
        inform%error_message = 'One or more elements in the Jacobian appear to be wrong'
     elseif ( inform%status ==  NLLS_ERROR_UNEXPECTED) then
        inform%error_message = 'Unexpected error occured'
+    elseif ( inform%status == NLLS_ERROR_BAD_WEIGHTS ) then
+       inform%error_message = 'Weights vector must be sufficiently positive'
     else
        inform%error_message = 'Unknown error number'
     end if
@@ -3541,6 +3557,8 @@ lp:  do i = 1, options%more_sorensen_maxits
        integer :: i
        real (wp) :: normjfnew
 
+       ! Inform FD machinery to use x and f
+       call iparams_set(params, x=x, f=w%f)
 
        call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
        inform%g_eval = inform%g_eval + 1
@@ -4500,7 +4518,7 @@ lp:    do i = 1, w%tensor_options%maxit
                                           steptl
         Real (Kind=wp), Intent (Inout) :: x(n), xpls(n), fpls, fnew(m),alpha
         type (box_type), intent (inout) :: box_ws
-        Real (Kind=wp), Intent (In), Optional :: weights(n), sx(n)
+        Real (Kind=wp), Intent (In), Optional :: weights(m), sx(n)
         Logical, Intent (Out)          :: mxtake
         Class (params_base_type), Intent (InOut) :: params
         Type (nlls_inform), Intent (Inout) :: inform
@@ -4741,6 +4759,9 @@ lp:    do i = 1, w%tensor_options%maxit
            w%g_mixed(:) = -w%g_mixed(:)
         end if
 
+        ! Inform FD machinery to use xnew and fnew: fnew has weights applied
+        call iparams_set(params, x=w%Xnew, f=w%fnew, weights=weights)
+
         ! evaluate J and hf at the new point
         call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
         inform%g_eval = inform%g_eval + 1
@@ -4851,6 +4872,10 @@ lp:    do i = 1, w%tensor_options%maxit
               call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
               w%g_mixed(:) = -w%g_mixed(:)
             end if
+
+            ! Inform FD machinery to use xnew and fnew: fnew has weights applied
+            call iparams_set(params, x=w%Xnew, f=w%fnew, weights=weights)
+
             ! evaluate J and hf at the new point
             call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
             inform%g_eval = inform%g_eval + 1

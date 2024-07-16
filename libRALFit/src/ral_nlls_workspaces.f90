@@ -42,6 +42,7 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -17
   Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -18
   Integer, Parameter, Public :: NLLS_ERROR_BAD_JACOBIAN             =  -19
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_WEIGHTS              =  -20
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -616,9 +617,10 @@ module ral_nlls_workspaces
   ! passing finite-differences related information
   type, extends (params_base_type), public :: params_internal_type
     ! finite-differences
+    integer :: m = 0
     real(wp) :: h_step = 0
     character(Len=1) :: fd_type = 'N' ! N: No FD, Y: Yes FD one sided auto, future: C: center, etc...
-    Real(kind=wp), allocatable :: f_pert(:)
+    Real(kind=wp), allocatable :: f(:), f_pert(:)
     ! User data
     type( user_data ) :: user
     ! Problem and solver data
@@ -627,8 +629,6 @@ module ral_nlls_workspaces
     type( nlls_options ), pointer :: options => Null()
     ! Iterate
     Real(Kind=wp), pointer :: x(:)
-    ! Residuals
-    Real(Kind=wp), pointer :: f(:)
   end type params_internal_type
 
   type, public :: max_eig_work ! workspace for subroutine max_eig
@@ -783,7 +783,7 @@ module ral_nlls_workspaces
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
   public :: setup_workspace_regularization_solver
   public :: setup_bounds_type, remove_workspace_bounds
-  public :: setup_iparams_type, free_iparams_type
+  public :: iparams_set, setup_iparams_type, free_iparams_type
 
 contains
 
@@ -1971,8 +1971,39 @@ contains
 
   End Subroutine remove_workspace_bounds
 
-   subroutine setup_iparams_type(iparams, params, eval_F, eval_J, eval_HF, inform, options, box_ws, x)
+  subroutine iparams_set(params, x, f, weights, fd_check)
       Implicit None
+      Class(params_base_type), Intent(InOut) :: params
+      Real(Kind=wp), Dimension(:), Optional, Target, Intent(In) :: x
+      Real(Kind=wp), Dimension(:), Optional, Target, Intent(Inout) :: f
+      Real (Kind=wp), Dimension(:), Optional, Intent (In) :: weights
+      Logical, Optional, Intent(In) :: fd_check
+      Integer :: m
+      Logical fd_chk
+      Continue
+      ! if fd_check == .True. then copy f and set x, in preparation
+      ! for a special call to check_jacobian.
+      Select Type (params)
+       Type Is(params_internal_type)
+         fd_chk = .False.
+         if (present(fd_check)) fd_chk = fd_check
+         if ( (.Not.fd_chk) .And. params%fd_type == 'N') return
+         if (present(x)) params%x => x ! Point to interate
+         if (present(f)) then
+            m = params%m
+            if (present(weights)) then
+               params%f(1:m) = f(1:m)/weights(1:m) ! Copy and reverse scale on residual
+            else
+               params%f(1:m) = f(1:m) ! Copy residual vector
+            endif
+         endif
+      End Select
+   end subroutine iparams_set
+
+   subroutine setup_iparams_type(m, iparams, params, eval_F, eval_J, eval_HF, &
+      inform, options, box_ws, x)
+      Implicit None
+      Integer, Intent(In) :: m
       Class(params_base_type), Intent(InOut) :: iparams
       Class(params_base_type), target, Intent(In) :: params
       procedure( eval_f_type ) :: eval_F
@@ -1982,10 +2013,12 @@ contains
       TYPE( NLLS_options ), TARGET, INTENT( IN ) :: options
       TYPE( box_type ), TARGET, INTENT( IN ) :: box_ws
       Real(Kind=wp), Optional, Target :: x(:)
+      Integer :: status
       Continue
 !     Encapsulate user-params and call-backs for finite-differences
       Select Type (iparams)
        Type Is(params_internal_type)
+         iparams%m = m
          iparams%user%params => params
          iparams%user%eval_F => eval_F
          iparams%user%eval_J => eval_J
@@ -1998,6 +2031,11 @@ contains
             iparams%x => x
          end if
          if (Allocated(iparams%f_pert)) Deallocate(iparams%f_pert)
+         if (Allocated(iparams%f)) Deallocate(iparams%f)
+         Allocate(iparams%f(m), stat=status)
+         if (status /= 0) then
+            iparams%inform%status = NLLS_ERROR_ALLOCATION
+         end if
       End Select
    end subroutine setup_iparams_type
 
@@ -2007,6 +2045,7 @@ contains
       Continue
       Select Type (iparams)
        Type Is(params_internal_type)
+         iparams%m = 0
          iparams%user%params => Null()
          iparams%user%eval_F => Null()
          iparams%user%eval_J => Null()
@@ -2016,7 +2055,7 @@ contains
          iparams%box => Null()
          iparams%fd_type = 'N'
          iparams%x => Null()
-         iparams%f => Null()
+         if (Allocated(iparams%f)) Deallocate(iparams%f)
          if (Allocated(iparams%f_pert)) Deallocate(iparams%f_pert)
       End Select
 
