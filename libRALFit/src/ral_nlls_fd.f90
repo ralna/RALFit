@@ -403,14 +403,14 @@ Contains
          goto 100
       end if
 
-      Call printmsg(0,.False.,iparams%options,1, '')
+      Call printmsg(1,.False.,iparams%options,1, '')
       Write(rec, Fmt=99999)
-      Call printmsg(0,.False.,iparams%options,1, rec)
-      Call printmsg(0,.False.,iparams%options,1, '')
+      Call printmsg(1,.False.,iparams%options,1, rec)
+      Call printmsg(1,.False.,iparams%options,1, '')
       Write(rec, Fmt=99997) merge('Fortran (column-major)', &
          'C (row-major)         ', Fortran_Jacobian)
-      Call printmsg(0,.False.,iparams%options,1, rec)
-      Call printmsg(0,.False.,iparams%options,1, '')
+      Call printmsg(1,.False.,iparams%options,1, rec)
+      Call printmsg(1,.False.,iparams%options,1, '')
 
       ierr = 0
       tcnt = 0
@@ -483,40 +483,40 @@ Contains
                end if
                Write(rec, Fmt=99911) iivar, jjcon, Jstr, Jfdstr, rstr, &
                   this_perturbation, flagx, flagt, merge('    ', 'Skip', okgap)
-               Call printmsg(0,.False.,iparams%options,1, rec)
+               Call printmsg(1,.False.,iparams%options,1, rec)
             end if
          End Do
       End Do
 
       ! Print summary
 
-      Call printmsg(0,.False.,iparams%options,1, '')
+      Call printmsg(1,.False.,iparams%options,1, '')
       if (ierr == 0) then
          Write(rec, Fmt=80001)
       else
          Write(rec, Fmt=80000) ierr
       end if
-      Call printmsg(0,.False.,iparams%options,1, rec)
+      Call printmsg(1,.False.,iparams%options,1, rec)
 
       if (skip > 0) then
-         Call printmsg(0,.False.,iparams%options,1, '')
+         Call printmsg(1,.False.,iparams%options,1, '')
          Write(rec, Fmt=70000) skip
-         Call printmsg(0,.False.,iparams%options,1, rec)
+         Call printmsg(1,.False.,iparams%options,1, rec)
       end if
 
       if (tcnt > 0) then
-         Call printmsg(0,.False.,iparams%options,1, '')
+         Call printmsg(1,.False.,iparams%options,1, '')
          Write(rec, Fmt=80002) tcnt
-         Call printmsg(0,.False.,iparams%options,1, rec)
+         Call printmsg(1,.False.,iparams%options,1, rec)
          Write(rec, Fmt=80003)
-         Call printmsg(0,.False.,iparams%options,1, rec)
+         Call printmsg(1,.False.,iparams%options,1, rec)
       end if
 
 
       Write(rec, Fmt=99998)
-      Call printmsg(0,.False.,iparams%options,1, '')
-      Call printmsg(0,.False.,iparams%options,1, rec)
-      Call printmsg(0,.False.,iparams%options,1, '')
+      Call printmsg(1,.False.,iparams%options,1, '')
+      Call printmsg(1,.False.,iparams%options,1, rec)
+      Call printmsg(1,.False.,iparams%options,1, '')
 
       if (ierr > 0) iparams%inform%status = NLLS_ERROR_BAD_JACOBIAN
 
