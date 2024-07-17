@@ -355,6 +355,8 @@ Contains
       Real(Kind=wp) :: perturbation, this_perturbation, relerr, relerr_tran, test_tol
       Logical :: Fortran_Jacobian, box, okgap, oklo, okup, okij, ok_tran, prn, ok
       Character(Len=1) :: flagx, flagt
+      Character(Len=10) :: rstr
+      Character(Len=20) :: jstr, jfdstr
       Character(Len=200) :: rec
       Continue
 
@@ -454,7 +456,32 @@ Contains
             if (prn) then
                flagx = merge(' ', 'X', okij)
                flagt = merge('T', ' ', (.Not. okij) .And. ok_tran)
-               Write(rec, Fmt=99900) iivar, jjcon, J(idx), J_fd(idx), relerr, &
+               if (J(idx) /= 0.0 .And. abs(J(idx)) < 1.0e-99_wp) then
+                  jstr = ' ~0.0                '
+               else if (J(idx)> 9.99e+99_wp) then
+                  jstr = '       +Inf         '
+               else if (J(idx)< -9.99e+99_wp) then
+                  jstr = '       -Inf         '
+               else
+                  Write(jstr, '(Es20.12e2)') J(idx)
+               end if
+               if (J_fd(idx) /= 0.0 .And. abs(J_fd(idx)) < 1.0e-99_wp) then
+                  jfdstr = '~0.0                '
+               else if (J_fd(idx)> 9.99e+99_wp) then
+                  jfdstr = '       +Inf         '
+               else if (J_fd(idx)< -9.99e+99_wp) then
+                  jfdstr = '       -Inf         '
+               else
+                  Write(jfdstr, '(Es20.12e2)') J_fd(idx)
+               end if
+               if (relerr /= 0.0 .And. relerr < 1.0e-99_wp) then
+                  rstr = '~0.0     '
+               else if (relerr > 9.9e+99_wp) then
+                  rstr = '   +Inf   '
+               else
+                  write(rstr, '(Es10.3e2)') relerr
+               end if
+               Write(rec, Fmt=99911) iivar, jjcon, Jstr, Jfdstr, rstr, &
                   this_perturbation, flagx, flagt, merge('    ', 'Skip', okgap)
                Call printmsg(0,.False.,iparams%options,1, rec)
             end if
@@ -501,7 +528,7 @@ Contains
 99999 Format (1X,'Begin Derivative Checker')
 99998 Format (1X,'End Derivative Checker')
 99997 Format (4X,'Jacobian storage scheme (Fortran_Jacobian) = ',A)
-99900 Format (4X,'Jac[',I6,',',I6,'] = ',Es20.12e2,' ~ ', Es20.12e2, 2X,'[',E10.3e2,'], (',E10.3e2,')',2X,2(A1),1X,A)
+99911 Format (4X,'Jac[',I6,',',I6,'] = ',A20,' ~ ', A20, 2X,'[',A10,'], (',E10.3e2,')',2X,2(A1),1X,A)
 80000 Format (4X,'Derivative checker detected ',I6,1X,'likely error(s)')
 80001 Format (4X,'It seems that derivatives are OK.')
 80002 Format (4X,'Note: derivative checker detected that ',I6,' entries may correspond to the transpose.')

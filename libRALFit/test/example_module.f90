@@ -408,6 +408,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              J(i) =  - params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) )
              J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
              if (i == 3) J(i) = 2 * J(i)
+             ! exersize printing
+             if (i == 4) J(i) = 1.0e-100_wp ! ~0
+             if (i == 5) J(i) = 1.0e+100_wp ! +Inf
+             if (i == 6) J(i) = -1.0e+100_wp ! -Inf
+             if (i == 7) J(i) = 1.0e+105_wp ! +Inf
+             if (i == 8) J(i) = -1.0e+105_wp ! -Inf
           end do
        end select
      

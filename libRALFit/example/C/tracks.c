@@ -168,7 +168,7 @@ int main(void) {
       x[j] = SP1[j];
 
     if (i) {
-      options.print_level = 1;
+      options.print_level = 2;
       printf("\n\n Solving using exact jacobian + check of derivatives\n\n");
       nlls_solve(n, m, x, eval_r, eval_j, NULL, &params, &options, &inform,
                  weights, NULL, lower_bounds, NULL);
