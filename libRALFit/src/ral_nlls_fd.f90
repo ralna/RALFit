@@ -89,7 +89,7 @@ module ral_nlls_fd
    end interface
 
    ! handle
-   Type, Public :: jacobian_handle
+   Type :: jacobian_handle
       Logical :: setup = .False.
       Integer :: n, m
       Procedure(eval_f_type), NoPass, Pointer :: eval_f => Null()
@@ -538,7 +538,7 @@ Contains
    End Subroutine check_jacobian
 
    ! FINITE DIFFERENCE DRIVER for the JACOBIAN
-   ! This is a Fortran version of IpOpt TNLPAdapter::internal_eval_jac_g
+   ! This was inspired by IpOpt TNLPAdapter::internal_eval_jac_g
    ! Assumes that eval_F was called previously and that f(:) = f(x), the residual
    ! evaluate at x
    Subroutine fd_jacobian(status, n, m, x, f, J, iparams)
