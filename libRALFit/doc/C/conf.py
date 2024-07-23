@@ -262,12 +262,12 @@ latex_elements = {
 }
 
 # Additional stuff for the LaTeX preamble.
-latex_elements['preamble'] = '\usepackage{amsmath}\n\usepackage{amssymb}\n'
+latex_elements['preamble'] = r'\usepackage{amsmath}\n\usepackage{amssymb}\n'
 
 #####################################################
 # add LaTeX macros
 
-f = file('../common/RALFit_header.sty')
+f = open('../common/RALFit_header.sty')
 
 try:
     imgmath_latex_preamble  # check whether this is already defined

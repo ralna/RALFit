@@ -25,6 +25,7 @@ All the documentation is available via the links below:
 
    Fortran/index.rst
    C/index.rst
+   Python/index.rst
 
 
 
