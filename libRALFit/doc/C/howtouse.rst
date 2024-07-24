@@ -11,7 +11,7 @@ Overview
 Calling sequences
 ^^^^^^^^^^^^^^^^^
 
-Function signatures are definied in a header file
+Function signatures are defined in a header file
 
 .. code-block:: C 
  
@@ -76,7 +76,7 @@ To solve the non-linear least squares problem
 
 .. include:: ../common/subroutines.rst
 
-.. c:function:: void nlls_solve(int n, int n, int m, double X[], ral_nlls_eval_r_type eval_r,ral_nlls_eval_j_type eval_J, ral_nlls_eval_hf_type eval_Hf, void* params, struct nlls_options const* options, struct nlls_inform* inform, double weights[], nlls_eval_HP_type eval_HP, double lower_bounds[], double upper_bounds[])
+.. c:function:: void nlls_solve(int n, int m, double X[], ral_nlls_eval_r_type eval_r,ral_nlls_eval_j_type eval_J, ral_nlls_eval_hf_type eval_Hf, void* params, struct nlls_options const* options, struct nlls_inform* inform, double weights[], nlls_eval_HP_type eval_HP, double lower_bounds[], double upper_bounds[])
 
    Solves the non-linear least squares problem.
    
@@ -128,7 +128,7 @@ To iterate once
 
    **n**, **m**, **eval_F**, **eval_J**, **eval_HF**, **params**, **info**,
    **options**, **weights**, **eval_HP**, **lower_bounds** and **upper_bounds**
-   are as in the desciption of |nlls_solve|.
+   are as in the description of |nlls_solve|.
 
    :param  X: |iterate_X|
 
@@ -649,7 +649,7 @@ The derived data type for holding information
 		 
 		 |status|
 
-   .. c:member:: character error_message(81)
+   .. c:member:: character error_message[81]
 
 		 |error_message|
 
@@ -657,7 +657,7 @@ The derived data type for holding information
       
 		 |alloc_status|
 
-   .. c:member:: character bad_alloc(81)
+   .. c:member:: character bad_alloc[81]
 		 
 		 |bad_alloc|
 
@@ -693,11 +693,11 @@ The derived data type for holding information
 
 		 |convergence_norms|
 				   
-   .. c:member:: double resvec(iter+1)
+   .. c:member:: double resvec[iter+1]
 		 
 		 |resvec|
 
-   .. c:member:: double gradvec(iter+1)
+   .. c:member:: double gradvec[iter+1]
 		 
 		 |gradvec|
 
@@ -717,7 +717,7 @@ The derived data type for holding information
 			       
 		 |external_return|
    
-   .. c:member:: character external_name(81)
+   .. c:member:: character external_name[81]
 
 		 |external_name|
 
