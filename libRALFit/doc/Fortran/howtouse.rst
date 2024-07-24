@@ -91,7 +91,7 @@ To solve the non-linear least squares problem
 
    :o real weights(n): |weights|
 
-   :o procedure eval_HP: |eval_HP_desc|
+   :o procedure eval_HP: |eval_HP_desc|  Further details of the format required are given in |eval_HP| in :ref:`user-routines`.
 
    :o real lower_bounds(n): |lower_bounds|
 

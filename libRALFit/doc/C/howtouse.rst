@@ -100,7 +100,7 @@ To solve the non-linear least squares problem
 
    :param weights: |weights|
 
-   :param eval_HP: |eval_HP_desc|
+   :param eval_HP: |eval_HP_desc| Further details of the format required are given in |eval_HP| in :ref:`user-routines`.
 
    :param lower_bounds: |lower_bounds|
 
