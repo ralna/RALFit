@@ -160,7 +160,7 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
    *  stop_g_absolute (float)
 		 
 		 |stop_g_absolute|
-		 Defualt is 1e-5.
+		 Default is 1e-5.
 					   
    *  stop_g_relative (float)
 

@@ -335,7 +335,7 @@ The derived data type for holding options
    .. c:member:: double stop_g_absolute
 		 
 		 |stop_g_absolute|
-		 Defualt is 1e-5.
+		 Default is 1e-5.
 					   
    .. c:member:: double stop_g_relative
 
@@ -742,7 +742,7 @@ Warning and error messages
 
 A successful return from a subroutine in the package is indicated by ``status``
 in |nlls_inform| having the value zero.  
-A non-zero value is asscociated with an error message,
+A non-zero value is associated with an error message,
 which will be output on ``error`` in |nlls_inform|.
 
 .. include:: ../common/errors.rst
