@@ -55,4 +55,4 @@ Possible values are:
     * - -900
       - Illegal value of ``print_level`` in options array. Valid range is 0 to 5. 
     * - -999
-      - Unexpected error occured
+      - Unexpected error occurred

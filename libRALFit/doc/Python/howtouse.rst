@@ -78,6 +78,16 @@ To solve the non-linear least squares problem
    :returns: The first component contains the approximate solution. The second component provides information about the execution of the subroutine.
    :rtype: tuple( nparray(n,), dict)
 
+
+.. _user-routines:
+
+User-supplied function evaluation routines
+------------------------------------------
+
+The user must supply routines to evaluate the residual, Jacobian and Hessian 
+at a point.  **RALFit** will call these routines internally.
+
+
 Data types
 ----------
 
@@ -160,7 +170,7 @@ Controlling data is sent to the subroutine using a Python dictionary.  A descrip
    *  stop_g_absolute (float)
 		 
 		 |stop_g_absolute|
-		 Defualt is 1e-5.
+		 Default is 1e-5.
 					   
    *  stop_g_relative (float)
 
@@ -527,4 +537,13 @@ This is used to hold information about the progress of the algorithm.
    *  step (float)
 
       |step|
+
+.. _errors:
+
+Warning and error messages
+--------------------------
+
+Runtime errors and warnings will be passed to the user via the Python
+exception handling system in the event that the solution of the non-linear 
+least-squares problem with RALFit runs into difficulty.
 

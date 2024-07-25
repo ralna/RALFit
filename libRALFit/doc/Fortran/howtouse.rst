@@ -91,7 +91,7 @@ To solve the non-linear least squares problem
 
    :o real weights(n): |weights|
 
-   :o procedure eval_HP: |eval_HP_desc|
+   :o procedure eval_HP: |eval_HP_desc|  Further details of the format required are given in |eval_HP| in :ref:`user-routines`.
 
    :o real lower_bounds(n): |lower_bounds|
 
@@ -558,7 +558,7 @@ Warning and error messages
 
 A successful return from a subroutine in the package is indicated by ``status``
 in |nlls_inform| having the value zero.  
-A non-zero value is asscociated with an error message,
+A non-zero value is associated with an error message,
 which will be output on ``error`` in |nlls_inform|.
 
 .. include:: ../common/errors.rst
