@@ -3,7 +3,7 @@
 .. |struct| replace:: structure
 
 .. |nlls_options| replace:: :ref:`the options dict <options>`
-			    
+
 .. |nlls_inform| replace:: :ref:`the info dict <info>`
 
 .. |nlls_iterate| replace:: :py:func:`ral_nlls_iterate`

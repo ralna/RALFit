@@ -312,7 +312,7 @@ Verifying user-supplied first derivatives matrix
 
 One of the most common problems while trying to train a model is having wrong derivatives.
 Writing the derivative call-back function is error-prone and to address this, a derivative
-checker can be activated (set option ``check_derivatives```) for checking the
+checker can be activated (set option ``check_derivatives``) for checking the
 derivatives provided by the call-back that evaluates :math:`J=\nabla r(x)`.
 The checker produces a table similar to
 
