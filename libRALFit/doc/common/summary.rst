@@ -20,6 +20,6 @@ which corresponds to taking :math:`r_i(\vx) := y_i - f(\vx;t_i)` and
 :math:`\vW` such that :math:`\vW_{ii} = (1/{\sigma_i^2}).`
 For this reason we refer to the function :math:`\vr` as the *residual* function.
 
-Various algorithms for solving this problem are implemented -- see :doc:`method`.
+Various algorithms for solving this problem are implemented -- see :ref:`method`.
 
 

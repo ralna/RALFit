@@ -14,7 +14,7 @@ At each point, :math:`\iter{\vx}`, the algorithm builds a model of the function 
 see :ref:`models` for more details.
 
 Once the model has been formed we find a candidate for the next step by solving 
-a subitable subproblem.  The quantity
+a suitable subproblem.  The quantity
 
 .. math::
    :label: rho-def
