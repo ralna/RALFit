@@ -1,3 +1,4 @@
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! Copyright (C) 2015 Science and Technology Facilities Council (STFC).
 ! All rights reserved.
 !  Dummy RAL_NLLS for testing ral_nlls_main interface to CUTEst

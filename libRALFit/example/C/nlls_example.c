@@ -1,4 +1,5 @@
-/* Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+/* Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
  * All rights reserved.
  */
 

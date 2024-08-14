@@ -385,10 +385,10 @@ contains
 
   end subroutine c_eval_hp
 
-  integer(c_int) function c_eval_j_dummy(n, m, params, x, j) bind(c)
+  integer(ral_c_int) function c_eval_j_dummy(n, m, params, x, j) bind(c)
        use, intrinsic :: iso_c_binding
        implicit none
-       integer(c_int), value :: n,m
+       integer(ral_c_int), value :: n,m
        type(C_PTR), value :: params
        real(c_double), dimension(*), intent(in) :: x
        real(c_double), dimension(*), intent(out) :: j
@@ -397,10 +397,10 @@ contains
        c_eval_j_dummy = -45544554 ! Magic number to request FD
   end function c_eval_j_dummy
 
-  integer(c_int) function c_eval_hf_dummy(n, m, params, x, f, hf) bind(c)
+  integer(ral_c_int) function c_eval_hf_dummy(n, m, params, x, f, hf) bind(c)
        use, intrinsic :: iso_c_binding
        implicit none
-       integer(c_int), value :: n,m
+       integer(ral_c_int), value :: n,m
        type(C_PTR), value :: params
        real(c_double), dimension(*), intent(in) :: x
        real(c_double), dimension(*), intent(in) :: f

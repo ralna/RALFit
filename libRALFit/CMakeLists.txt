@@ -6,6 +6,13 @@ cmake_minimum_required (VERSION 3.1)
 
 project (RALFit LANGUAGES Fortran C)
 
+# Request to run pre-processor as well
+if(NOT WIN32)
+  set(CMAKE_Fortran_FLAGS -cpp)
+else()
+  set(CMAKE_Fortran_PREPROCESS ON)
+endif()
+
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
@@ -23,9 +30,10 @@ set ( SRC_FILES
 	src/ral_nlls_symbols.f90
 	src/ral_nlls_ciface.f90
 	src/ral_nlls_workspaces.f90
-    src/ral_nlls_printing.f90
-    src/ral_nlls_fd.f90
-	)	
+        src/ral_nlls_printing.f90
+        src/ral_nlls_types.F90
+        src/ral_nlls_fd.f90
+	)
 
 # Support for CMAKE_BUILD_TYPE={Debug,Release,Profile}
 if(CMAKE_BUILD_TYPE MATCHES Debug)
