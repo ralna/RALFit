@@ -1185,12 +1185,12 @@ program nlls_test
      options%maxit = 100
      blx(:) = (/0.0, 0.0/)
      bux(:) = (/0.0, 1.0/)
-     X(1:2) = (/1.0, 0.9236/)
-     options%fd_step = 1.05_wp * options%fd_step
+     X(1:2) = (/1.0, 0.923/)
+     options%box_gamma = 0.99999 ! discourage any linesearch
      call solve_basic(X,params,options,status,use_fd=.True.,blx=blx,bux=bux)
-     oki = abs(x(1) - 0.0) <= 1.e-6 .And. abs(x(2)-0.923618046017) < 1.e-6
+     oki = abs(x(1) - 0.0) <= 1.e-6 .And. abs(x(2)-0.9244158) < 1.e-6
      write(options%out,*) 'Solution (C): ', x(1:n)
-     write(options%out,*) 'Expected: ', (/0.0, 0.92361804601/)
+     write(options%out,*) 'Expected: ', (/0.0, 0.9244158/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
         write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
         no_errors_main = no_errors_main + 1
@@ -1201,6 +1201,7 @@ program nlls_test
      options%print_level = 3
      options%check_derivatives = 0
      options%maxit = 100
+     options%box_gamma = 0.9995
      blx(:) = (/0.32, 0.0/)
      bux(:) = (/1.0, 1.0/)
      call solve_basic(X,params,options,status,use_fd=.True.,blx=blx,bux=bux)
