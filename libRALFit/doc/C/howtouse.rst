@@ -325,7 +325,7 @@ Not supplying first derivatives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If the user does not provide the first order derivatives, either because they are not available or by choice, then the
-solver will approximate the derivatives matrix using single-sided finite-differences method. In these cases the user
+solver will approximate the derivatives matrix using the single-sided finite-differences method. In this case the user
 can pass ``NULL`` as the call-back for ``eval_j``.
 
 Although the solver can estimate the derivatives it is highly recommended to provide them if they are available (and
