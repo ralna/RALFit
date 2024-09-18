@@ -318,9 +318,8 @@ and ``derivative_test_tol`` guard against this happening.
 
 .. Note::
 
-    It is highly recommended that during the writing or development of the derivative call-back, to activate the option
-    ``check_derivatives``. After validating residual Jacobian matrix and to avoid performance impact, the option
-    can be reset.
+    It is highly recommended that the option
+    ``check_derivatives`` is activated during the writing or development of the derivative call-back. After validating the Jacobian matrix the option should be reset to avoid performance impact.
 
 Not supplying first derivatives
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
