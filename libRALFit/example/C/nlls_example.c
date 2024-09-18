@@ -1,4 +1,5 @@
-/* Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+/* Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
  * All rights reserved.
  */
 
@@ -77,6 +78,10 @@ int main(void) {
    // Initialize options values
    struct ral_nlls_options options;
    ral_nlls_default_options(&options);
+   options.print_level = 2;
+   options.check_derivatives = 1;
+   options.print_options = true;
+   options.derivative_test_tol = 2.0e-5;
 
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess

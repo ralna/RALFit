@@ -1,7 +1,9 @@
 ! Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 module ral_nlls_ciface
 
+  use ral_nlls_types
   use iso_c_binding
   use ral_nlls_double, only:                       &
        f_nlls_options      => nlls_options,        &
@@ -12,160 +14,167 @@ module ral_nlls_ciface
        f_params_base_type  => params_base_type
   implicit none
 
-  integer, parameter :: wp = C_DOUBLE
-
   type, bind(C) :: nlls_options
-     integer(C_INT) :: f_arrays ! true (!=0) or false (==0)
+     integer(ral_c_int) :: f_arrays ! true (!=0) or false (==0)
 
-     integer(C_INT) :: out
-     integer(C_INT) :: print_level
+     integer(ral_c_int) :: out
+     integer(ral_c_int) :: print_level
      logical(c_bool) :: print_options
-     integer(C_INT) :: print_header
-     integer(C_INT) :: maxit
-     integer(C_INT) :: model
-     integer(C_INT) :: type_of_method
-     integer(C_INT) :: nlls_method
+     integer(ral_c_int) :: print_header
+     integer(ral_c_int) :: maxit
+     integer(ral_c_int) :: model
+     integer(ral_c_int) :: type_of_method
+     integer(ral_c_int) :: nlls_method
      logical(c_bool) :: allow_fallback_method
-     integer(C_INT) :: lls_solver
-     real(wp) :: stop_g_absolute
-     real(wp) :: stop_g_relative
-     real(wp) :: stop_f_absolute
-     real(wp) :: stop_f_relative
-     real(wp) :: stop_s
-     integer(c_int) :: relative_tr_radius
-     real(wp) :: initial_radius_scale
-     real(wp) :: initial_radius
-     real(wp) :: base_regularization
-     integer(c_int) :: regularization
-     real(wp) :: regularization_term
-     real(wp) :: regularization_power
-     real(wp) :: maximum_radius
-     real(wp) :: eta_successful
-     real(wp) :: eta_success_but_reduce
-     real(wp) :: eta_very_successful
-     real(wp) :: eta_too_successful
-     real(wp) :: radius_increase
-     real(wp) :: radius_reduce
-     real(wp) :: radius_reduce_max
-     integer(c_int) :: tr_update_strategy
-     real(wp) :: hybrid_switch
+     integer(ral_c_int) :: lls_solver
+     real(ral_c_real) :: stop_g_absolute
+     real(ral_c_real) :: stop_g_relative
+     real(ral_c_real) :: stop_f_absolute
+     real(ral_c_real) :: stop_f_relative
+     real(ral_c_real) :: stop_s
+     integer(ral_c_int) :: relative_tr_radius
+     real(ral_c_real) :: initial_radius_scale
+     real(ral_c_real) :: initial_radius
+     real(ral_c_real) :: base_regularization
+     integer(ral_c_int) :: regularization
+     real(ral_c_real) :: regularization_term
+     real(ral_c_real) :: regularization_power
+     real(ral_c_real) :: maximum_radius
+     real(ral_c_real) :: eta_successful
+     real(ral_c_real) :: eta_success_but_reduce
+     real(ral_c_real) :: eta_very_successful
+     real(ral_c_real) :: eta_too_successful
+     real(ral_c_real) :: radius_increase
+     real(ral_c_real) :: radius_reduce
+     real(ral_c_real) :: radius_reduce_max
+     integer(ral_c_int) :: tr_update_strategy
+     real(ral_c_real) :: hybrid_switch
      logical(c_bool) :: exact_second_derivatives
      logical(c_bool) :: subproblem_eig_fact
      logical(c_bool) :: use_ews_subproblem
      logical(c_bool) :: force_min_eig_symm
-     integer(C_INT) :: scale
-     real(wp) :: scale_max
-     real(wp) :: scale_min
+     integer(ral_c_int) :: scale
+     real(ral_c_real) :: scale_max
+     real(ral_c_real) :: scale_min
      logical(c_bool) :: scale_trim_min
      logical(c_bool) :: scale_trim_max
      logical(c_bool) :: scale_require_increase
      logical(c_bool) :: setup_workspaces
      logical(c_bool) :: remove_workspaces
-     integer(c_int) :: more_sorensen_maxits
-     real(wp) :: more_sorensen_shift
-     real(wp) :: more_sorensen_tiny
-     real(wp) :: more_sorensen_tol
-     real(wp) :: hybrid_tol
-     integer(c_int) :: hybrid_switch_its
-     real(wp) :: reg_order
-     integer(c_int) :: inner_method
+     integer(ral_c_int) :: more_sorensen_maxits
+     real(ral_c_real) :: more_sorensen_shift
+     real(ral_c_real) :: more_sorensen_tiny
+     real(ral_c_real) :: more_sorensen_tol
+     real(ral_c_real) :: hybrid_tol
+     integer(ral_c_int) :: hybrid_switch_its
+     real(ral_c_real) :: reg_order
+     integer(ral_c_int) :: inner_method
      logical(c_bool) :: output_progress_vectors
      logical(c_bool) :: update_lower_order
      logical(c_bool) :: Fortran_Jacobian
 
-     integer(c_int) :: box_nFref_max
-     real(wp) :: box_gamma
-     real(wp) :: box_decmin
-     real(wp) :: box_bigbnd
-     real(wp) :: box_wolfe_descent
-     real(wp) :: box_wolfe_curvature
-     real(wp) :: box_kanzow_power
-     real(wp) :: box_kanzow_descent
-     real(wp) :: box_quad_model_descent
+     integer(ral_c_int) :: box_nFref_max
+     real(ral_c_real) :: box_gamma
+     real(ral_c_real) :: box_decmin
+     real(ral_c_real) :: box_bigbnd
+     real(ral_c_real) :: box_wolfe_descent
+     real(ral_c_real) :: box_wolfe_curvature
+     real(ral_c_real) :: box_kanzow_power
+     real(ral_c_real) :: box_kanzow_descent
+     real(ral_c_real) :: box_quad_model_descent
      Logical(c_bool):: box_tr_test_step
      Logical(c_bool):: box_wolfe_test_step
-     real(wp) :: box_tau_descent
-     integer(c_int):: box_max_ntrfail
-     integer(c_int):: box_quad_match
-     real(wp) :: box_alpha_scale
-     real(wp) :: box_Delta_scale
-     real(wp) :: box_tau_min
-     integer(c_int):: box_ls_step_maxit
-     integer(c_int):: box_linesearch_type
+     real(ral_c_real) :: box_tau_descent
+     integer(ral_c_int):: box_max_ntrfail
+     integer(ral_c_int):: box_quad_match
+     real(ral_c_real) :: box_alpha_scale
+     real(ral_c_real) :: box_Delta_scale
+     real(ral_c_real) :: box_tau_min
+     integer(ral_c_int):: box_ls_step_maxit
+     integer(ral_c_int):: box_linesearch_type
+     real(ral_c_real) :: fd_step
+     Integer(ral_c_int) :: check_derivatives
+     Real(ral_c_real) :: derivative_test_tol
   end type nlls_options
 
   type, bind(C) :: nlls_inform
-     integer(C_INT) :: status
+     integer(ral_c_int) :: status
      character( kind = c_char), dimension(81) :: error_message
-     integer(C_INT) :: alloc_status
+     integer(ral_c_int) :: alloc_status
      character( kind = c_char), dimension(81) :: bad_alloc
-     integer(C_INT) :: iter
-     integer(C_INT) :: inner_iter
+     integer(ral_c_int) :: iter
+     integer(ral_c_int) :: inner_iter
      LOGICAL(c_bool) :: inner_iter_success
-     integer(C_INT) :: f_eval
-     integer(C_INT) :: g_eval
-     integer(C_INT) :: h_eval
-     integer(C_INT) :: convergence_normf
-     integer(C_INT) :: convergence_normg
-     integer(C_INT) :: convergence_norms
-     real(wp) :: resinf
-     real(wp) :: gradinf
-     real(wp) :: obj
-     real(wp) :: norm_g
-     real(wp) :: scaled_g
-     integer(C_INT) :: external_return
+     integer(ral_c_int) :: f_eval
+     integer(ral_c_int) :: g_eval
+     integer(ral_c_int) :: h_eval
+     integer(ral_c_int) :: hp_eval
+     integer(ral_c_int) :: convergence_normf
+     integer(ral_c_int) :: convergence_normg
+     integer(ral_c_int) :: convergence_norms
+     real(ral_c_real) :: resinf
+     real(ral_c_real) :: gradinf
+     real(ral_c_real) :: obj
+     real(ral_c_real) :: norm_g
+     real(ral_c_real) :: scaled_g
+     integer(ral_c_int) :: external_return
      character( kind = c_char), dimension(81) :: external_name
-     real(wp) :: step
-     Integer(c_int) :: ls_step_iter
-     Integer(c_int) :: f_eval_ls
-     Integer(c_int) :: g_eval_ls
-     Integer(c_int) :: pg_step_iter
-     Integer(c_int) :: f_eval_pg
-     Integer(c_int) :: g_eval_pg
+     real(ral_c_real) :: step
+     Integer(ral_c_int) :: ls_step_iter
+     Integer(ral_c_int) :: f_eval_ls
+     Integer(ral_c_int) :: g_eval_ls
+     Integer(ral_c_int) :: pg_step_iter
+     Integer(ral_c_int) :: f_eval_pg
+     Integer(ral_c_int) :: g_eval_pg
+     Integer(ral_c_int) :: fd_f_eval
   end type nlls_inform
 
   abstract interface
-     integer(c_int) function c_eval_r_type(n, m, params, x, r) bind(c)
+     integer(ral_c_int) function c_eval_r_type(n, m, params, x, r) bind(c)
        use, intrinsic :: iso_c_binding
+       use :: ral_nlls_types
        implicit none
-       integer(c_int), value :: n, m
+       integer(ral_c_int), value :: n, m
        type(C_PTR), value :: params
-       real(c_double), dimension(*), intent(in) :: x
-       real(c_double), dimension(*), intent(out) :: r
+       real(ral_c_real), dimension(*), intent(in) :: x
+       real(ral_c_real), dimension(*), intent(out) :: r
      end function c_eval_r_type
   end interface
 
   abstract interface
-     integer(c_int) function c_eval_j_type(n, m, params, x, j) bind(c)
+     integer(ral_c_int) function c_eval_j_type(n, m, params, x, j) bind(c)
        use, intrinsic :: iso_c_binding
+       use :: ral_nlls_types
        implicit none
-       integer(c_int), value :: n,m
+       integer(ral_c_int), value :: n,m
        type(C_PTR), value :: params
-       real(c_double), dimension(*), intent(in) :: x
-       real(c_double), dimension(*), intent(out) :: j
+       real(ral_c_real), dimension(*), intent(in) :: x
+       real(ral_c_real), dimension(*), intent(out) :: j
      end function c_eval_j_type
   end interface
 
   abstract interface
-     integer(c_int) function c_eval_hf_type(n, m, params, x, f, hf) bind(c)
+     integer(ral_c_int) function c_eval_hf_type(n, m, params, x, f, hf) bind(c)
        use, intrinsic :: iso_c_binding
+       use :: ral_nlls_types
        implicit none
-       integer(c_int), value :: n,m
+       integer(ral_c_int), value :: n,m
        type(C_PTR), value :: params
-       real(c_double), dimension(*), intent(in) :: x
-       real(c_double), dimension(*), intent(in) :: f
-       real(c_double), dimension(*), intent(out) :: hf
+       real(ral_c_real), dimension(*), intent(in) :: x
+       real(ral_c_real), dimension(*), intent(in) :: f
+       real(ral_c_real), dimension(*), intent(out) :: hf
      end function c_eval_hf_type
   end interface
 
   abstract interface
-     integer(c_int) function c_eval_hp_type(n, m, x, y, hp, params) bind(c)
+     integer(ral_c_int) function c_eval_hp_type(n, m, x, y, hp, params) bind(c)
        use, intrinsic :: iso_c_binding
+       use :: ral_nlls_types
        implicit none
-       integer(c_int) :: n,m
-       real(c_double), dimension(*), intent(in)  :: x
-       real(c_double), dimension(*), intent(in)  :: y
-       real(c_double), dimension(*), intent(out) :: hp
+       integer(ral_c_int) :: n,m
+       real(ral_c_real), dimension(*), intent(in)  :: x
+       real(ral_c_real), dimension(*), intent(in)  :: y
+       real(ral_c_real), dimension(*), intent(out) :: hp
        type(C_PTR), value :: params
      end function c_eval_hp_type
   end interface
@@ -222,6 +231,8 @@ contains
     foptions%hybrid_switch = coptions%hybrid_switch
     foptions%exact_second_derivatives = coptions%exact_second_derivatives
     foptions%subproblem_eig_fact = coptions%subproblem_eig_fact
+    foptions%use_ews_subproblem = coptions%use_ews_subproblem
+    foptions%force_min_eig_symm = coptions%force_min_eig_symm
     foptions%scale = coptions%scale
     foptions%scale_max = coptions%scale_max
     foptions%scale_min = coptions%scale_min
@@ -239,6 +250,7 @@ contains
     foptions%reg_order = coptions%reg_order
     foptions%inner_method = coptions%inner_method
     foptions%output_progress_vectors = coptions%output_progress_vectors
+    foptions%update_lower_order = coptions%update_lower_order
     foptions%Fortran_Jacobian = coptions%Fortran_Jacobian
     foptions%box_nFref_max = coptions%box_nFref_max
     foptions%box_gamma = coptions%box_gamma
@@ -259,6 +271,9 @@ contains
     foptions%box_tau_min = coptions%box_tau_min
     foptions%box_ls_step_maxit = coptions%box_ls_step_maxit
     foptions%box_linesearch_type = coptions%box_linesearch_type
+    foptions%fd_step = coptions%fd_step
+    foptions%check_derivatives = coptions%check_derivatives
+    foptions%derivative_test_tol = coptions%derivative_test_tol
 
   end subroutine copy_options_in
 
@@ -285,6 +300,7 @@ contains
     cinfo%f_eval = finfo%f_eval
     cinfo%g_eval = finfo%g_eval
     cinfo%h_eval = finfo%h_eval
+    cinfo%hp_eval = finfo%hp_eval
     cinfo%convergence_normf = finfo%convergence_normf
     cinfo%convergence_normg = finfo%convergence_normg
     cinfo%convergence_norms = finfo%convergence_norms
@@ -307,6 +323,7 @@ contains
     cinfo%pg_step_iter = finfo%pg_step_iter
     cinfo%f_eval_pg = finfo%f_eval_pg
     cinfo%g_eval_pg = finfo%g_eval_pg
+    cinfo%fd_f_eval = finfo%fd_f_eval
 
   end subroutine copy_info_out
 
@@ -368,6 +385,29 @@ contains
 
   end subroutine c_eval_hp
 
+  integer(ral_c_int) function c_eval_j_dummy(n, m, params, x, j) bind(c)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(ral_c_int), value :: n,m
+       type(C_PTR), value :: params
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(out) :: j
+
+       continue
+       c_eval_j_dummy = -45544554 ! Magic number to request FD
+  end function c_eval_j_dummy
+
+  integer(ral_c_int) function c_eval_hf_dummy(n, m, params, x, f, hf) bind(c)
+       use, intrinsic :: iso_c_binding
+       implicit none
+       integer(ral_c_int), value :: n,m
+       type(C_PTR), value :: params
+       real(c_double), dimension(*), intent(in) :: x
+       real(c_double), dimension(*), intent(in) :: f
+       real(c_double), dimension(*), intent(out) :: hf
+       continue
+       c_eval_hf_dummy =  -1023
+  end function c_eval_hf_dummy
 
 end module ral_nlls_ciface
 
@@ -404,6 +444,7 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%regularization_power = foptions%regularization_power
   coptions%maximum_radius = foptions%maximum_radius
   coptions%eta_successful = foptions%eta_successful
+  coptions%eta_success_but_reduce = foptions%eta_success_but_reduce
   coptions%eta_very_successful = foptions%eta_very_successful
   coptions%eta_too_successful = foptions%eta_too_successful
   coptions%radius_increase = foptions%radius_increase
@@ -413,6 +454,8 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%hybrid_switch = foptions%hybrid_switch
   coptions%exact_second_derivatives = foptions%exact_second_derivatives
   coptions%subproblem_eig_fact = foptions%subproblem_eig_fact
+  coptions%use_ews_subproblem = foptions%use_ews_subproblem
+  coptions%force_min_eig_symm = foptions%force_min_eig_symm
   coptions%scale = foptions%scale
   coptions%scale_max = foptions%scale_max
   coptions%scale_min = foptions%scale_min
@@ -453,15 +496,20 @@ subroutine ral_nlls_default_options_d(coptions) bind(C)
   coptions%box_ls_step_maxit = foptions%box_ls_step_maxit
   coptions%box_linesearch_type = foptions%box_linesearch_type
 
+  coptions%fd_step = foptions%fd_step
+  coptions%check_derivatives = foptions%check_derivatives
+  coptions%derivative_test_tol = foptions%derivative_test_tol
+
 end subroutine ral_nlls_default_options_d
 
 subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
      cweights, hp, clower_bounds, cupper_bounds) bind(C)
   use ral_nlls_ciface
+  use ral_nlls_double, only: ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy
   implicit none
 
-  integer( C_INT ) , INTENT( IN ), value :: n, m
-  real( c_double ), dimension(*) :: cx
+  integer( ral_c_int ) , INTENT( IN ), value :: n, m
+  real( ral_c_real ), dimension(*) :: cx
   type( C_FUNPTR ), value :: r
   type( C_FUNPTR ), value :: j
   type( C_FUNPTR ), value :: hf
@@ -474,22 +522,34 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
   TYPE( C_PTR ), value :: cweights
   TYPE( C_PTR ), value :: clower_bounds
   TYPE( C_PTR ), value :: cupper_bounds
-  real( c_double ), dimension(:), pointer :: fweights
+  real( ral_c_real ), dimension(:), pointer :: fweights
   type( C_FUNPTR ), value :: hp
-  real( c_double ), dimension(:), pointer :: flower_bounds
-  real( c_double ), dimension(:), pointer :: fupper_bounds
+  real( ral_c_real ), dimension(:), pointer :: flower_bounds
+  real( ral_c_real ), dimension(:), pointer :: fupper_bounds
 
 !  real( wp ), dimension(*), optional :: cweights
 
   logical :: f_arrays
+  logical :: lb_sent_in, ub_sent_in
   logical :: hp_sent_in = .false.
 
   ! copy data in and associate pointers correctly
   call copy_options_in(coptions, foptions, f_arrays)
 
   call c_f_procpointer(r, fparams%r)
-  call c_f_procpointer(j, fparams%j)
-  call c_f_procpointer(hf, fparams%hf)
+
+  if (c_associated(j)) then
+    call c_f_procpointer(j, fparams%j)
+  else
+    fparams%j => c_eval_j_dummy
+  end if
+
+  if (c_associated(hf)) then
+    call c_f_procpointer(hf, fparams%hf)
+  else
+    fparams%hf => c_eval_hf_dummy
+  endif
+
   fparams%params = params
   if (C_ASSOCIATED(hp)) hp_sent_in = .true.
 
@@ -499,32 +559,88 @@ subroutine nlls_solve_d(n, m, cx, r, j, hf,  params, coptions, cinform, &
   if (C_ASSOCIATED(cweights)) then
      call c_f_pointer(cweights, fweights, shape = (/ m /) )
   end if
+  ! In the Fortran standard, passing null pointers as an optional argument is valid
+  ! and is considered not present.
+  ! However, there seems to be a bug in aocc5.0 where that behaviour is inconsistent.
+  ! A lot of the below if statements can be replaced once this is fixed.
   nullify(flower_bounds)
+  lb_sent_in = .false.
   if (C_ASSOCIATED(clower_bounds)) then
-     call c_f_pointer(clower_bounds, flower_bounds, shape = (/ m /) )
+     lb_sent_in = .true.
+     call c_f_pointer(clower_bounds, flower_bounds, shape = (/ n /) )
   end if
   nullify(fupper_bounds)
+  ub_sent_in = .false.
   if (C_ASSOCIATED(cupper_bounds)) then
-     call c_f_pointer(cupper_bounds, fupper_bounds, shape = (/ m /) )
+     ub_sent_in = .true.
+     call c_f_pointer(cupper_bounds, fupper_bounds, shape = (/ n /) )
   end if
 
+
   if (hp_sent_in) then
-     call f_nlls_solve( n, m, cx, &
-          c_eval_r, c_eval_j,   &
-          c_eval_hf, fparams,   &
-          foptions,finform, &
-          weights=fweights, &
-          eval_hp=c_eval_hp, &
-          lower_bounds=flower_bounds, &
-          upper_bounds=fupper_bounds)
+      if (lb_sent_in .and. ub_sent_in) then
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               weights=fweights, &
+               eval_hp=c_eval_hp, &
+               lower_bounds=flower_bounds, &
+               upper_bounds=fupper_bounds)
+      elseif (lb_sent_in) then
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               weights=fweights, &
+               eval_hp=c_eval_hp, &
+               lower_bounds=flower_bounds)
+      elseif (ub_sent_in) then
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               weights=fweights, &
+               eval_hp=c_eval_hp, &
+               upper_bounds=fupper_bounds)
+      else
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               weights=fweights, &
+               eval_hp=c_eval_hp)
+      endif
   else
-     call f_nlls_solve( n, m, cx, &
-          c_eval_r, c_eval_j,   &
-          c_eval_hf, fparams,   &
-          foptions,finform, &
-          weights=fweights, &
-          lower_bounds=flower_bounds, &
-          upper_bounds=fupper_bounds)
+     if (lb_sent_in .and. ub_sent_in) then
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform, &
+            weights=fweights, &
+            lower_bounds=flower_bounds, &
+            upper_bounds=fupper_bounds)
+      elseif (lb_sent_in) then
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform, &
+            weights=fweights, &
+            lower_bounds=flower_bounds)
+      elseif (ub_sent_in) then
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform, &
+            weights=fweights, &
+            upper_bounds=fupper_bounds)
+      else
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform, &
+            weights=fweights)
+      end if
   end if
 
   ! Copy data out
@@ -571,8 +687,8 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   use ral_nlls_ciface
   implicit none
 
-  integer( C_INT) , INTENT( IN ), value :: n, m
-  real( c_double ), dimension(*) :: cx
+  integer( ral_c_int) , INTENT( IN ), value :: n, m
+  real( ral_c_real ), dimension(*) :: cx
   type( C_PTR), value :: cw
   type( C_FUNPTR ), value :: r
   type( C_FUNPTR ), value :: j
@@ -588,9 +704,9 @@ subroutine ral_nlls_iterate_d(n, m, cx, cw, r, j, hf, params, coptions, &
   type( params_wrapper ) :: fparams
   TYPE( f_nlls_inform) :: finform
   TYPE( f_nlls_workspace ), pointer :: fw
-  real( c_double ), dimension(:), pointer :: fweights
-  real( c_double ), dimension(:), pointer :: flower_bounds
-  real( c_double ), dimension(:), pointer :: fupper_bounds
+  real( ral_c_real ), dimension(:), pointer :: fweights
+  real( ral_c_real ), dimension(:), pointer :: flower_bounds
+  real( ral_c_real ), dimension(:), pointer :: fupper_bounds
   TYPE( f_nlls_options) :: foptions
 
   logical :: f_arrays

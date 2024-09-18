@@ -3,7 +3,7 @@
 .. |struct| replace:: structure
 
 .. |nlls_options| replace:: :c:type:`nlls_options`
-			    
+
 .. |nlls_inform| replace:: :c:type:`nlls_inform`
 
 .. |nlls_iterate| replace:: :c:func:`ral_nlls_iterate`

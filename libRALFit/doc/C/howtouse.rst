@@ -88,9 +88,9 @@ To solve the non-linear least squares problem
 
    :param eval_r: |eval_r_desc| 
 			
-   :param eval_J: |eval_J_desc|
+   :param eval_J: |eval_J_desc|  If user does not provide the call-back it may be substituted by ``NULL`` and first order derivatives of the objective function are estimated using finite-differences.
 
-   :param eval_Hf: |eval_Hf_desc|
+   :param eval_Hf: |eval_Hf_desc| If user does not provide the call-back it may be substituted by ``NULL``.
 
    :param params: |params|
 
@@ -153,7 +153,7 @@ User-supplied function evaluation routines
 ------------------------------------------
 
 In order to evaluate the function, Jacobian and Hessian at a point, the user
-must supply callback functions that perform this operation that the code
+may supply callback functions that perform this operation that the code
 **RALFit** will call internally.
 
 In order to pass user-defined data into the evaluation calls, the parameter
@@ -183,7 +183,7 @@ for a given vector :math:`{\bm x}`. It must have the following signature:
 For evaluating the function :math:`{\bm J} = \nabla  {\bm r} ( {\bm x} )`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A subroutine must be supplied to calculate
+A subroutine may be supplied to calculate
 :math:`{\bm J} = \nabla  {\bm r} ( {\bm x} )` for a given vector
 :math:`{\bm x}`. 
 It must have the following signature:
@@ -202,11 +202,10 @@ It must have the following signature:
 
    :param status: |eval_J_status|
 
-
 For evaluating the function :math:`Hf = \sum_{i=1}^m r_i( {\bm x} )  {\bm W} \nabla^2 r_i( {\bm x} )`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A subroutine must be supplied to calculate
+A subroutine may be supplied to calculate
 :math:`Hf = \sum_{i=1}^m ( {\bm r} )_i \nabla^2 r_i( {\bm x} )` for
 given vectors :math:`{\bm x} \in \mathbb{R}^n` and
 :math:`{\bm r} \in \mathbb{R}^m`; here :math:`( {\bm r} )_i` denotes
@@ -250,6 +249,32 @@ subroutine must implement the following interface:
    :param HP: |eval_HP_HP|
 			   
    :param params: |eval_HP_params|
+
+
+.. _c_fd:
+
+Checking and approximating derivatives
+--------------------------------------
+
+Verifying user-supplied first derivatives matrix
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. include:: ../common/derivative_chk.rst
+
+Not supplying first derivatives
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If the user does not provide the first order derivatives, either because they are not available or by choice, then the
+solver will approximate the derivatives matrix using the single-sided finite-differences method. In this case the user
+can pass ``NULL`` as the call-back for ``eval_j``.
+
+Although the solver can estimate the derivatives it is highly recommended to provide them if they are available (and
+verify them with the derivative checker).
+
+It is also strongly encouraged to relax the convergence tolerances (see options) when approximating derivatives. If it is
+observed that solver “stagnates” or fails during the optimization process, tweaking the step value
+(option ``finite_difference_step``) is advised.
+
 
 .. _data_types:
 
@@ -356,6 +381,23 @@ The derived data type for holding options
 		 
 		 |stop_s|
 		 Default is ``eps``.
+
+   **Approximating first order derivatives**
+
+   .. c:member:: bool check_derivatives
+
+         |check_derivatives|
+         Default is ``false``.
+
+   .. c:member:: double fd_step 
+   
+         |fd_step|
+         Default is 1.0e-7.
+
+   .. c:member:: double derivative_test_tol 
+
+         |derivative_test_tol|
+         Default is 1.0e-4.
    
    **Trust region radius/regularization behaviour**
       
@@ -668,6 +710,11 @@ The derived data type for holding information
    .. c:member:: int f_eval 
 		 
 		 |f_eval|
+
+
+   .. c:member:: int fd_f_eval
+    
+         |fd_f_eval|
 		      
    .. c:member:: int g_eval 
 		 

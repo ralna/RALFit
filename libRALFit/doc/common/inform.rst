@@ -16,6 +16,8 @@
 
 .. |hp_eval| replace:: gives the total number of evaluations of the Hessian of the objective function using ``eval_hp``.
 
+.. |fd_f_eval| replace:: gives the total number of evaluations of the objective function due to approximating or checking the gradient of the objective function.
+
 .. |convergence_normf| replace:: tells us if the test on the size of :math:`\vr` is satisfied.
 
 .. |convergence_normg| replace:: that tells us if the test on the size of the gradient is satisfied.

@@ -149,3 +149,8 @@
 
 .. |save_covm| replace:: Determines whether to return information about the covariance matrix in ``nlls_inform``.  Options are:
 
+.. |check_derivatives| replace:: Check user-provided derivatives using finite-differences.
+
+.. |fd_step| replace:: Size of step to use for estimating derivatives using finite-differences.
+
+.. |derivative_test_tol| replace:: Tolerance used to check user-provided derivatives by finite-differences. If ``print level`` is 1 then only the entries with larger discrepancy are reported, and if ``print level`` is greater or equal to 2, then all entries are printed.

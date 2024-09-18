@@ -2,6 +2,7 @@
 ! All rights reserved.
 ! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! ral_nlls_workspaces :: module to keep all the workspaces
 
 module ral_nlls_workspaces
@@ -40,6 +41,8 @@ module ral_nlls_workspaces
   Integer, Parameter, Public :: NLLS_ERROR_INITIAL_GUESS            =  -16
   Integer, Parameter, Public :: NLLS_ERROR_UNSUPPORTED_LINESEARCH   =  -17
   Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -18
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_JACOBIAN             =  -19
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_WEIGHTS              =  -20
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -376,6 +379,18 @@ module ral_nlls_workspaces
 !         2: only diagonal of C
 !         3: only J^T J
      Integer       :: save_covm = 0
+!    FINITE DIFFERENCE STEP
+     Real(Kind=wp) :: fd_step = 10.0_wp * sqrt(epsmch)
+!    Check derivatives (Jacobian only)
+!       0 - No
+!       1 - Yes (expensive)
+!       2 - Cheap (not yet implemented)
+!    If print level <  2  prints only derivatives deviations
+!                         that are deemed to be too large
+!    If print level >= 2  print all derivatives deviations
+     Integer       :: check_derivatives = 0
+!    Tolerance to issue a warning when checking user-provided derivatives
+     Real(Kind=wp) :: derivative_test_tol = 1.0e-4_wp
 
   END TYPE nlls_options
 
@@ -495,12 +510,38 @@ module ral_nlls_workspaces
      real(wp), allocatable :: cov(:,:)
      real(wp), allocatable :: var(:)
 
+! FD f evals
+     Integer :: fd_f_eval = 0
+
   END TYPE nlls_inform
 
   type, public :: params_base_type
      ! deliberately empty
   end type params_base_type
 
+  abstract interface
+     subroutine eval_f_type(status, n, m, x, f, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(out) :: f
+       class(params_base_type), intent(inout) :: params
+     end subroutine eval_f_type
+  end interface
+
+  abstract interface
+     subroutine eval_j_type(status, n, m, x, J, params)
+       import :: params_base_type
+       implicit none
+       integer, intent(out) :: status
+       integer, intent(in) :: n,m
+       double precision, dimension(*), intent(in)  :: x
+       double precision, dimension(*), intent(out) :: J
+       class(params_base_type), intent(inout) :: params
+     end subroutine eval_j_type
+  end interface
   abstract interface
      subroutine eval_hf_type(status, n, m, x, f, h, params)
        import :: params_base_type
@@ -560,6 +601,35 @@ module ral_nlls_workspaces
      ! Memory for nonmonotone LS
      Integer       :: nFref = 0
   end type box_type
+
+  ! gather all user-related data
+  type :: user_data
+    ! user call-backs
+    procedure( eval_f_type ), pointer, nopass :: eval_F => Null()
+    procedure( eval_j_type ), pointer, nopass :: eval_J => Null()
+    procedure( eval_hf_type ), pointer, nopass :: eval_HF => Null()
+    procedure( eval_hp_type ), pointer, nopass :: eval_HP => Null()
+    ! user params
+    class( params_base_type ), pointer :: params => Null()
+
+  end type
+  ! internal envelope for user-params_base_type, used for e.g.
+  ! passing finite-differences related information
+  type, extends (params_base_type), public :: params_internal_type
+    ! finite-differences
+    integer :: m = 0
+    real(wp) :: h_step = 0
+    character(Len=1) :: fd_type = 'N' ! N: No FD, Y: Yes FD one sided auto, future: C: center, etc...
+    Real(kind=wp), allocatable :: f(:), f_pert(:)
+    ! User data
+    type( user_data ) :: user
+    ! Problem and solver data
+    type( box_type ), pointer :: box => Null()
+    type( nlls_inform ), pointer :: inform => Null()
+    type( nlls_options ), pointer :: options => Null()
+    ! Iterate
+    Real(Kind=wp), pointer :: x(:)
+  end type params_internal_type
 
   type, public :: max_eig_work ! workspace for subroutine max_eig
      logical :: allocated = .false.
@@ -713,6 +783,7 @@ module ral_nlls_workspaces
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
   public :: setup_workspace_regularization_solver
   public :: setup_bounds_type, remove_workspace_bounds
+  public :: iparams_set, setup_iparams_type, free_iparams_type
 
 contains
 
@@ -1900,6 +1971,94 @@ contains
 
   End Subroutine remove_workspace_bounds
 
+  subroutine iparams_set(params, x, f, weights, check)
+      Implicit None
+      Class(params_base_type), Intent(InOut) :: params
+      Real(Kind=wp), Dimension(:), Optional, Target, Intent(In) :: x
+      Real(Kind=wp), Dimension(:), Optional, Target, Intent(Inout) :: f
+      Real (Kind=wp), Dimension(:), Optional, Intent (In) :: weights
+      Logical, Optional, Intent(In) :: check
+      Integer :: m
+      Logical chk
+      Continue
+      ! if check == .True. then copy f and set x, since we don't know yet
+      ! if FD is required...
+      Select Type (params)
+       Type Is(params_internal_type)
+         chk = .True.
+         if (present(check)) chk = check
+         if ( chk .And. params%fd_type == 'N') return
+         if (present(x)) params%x => x ! Point to interate
+         if (present(f)) then
+            m = params%m
+            if (present(weights)) then
+               params%f(1:m) = f(1:m)/weights(1:m) ! Copy and reverse scale on residual
+            else
+               params%f(1:m) = f(1:m) ! Copy residual vector
+            endif
+         endif
+      End Select
+   end subroutine iparams_set
 
+   subroutine setup_iparams_type(m, iparams, params, eval_F, eval_J, eval_HF, &
+      inform, options, box_ws, x)
+      Implicit None
+      Integer, Intent(In) :: m
+      Class(params_base_type), Intent(InOut) :: iparams
+      Class(params_base_type), target, Intent(In) :: params
+      procedure( eval_f_type ) :: eval_F
+      procedure( eval_j_type ) :: eval_J
+      procedure( eval_hf_type ) :: eval_HF
+      TYPE( NLLS_inform ), TARGET, INTENT( In ) :: inform
+      TYPE( NLLS_options ), TARGET, INTENT( IN ) :: options
+      TYPE( box_type ), TARGET, INTENT( IN ) :: box_ws
+      Real(Kind=wp), Optional, Target :: x(:)
+      Integer :: status
+      Continue
+!     Encapsulate user-params and call-backs for finite-differences
+      Select Type (iparams)
+       Type Is(params_internal_type)
+         iparams%m = m
+         iparams%user%params => params
+         iparams%user%eval_F => eval_F
+         iparams%user%eval_J => eval_J
+         iparams%user%eval_HF => eval_HF
+         iparams%inform => inform
+         iparams%options => options
+         iparams%box => box_ws
+         iparams%fd_type = 'N'
+         if (present(x)) then
+            iparams%x => x
+         end if
+         if (Allocated(iparams%f_pert)) Deallocate(iparams%f_pert)
+         if (Allocated(iparams%f)) Deallocate(iparams%f)
+         Allocate(iparams%f(m), stat=status)
+         if (status /= 0) then
+            iparams%inform%status = NLLS_ERROR_ALLOCATION
+         end if
+      End Select
+   end subroutine setup_iparams_type
+
+   Subroutine free_iparams_type(iparams)
+      Implicit None
+      Class(params_base_type), Intent(InOut) :: iparams
+      Continue
+      Select Type (iparams)
+       Type Is(params_internal_type)
+         iparams%m = 0
+         iparams%user%params => Null()
+         iparams%user%eval_F => Null()
+         iparams%user%eval_J => Null()
+         iparams%user%eval_HF => Null()
+         iparams%inform => Null()
+         iparams%options => Null()
+         iparams%box => Null()
+         iparams%fd_type = 'N'
+         iparams%x => Null()
+         if (Allocated(iparams%f)) Deallocate(iparams%f)
+         if (Allocated(iparams%f_pert)) Deallocate(iparams%f_pert)
+      End Select
+
+   End Subroutine free_iparams_type
 
 end module ral_nlls_workspaces
