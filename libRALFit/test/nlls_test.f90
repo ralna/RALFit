@@ -1185,6 +1185,8 @@ program nlls_test
      options%maxit = 100
      blx(:) = (/0.0, 0.0/)
      bux(:) = (/0.0, 1.0/)
+     X(1:2) = (/1.0, 0.9236/)
+     options%fd_step = 1.05_wp * options%fd_step
      call solve_basic(X,params,options,status,use_fd=.True.,blx=blx,bux=bux)
      oki = abs(x(1) - 0.0) <= 1.e-6 .And. abs(x(2)-0.923618046017) < 1.e-6
      write(options%out,*) 'Solution (C): ', x(1:n)
