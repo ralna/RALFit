@@ -1160,7 +1160,7 @@ program nlls_test
      write(options%out,*) 'Solution (F): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.3199787042575630E+00, 0.2752509146444680E-01/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wronge solution'
+        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
         no_errors_main = no_errors_main + 1
      end if
 
