@@ -153,7 +153,7 @@ User-supplied function evaluation routines
 ------------------------------------------
 
 In order to evaluate the function, Jacobian and Hessian at a point, the user
-must supply callback functions that perform this operation that the code
+may supply callback functions that perform this operation that the code
 **RALFit** will call internally.
 
 In order to pass user-defined data into the evaluation calls, the parameter
@@ -183,7 +183,7 @@ for a given vector :math:`{\bm x}`. It must have the following signature:
 For evaluating the function :math:`{\bm J} = \nabla  {\bm r} ( {\bm x} )`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A subroutine must be supplied to calculate
+A subroutine may be supplied to calculate
 :math:`{\bm J} = \nabla  {\bm r} ( {\bm x} )` for a given vector
 :math:`{\bm x}`. 
 It must have the following signature:
@@ -202,14 +202,10 @@ It must have the following signature:
 
    :param status: |eval_J_status|
 
-If user does not provide the call-back it may be substituted by ``NULL`` and 
-first order derivatives of the objective function are estimated using finite-differences.
-
-
 For evaluating the function :math:`Hf = \sum_{i=1}^m r_i( {\bm x} )  {\bm W} \nabla^2 r_i( {\bm x} )`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A subroutine must be supplied to calculate
+A subroutine may be supplied to calculate
 :math:`Hf = \sum_{i=1}^m ( {\bm r} )_i \nabla^2 r_i( {\bm x} )` for
 given vectors :math:`{\bm x} \in \mathbb{R}^n` and
 :math:`{\bm r} \in \mathbb{R}^m`; here :math:`( {\bm r} )_i` denotes
@@ -231,8 +227,6 @@ It must have the following signature:
    :param Hf: |eval_Hf_Hf|
 
    :param status: |eval_Hf_status|
-
-If user does not provide the call-back it may be substituted by ``NULL``.
 
 For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
