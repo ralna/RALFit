@@ -265,10 +265,10 @@ Checking and approximating derivatives
 Verifying user-supplied first derivatives matrix
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-One of the most common problems while trying to train a model is having wrong derivatives.
-Writing the derivative call-back function is error-prone and to address this, a derivative
-checker can be activated (set option ``check_derivatives``) for checking the
-derivatives provided by the call-back that evaluates :math:`J=\nabla r(x)`.
+Writing the derivative call-back function can be error-prone, and incorrect derivatives are 
+one of the most frequent reasons for lack of convergence.
+To address this, setting the option ``check_derivatives`` activates a checker for the
+the call-back that evaluates :math:`J=\nabla r(x)`.
 The checker produces a table similar to
 
 .. code::
