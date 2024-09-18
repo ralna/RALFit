@@ -314,7 +314,7 @@ The option ``derivative_test_tol`` is involved in defining the relative toleranc
 derivative is correct, a smaller value implies a more stringent test.
 
 Under certain circumstances the checker may signal false-positives, tweaking the options ``finite_difference_step``
-and ``derivative_test_tol`` can help from this to happen.
+and ``derivative_test_tol`` guard against this happening.
 
 .. Note::
 
