@@ -291,7 +291,7 @@ The checker produces a table similar to
     End Derivative Checker
 
 
-The reported table has few sections. The initial line indicates the storage option set for the Jacobian matrix.
+The initial line indicates the storage option set for the Jacobian matrix.
 The first column after the equal sign (``=``), is the derivative returned by the user-supplied call-back, the column
 after the ``~`` sign is the approximated finite-difference derivative, the value inside the brackets is the relative
 threshold
