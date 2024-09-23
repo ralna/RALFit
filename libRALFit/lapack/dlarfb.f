@@ -2,25 +2,25 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DLARFB + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlarfb.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlarfb.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlarfb.f"> 
+*> Download DLARFB + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlarfb.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlarfb.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlarfb.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       SUBROUTINE DLARFB( SIDE, TRANS, DIRECT, STOREV, M, N, K, V, LDV,
 *                          T, LDT, C, LDC, WORK, LDWORK )
-* 
+*
 *       .. Scalar Arguments ..
 *       CHARACTER          DIRECT, SIDE, STOREV, TRANS
 *       INTEGER            K, LDC, LDT, LDV, LDWORK, M, N
@@ -29,7 +29,7 @@
 *       DOUBLE PRECISION   C( LDC, * ), T( LDT, * ), V( LDV, * ),
 *      $                   WORK( LDWORK, * )
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -92,6 +92,8 @@
 *>          K is INTEGER
 *>          The order of the matrix T (= the number of elementary
 *>          reflectors whose product defines the block reflector).
+*>          If SIDE = 'L', M >= K >= 0;
+*>          if SIDE = 'R', N >= K >= 0.
 *> \endverbatim
 *>
 *> \param[in] V
@@ -154,14 +156,12 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date June 2013
-*
-*> \ingroup doubleOTHERauxiliary
+*> \ingroup larfb
 *
 *> \par Further Details:
 *  =====================
@@ -170,9 +170,8 @@
 *>
 *>  The shape of the matrix V and the storage of the vectors which define
 *>  the H(i) is best illustrated by the following example with n = 5 and
-*>  k = 3. The elements equal to 1 are not stored; the corresponding
-*>  array elements are modified but restored on exit. The rest of the
-*>  array is not used.
+*>  k = 3. The triangular part of V (including its diagonal) is not
+*>  referenced.
 *>
 *>  DIRECT = 'F' and STOREV = 'C':         DIRECT = 'F' and STOREV = 'R':
 *>
@@ -192,13 +191,13 @@
 *> \endverbatim
 *>
 *  =====================================================================
-      SUBROUTINE DLARFB( SIDE, TRANS, DIRECT, STOREV, M, N, K, V, LDV,
+      SUBROUTINE DLARFB( SIDE, TRANS, DIRECT, STOREV, M, N, K, V,
+     $                   LDV,
      $                   T, LDT, C, LDC, WORK, LDWORK )
 *
-*  -- LAPACK auxiliary routine (version 3.5.0) --
+*  -- LAPACK auxiliary routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     June 2013
 *
 *     .. Scalar Arguments ..
       CHARACTER          DIRECT, SIDE, STOREV, TRANS
@@ -262,7 +261,8 @@
 *
 *              W := W * V1
 *
-               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit', N,
+               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit',
+     $                     N,
      $                     K, ONE, V, LDV, WORK, LDWORK )
                IF( M.GT.K ) THEN
 *
@@ -275,7 +275,8 @@
 *
 *              W := W * T**T  or  W * T
 *
-               CALL DTRMM( 'Right', 'Upper', TRANST, 'Non-unit', N, K,
+               CALL DTRMM( 'Right', 'Upper', TRANST, 'Non-unit', N,
+     $                     K,
      $                     ONE, T, LDT, WORK, LDWORK )
 *
 *              C := C - V * W**T
@@ -291,7 +292,8 @@
 *
 *              W := W * V1**T
 *
-               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', N, K,
+               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', N,
+     $                     K,
      $                     ONE, V, LDV, WORK, LDWORK )
 *
 *              C1 := C1 - W**T
@@ -316,13 +318,15 @@
 *
 *              W := W * V1
 *
-               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit', M,
+               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit',
+     $                     M,
      $                     K, ONE, V, LDV, WORK, LDWORK )
                IF( N.GT.K ) THEN
 *
 *                 W := W + C2 * V2
 *
-                  CALL DGEMM( 'No transpose', 'No transpose', M, K, N-K,
+                  CALL DGEMM( 'No transpose', 'No transpose', M, K,
+     $                        N-K,
      $                        ONE, C( 1, K+1 ), LDC, V( K+1, 1 ), LDV,
      $                        ONE, WORK, LDWORK )
                END IF
@@ -345,7 +349,8 @@
 *
 *              W := W * V1**T
 *
-               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', M, K,
+               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', M,
+     $                     K,
      $                     ONE, V, LDV, WORK, LDWORK )
 *
 *              C1 := C1 - W
@@ -373,12 +378,14 @@
 *              W := C2**T
 *
                DO 70 J = 1, K
-                  CALL DCOPY( N, C( M-K+J, 1 ), LDC, WORK( 1, J ), 1 )
+                  CALL DCOPY( N, C( M-K+J, 1 ), LDC, WORK( 1, J ),
+     $                        1 )
    70          CONTINUE
 *
 *              W := W * V2
 *
-               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit', N,
+               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit',
+     $                     N,
      $                     K, ONE, V( M-K+1, 1 ), LDV, WORK, LDWORK )
                IF( M.GT.K ) THEN
 *
@@ -390,7 +397,8 @@
 *
 *              W := W * T**T  or  W * T
 *
-               CALL DTRMM( 'Right', 'Lower', TRANST, 'Non-unit', N, K,
+               CALL DTRMM( 'Right', 'Lower', TRANST, 'Non-unit', N,
+     $                     K,
      $                     ONE, T, LDT, WORK, LDWORK )
 *
 *              C := C - V * W**T
@@ -405,7 +413,8 @@
 *
 *              W := W * V2**T
 *
-               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', N, K,
+               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', N,
+     $                     K,
      $                     ONE, V( M-K+1, 1 ), LDV, WORK, LDWORK )
 *
 *              C2 := C2 - W**T
@@ -430,13 +439,15 @@
 *
 *              W := W * V2
 *
-               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit', M,
+               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit',
+     $                     M,
      $                     K, ONE, V( N-K+1, 1 ), LDV, WORK, LDWORK )
                IF( N.GT.K ) THEN
 *
 *                 W := W + C1 * V1
 *
-                  CALL DGEMM( 'No transpose', 'No transpose', M, K, N-K,
+                  CALL DGEMM( 'No transpose', 'No transpose', M, K,
+     $                        N-K,
      $                        ONE, C, LDC, V, LDV, ONE, WORK, LDWORK )
                END IF
 *
@@ -457,7 +468,8 @@
 *
 *              W := W * V2**T
 *
-               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', M, K,
+               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', M,
+     $                     K,
      $                     ONE, V( N-K+1, 1 ), LDV, WORK, LDWORK )
 *
 *              C2 := C2 - W
@@ -492,20 +504,23 @@
 *
 *              W := W * V1**T
 *
-               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', N, K,
+               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', N,
+     $                     K,
      $                     ONE, V, LDV, WORK, LDWORK )
                IF( M.GT.K ) THEN
 *
 *                 W := W + C2**T * V2**T
 *
-                  CALL DGEMM( 'Transpose', 'Transpose', N, K, M-K, ONE,
+                  CALL DGEMM( 'Transpose', 'Transpose', N, K, M-K,
+     $                        ONE,
      $                        C( K+1, 1 ), LDC, V( 1, K+1 ), LDV, ONE,
      $                        WORK, LDWORK )
                END IF
 *
 *              W := W * T**T  or  W * T
 *
-               CALL DTRMM( 'Right', 'Upper', TRANST, 'Non-unit', N, K,
+               CALL DTRMM( 'Right', 'Upper', TRANST, 'Non-unit', N,
+     $                     K,
      $                     ONE, T, LDT, WORK, LDWORK )
 *
 *              C := C - V**T * W**T
@@ -514,14 +529,16 @@
 *
 *                 C2 := C2 - V2**T * W**T
 *
-                  CALL DGEMM( 'Transpose', 'Transpose', M-K, N, K, -ONE,
+                  CALL DGEMM( 'Transpose', 'Transpose', M-K, N, K,
+     $                        -ONE,
      $                        V( 1, K+1 ), LDV, WORK, LDWORK, ONE,
      $                        C( K+1, 1 ), LDC )
                END IF
 *
 *              W := W * V1
 *
-               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit', N,
+               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit',
+     $                     N,
      $                     K, ONE, V, LDV, WORK, LDWORK )
 *
 *              C1 := C1 - W**T
@@ -546,7 +563,8 @@
 *
 *              W := W * V1**T
 *
-               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', M, K,
+               CALL DTRMM( 'Right', 'Upper', 'Transpose', 'Unit', M,
+     $                     K,
      $                     ONE, V, LDV, WORK, LDWORK )
                IF( N.GT.K ) THEN
 *
@@ -568,14 +586,16 @@
 *
 *                 C2 := C2 - W * V2
 *
-                  CALL DGEMM( 'No transpose', 'No transpose', M, N-K, K,
+                  CALL DGEMM( 'No transpose', 'No transpose', M, N-K,
+     $                        K,
      $                        -ONE, WORK, LDWORK, V( 1, K+1 ), LDV, ONE,
      $                        C( 1, K+1 ), LDC )
                END IF
 *
 *              W := W * V1
 *
-               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit', M,
+               CALL DTRMM( 'Right', 'Upper', 'No transpose', 'Unit',
+     $                     M,
      $                     K, ONE, V, LDV, WORK, LDWORK )
 *
 *              C1 := C1 - W
@@ -603,24 +623,28 @@
 *              W := C2**T
 *
                DO 190 J = 1, K
-                  CALL DCOPY( N, C( M-K+J, 1 ), LDC, WORK( 1, J ), 1 )
+                  CALL DCOPY( N, C( M-K+J, 1 ), LDC, WORK( 1, J ),
+     $                        1 )
   190          CONTINUE
 *
 *              W := W * V2**T
 *
-               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', N, K,
+               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', N,
+     $                     K,
      $                     ONE, V( 1, M-K+1 ), LDV, WORK, LDWORK )
                IF( M.GT.K ) THEN
 *
 *                 W := W + C1**T * V1**T
 *
-                  CALL DGEMM( 'Transpose', 'Transpose', N, K, M-K, ONE,
+                  CALL DGEMM( 'Transpose', 'Transpose', N, K, M-K,
+     $                        ONE,
      $                        C, LDC, V, LDV, ONE, WORK, LDWORK )
                END IF
 *
 *              W := W * T**T  or  W * T
 *
-               CALL DTRMM( 'Right', 'Lower', TRANST, 'Non-unit', N, K,
+               CALL DTRMM( 'Right', 'Lower', TRANST, 'Non-unit', N,
+     $                     K,
      $                     ONE, T, LDT, WORK, LDWORK )
 *
 *              C := C - V**T * W**T
@@ -629,13 +653,15 @@
 *
 *                 C1 := C1 - V1**T * W**T
 *
-                  CALL DGEMM( 'Transpose', 'Transpose', M-K, N, K, -ONE,
+                  CALL DGEMM( 'Transpose', 'Transpose', M-K, N, K,
+     $                        -ONE,
      $                        V, LDV, WORK, LDWORK, ONE, C, LDC )
                END IF
 *
 *              W := W * V2
 *
-               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit', N,
+               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit',
+     $                     N,
      $                     K, ONE, V( 1, M-K+1 ), LDV, WORK, LDWORK )
 *
 *              C2 := C2 - W**T
@@ -660,7 +686,8 @@
 *
 *              W := W * V2**T
 *
-               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', M, K,
+               CALL DTRMM( 'Right', 'Lower', 'Transpose', 'Unit', M,
+     $                     K,
      $                     ONE, V( 1, N-K+1 ), LDV, WORK, LDWORK )
                IF( N.GT.K ) THEN
 *
@@ -681,13 +708,15 @@
 *
 *                 C1 := C1 - W * V1
 *
-                  CALL DGEMM( 'No transpose', 'No transpose', M, N-K, K,
+                  CALL DGEMM( 'No transpose', 'No transpose', M, N-K,
+     $                        K,
      $                        -ONE, WORK, LDWORK, V, LDV, ONE, C, LDC )
                END IF
 *
 *              W := W * V2
 *
-               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit', M,
+               CALL DTRMM( 'Right', 'Lower', 'No transpose', 'Unit',
+     $                     M,
      $                     K, ONE, V( 1, N-K+1 ), LDV, WORK, LDWORK )
 *
 *              C1 := C1 - W

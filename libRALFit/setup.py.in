@@ -5,7 +5,7 @@ ral_nlls_module = Extension(
         'ral_nlls',
         sources = ['${CMAKE_CURRENT_SOURCE_DIR}/src/ral_nlls_pyiface.c'],
         libraries = ['ral_nlls','${LIBS}'],
-        library_dirs = ['${CMAKE_CURRENT_BINARY_DIR}/src/'],
+        library_dirs = ['${CMAKE_CURRENT_BINARY_DIR}/src/','${CMAKE_CURRENT_BINARY_DIR}/lapack'],
         extra_compile_args = ['-std=c99'],
         include_dirs = ['${CMAKE_CURRENT_SOURCE_DIR}/include/',np.get_include()],
         )

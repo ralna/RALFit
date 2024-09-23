@@ -2,7 +2,8 @@
 # All rights reserved.
 # build instructions for test codes
 
-add_executable (nlls_f90_test nlls_test.f90 example_module.f90 )
+add_executable (nlls_f90_test unit_test_mod.F90 nlls_test.F90 )
+set_source_files_properties(unit_test_mod.F90 PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
 target_link_libraries(nlls_f90_test ral_nlls -lm)
 
 add_executable (cdriver cdriver.c)

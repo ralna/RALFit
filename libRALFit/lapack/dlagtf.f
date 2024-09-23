@@ -2,24 +2,24 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DLAGTF + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlagtf.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlagtf.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlagtf.f"> 
+*> Download DLAGTF + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlagtf.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlagtf.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlagtf.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       SUBROUTINE DLAGTF( N, A, LAMBDA, B, C, TOL, D, IN, INFO )
-* 
+*
 *       .. Scalar Arguments ..
 *       INTEGER            INFO, N
 *       DOUBLE PRECISION   LAMBDA, TOL
@@ -28,7 +28,7 @@
 *       INTEGER            IN( * )
 *       DOUBLE PRECISION   A( * ), B( * ), C( * ), D( * )
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -125,7 +125,7 @@
 *>          then IN(k) = 1, otherwise IN(k) = 0. The element IN(n)
 *>          returns the smallest positive integer j such that
 *>
-*>             abs( u(j,j) ).le. norm( (T - lambda*I)(j) )*TOL,
+*>             abs( u(j,j) ) <= norm( (T - lambda*I)(j) )*TOL,
 *>
 *>          where norm( A(j) ) denotes the sum of the absolute values of
 *>          the jth row of the matrix A. If no such j exists then IN(n)
@@ -137,29 +137,26 @@
 *> \param[out] INFO
 *> \verbatim
 *>          INFO is INTEGER
-*>          = 0   : successful exit
-*>          .lt. 0: if INFO = -k, the kth argument had an illegal value
+*>          = 0:  successful exit
+*>          < 0:  if INFO = -k, the kth argument had an illegal value
 *> \endverbatim
 *
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date September 2012
-*
-*> \ingroup auxOTHERcomputational
+*> \ingroup lagtf
 *
 *  =====================================================================
       SUBROUTINE DLAGTF( N, A, LAMBDA, B, C, TOL, D, IN, INFO )
 *
-*  -- LAPACK computational routine (version 3.4.2) --
+*  -- LAPACK computational routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     September 2012
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, N
