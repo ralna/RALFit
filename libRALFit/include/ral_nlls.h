@@ -157,7 +157,7 @@ struct PREC(ral_nlls_inform) {
 };
 
 /* Set default values of options */
-void PREC(ral_nlls_default_options)( struct ral_nlls_options_d *options );
+void PREC(ral_nlls_default_options)( struct ral_nlls_options *options );
 
 /* define the eval_f_type */
 typedef ral_int (*ral_nlls_eval_r_type) (
