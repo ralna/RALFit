@@ -38,8 +38,9 @@ Subroutine check_resvec(c, f, atol, reltol, prn, Ok)
     Integer :: i, l
     Real(Kind=wp) :: nrm2, rnrmi, dif, rdif, rtol
     Character (Len=4) :: flag2, flagi
+    Logical :: oki
     Continue
-    Ok = .False.
+    Oki = .False.
     flag2 = "IGN "
     flagi = "IGN "
     rtol = -1.0_wp
@@ -62,14 +63,14 @@ Subroutine check_resvec(c, f, atol, reltol, prn, Ok)
 
     ! Check if norm2 of the difference is less than the absolute tolerance
     If (atol >= 0.0_wp) Then
-        ok = nrm2 <= atol
-        flag2 = merge("PASS", "FAIL", Ok)
+        oki = nrm2 <= atol
+        flag2 = merge("PASS", "FAIL", Oki)
     End If
   
     ! Check if relative norm-inf of the difference is less than the relative tolerance
-    If (.Not. Ok .And. rtol >= 0.0_wp) Then
-        ok = rnrmi <= rtol
-        flagi = merge("PASS", "FAIL", ok)
+    If (.Not. Oki .And. rtol >= 0.0_wp) Then
+        oki = rnrmi <= rtol
+        flagi = merge("PASS", "FAIL", oki)
     End If
 
     If (present(prn)) Then
@@ -84,6 +85,10 @@ Subroutine check_resvec(c, f, atol, reltol, prn, Ok)
                 Abs(c(i) - f(i)) / Max(1.0_wp, Abs(c(i)))
         End Do
     End If
+    End If
+
+    If (present(Ok)) Then
+        Ok = Oki
     End If
 
 9999 Format (1X, A, Es16.8e3, 2X, "(", Es9.2e2, ")", 2X, A)
