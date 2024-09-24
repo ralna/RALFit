@@ -5,7 +5,7 @@
 !
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 ! For parameters x_1 and x_2, and input data (t_i, y_i)
-module fndef_example
+module fndef_example2
 
 #if SINGLE_PRECISION
    use ral_nlls_single
@@ -122,10 +122,10 @@ contains
       status = 0 ! Success
     end subroutine eval_HP
 
-end module fndef_example
+end module fndef_example2
 
 program nlls_example2
-   use fndef_example
+   use fndef_example2
    implicit none
 
    type(nlls_options) :: options

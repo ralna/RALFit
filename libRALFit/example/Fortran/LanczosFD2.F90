@@ -13,7 +13,7 @@
 ! next call only the exact jacobian is returned and this regime is repeated
 ! until conversion.
 
-module lanczos_module_fd
+module lanczos_module_fd2
 
 #if SINGLE_PRECISION
    use ral_nlls_single
@@ -108,11 +108,11 @@ contains
 
    end subroutine eval_J
 
-end module lanczos_module_fd
+end module lanczos_module_fd2
 
-program lanczos_fd
+program lanczos_fd2
 
-   use lanczos_module_fd
+   use lanczos_module_fd2
 
    implicit none
 
@@ -266,4 +266,4 @@ program lanczos_fd
 
 99999 Format (5X,I3,1X,2(Es13.6e2,2X),A4)
 99998 Format (5X,A3,1X,2(A13,2X))
-end program lanczos_fd
+end program lanczos_fd2

@@ -6,7 +6,7 @@
 ! examples/Fortran/Lanczos.f90
 ! STP to test that initial point is solution.
 
-module lanczos_module
+module stp_x0sol_module
 
 #if SINGLE_PRECISION
    use ral_nlls_single
@@ -128,12 +128,12 @@ contains
     end subroutine eval_HP
 
 
-end module lanczos_module
+end module stp_x0sol_module
 
 
-program lanczos
+program stp_x0sol
 
-  use lanczos_module
+  use stp_x0sol_module
 
   implicit none
 
@@ -246,4 +246,4 @@ program lanczos
   If (Allocated(params%y)) Deallocate(params%y)
 
   Stop merge(0, 7, ok)
-end program lanczos
+end program stp_x0sol

@@ -29,6 +29,9 @@ endif(SUPPRESS_INTERNAL_FIXMES)
 
 add_library (ral_nlls-static STATIC ${source_files})
 add_library (ral_nlls SHARED ${source_files})
+# Allow parallel builds
+add_dependencies(ral_nlls ral_nlls-static)
+
 
 target_link_libraries(ral_nlls ${LIBS} m ${CMAKE_DL_LIBS})
 target_include_directories(ral_nlls PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/src)
