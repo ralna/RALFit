@@ -238,7 +238,7 @@ contains
     logical :: success
     character :: second
     integer :: num_successful_steps
-    integer :: nrec, ierr_dummy
+    integer :: nrec
     integer :: eval_f_status, eval_J_status
     Character(Len=220) :: rec(3)
     Character(Len=1) :: it_type, inn_flag
