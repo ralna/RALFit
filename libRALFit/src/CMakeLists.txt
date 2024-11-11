@@ -23,8 +23,6 @@ if (SUPPRESS_INTERNAL_FIXMES)
 message(AUTHOR_WARNING "Suppressing known compiler warnings for some source files")
 # False positives
 set_source_files_properties(ral_nlls_internal.F90 PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-variable -Wno-unused-dummy-argument>")
-# Warning: ‘dtrs_theta_derivs’ defined but not used [-Wunused-function]
-set_source_files_properties(ral_nlls_dtrs.F90 PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-function>")
 endif(SUPPRESS_INTERNAL_FIXMES)
 
 add_library (ral_nlls-static STATIC ${source_files})

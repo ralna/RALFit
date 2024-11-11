@@ -138,6 +138,7 @@ program lanczos_fd
    options%regularization_power = 2.0
    options%reg_order = -1.0
    options%inner_method = 2
+   options%maxit = 1000
 
    if (wp == lp) then
       ! Start solver closer to the expected solution when using low precision

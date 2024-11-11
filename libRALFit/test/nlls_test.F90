@@ -1179,29 +1179,30 @@ program nlls_test
      write(options%out,*) 'Solution (F): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.319978704257563_wp, 0.2752509146444680E-1_wp/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wronge solution'
+        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
         no_errors_main = no_errors_main + 1
      end if
 
      ! Solve the problem using FD (C storage)
      options%Fortran_Jacobian = .False.
-     options%print_level = 0
+     options%print_level = 3
      call solve_basic(X,params,options,status,use_fd=.True.)
      oki = abs(x(1) - 0.3199787) <= tol .And. abs(x(2)-0.02752509) < tol
      write(options%out,*) 'Solution (C): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.3199787042575630E+00, 0.2752509146444680E-01/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wronge solution'
+        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
         no_errors_main = no_errors_main + 1
      end if
 
      ! Solve with one fixed variable
      options%Fortran_Jacobian = .False.
-     options%print_level = 0
+     options%print_options = .True.
      blx(:) = (/0.0, 0.0/)
      bux(:) = (/0.0, 1.0/)
      if (wp == np) then
         tol = 1.e-6_wp
+        ! options%box_gamma = 0.99999_wp
      else
         ! Relax tolerance for lower precision
         tol = 2e-3_wp
@@ -1210,10 +1211,17 @@ program nlls_test
      oki = x(1) == 0.0 .And. abs(x(2)-0.923618046017) < tol
      write(options%out,*) 'Solution (C): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.0, 0.92361804601/)
+     write(options%out,*) 'DIFF: ', abs(x(2)-0.92361804601), '(',tol,')'
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve 3: unexpected status value or wronge solution'
+        write(*,*) 'Error: FD solve 3: unexpected status value or wrong solution'
+        write(*,*) '       status = ', status%status, "(expected 0)"
+        write(*,*) '       Solution (C): ', x(1:n)
+        write(*,*) '       Expected: ', (/0.0, 0.92361804601/)
+        write(*,*) '       DIFF: ', abs(x(2)-0.92361804601), '(',tol,')'
         no_errors_main = no_errors_main + 1
      end if
+
+     Call reset_default_options(options)
 
      ! Solve with one active variable
      options%Fortran_Jacobian = .True.
@@ -1235,7 +1243,7 @@ program nlls_test
      write(options%out,*) 'Solution (F): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.32, 2.7447762174312485E-2/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wronge solution'
+        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
         no_errors_main = no_errors_main + 1
      end if
 

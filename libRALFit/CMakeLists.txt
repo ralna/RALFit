@@ -36,6 +36,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   # set the test coverage switch
   set(TestCoverage On)
   set(CMAKE_EXPORT_COMPILE_COMMANDS On)
+  # set( CMAKE_VERBOSE_MAKEFILE on ) # Caller can set this
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
   message("WARNING: Profile version - not to be used in production code.")
 endif()
@@ -47,7 +48,6 @@ set(CMAKE_C_STANDARD 99) # SET -std=c99
 set(CMAKE_Fortran_PREPROCESS ON)
 
 if(TestCoverage)
-   set( CMAKE_VERBOSE_MAKEFILE on )
    INCLUDE(CodeCoverage)
    set(CMAKE_C_FLAGS_DEBUG "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
    set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")

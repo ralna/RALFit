@@ -1695,62 +1695,6 @@
 
       END SUBROUTINE DTRS_pi_derivs
 
-!-*-*-*-*-*  D T R S _ T H E T A _ D E R I V S   S U B R O U T I N E   *-*-*-*-
-
-      SUBROUTINE DTRS_theta_derivs( max_order, beta, lambda, sigma,            &
-                                     theta_beta )
-
-! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-!
-!  Compute theta_beta = (lambda/sigma)^beta and its derivatives
-!
-!  Arguments:
-!  =========
-!
-!  Input -
-!   max_order - maximum order of derivative
-!   beta - power
-!   lambda, sigma - lambda and sigma
-!  Output -
-!   theta_beta - (0) value of (lambda/sigma)^beta,
-!             (i) ith derivative of (lambda/sigma)^beta, i = 1, max_order
-!
-!  Extracted wholesale from module RAL_NLLS_RQS
-!
-! =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-!-----------------------------------------------
-!   D u m m y   A r g u m e n t s
-!-----------------------------------------------
-
-      INTEGER, INTENT( IN ) :: max_order
-      REAL ( KIND = wp ), INTENT( IN ) :: beta, lambda, sigma
-      REAL ( KIND = wp ), INTENT( OUT ) :: theta_beta( 0 : max_order )
-
-!-----------------------------------------------
-!   L o c a l   V a r i a b l e
-!-----------------------------------------------
-
-      REAL ( KIND = wp ) :: los, oos
-
-      los = lambda / sigma
-      oos = one / sigma
-
-      theta_beta( 0 ) = los ** beta
-      theta_beta( 1 ) = beta * ( los ** ( beta - one ) ) * oos
-      IF ( max_order == 1 ) RETURN
-      theta_beta( 2 ) = beta * ( los ** ( beta - two ) ) *                    &
-                        ( beta - one ) * oos ** 2
-      IF ( max_order == 2 ) RETURN
-      theta_beta( 3 ) = beta * ( los ** ( beta - three ) ) *                  &
-                        ( beta - one ) * ( beta - two ) * oos ** 3
-
-      RETURN
-
-!  End of subroutine DTRS_theta_derivs
-
-      END SUBROUTINE DTRS_theta_derivs
-
 !-*-*-*-*-  G A L A H A D   T W O  _ N O R M   F U N C T I O N   -*-*-*-*-
 
        FUNCTION TWO_NORM( X )
