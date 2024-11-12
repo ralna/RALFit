@@ -9,7 +9,9 @@
 
 module MODULE_PREC(ral_nlls_workspaces)
 
-  Use MODULE_PREC(ral_nlls_types), Only: wp, np, lp
+  Use MODULE_PREC(ral_nlls_types), Only: wp, np, lp, params_base_type,         &
+                                         eval_f_type, eval_j_type,             &
+                                         eval_hf_type, eval_hp_type
 
   implicit none
 
@@ -518,59 +520,6 @@ module MODULE_PREC(ral_nlls_workspaces)
 
   END TYPE nlls_inform
 
-  type, public :: params_base_type
-     ! deliberately empty
-  end type params_base_type
-
-  abstract interface
-     subroutine eval_f_type(status, n, m, x, f, params)
-       import :: wp,params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       Real(Kind=wp), dimension(*), intent(in)  :: x
-       Real(Kind=wp), dimension(*), intent(out) :: f
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_f_type
-  end interface
-
-  abstract interface
-     subroutine eval_j_type(status, n, m, x, J, params)
-       import :: wp,params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       Real(Kind=wp), dimension(*), intent(in)  :: x
-       Real(Kind=wp), dimension(*), intent(out) :: J
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_j_type
-  end interface
-  abstract interface
-     subroutine eval_hf_type(status, n, m, x, f, h, params)
-       import :: wp,params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       Real(Kind=wp), dimension(*), intent(in)  :: x
-       Real(Kind=wp), dimension(*), intent(in)  :: f
-       Real(Kind=wp), dimension(*), intent(out) :: h
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_hf_type
-  end interface
-
-  abstract interface
-     subroutine eval_hp_type(status, n, m, x, y, hp, params)
-       import :: wp,params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       Real(Kind=wp), dimension(*), intent(in)  :: x
-       Real(Kind=wp), dimension(*), intent(in)  :: y
-       Real(Kind=wp), dimension(*), intent(out) :: hp
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_hp_type
-  end interface
-
   type, extends( params_base_type ), public :: tensor_params_type
      real(wp), dimension(:), allocatable :: f
      real(wp), dimension(:), allocatable :: x
@@ -782,6 +731,8 @@ module MODULE_PREC(ral_nlls_workspaces)
   end type NLLS_workspace
 
   public :: lp, np, wp
+  Public :: params_base_type
+  Public :: eval_f_type, eval_j_type, eval_hf_type, eval_hp_type
   public :: setup_workspaces, remove_workspaces
   public :: setup_workspace_dogleg, setup_workspace_AINT_tr
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad

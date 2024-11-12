@@ -29,7 +29,8 @@
 module MODULE_PREC(ral_nlls_fd)
 
    Use MODULE_PREC(ral_nlls_workspaces), Only : params_base_type, params_internal_type,     &
-      nlls_options, nlls_inform, nlls_workspace, wp, box_type
+      nlls_options, nlls_inform, nlls_workspace, wp, box_type, eval_f_type, eval_j_type,    &
+      eval_hf_type, eval_hp_type
    Use MODULE_PREC(ral_nlls_types), Only : prn_minf, prn_pinf, prn_small
 
    Implicit None
@@ -41,56 +42,6 @@ module MODULE_PREC(ral_nlls_fd)
    Public :: ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy
 
    Private
-
-   abstract interface
-      subroutine eval_f_type(status, n, m, x, f, params)
-         import :: wp,params_base_type
-         implicit none
-         integer, intent(out) :: status
-         integer, intent(in) :: n,m
-         Real(Kind=wp), dimension(*), intent(in)  :: x
-         Real(Kind=wp), dimension(*), intent(out) :: f
-         class(params_base_type), intent(inout) :: params
-      end subroutine eval_f_type
-   end interface
-
-   abstract interface
-      subroutine eval_j_type(status, n, m, x, J, params)
-         import :: wp,params_base_type
-         implicit none
-         integer, intent(out) :: status
-         integer, intent(in) :: n,m
-         Real(Kind=wp), dimension(*), intent(in)  :: x
-         Real(Kind=wp), dimension(*), intent(out) :: J
-         class(params_base_type), intent(inout) :: params
-      end subroutine eval_j_type
-   end interface
-
-   abstract interface
-      subroutine eval_hf_type(status, n, m, x, f, h, params)
-         import :: wp,params_base_type
-         implicit none
-         integer, intent(out) :: status
-         integer, intent(in) :: n,m
-         Real(Kind=wp), dimension(*), intent(in)  :: x
-         Real(Kind=wp), dimension(*), intent(in)  :: f
-         Real(Kind=wp), dimension(*), intent(out) :: h
-         class(params_base_type), intent(inout) :: params
-      end subroutine eval_hf_type
-   end interface
-
-   abstract interface
-      subroutine eval_hp_type(status, n, m, x, y, hp, params)
-         import :: wp,params_base_type
-         implicit none
-         integer, intent(out) :: status
-         integer, intent(in) :: n,m
-         Real(Kind=wp), dimension(*), intent(in)  :: x
-         Real(Kind=wp), dimension(*), intent(in)  :: y
-         Real(Kind=wp), dimension(*), intent(out) :: hp
-         class(params_base_type), intent(inout) :: params
-      end subroutine eval_hp_type
-   end interface
 
    ! handle
    Type :: jacobian_handle

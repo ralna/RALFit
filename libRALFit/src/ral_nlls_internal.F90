@@ -18,56 +18,6 @@ module MODULE_PREC(ral_nlls_internal)
 
   private
 
-  abstract interface
-     subroutine eval_f_type(status, n, m, x, f, params)
-       import :: wp, params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       real(Kind=wp), dimension(*), intent(in)  :: x
-       real(Kind=wp), dimension(*), intent(out) :: f
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_f_type
-  end interface
-
-  abstract interface
-     subroutine eval_j_type(status, n, m, x, J, params)
-       import :: wp, params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       real(Kind=wp), dimension(*), intent(in)  :: x
-       real(Kind=wp), dimension(*), intent(out) :: J
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_j_type
-  end interface
-
-  abstract interface
-     subroutine eval_hf_type(status, n, m, x, f, h, params)
-       import :: wp, params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       real(Kind=wp), dimension(*), intent(in)  :: x
-       real(Kind=wp), dimension(*), intent(in)  :: f
-       real(Kind=wp), dimension(*), intent(out) :: h
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_hf_type
-  end interface
-
-  abstract interface
-     subroutine eval_hp_type(status, n, m, x, y, hp, params)
-       import :: wp, params_base_type
-       implicit none
-       integer, intent(out) :: status
-       integer, intent(in) :: n,m
-       real(Kind=wp), dimension(*), intent(in)  :: x
-       real(Kind=wp), dimension(*), intent(in)  :: y
-       real(Kind=wp), dimension(*), intent(out) :: hp
-       class(params_base_type), intent(inout) :: params
-     end subroutine eval_hp_type
-  end interface
-
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: solve_galahad, findbeta, mult_j
     public :: mult_jt, matmult_inner
