@@ -3,10 +3,6 @@
 # Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 # Examples build
 
-# lm_example requires GSL libraries!
-#add_executable (lm_example lm_example.c expfit.c)
-#target_link_libraries(lm_example ral_nlls ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
-
 add_executable (nlls_c_example nlls_example.c)
 target_link_libraries(nlls_c_example ral_nlls -lm)
 

@@ -183,7 +183,7 @@ program jacobian
    ! Print result and check solution
    call eval_j(status, n, m, x, j_exp, params)
    if (status /= 0) then
-      print *, 'Problem while calling eval_f'
+      print *, 'Problem while calling eval_j'
       goto 100
    endif
 
