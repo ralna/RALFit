@@ -15,22 +15,16 @@ extern "C" {
 #ifndef ral_real
 #ifdef SINGLE_PRECISION
    #define ral_real float
-   #define PREC(fn) fn ## _s
 #else
    #define ral_real double
-   #define PREC(fn) fn ## _d
 #endif
 #endif
 
-   // Alias all public objects to selected precision
-   #define ral_nlls_default_options PREC(ral_nlls_default_options)
-   #define ral_nlls_options         PREC(ral_nlls_options)
-   #define ral_nlls_inform          PREC(ral_nlls_inform)
-   #define nlls_solve               PREC(nlls_solve)
-   #define ral_nlls_init_workspace  PREC(ral_nlls_init_workspace)
-   #define ral_nlls_iterate         PREC(ral_nlls_iterate)
-   #define nlls_strerror            PREC(nlls_strerror)
-   #define ral_nlls_free_workspace  PREC(ral_nlls_free_workspace)
+#ifdef SINGLE_PRECISION
+   #define PREC(fn) fn ## _s
+#else
+   #define PREC(fn) fn ## _d
+#endif
 
 #ifndef ral_int
 #ifdef BUILD_ILP64
@@ -157,10 +151,10 @@ struct PREC(ral_nlls_inform) {
 };
 
 /* Set default values of options */
-void PREC(ral_nlls_default_options)( struct ral_nlls_options *options );
+void PREC(ral_nlls_default_options)( struct PREC(ral_nlls_options) *options );
 
 /* define the eval_f_type */
-typedef ral_int (*ral_nlls_eval_r_type) (
+typedef ral_int (PREC(*ral_nlls_eval_r_type)) (
               ral_int n,
               ral_int m,
               void *params,
@@ -169,7 +163,7 @@ typedef ral_int (*ral_nlls_eval_r_type) (
               );
 
 /* define the eval_j_type */
-typedef ral_int (*ral_nlls_eval_j_type) (
+typedef ral_int (PREC(*ral_nlls_eval_j_type)) (
               ral_int n,
               ral_int m,
               void *params,
@@ -178,7 +172,7 @@ typedef ral_int (*ral_nlls_eval_j_type) (
               );
 
 /* define the eval_hf_type */
-typedef ral_int (*ral_nlls_eval_hf_type) (
+typedef ral_int (PREC(*ral_nlls_eval_hf_type)) (
                ral_int n,
                ral_int m,
                void *params,
@@ -188,7 +182,7 @@ typedef ral_int (*ral_nlls_eval_hf_type) (
                );
 
 /* define the eval_hp_type */
-typedef ral_int (*ral_nlls_eval_hp_type) (
+typedef ral_int (PREC(*ral_nlls_eval_hp_type)) (
                ral_int n,
                ral_int m,
                const ral_real *x,
@@ -201,14 +195,14 @@ typedef ral_int (*ral_nlls_eval_hp_type) (
 /* Perform the nlls solve */
   void PREC(nlls_solve)( ral_int n, ral_int m,
 		     ral_real X[],
-		     ral_nlls_eval_r_type eval_r,
-		     ral_nlls_eval_j_type eval_j,
-		     ral_nlls_eval_hf_type eval_hf,
+		     PREC(ral_nlls_eval_r_type),
+		     PREC(ral_nlls_eval_j_type),
+		     PREC(ral_nlls_eval_hf_type),
 		     void const* params,
-		     struct ral_nlls_options const* options,
-		     struct ral_nlls_inform *status,
+		     struct PREC(ral_nlls_options) const* options,
+		     struct PREC(ral_nlls_inform) *status,
 		     ral_real weights[],
-		     ral_nlls_eval_hp_type eval_hp,
+		     PREC(ral_nlls_eval_hp_type),
 		     ral_real lower_bounds[],
 		     ral_real upper_bounds[]
 		     );
@@ -220,24 +214,34 @@ typedef ral_int (*ral_nlls_eval_hp_type) (
 			ral_int m,
 			ral_real X[],
 			void *w,
-			ral_nlls_eval_r_type eval_r,
-			ral_nlls_eval_j_type eval_j,
-			ral_nlls_eval_hf_type eval_hf,
+			PREC(ral_nlls_eval_r_type),
+			PREC(ral_nlls_eval_j_type),
+			PREC(ral_nlls_eval_hf_type),
 			void const* params,
-			struct ral_nlls_options const* options,
-			struct ral_nlls_inform *status,
+			struct PREC(ral_nlls_options) const* options,
+			struct PREC(ral_nlls_inform) *status,
 			ral_real weights[],
-			ral_nlls_eval_hp_type eval_hp,
+			PREC(ral_nlls_eval_hp_type),
 			ral_real lower_bounds[],
 			ral_real upper_bounds[]
 			);
   /* get the error string */
   void PREC(nlls_strerror)(
-		       struct ral_nlls_inform *status,
+		       struct PREC(ral_nlls_inform) *status,
 		       char error_string[81]
 		       );
 /* Free memory from a workspace */
   void PREC(ral_nlls_free_workspace)(void **w);
+
+// Alias all public objects to selected precision
+#define ral_nlls_default_options PREC(ral_nlls_default_options)
+#define ral_nlls_options         PREC(ral_nlls_options)
+#define ral_nlls_inform          PREC(ral_nlls_inform)
+#define nlls_solve               PREC(nlls_solve)
+#define ral_nlls_init_workspace  PREC(ral_nlls_init_workspace)
+#define ral_nlls_iterate         PREC(ral_nlls_iterate)
+#define nlls_strerror            PREC(nlls_strerror)
+#define ral_nlls_free_workspace  PREC(ral_nlls_free_workspace)
 
 #endif
 

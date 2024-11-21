@@ -403,27 +403,27 @@
             Write (rec(nrec),Fmt=99996) 'Iteration count               ', tot
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    Trust region step         ',      &
-              inform%iter, 100.0_wp*inform%iter/tot
+              inform%iter, 100.0_wp*real(inform%iter)/real(tot)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    LS step                   ',      &
-              inform%ls_step_iter, 100.0_wp*inform%ls_step_iter/tot
+              inform%ls_step_iter, 100.0_wp*real(inform%ls_step_iter)/real(tot)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
-              inform%pg_step_iter, 100.0_wp*inform%pg_step_iter/tot
+              inform%pg_step_iter, 100.0_wp*real(inform%pg_step_iter)/real(tot)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99996) 'Function evaluations          ',      &
               inform%f_eval
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    Trust region step         ',      &
               inform%f_eval - inform%f_eval_ls - inform%f_eval_pg,             &
-              100.0_wp*(inform%f_eval-inform%f_eval_ls-inform%f_eval_pg)/      &
-              inform%f_eval
+              100.0_wp*real(inform%f_eval-inform%f_eval_ls-inform%f_eval_pg)/  &
+              real(inform%f_eval)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    LS step                   ',      &
-              inform%f_eval_ls, 100.0_wp*real(inform%f_eval_ls)/inform%f_eval
+              inform%f_eval_ls, 100.0_wp*real(inform%f_eval_ls)/real(inform%f_eval)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
-              inform%f_eval_pg, 100.0_wp*real(inform%f_eval_pg)/inform%f_eval
+              inform%f_eval_pg, 100.0_wp*real(inform%f_eval_pg)/real(inform%f_eval)
             nrec = nrec + 1
             If (inform%fd_f_eval == 0) Then
               Write (rec(nrec),Fmt=99996) 'Gradient evaluations          ',    &
@@ -435,14 +435,14 @@
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    Trust region step         ',      &
               inform%g_eval - inform%g_eval_ls - inform%g_eval_pg,             &
-              100.0_wp*(inform%g_eval-inform%g_eval_ls-inform%g_eval_pg)/      &
-              inform%g_eval
+              100.0_wp*real(inform%g_eval-inform%g_eval_ls-inform%g_eval_pg)/  &
+              real(inform%g_eval)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    LS step                   ',      &
-              inform%g_eval_ls, 100.0_wp*real(inform%g_eval_ls)/inform%g_eval
+              inform%g_eval_ls, 100.0_wp*real(inform%g_eval_ls)/real(inform%g_eval)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99995) '    PG step                   ',      &
-              inform%g_eval_pg, 100.0_wp*real(inform%g_eval_pg)/inform%g_eval
+              inform%g_eval_pg, 100.0_wp*real(inform%g_eval_pg)/real(inform%g_eval)
             nrec = nrec + 1
             Write (rec(nrec),Fmt=99996) 'Hessian evaluations (eval_hf) ',      &
               inform%h_eval

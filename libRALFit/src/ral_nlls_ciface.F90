@@ -388,7 +388,7 @@ contains
 
   end subroutine c_eval_hp
 
-  integer(ral_c_int) function c_eval_j_dummy(n, m, params, x, j) bind(c)
+  integer(ral_c_int) function IFACE_PREC(c_eval_j_dummy)(n, m, params, x, j) bind(c)
        implicit none
        integer(ral_c_int), value :: n,m
        type(C_PTR), value :: params
@@ -396,10 +396,10 @@ contains
        real(ral_c_real), dimension(*), intent(out) :: j
 
        continue
-       c_eval_j_dummy = -45544554 ! Magic number to request FD
-  end function c_eval_j_dummy
+       IFACE_PREC(c_eval_j_dummy) = -45544554 ! Magic number to request FD
+  end function IFACE_PREC(c_eval_j_dummy)
 
-  integer(ral_c_int) function c_eval_hf_dummy(n, m, params, x, f, hf) bind(c)
+  integer(ral_c_int) function IFACE_PREC(c_eval_hf_dummy)(n, m, params, x, f, hf) bind(c)
        implicit none
        integer(ral_c_int), value :: n,m
        type(C_PTR), value :: params
@@ -407,8 +407,8 @@ contains
        real(ral_c_real), dimension(*), intent(in) :: f
        real(ral_c_real), dimension(*), intent(out) :: hf
        continue
-       c_eval_hf_dummy =  -1023
-  end function c_eval_hf_dummy
+       IFACE_PREC(c_eval_hf_dummy) =  -1023
+  end function IFACE_PREC(c_eval_hf_dummy)
 
 end module MODULE_PREC(ral_nlls_ciface)
 
@@ -542,13 +542,13 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
   if (c_associated(j)) then
     call c_f_procpointer(j, fparams%j)
   else
-    fparams%j => c_eval_j_dummy
+    fparams%j => IFACE_PREC(c_eval_j_dummy)
   end if
 
   if (c_associated(hf)) then
     call c_f_procpointer(hf, fparams%hf)
   else
-    fparams%hf => c_eval_hf_dummy
+    fparams%hf => IFACE_PREC(c_eval_hf_dummy)
   endif
 
   fparams%params = params
