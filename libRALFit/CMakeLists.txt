@@ -2,7 +2,7 @@
 # All rights reserved.
 # Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 # CMake project file for libral_nlls
-cmake_minimum_required (VERSION 3.20)
+cmake_minimum_required (VERSION 3.25)
 
 project (RALFit LANGUAGES Fortran C)
 
