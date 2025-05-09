@@ -70,10 +70,13 @@ int main(void) {
 
    // Call fitting routine
    double x[2] = { 1.0, 1.0 }; // Initial guess
-   double x_exp[2] = {6.914573e-3, 1.0};
+   double x_exp[2] = { 1.5, 3.290225e-01 };
 
-   double lower_bounds[2] = { 0.0, 1.0};
-   double upper_bounds[2] = { 1.0, 10.0};
+   double lower_bounds[2] = { 1.5, 0.2};
+   double upper_bounds[2] = { 1.5, 0.7};
+
+   options.check_derivatives = 1;
+   options.print_level = 1;
 
    struct ral_nlls_inform inform;
 
@@ -99,4 +102,7 @@ int main(void) {
     printf("     %d gradient evaluations\n", inform.g_eval);
   }
   return ok ? 0 : 6;
+
+
+
 }

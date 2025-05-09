@@ -49,3 +49,4 @@ libRALFit/test/comparison_tests/RANGE.f
 *.fdb_latexmk
 /doc/results
 /doc/results2
+/.vscode

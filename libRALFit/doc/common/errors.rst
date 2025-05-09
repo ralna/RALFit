@@ -36,6 +36,10 @@ Possible values are:
       -  Unsupported value of linesearch type (``box_linesearch_type``)
     * - -18
       -  Bad bound constraints (blx <= bux)
+    * - -19
+      -  One or more elements in the Jacobian appear to be wrong
+    * - -20
+      -  Weights vector must be sufficiently positive
     * - -101
       -  Unsupported model in dogleg (``nlls_method=1``).
     * - -201

@@ -1,5 +1,6 @@
 ! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! examples/Fortran/nlls_example.f90
 !
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)
@@ -113,7 +114,7 @@ program nlls_example
    call nlls_solve(n, m, x, eval_r, eval_J, eval_HF, params, options, inform)
    if(inform%status.ne.0) then
       print *, "ral_nlls() returned with error flag ", inform%status
-      stop
+      goto 100
    endif
 
    ! Print result
@@ -122,4 +123,10 @@ program nlls_example
    print *, "     ", inform%f_eval, " function evaluations"
    print *, "     ", inform%g_eval, " gradient evaluations"
    print *, "     ", inform%h_eval, " hessian evaluations"
+
+100 Continue
+
+   if (allocated(x)) deallocate(x)
+   if (allocated(params%t)) deallocate(params%t)
+   if (allocated(params%y)) deallocate(params%y)
 end program nlls_example

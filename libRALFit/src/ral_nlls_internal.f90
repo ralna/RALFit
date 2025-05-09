@@ -1,5 +1,7 @@
 ! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
+! Copyright (C) 2020 Numerical Algorithms Group (NAG). All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! ral_nlls_internal :: internal subroutines for ral_nlls
 
 module ral_nlls_internal
@@ -76,6 +78,7 @@ module ral_nlls_internal
     public :: solve_LLS, shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton, evaltensor_J
+    public :: setup_iparams_type, free_iparams_type
 
 contains
 
@@ -100,17 +103,18 @@ contains
 !                         Jennifer Scott)
 !  -----------------------------------------------------------------------------
     Use nag_export_mod, Only: calculate_covm
+    Use ral_nlls_fd, Only: eval_f_wrap, eval_j_wrap, eval_hf_wrap
 !   Dummy arguments
     implicit none
 
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( NLLS_inform ), INTENT( OUT ) :: inform
-    TYPE( NLLS_options ), INTENT( IN ) :: options
+    TYPE( NLLS_inform ), TARGET, INTENT( OUT ) :: inform
+    TYPE( NLLS_options ), TARGET, INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
     procedure( eval_hf_type ) :: eval_HF
-    class( params_base_type ), intent(inout) :: params
+    class( params_base_type ), target, intent(inout) :: params
     real( wp ), dimension( m ), intent(in), optional :: weights
     procedure( eval_hp_type ), optional :: eval_HP
     real( wp ), dimension( n ), intent(inout), optional :: lower_bounds
@@ -119,8 +123,11 @@ contains
     integer  :: i, nrec
     Character(Len=80) :: rec(3)
 
-    type ( NLLS_workspace ) :: w
+    type ( NLLS_workspace ), target :: w
     Type ( NLLS_workspace ), target :: inner_workspace
+    ! internal envelope params
+    Type ( params_internal_type ) :: iparams
+
 !   Link the inner_workspace to the main workspace
     w%iw_ptr => inner_workspace
 !   Self reference inner workspace so recursive call does not fail
@@ -144,12 +151,16 @@ contains
       Call print_options(options)
     End If
 
+    call setup_iparams_type(m, iparams, params, eval_F, eval_J, eval_HF, &
+            inform, options, w%box_ws, x)
+
     main_loop: do i = 1,options%maxit
-       call nlls_iterate(n, m, X,                                 &
-            w,                                                    &
-            eval_F, eval_J, eval_HF,                              &
-            params,                                               &
-            inform, options, weights=weights,eval_HP=eval_HP,     &
+       call nlls_iterate(n, m, X,                                     &
+            w,                                                        &
+            eval_F_wrap, eval_J_wrap, eval_HF_wrap,                   &
+            iparams,                                                  &
+            inform, options, weights=weights,                         &
+            eval_HP=eval_HP,                                          &
             lower_bounds=lower_bounds, upper_bounds=upper_bounds)
 
        ! test the returns to see if we've converged
@@ -175,6 +186,8 @@ contains
        call calculate_covm(m, n, w%j, inform, options, options%save_covm)
      end if
 
+     ! Free iparams and get save info
+     call free_iparams_type(iparams)
      call nlls_finalize(w,options,inform)
      If (inform%status /= 0) then
        call nlls_strerror(inform)
@@ -201,12 +214,13 @@ contains
                           inform, options, weights,  &
                           eval_HP,                   &
                           lower_bounds, upper_bounds)
+    Use ral_nlls_fd, Only: eval_hp_wrap, check_jacobian
     implicit none
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( nlls_options ), INTENT( IN ) :: options
-    type( NLLS_workspace ), INTENT( INOUT ) :: w
+    type( NLLS_workspace ), TARGET, INTENT( INOUT ) :: w
     procedure( eval_f_type ) :: eval_F
     procedure( eval_j_type ) :: eval_J
     procedure( eval_hf_type ) :: eval_HF
@@ -275,8 +289,15 @@ contains
 
        ! if needed, setup assign eval_Hp
        if (options%model==4 .and. present(eval_HP)) then
-          w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .true.
+          ! assign wrapper for eval_HP depending on class of params
+          select type (params)
+            type is (params_internal_type)
+              w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP_wrap
+              params%user%eval_HP => eval_HP
+            class is (params_base_type)
+              w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_HP => eval_HP
+          end select
        else
           w%calculate_step_ws%solve_newton_tensor_ws%tparams%eval_hp_provided = .false.
        end if
@@ -301,7 +322,18 @@ contains
          inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
+
+       ! Store a copy of f (before applying weights)
+       call iparams_set(params, x=x, f=w%f, check=.False.)
+
        if ( present(weights)) then
+          ! check that weights are positive
+          Do i = 1, m
+            if (weights(i) < 1.0e-8_wp) then
+                inform%status = NLLS_ERROR_BAD_WEIGHTS
+                goto 100
+            end if
+          End Do
           ! set f -> Wf
           w%f(1:m) = weights(1:m)*w%f(1:m)
           w%Wf(1:m) = weights(1:m)*w%f(1:m)
@@ -321,6 +353,7 @@ contains
        End If
 !      save objective
        inform%obj = 0.5_wp * ( w%normF**2 )
+
 !      and evaluate the jacobian
        call eval_J(inform%external_return, n, m, X, w%J, params)
        inform%g_eval = inform%g_eval + 1
@@ -330,6 +363,22 @@ contains
          inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
+
+       select type (params)
+          type is (params_internal_type)
+!            Is user requesting to check the Jacobian derivatives and fd not activated
+             If (options%check_derivatives /= 0 .And. params%fd_type == 'N') Then
+                call check_jacobian(n, m, w%J, params)
+                If (params%inform%status /= 0) Then
+                   goto 100
+                End if
+             End If
+             if (params%fd_type == 'N') then
+                ! no FD -> free auxiliary storage
+                if (allocated(params%f)) deallocate(params%f)
+             end if
+       end select
+
        if ( present(weights) ) then
           call scale_J_by_weights(w%J,n,m,weights,options)
        end if
@@ -639,6 +688,8 @@ lp: do while (.not. success)
          rho = -1.0_wp
          num_successful_steps = 0
        Else
+         ! Inform FD machinery to use xnew and copy fnew(:) before weights
+         call iparams_set(params, x=w%Xnew, f=w%fnew)
          if ( present(weights) ) then
            ! set f -> Wf
            w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
@@ -856,6 +907,8 @@ lp: do while (.not. success)
              call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
              w%g_mixed(:) = -w%g_mixed(:)
           end if
+
+          ! iparams_set(x=w%new f=w%fnew) already set in the previous call
           ! evaluate J
           call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
           inform%g_eval = inform%g_eval + 1
@@ -1255,8 +1308,12 @@ lp: do while (.not. success)
        inform%error_message = 'Linesearch in projected gradient direction failed'
     elseif ( inform%status == NLLS_ERROR_UNSUPPORTED_LINESEARCH ) then
        inform%error_message = 'Unsupported value of linesearch type (box_linesearch_type)'
+    elseif ( inform%status ==  NLLS_ERROR_BAD_JACOBIAN) then
+       inform%error_message = 'One or more elements in the Jacobian appear to be wrong'
     elseif ( inform%status ==  NLLS_ERROR_UNEXPECTED) then
        inform%error_message = 'Unexpected error occured'
+    elseif ( inform%status == NLLS_ERROR_BAD_WEIGHTS ) then
+       inform%error_message = 'Weights vector must be sufficiently positive'
     else
        inform%error_message = 'Unknown error number'
     end if
@@ -3500,6 +3557,8 @@ lp:  do i = 1, options%more_sorensen_maxits
        integer :: i
        real (wp) :: normjfnew
 
+       ! Inform FD machinery to use x and f
+       call iparams_set(params, x=x, f=w%f)
 
        call eval_J(inform%external_return, n, m, X(1:n), w%J, params)
        inform%g_eval = inform%g_eval + 1
@@ -4459,7 +4518,7 @@ lp:    do i = 1, w%tensor_options%maxit
                                           steptl
         Real (Kind=wp), Intent (Inout) :: x(n), xpls(n), fpls, fnew(m),alpha
         type (box_type), intent (inout) :: box_ws
-        Real (Kind=wp), Intent (In), Optional :: weights(n), sx(n)
+        Real (Kind=wp), Intent (In), Optional :: weights(m), sx(n)
         Logical, Intent (Out)          :: mxtake
         Class (params_base_type), Intent (InOut) :: params
         Type (nlls_inform), Intent (Inout) :: inform
@@ -4700,6 +4759,9 @@ lp:    do i = 1, w%tensor_options%maxit
            w%g_mixed(:) = -w%g_mixed(:)
         end if
 
+        ! Inform FD machinery to use xnew and fnew: fnew has weights applied
+        call iparams_set(params, x=w%Xnew, f=w%fnew, weights=weights)
+
         ! evaluate J and hf at the new point
         call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
         inform%g_eval = inform%g_eval + 1
@@ -4810,6 +4872,10 @@ lp:    do i = 1, w%tensor_options%maxit
               call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
               w%g_mixed(:) = -w%g_mixed(:)
             end if
+
+            ! Inform FD machinery to use xnew and fnew: fnew has weights applied
+            call iparams_set(params, x=w%Xnew, f=w%fnew, weights=weights)
+
             ! evaluate J and hf at the new point
             call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
             inform%g_eval = inform%g_eval + 1

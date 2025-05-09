@@ -1,5 +1,6 @@
 /* Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
  * All rights reserved.
+ * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
  */
 
 // examples/Fortran/nlls_example2.f90
@@ -91,7 +92,7 @@ int main(void) {
    // Call fitting routine
    double x[2] = { 2.5, 0.25 }; // Initial guess
    struct ral_nlls_inform inform;
-   double weights[2] = { 2.0, 2.0 };
+   double weights[5] = { 2.0, 2.0, 2.0, 2.0, 2.0 };
 
    printf("sending to ral_nlls_iterate\n");
    for (int i=0; i<options.maxit; i++){
