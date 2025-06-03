@@ -9,8 +9,8 @@ gfortran)
    export FC=gfortran
    ;;
 gfortran-debug)
-   module load gcc
-   export CC=gcc/latest
+   module load gcc/latest
+   export CC=gcc
    export F77=gfortran
    export FC=gfortran
    export CFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
@@ -19,7 +19,7 @@ gfortran-debug)
    ;;
 ifort)
    module load intel/latest
-   export CC=icc
+   export CC=icx
    export F77=ifort
    export FC=ifort
    ;;
