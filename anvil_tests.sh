@@ -1,13 +1,15 @@
+module spider
+
 echo "Compiler $compiler on target $target"
 case $compiler in
 gfortran)
-   module load gcc/7.2.0
+   module load gcc
    export CC=gcc
    export F77=gfortran
    export FC=gfortran
    ;;
 gfortran-debug)
-   module load gcc/7.2.0
+   module load gcc
    export CC=gcc
    export F77=gfortran
    export FC=gfortran
@@ -16,21 +18,21 @@ gfortran-debug)
    export FFLAGS="-g -O2 -Wall -pedantic -fcheck=all -fbacktrace -fno-omit-frame-pointer -finit-real=nan -finit-integer=-9999 -fopenmp"
    ;;
 ifort)
-   module load intel/2017.4
+   module load intel
    export CC=icc
    export F77=ifort
    export FC=ifort
    ;;
 nagfor) 
-   module load gcc/7.2.0
-   module load nag/6.2
+   module load gcc
+   module load nag
    export CC=gcc
    export F77=nagfor
    export FC=nagfor
    ;;
 nagfor-debug) 
-   module load gcc/7.2.0
-   module load nag/6.2
+   module load gcc
+   module load nag
    export CC=gcc
    export F77=nagfor
    export FC=nagfor
