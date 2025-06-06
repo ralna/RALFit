@@ -16,7 +16,7 @@ module MODULE_PREC(unit_test_mod)
   type, extends( params_base_type ) :: user_type
      real(wp), allocatable :: x_values(:)
      real(wp), allocatable :: y_values(:)
-     integer :: iter = 0 
+     integer :: iter = 0
      integer :: m
      ! used in lanczos_ user call-backs
      real(wp), allocatable :: t(:)
@@ -66,7 +66,7 @@ Subroutine check_resvec(c, f, atol, reltol, prn, Ok)
         oki = nrm2 <= atol
         flag2 = merge("PASS", "FAIL", Oki)
     End If
-  
+
     ! Check if relative norm-inf of the difference is less than the relative tolerance
     If (.Not. Oki .And. rtol >= 0.0_wp) Then
         oki = rnrmi <= rtol
@@ -96,7 +96,7 @@ Subroutine check_resvec(c, f, atol, reltol, prn, Ok)
 9997 Format (I5,4(2X,Es16.7e3))
 
 End Subroutine check_resvec
-  
+
 SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
 !  -------------------------------------------------------------------
@@ -137,15 +137,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          Stop 'FATAL ERROR: Unexpectedly in user call-back got a wrong class?'
        end select
        status = 0
-       
+
 !!$! let's use Powell's function for now....
 !!$       f(1) = X(1) + 10.0 * X(2)
 !!$       f(2) = sqrt(5.0) * (X(3) - X(4))
 !!$       f(3) = ( X(2) - 2.0 * X(3) )**2
 !!$       f(4) = sqrt(10.0) * ( X(1) - X(4) )**2
-       
+
 ! end of subroutine eval_F
-       
+
      END SUBROUTINE eval_F
 
      SUBROUTINE eval_F_one_NaN( status, n_dummy, m, X, f, params)
@@ -163,7 +163,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        select type(params)
        type is(user_type)
           params%iter = params%iter + 1
-          if (params%iter <= 2) then 
+          if (params%iter <= 2) then
             do i = 1,m
                 ! Avoid overflow
                 ex = max(-70.0_wp, min(70.0_wp, X(1) * params%x_values(i) + X(2)))
@@ -198,15 +198,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              f(i) = params%y_values(i) - exp( ex )
           end do
           params%iter = params%iter + 1
-          
-          if (params%iter == 2) then 
+
+          if (params%iter == 2) then
              status = -1
           else
              status = 0
           end if
 
        end select
-       
+
      END SUBROUTINE eval_F_one_error
 
      SUBROUTINE eval_F_allbutone_error( status, n_dummy, m, X, f, params)
@@ -231,20 +231,20 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              f(i) = params%y_values(i) - exp( ex )
           end do
           params%iter = params%iter + 1
-          
-          if (params%iter > 1) then 
+
+          if (params%iter > 1) then
              status = -1
           else
              status = 0
           end if
 
        end select
-       
+
      END SUBROUTINE eval_F_allbutone_error
 
 
-     
-     
+
+
      SUBROUTINE eval_F_large( status, n_dummy, m, X, f, params)
 
 !  -------------------------------------------------------------------
@@ -276,10 +276,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           params%iter = params%iter + 1
        end select
        status = 0
-       
+
      END SUBROUTINE eval_F_large
 
-     
+
      SUBROUTINE eval_F_pg( status, n_dummy, m, X, f, params)
 
 !  -------------------------------------------------------------------
@@ -310,7 +310,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           params%iter = params%iter + 1
        end select
        status = 0
-       
+
      END SUBROUTINE eval_F_pg
 
 
@@ -342,13 +342,13 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              end do
           end if
        end select
-       
+
        status = 0
-       
+
      END SUBROUTINE eval_J_large
-     
+
      subroutine eval_F_error( status, n_dummy, m_dummy, X_dummy, f_dummy, params_dummy)
-       ! a fake eval_f to flag an error 
+       ! a fake eval_f to flag an error
        INTEGER, INTENT( OUT ) :: status
        INTEGER, INTENT( IN ) :: n_dummy, m_dummy
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: f_dummy
@@ -356,7 +356,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        class( params_base_type ), intent(inout) :: params_dummy
 
        status = -1
-       
+
      end subroutine eval_F_error
 
      SUBROUTINE eval_J( status, n_dummy, m, X, J, params)
@@ -387,21 +387,21 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        Class Default
          Stop 'FATAL ERROR: Unexpectedly in user call-back got a wrong class?'
        end select
-       
+
        status = 0
 
 ! end of subroutine eval_J
 
 !!$       ! initialize to zeros...
 !!$       J(1:4,1:4) = 0.0
-!!$       
+!!$
 !!$       ! enter non-zeros values
 !!$       J(1,1) = 1.0
 !!$       J(1,2) = 10.0
 !!$       J(2,3) = sqrt(5.0)
 !!$       J(2,4) = -sqrt(5.0)
 !!$       J(3,2) = 2.0 * (X(2) - 2.0 * X(3))
-!!$       J(3,3) = -4.0 * (X(2) - 2.0 * X(3)) 
+!!$       J(3,3) = -4.0 * (X(2) - 2.0 * X(3))
 !!$       J(4,1) = sqrt(10.0) * 2.0 * (X(1) - X(4))
 !!$       J(4,4) = - sqrt(10.0) * 2.0 * (X(1) - X(4))
 
@@ -426,13 +426,13 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              J(m + i) = - exp( X(1) * params%x_values(i) + X(2) )
           end do
           params%iter = params%iter + 1
-          if (params%iter == 2) then 
+          if (params%iter == 2) then
              status = -1
           else
              status = 0
           end if
        end select
-     
+
      END SUBROUTINE eval_J_one_error
 
      SUBROUTINE eval_J_bad( status, n_dummy, m, X, J, params)
@@ -460,9 +460,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              if (i == 8) J(i) = -test_very_big  ! -Inf
           end do
        end select
-     
+
      END SUBROUTINE eval_J_bad
-     
+
      SUBROUTINE eval_J_c( status, n_dummy, m, X, J, params)
 
 !  -------------------------------------------------------------------
@@ -493,30 +493,30 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              index = index + 2
           end do
        end select
-       
+
        status = 0
 
 ! end of subroutine eval_J
 
 !!$       ! initialize to zeros...
 !!$       J(1:4,1:4) = 0.0
-!!$       
+!!$
 !!$       ! enter non-zeros values
 !!$       J(1,1) = 1.0
 !!$       J(1,2) = 10.0
 !!$       J(2,3) = sqrt(5.0)
 !!$       J(2,4) = -sqrt(5.0)
 !!$       J(3,2) = 2.0 * (X(2) - 2.0 * X(3))
-!!$       J(3,3) = -4.0 * (X(2) - 2.0 * X(3)) 
+!!$       J(3,3) = -4.0 * (X(2) - 2.0 * X(3))
 !!$       J(4,1) = sqrt(10.0) * 2.0 * (X(1) - X(4))
 !!$       J(4,4) = - sqrt(10.0) * 2.0 * (X(1) - X(4))
 
      END SUBROUTINE eval_J_c
 
 
-     
+
      subroutine eval_J_error( status, n_dummy, m_dummy, X_dummy, J_dummy, params_dummy)
-       ! a fake eval_J to flag an error 
+       ! a fake eval_J to flag an error
        INTEGER, INTENT( OUT ) :: status
        INTEGER, INTENT( IN ) :: n_dummy, m_dummy
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: J_dummy
@@ -524,7 +524,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        class( params_base_type ), intent(inout) :: params_dummy
 
        status = -1
-       
+
      end subroutine eval_J_error
 
      SUBROUTINE eval_H( status, n_dummy, m, X, f, h, params)
@@ -548,12 +548,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 ! X(1) = m, X(2) = c
        select type(params)
        type is(user_type)
-          ! evaluate 
+          ! evaluate
           ! HF = \sum_{i=1}^m F_i H_i
           h(1:4) = 0.0
           do i = 1, m
              h(1) = &
-                  h(1) + f(i)* ( & 
+                  h(1) + f(i)* ( &
                   - (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) &
                   )
              h(2) = &
@@ -571,15 +571,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        end select
 
        status = 0
-       
+
 !!$! let's use Powell's function for now....
 !!$       f(1) = X(1) + 10.0 * X(2)
 !!$       f(2) = sqrt(5.0) * (X(3) - X(4))
 !!$       f(3) = ( X(2) - 2.0 * X(3) )**2
 !!$       f(4) = sqrt(10.0) * ( X(1) - X(4) )**2
-       
+
 ! end of subroutine eval_F
-       
+
      END SUBROUTINE eval_H
 
      subroutine eval_H_error( status, n_dummy, m_dummy, X_dummy, f_dummy, h_dummy, params_dummy)
@@ -595,7 +595,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        class( params_base_type ), intent(inout) :: params_dummy
 
        status = -1
-       
+
      end subroutine eval_H_error
 
      SUBROUTINE eval_H_one_error( status, n_dummy, m, X, f, h, params)
@@ -614,12 +614,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
        select type(params)
        type is(user_type)
-          ! evaluate 
+          ! evaluate
           ! HF = \sum_{i=1}^m F_i H_i
           h(1:4) = 0.0
           do i = 1, m
              h(1) = &
-                  h(1) + f(i)* ( & 
+                  h(1) + f(i)* ( &
                   - (params%x_values(i)**2) * exp( X(1) * params%x_values(i) + X(2) ) &
                   )
              h(2) = &
@@ -635,22 +635,22 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
           params%iter = params%iter + 1
 
-          if (params%iter == 2) then 
+          if (params%iter == 2) then
              status = -1
           else
              status = 0
           end if
-          
+
        end select
 
        status = 0
-       
+
      END SUBROUTINE eval_H_one_error
 
-     
+
      subroutine eval_HP ( status, n, m, x, y, hp, params )
        INTEGER, INTENT( OUT ) :: status
-       INTEGER, INTENT( IN ) :: n, m 
+       INTEGER, INTENT( IN ) :: n, m
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: x
        REAL ( wp ), DIMENSION( * ),INTENT( IN )  :: y
        REAL ( wp ), DIMENSION( * ),INTENT( OUT ) :: hp
@@ -673,16 +673,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
                   y(1)* (- params%x_values(i) * exp( X(1) * params%x_values(i) + X(2) ) ) + &
                   y(2)* (-  exp( X(1) * params%x_values(i) + X(2) ) )
           end do
-          
+
        Class default
          Stop 'FATAL ERROR: Unexpectedly in user call-back got a wrong class?'
        end select
 
        status = 0
-       
+
      end subroutine eval_HP
 
-     
+
   subroutine lanczos_eval_r(status, n, m, x, r, params)
     ! r_i = y_i - x_1 e^(-x_2 t_i) - x_3 e^(-x_4 t_i) - x_5 e^(-x_6 t_i)
     integer, intent(out) :: status
@@ -691,7 +691,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
     real(wp), dimension(*), intent(in) :: x
     real(wp), dimension(*), intent(out) :: r
     class(params_base_type), intent(inout) :: params
-    
+
 
     select type(params)
     type is(user_type)
@@ -702,7 +702,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
     end select
 
     status = 0 ! success
-    
+
   end subroutine lanczos_eval_r
 
   subroutine lanczos_eval_J(status, n, m, x, J, params)
@@ -789,8 +789,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
                  (params%t(i)**2) * x(5) * exp(-x(6)*params%t(i)) * y(6)
          end do
       end select
-         
-      
+
+
     end subroutine lanczos_eval_HP
 
      subroutine generate_data_example_box(params)
@@ -800,11 +800,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      select type(params)
      type is(user_type)
-        
+
         params%m = 67
         allocate(params%x_values(params%m))
         allocate(params%y_values(params%m))
-        
+
         params%x_values = (/ 0.0, &
              0.075000000000000, &
              0.150000000000000, &
@@ -941,11 +941,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
              4.703122139742729, &
              4.870205182453842 /)
         end select
-       
+
      end subroutine generate_data_example_box
 
-     
-     
+
+
      subroutine generate_data_example(params)
        ! First, let's get the data
        ! Generated with the code
@@ -1172,17 +1172,17 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          End Select
      end subroutine generate_data_lanczos
 
-     
+
      subroutine reset_default_options(options)
        type( nlls_options ), intent(inout) :: options
-       
+
        type( nlls_options ) :: default_options
 
 !       options%error = default_options%error
 !       options%out = default_options%out
 !       options%print_level = default_options%print_level
        options%print_options = default_options%print_options
-       options%print_header = default_options%print_header 
+       options%print_header = default_options%print_header
        options%maxit = default_options%maxit
        options%model = default_options%model
        options%type_of_method = default_options%type_of_method
@@ -1193,7 +1193,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%stop_g_relative = default_options%stop_g_relative
        options%stop_f_absolute = default_options%stop_f_absolute
        options%stop_f_relative = default_options%stop_f_relative
-       options%stop_s = default_options%stop_s       
+       options%stop_s = default_options%stop_s
        options%relative_tr_radius = default_options%relative_tr_radius
        options%initial_radius_scale = default_options%initial_radius_scale
        options%initial_radius = default_options%initial_radius
@@ -1303,9 +1303,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       end if
 
      end subroutine solve_basic
-     
+
      subroutine solve_basic_c(X,params,options,inform,warm_start,blx,bux)
-       
+
        real(wp), intent(inout) :: X(:)
        !      type( user_type ), intent(inout) :: params
        Class ( params_base_type ), intent(inout) :: params
@@ -1315,10 +1315,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        real(wp), intent(inout),optional :: blx(:), bux(:)
 
        integer :: n, m
-       
-       n = 2 
+
+       n = 2
        m = 67
-       
+
        If (present(warm_start)) Then
          If(.Not. warm_start) Then
            X(1) = 1.0
@@ -1332,7 +1332,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            eval_F, eval_J_c, eval_H, params,  &
            options, inform,                 &
            lower_bounds=blx, upper_bounds=bux )
-      
+
     end subroutine solve_basic_c
 
     subroutine c_fortran_tests(options,fails)
@@ -1351,7 +1351,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       call generate_data_example(params)
       options%print_level = 5
 
-      
+
       options%fortran_jacobian = .true.
       call solve_basic(X,params,options,status)
       if ( options%model == 0 ) then
@@ -1372,7 +1372,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          write(*,*) 'scale? ', options%scale
          fails = fails + 1
       end if
-      
+
       ! run the same test with a c jacobian
       options%fortran_jacobian = .false.
       call solve_basic_c(X,params,options,c_status)
@@ -1394,7 +1394,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          write(*,*) 'scale? ', options%scale
          fails = fails + 1
       end if
-      
+
       ! check that the results are consistent with
       ! both c and fortran jacobians
       if ( c_status%iter == status%iter ) then
@@ -1421,12 +1421,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          fails = fails + 1
       end if
     end subroutine c_fortran_tests
-     
+
      subroutine dogleg_tests(options,fails)
-       
-       type( nlls_options ), intent(inout) :: options       
+
+       type( nlls_options ), intent(inout) :: options
        integer, intent(out) :: fails
-       
+
        real(wp), allocatable :: J(:), hf(:), f(:), g(:), d(:)
        real(wp) :: Delta, normd
        type( nlls_inform ) :: inform
@@ -1441,18 +1441,18 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 !      Self reference for inner workspace so recursive call does not fail
        iw%iw_ptr => iw
 
-       options%scale = 0 
+       options%scale = 0
        options%print_level = 3
-       
-       !! dogleg 
+
+       !! dogleg
        options%nlls_method = 1
        options%model = 5
        n = 2
        m = 3
        allocate(J(m*n), hf(n*n), f(m), g(n), d(n))
-       call setup_workspaces(w,n,m,options,inform) 
+       call setup_workspaces(w,n,m,options,inform)
        Delta = 10.0_wp
-     
+
        ! first, hit the 'method not supported' error
        options%model = 27
        J = 1.0_wp
@@ -1465,7 +1465,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           fails = fails + 1
        end if
        inform%status = 0
-       
+
        options%model = 1
        J  = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
        f = 1.0_wp
@@ -1495,21 +1495,21 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           fails = fails + 1
           inform%status = 0
        end if
-     
+
        call nlls_finalize(w,options,inform)
-     
+
        call dogleg(J,f,hf,g,n,m,Delta,d,normd,options,inform,w%calculate_step_ws%dogleg_ws)
-       if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+       if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
           write(*,*) 'Error: workspace error not flagged when workspaces not setup'
           fails = fails + 1
        end if
 
        call reset_default_options(options)
-       
+
      end subroutine dogleg_tests
 
      subroutine generate_scaling_tests(options, fails)
-       type(nlls_options),intent(inout) :: options 
+       type(nlls_options),intent(inout) :: options
        integer, intent(out) :: fails
 
        real(wp), allocatable :: J(:), A(:,:), scale_extra(:), scale(:)
@@ -1517,7 +1517,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        type( nlls_workspace) :: w
        type( nlls_workspace), Target :: iw
        type( nlls_inform ) :: inform
-       
+
        fails = 0
        w%iw_ptr => iw
        iw%iw_ptr => iw
@@ -1525,10 +1525,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%scale = 4
        options%nlls_method = 3
        n = 2
-       m = 3 
+       m = 3
        allocate(J(m*n),A(n,n),scale_extra(n),scale(n))
        call setup_workspaces(w,n,m,options,inform)
-     
+
        J = 0.0_wp
        J(1) = 1e15
        J(4) = 1e-15
@@ -1538,104 +1538,104 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        A(2,2) = 1.0_wp
 
        scale = 1.0_wp
-       scale_extra = 0.0_wp 
+       scale_extra = 0.0_wp
 
        !** scale = 1 **
-       options%scale= 1     
-       call generate_scaling(J,A,n,m,scale,scale_extra,& 
+       options%scale= 1
+       call generate_scaling(J,A,n,m,scale,scale_extra,&
             w%calculate_step_ws%generate_scaling_ws, &
             options,inform)
        if (inform%status .ne. 0 ) then
           write(*,*) 'Error: unexpected error in generate_scaling when scale = 1'
           write(*,*) 'status = ', inform%status,' returned.'
           fails = fails + 1
-          inform%status = 0 
+          inform%status = 0
        end if
 
        !** scale = 2 **
        options%scale = 2
-       call generate_scaling(J,A,n,m,scale,scale_extra,& 
+       call generate_scaling(J,A,n,m,scale,scale_extra,&
             w%calculate_step_ws%generate_scaling_ws, &
             options,inform)
        if (inform%status .ne. 0 ) then
           write(*,*) 'Error: unexpected error in generate_scaling when scale = 2'
           write(*,*) 'status = ', inform%status,' returned.'
           fails = fails + 1
-          inform%status = 0 
+          inform%status = 0
        end if
 
        !** scale = 3 **
        options%scale = 3
-       call generate_scaling(J,A,n,m,scale,scale_extra,& 
+       call generate_scaling(J,A,n,m,scale,scale_extra,&
             w%calculate_step_ws%generate_scaling_ws, &
             options,inform)
        if (inform%status .ne. 0 ) then
           write(*,*) 'Error: unexpected error in generate_scaling when scale = 2'
           write(*,*) 'status = ', inform%status,' returned.'
           fails = fails + 1
-          inform%status = 0 
+          inform%status = 0
        end if
 
      !** scale undefined
      options%scale = 786
-     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+     call generate_scaling(J,A,n,m,scale,scale_extra,&
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
      if (inform%status .ne. NLLS_ERROR_BAD_SCALING ) then
         write(*,*) 'Error: expected error in generate_scaling when passing undefined scaling'
         write(*,*) 'status = ', inform%status,' returned.'
         fails = fails + 1
-        inform%status = 0 
+        inform%status = 0
      end if
      inform%status = 0
-     
+
      ! now, let's test the non-default modes
      ! first, set scale_require_increase to T
      options%scale = 1
      options%scale_require_increase = .true.
-     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+     call generate_scaling(J,A,n,m,scale,scale_extra,&
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
      if (inform%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error when scale_require_increase = T'
         write(*,*) 'status = ', inform%status,' returned.'
         fails = fails + 1
-        inform%status = 0 
+        inform%status = 0
      end if
      options%scale_require_increase = .false.
 
      ! first, set scale_trim_min to T
      options%scale_trim_min = .true.
-     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+     call generate_scaling(J,A,n,m,scale,scale_extra,&
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
      if (inform%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error when scale_require_increase = T'
         write(*,*) 'status = ', inform%status,' returned.'
         fails = fails + 1
-        inform%status = 0 
+        inform%status = 0
      end if
      options%scale_trim_min = .false.
 
      ! first, set scale_trim_max to T
      options%scale_trim_max = .false.
-     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+     call generate_scaling(J,A,n,m,scale,scale_extra,&
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
      if (inform%status .ne. 0 ) then
         write(*,*) 'Error: unexpected error when scale_require_increase = T'
         write(*,*) 'status = ', inform%status,' returned.'
         fails = fails + 1
-        inform%status = 0 
+        inform%status = 0
      end if
      options%scale_trim_max = .true.
 
 
      call nlls_finalize(w,options,inform)
-     call generate_scaling(J,A,n,m,scale,scale_extra,& 
+     call generate_scaling(J,A,n,m,scale,scale_extra,&
           w%calculate_step_ws%generate_scaling_ws, &
           options,inform)
-     if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         write(*,*) '(generate_scaling)'
         fails = fails + 1
@@ -1646,47 +1646,47 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
    end subroutine generate_scaling_tests
 
    subroutine aint_tr_tests(options,fails)
-     
+
      type( nlls_options), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      REAL(wp), allocatable :: J(:), A(:,:), hf(:), f(:), v(:), X(:), d(:)
      real(wp) :: Delta, normd
      integer  :: n, m
      TYPE( nlls_inform ) :: inform
      type( nlls_workspace ) :: w
      type( nlls_workspace), Target :: iw
-      
+
      fails = 0
      w%iw_ptr => iw
      iw%iw_ptr => iw
      options%nlls_method = 2
-     
+
      n = 2
      m = 3
 
      allocate(J(n*m), A(n,n), f(m), v(n), X(n), hf(n*n),d(n))
-     
+
      J = [ 1.0, 1.0, 2.0, 2.0, 3.0, 4.0 ]
      A = reshape([6.0, 13.0, 13.0, 29.0],[2, 2])
      f = [2.0, 3.0, 4.0]
      v = [13.0, 29.0]
      hf = 0.0_wp
      Delta = 1.0_wp
-          
-     call setup_workspaces(w,n,m,options,inform) 
-     call aint_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,& 
+
+     call setup_workspaces(w,n,m,options,inform)
+     call aint_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,&
           w%calculate_step_ws%aint_tr_ws)
-     if (inform%status .ne. 0) then 
+     if (inform%status .ne. 0) then
         write(*,*) 'Error: aint_tr test failed'
         fails = fails + 1
      end if
-     
+
      call nlls_finalize(w,options,inform)
-     
-     call aint_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,& 
+
+     call aint_tr(J,A,f,X,v,hf,n,m,Delta,d,normd,options,inform,&
           w%calculate_step_ws%aint_tr_ws)
-     if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         write(*,*) '(aint_tr)'
         fails = fails + 1
@@ -1698,27 +1698,27 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
    subroutine more_sorensen_tests(options,fails)
      type( nlls_options), intent(inout) :: options
      integer, intent(out) :: fails
-     
-     
+
+
      real(wp), allocatable :: g(:), d(:), A(:,:)
      real(wp) :: Delta, normd
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      integer :: n,m
      type( nlls_workspace ), Target :: iw
-      
+
      fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
-     
+
      options%nlls_method = 3
-     
+
      n = 2
      m = 3
      allocate(A(n,n), g(n), d(n))
-     call setup_workspaces(work,n,m,options,status) 
+     call setup_workspaces(work,n,m,options,status)
      Delta = 10.0_wp
-     
+
      ! regular case...
      A(1,1) = 0.2_wp
      A(2,1) = 0.3_wp
@@ -1726,7 +1726,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      A(2,2) = 0.4_wp
      g = 1.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen'
@@ -1738,7 +1738,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%more_sorensen_shift = -1000.0_wp
      g = 1.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. NLLS_ERROR_MS_TOO_MANY_SHIFTS) then
         write(*,*) 'Error: MS too many shifts test passed, when fail expected'
@@ -1751,7 +1751,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      g = 1.0_wp
      Delta =  10.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
@@ -1765,7 +1765,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%more_sorensen_tiny = 0.01_wp
      Delta =  0.2055_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
@@ -1782,7 +1782,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      d = 1.0_wp
      Delta = 3.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
         write(*,*) 'Error: unexpected error in more-sorensen test with nd > Delta'
@@ -1792,11 +1792,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
 
      ! get to max_its...
-     options%more_sorensen_maxits = 1     
+     options%more_sorensen_maxits = 1
      g = 1.0_wp
      Delta = 3.0_wp
      ! now, get ||d_gn|| <= Delta
-     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. NLLS_ERROR_MS_MAXITS) then
         write(*,*) 'Error: Expected maximum iterations error in more_sorensen'
@@ -1804,24 +1804,24 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
      status%status = 0
      options%more_sorensen_maxits = 10
-     
+
      call nlls_finalize(work,options,status)
-     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+     call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
 
      call reset_default_options(options)
-     
+
    end subroutine more_sorensen_tests
 
    subroutine trust_region_subproblem_tests(options,fails)
 
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: g(:), d(:), A(:,:)
      real(wp) :: Delta, normd
      type( nlls_inform ) :: status
@@ -1832,14 +1832,14 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      character (len=40) :: problem_name
      character (len=40) :: method_name
      integer :: num_successful_steps
-     
+
      fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
 
      options%out = 6
      options%print_level = 0
-     
+
      n = 4
      m = 5
      allocate(A(n,n), g(n), d(n))
@@ -1856,36 +1856,36 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
            if (problem == 1) then
               Delta = 1.0_wp ! point lies on the tr radius
-           elseif (problem == 2) then 
+           elseif (problem == 2) then
               Delta = 3.0_wp ! point lies in the tr radius
            end if
-           
+
            write(problem_name,'(A,ES12.4)') '7.3.1.1, Delta = ',Delta
         case (3,4)  ! Nonconvex
            g = 1.0_wp
-           A = 0.0_wp           
+           A = 0.0_wp
            A(1,1) = -2.0_wp
            A(2,2) = -1.0_wp
            A(3,3) =  0.0_wp
            A(4,4) =  1.0_wp
            if (problem == 3) then
               Delta = 1.0_wp ! point lies on the tr radius
-           elseif (problem == 4) then 
+           elseif (problem == 4) then
               Delta = 3.0_wp ! point lies in the tr radius
            end if
-           
+
            write(problem_name,'(A,ES12.4)') '7.3.1.2, Delta = ',Delta
         case (5,6) ! hard case
            g = 1.0_wp
            g(1) = 0.0_wp
-           A = 0.0_wp           
+           A = 0.0_wp
            A(1,1) = -2.0_wp
            A(2,2) = -1.0_wp
            A(3,3) =  0.0_wp
            A(4,4) =  1.0_wp
            if (problem == 5) then
               Delta = 1.0_wp ! point lies on the tr radius
-           elseif (problem == 6) then 
+           elseif (problem == 6) then
               Delta = 1.5_wp ! point lies in the tr radius
            end if
            write(problem_name,'(A,ES12.4)') '7.3.1.3, Delta = ',Delta
@@ -1894,17 +1894,17 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            select case (method)
            case (1) ! more sorensen, eigenvalues
               method_name = 'more sorensen, eigenvalues'
-              options%nlls_method = 3 
+              options%nlls_method = 3
               options%use_ews_subproblem = .true.
               call setup_workspaces(work,n,m,options,status)
-              call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
+              call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
                    work%calculate_step_ws%more_sorensen_ws)
            case (2) ! dltr
               method_name = 'dltr'
               options%nlls_method = 4
-              num_successful_steps = 0 
+              num_successful_steps = 0
               call setup_workspaces(work,n,m,options,status)
-              call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
+              call solve_galahad(A,g,n,m,Delta,num_successful_steps,&
                    d,normd,2.0_wp,options,status,&
                    work%calculate_step_ws%solve_galahad_ws )
            case (3) ! more sorensen, no eigenvalues
@@ -1912,10 +1912,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
               options%nlls_method = 3
               options%use_ews_subproblem = .false.
               call setup_workspaces(work,n,m,options,status)
-              call more_sorensen(A,g,n,m,Delta,d,normd,options,status,& 
-                   work%calculate_step_ws%more_sorensen_ws)              
+              call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
+                   work%calculate_step_ws%more_sorensen_ws)
            end select
-           if (options%print_level > 0 ) then 
+           if (options%print_level > 0 ) then
               write(*,*) 'method = ', method_name, ' problem = ', problem_name, 'normd = ', normd
            end if
            if ( (status%status .ne. 0)) then
@@ -1931,25 +1931,25 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
               fails = fails + 1
               status%status = 0
            end if
-        end do       
+        end do
      end do
 
      options%out = 17
-     
+
    end subroutine trust_region_subproblem_tests
-   
+
    subroutine evaluate_model_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: f(:), J(:), hf(:), X(:), Xnew(:), d(:)
      real(wp) :: md, md_gn
      integer :: m, n
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
-     
+
      real(wp) :: one = 1.0_wp
 
      fails = 0
@@ -1957,31 +1957,31 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      iw%iw_ptr => iw
      n = 2
      m = 4
-     
+
      allocate(f(m), J(n*m), hf(n*n), X(n), Xnew(n), d(n))
      f = one
      J = one
-     hf = one 
+     hf = one
      X = one
      Xnew = one
-          
-     call evaluate_model(f,J,hf,X,Xnew,d,md,md_gn,m,n,options,status,& 
+
+     call evaluate_model(f,J,hf,X,Xnew,d,md,md_gn,m,n,options,status,&
           work%calculate_step_ws%evaluate_model_ws)
-     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then 
+     if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
-     
-     
+
+
      call reset_default_options(options)
-     
+
    end subroutine evaluate_model_tests
 
    subroutine solve_galahad_tests(options,fails)
-     
+
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
-     
+
      real(wp), allocatable :: g(:), d(:), A(:,:)
      real(wp) :: Delta, normd, tol
      type( nlls_inform ) :: status
@@ -1989,16 +1989,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( nlls_workspace ), Target :: iw
      integer :: n,m, i, num_successful_steps
      character (len=5) :: testname
-     
+
      fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
 
      options%nlls_method = 4
-     
+
      n = 2
      m = 5
-     
+
      num_successful_steps = 0
 
      if (wp == np) then
@@ -2006,33 +2006,33 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      else
         tol = 5.0e-10_wp
      end if
-     
+
      allocate(A(n,n), g(n), d(n))
 
      do i = 1,2
         options%type_of_method = i
-        if (i == 1) then 
+        if (i == 1) then
            testname = 'DTRS '
-        elseif (i == 2) then 
+        elseif (i == 2) then
            testname = 'DRQS '
         end if
-        
-        call setup_workspaces(work,n,m,options,status) 
-        
+
+        call setup_workspaces(work,n,m,options,status)
+
         A(1,1) = 10.0_wp
         A(1,2) = 2.0_wp
         A(2,1) = 2.0_wp
         A(2,2) = 10.0_wp
         g = [-7.4_wp, -28.9_wp]
         Delta = 0.02_wp
-        call solve_galahad(A,g,n,m,Delta,num_successful_steps,& 
+        call solve_galahad(A,g,n,m,Delta,num_successful_steps,&
              d,normd,2.0_wp,options,status,&
              work%calculate_step_ws%solve_galahad_ws )
         if ( status%status .ne. 0 ) then
            write(*,*) testname,'test failed, status = ', status%status
            fails = fails + 1
         end if
-        
+
         if (i == 1) then
            ! check result lies within the trust region
            if ( abs(dot_product(d,d) - Delta**2) > tol ) then
