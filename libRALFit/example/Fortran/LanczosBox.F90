@@ -2,17 +2,11 @@
 ! All rights reserved.
 ! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
-! examples/Fortran/LanczosBox.f90
+! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! examples/Fortran/LanczosBox.f90 (double precision)
 
 module lanczos_box_module
-
-#if SINGLE_PRECISION
-   use ral_nlls_single
-#else
    use ral_nlls_double
-#endif
-
    implicit none
 
    type, extends(params_base_type) :: params_type
@@ -199,15 +193,8 @@ program lanczos_box
    options%inner_method = 1
    options%nlls_method = 4
    options%box_max_ntrfail = 2
-   if (wp == lp) then
-      options%maxit = 400
-      options%stop_g_absolute = 1.2e-1_wp
-      tol = 1.0e-4_wp
-      x_exp = (/6.3079E-1, 1.966, 2.0293, 4.686, -1.4685E-1, 2.0341/)
-   else
-      x_exp(:) = (/ 9.236787E-01, 1.873455, 2.068291, 4.640229, -4.791827E-01, 1.873492 /)
-      tol = 1.0e-6_wp
-   end if
+   x_exp(:) = (/ 9.236787E-01, 1.873455, 2.068291, 4.640229, -4.791827E-01, 1.873492 /)
+   tol = 1.0e-6_wp
 
    ! call fitting routine
    call cpu_time(tic)

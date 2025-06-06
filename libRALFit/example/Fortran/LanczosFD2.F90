@@ -1,8 +1,8 @@
 ! Copyright (C) 2016 Science and Technology Facilities Council (STFC).
 ! All rights reserved.
 ! examples/Fortran/Lanczos.f90 (based on)
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
-! examples/Fortran/LanczosFD2.f90
+! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! examples/Fortran/LanczosFD2.f90 (double precision float type)
 
 ! This example showcases how to call the Finite Difference machinery
 ! explicitly instead of using the automatic implicit framework from the
@@ -15,11 +15,7 @@
 
 module lanczos_module_fd2
 
-#if SINGLE_PRECISION
-   use ral_nlls_single
-#else
    use ral_nlls_double
-#endif
 
    implicit none
 
@@ -202,24 +198,15 @@ program lanczos_fd2
    options%inner_method = 2
    options%maxit = 1000
 
-   if (wp == lp) then
-      ! Start solver closer to the expected solution when using low precision
-      x(1:6) = (/ 8.68E-2, 0.95, 0.843, 2.95, 1.58, 4.98 /)
-      options%fd_step = 1.0e-3
-      tol = 5.0e-3_wp
-      params%reset = 3 ! times FD is used before providing exact derivatives
-   else
-      x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
-      options%fd_step = 1.0e-5
-      tol = 5.0e-4_wp
-      params%reset = 10 ! times FD is used before providing exact derivatives
-   end if
+   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
+   options%fd_step = 1.0e-5
+   tol = 5.0e-4_wp
+   params%reset = 10 ! times FD is used before providing exact derivatives
 
    ! setup up FD machinery
 
    params%cnt = params%reset
    params%fd_step = options%fd_step
-
 
 
    call jacobian_setup(status, params%handle, n, m, x, eval_r, params)

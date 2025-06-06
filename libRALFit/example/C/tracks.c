@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -28,6 +28,8 @@
 
 /* Fit the convolution model y_i = [Al * lognorma(a, b)]_i + [Ag * normal(mu,
  * sigma)]_i given the density observations at the measured diameter sizes.
+ *
+ * This example works for single and double precision floating point types
  */
 
 #include <math.h>

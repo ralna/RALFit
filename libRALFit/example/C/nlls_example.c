@@ -1,12 +1,13 @@
 /* Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
  * All rights reserved.
- * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
  */
 
-// examples/C/nlls_example.c
+// examples/C/nlls_example.c (double precision)
 //
 // Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 // For parameters x_1 and x_2, and input data (t_i, y_i)
+#define ral_real double
 #include "ral_nlls.h"
 
 #include <math.h>

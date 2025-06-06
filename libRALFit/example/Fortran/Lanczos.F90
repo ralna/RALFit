@@ -1,7 +1,7 @@
 ! Copyright (c) 2017, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
-! examples/Fortran/Lanczos.f90
+! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! examples/Fortran/Lanczos.f90 (works for single and double precision float types)
 
 module lanczos_module
 

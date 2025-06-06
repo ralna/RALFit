@@ -1,19 +1,14 @@
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
-! Copyright (c) 2019, The Numerical Algorithms Group Ltd (NAG)
+! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (c) 2019 The Numerical Algorithms Group Ltd (NAG)
 ! All rights reserved.
-! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
+! Copyright (c) 2019 The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! examples/Fortran/Lanczos.f90
+! examples/Fortran/stp_x0sol.F90
 ! STP to test that initial point is solution.
 
 module stp_x0sol_module
 
-#if SINGLE_PRECISION
-   use ral_nlls_single
-#else
-   use ral_nlls_double
-#endif
-
+  use ral_nlls_double
   implicit none
 
   type, extends(params_base_type) :: params_type
@@ -217,11 +212,6 @@ program stp_x0sol
   options%reg_order = -1.0
   options%inner_method = 2
   options%maxit = 10
-
-  if (wp == lp) then
-    ! Relax tolerance when using low precision
-    options%stop_g_absolute = 5.0e-3_wp
-  end if
 
   call cpu_time(tic)
   call nlls_solve(n,m,x,eval_r, eval_J, eval_HF, params, options, inform)!, eval_HP=eval_HP)

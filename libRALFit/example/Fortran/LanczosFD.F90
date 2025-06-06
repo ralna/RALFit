@@ -1,8 +1,8 @@
 ! Copyright (C) 2016 Science and Technology Facilities Council (STFC).
 ! All rights reserved.
 ! examples/Fortran/Lanczos.f90 (based on)
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
-! examples/Fortran/LanczosFD.f90
+! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! examples/Fortran/LanczosFD.f90 (illustrates how to use both single and double precision)
 
 module lanczos_module_fd
 
@@ -128,7 +128,6 @@ program lanczos_fd
    ! call fitting routine
    n = 6
    allocate(x(n))
-   x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
    ok = .False.
 
    options%print_level = 4
@@ -145,6 +144,7 @@ program lanczos_fd
       x(1:6) = (/ 8.0E-2, 0.95, 0.84, 2.9, 1.5, 4.9 /)
       options%fd_step = 1.0e-3
    else
+      x = (/ 1.2, 0.3, 5.6, 5.5, 6.5, 7.6 /) ! SP 1
       options%fd_step = 5.0e-3
    end if
 

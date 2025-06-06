@@ -1,10 +1,11 @@
 ! Copyright (c) 2017, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
 
 ! This example showcases how to call the Finite Difference machinery,
 ! illustrates the usage of jacobian_setup, jacobian_calc and
 ! jacobian_free as a stand-alone use case.
+! Example works for single and double precision float types
 
 module jacobian_module_fd
 

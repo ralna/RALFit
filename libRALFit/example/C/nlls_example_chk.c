@@ -1,14 +1,15 @@
-/* Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+/* Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
  * Copyright (c) 2019, The Numerical Algorithms Group Ltd (NAG)
  * All rights reserved.
  * Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
  * All rights reserved.
  */
 
-// examples/Fortran/nlls_example2.f90
+// examples/C/nlls_example_chk.c (double)
 //
 // Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 // For parameters x_1 and x_2, and input data (t_i, y_i)
+#define ral_real double
 #include "ral_nlls.h"
 
 #include <math.h>
@@ -78,14 +79,6 @@ int main(void) {
    options.check_derivatives = 1;
    options.print_level = 1;
 
-#if SINGLE_PRECISION
-   options.stop_s = 2.0e-5;
-   options.fd_step = 1.0e-4;
-   options.derivative_test_tol = 2.0e-4;
-   ral_real tol = 1.0e-4;
-#else
-   ral_real tol = 1.0e-6;
-#endif
    struct ral_nlls_inform inform;
 
    nlls_solve(2, m, x, eval_r, eval_J, NULL, &params,
@@ -99,6 +92,7 @@ int main(void) {
     printf("Status = %i [%s]\n", inform.status, inform.error_message);
   } else {
     // Print result
+    ral_real tol = 1.0e-6;
     char ok0 = (fabs(x[0]-x_exp[0]) <= tol) ? ' ' : 'X';
     char ok1 = (fabs(x[1]-x_exp[1]) <= tol) ? ' ' : 'X';
     ok = ok0 == ' ' && ok1 == ' ';

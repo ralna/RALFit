@@ -1,9 +1,10 @@
 /* Copyright (C) 2016 Science and Technology Facilities Council (STFC).
  * All rights reserved.
- * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
  */
 // Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 // For parameters x_1 and x_2, and input data (t_i, y_i)
+#define ral_real double
 #include "ral_nlls.h"
 
 #include <math.h>
@@ -54,15 +55,8 @@ int main(void) {
   struct ral_nlls_options options;
   ral_nlls_default_options(&options);
   options.print_level = 3;
+  options.fd_step = 1.0e-6;
   options.check_derivatives = 2; // ignored since not providing J call-back
-
-#ifdef SINGLE_PRECISION
-  ral_real tol = 1.0e-4;
-  options.maxit = 200;
-#else
-  ral_real tol = 1.0e-6;
-#endif
-  options.fd_step = tol;
 
   // initialize the workspace
   void *workspace;
@@ -89,6 +83,7 @@ int main(void) {
     printf("Status = %i [%s]\n", inform.status, inform.error_message);
   } else {
     // Print result
+    ral_real tol = 1.0e-6;
     char ok0 = (fabs(x[0]-x_exp[0]) <= tol) ? ' ' : 'X';
     char ok1 = (fabs(x[1]-x_exp[1]) <= tol) ? ' ' : 'X';
     ok = ok0 == ' ' && ok1 == ' ';

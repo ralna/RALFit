@@ -1,18 +1,13 @@
 ! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
-! examples/Fortran/nlls_example.f90
+! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! examples/Fortran/nlls_example.f90 (double precision type)
 !
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)
 ! For parameters x_1 and x_2, and input data (t_i, y_i)
 module fndef_example
 
-#if SINGLE_PRECISION
-   use ral_nlls_single
-#else
    use ral_nlls_double
-#endif
-
    implicit none
 
    type, extends(params_base_type) :: params_type
