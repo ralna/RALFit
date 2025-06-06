@@ -228,8 +228,6 @@ It must have the following signature:
 
    :param status: |eval_Hf_status|
 
-If user does not provide the call-back it may be substituted by ``NULL``.
-
 For evaluating the function :math:`P({\bm x},{\bm y}) := ( H_1({\bm x}){\bm y} \dots  H_m({\bm x}){\bm y})`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
