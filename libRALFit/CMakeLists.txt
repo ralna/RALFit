@@ -34,6 +34,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
 set(CMAKE_EXE_LINKER_FLAGS "-Wl,-export-dynamic")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS On)
+
 # Support for CMAKE_BUILD_TYPE={Debug,Release,Profile}
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   message("WARNING: Debug version - not to be used in production code.")
@@ -41,7 +43,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   set(CompileMiniLAPACK On)
   # set the test coverage switch
   set(TestCoverage On)
-  set(CMAKE_EXPORT_COMPILE_COMMANDS On)
   # set( CMAKE_VERBOSE_MAKEFILE on ) # Caller can set this
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
   message("WARNING: Profile version - not to be used in production code.")

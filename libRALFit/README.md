@@ -12,10 +12,10 @@ To read more about the solver, see
 
 ## Requirements
 
-* CMake (at least 3.18) and GNU Make
+* CMake (tested on 3.18 and 3.31) and GNU Make
 * Modern Fortran compiler
-* C compiler (at least C99)
-* Python 3.8 (or newer) if building the Python package
+* C compiler
+* Python 3 (tested on 3.11.4) if building the Python package
 
 ## Configure
 
@@ -74,7 +74,7 @@ and LAPACK libraries.
 ### Requirements
 
 Prior to building an accelerated version of RALFit, install compiler and libraries.
-Refer here to install and load AMD AOCC compilers and here to install and configure AOCL BLAS and LAPACK.
+Refer here to install and load [AMD AOCC compilers](https://www.amd.com/en/developer/aocc.html) and here to install and configure [AOCL BLAS and LAPACK](https://www.amd.com/en/developer/aocl.html).
 
 Make sure the correct compiler version is available on the path:
 ```{terminal}
@@ -98,8 +98,8 @@ $ CC=clang FC=flang cmake -S . -B build --fresh -DBLA_VENDOR=AOCL
 Should produce an output similar to
 ```{terminal}
 ...
--- Check for working Fortran compiler: /home/u/amd/aocc-compiler-rel-5.1.0-4925-1614/bin/flang - skipped
--- Check for working C compiler: /home/u/amd/aocc-compiler-rel-5.1.0-4925-1614/bin/clang - skipped
+-- Check for working Fortran compiler: /home/u/amd/aocc-compiler-rel-5.0.0/bin/flang - skipped
+-- Check for working C compiler: /home/u/amd/aocc-compiler-rel-5.0.0/bin/clang - skipped
 ...
 -- Found LAPACK: /home/u/amd/5.0.0/aocl/lib/libflame.so;/home/u/amd/5.0.0/aocl/lib/libblis.so;-fopenmp
 -- The LAPACK library was found at/home/u/amd/5.0.0/aocl/lib/libflame.so/home/u/amd/5.0.0/gcc/lib/libblis.so-fopenmp
