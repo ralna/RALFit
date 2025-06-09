@@ -59,7 +59,7 @@ cmake --build build --parallel 4
 
 ### Running the examples
 
-The examples sources are located in the subfolders of `libRALFit/examples/` and there are Fortran, C and Python examples.
+The examples sources are located in the sub-folders of `libRALFit/examples/` and there are Fortran, C and Python examples.
 
 The compiled example executables can be found in `build/examples/`
 
@@ -76,7 +76,7 @@ and LAPACK libraries.
 Prior to building an accelerated version of RALFit, install compiler and libraries.
 Refer here to install and load AMD AOCC compilers and here to install and configure AOCL BLAS and LAPACK.
 
-Make sure the correct compiler version is avaible on the path:
+Make sure the correct compiler version is available on the path:
 ```{terminal}
 $ clang --version
 AMD clang version 17.0.6 (CLANG: AOCC_5.1.0)
@@ -84,7 +84,7 @@ Target: x86_64-unknown-linux-gnu
 Thread model: posix
 InstalledDir: /home/u/amd/aocc-compiler-rel-5.1.0/bin
 ```
-and a the same banner is printed for ``flang --version` command.
+and a the same banner is printed for `flang --version` command.
 
 ### Configuring and building
 
@@ -101,8 +101,8 @@ Should produce an output similar to
 -- Check for working Fortran compiler: /home/u/amd/aocc-compiler-rel-5.1.0-4925-1614/bin/flang - skipped
 -- Check for working C compiler: /home/u/amd/aocc-compiler-rel-5.1.0-4925-1614/bin/clang - skipped
 ...
--- Found LAPACK: /home/u/amd/5.0.0/aocl/lib/libflame.so;/home/andrsajo/amd/5.0.0/aocl/lib/libblis.so;-fopenmp
--- The LAPACK library was found at/home/u/amd/5.0.0/aocl/lib/libflame.so/home/andrsajo/amd/5.0.0/gcc/lib/libblis.so-fopenmp
+-- Found LAPACK: /home/u/amd/5.0.0/aocl/lib/libflame.so;/home/u/amd/5.0.0/aocl/lib/libblis.so;-fopenmp
+-- The LAPACK library was found at/home/u/amd/5.0.0/aocl/lib/libflame.so/home/u/amd/5.0.0/gcc/lib/libblis.so-fopenmp
 ...
 ```
 
