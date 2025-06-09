@@ -9,6 +9,12 @@ project (RALFit LANGUAGES Fortran C)
 # Request to run pre-processor
 set(CMAKE_Fortran_PREPROCESS ON)
 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "" "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
@@ -46,6 +52,9 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   # set( CMAKE_VERBOSE_MAKEFILE on ) # Caller can set this
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
   message("WARNING: Profile version - not to be used in production code.")
+elseif(CMAKE_BUILD_TYPE MATCHES Release)
+  #  set(CMAKE_C_FLAGS_RELEASE "-O2 -march=native -mtune=native")
+  #  set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -march=native -mtune=native")
 endif()
 
 

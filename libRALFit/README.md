@@ -88,12 +88,12 @@ and a the same banner is printed for `flang --version` command.
 
 ### Configuring and building
 
-To instruct CMake to use the AMD accelerated versions BLAS and LAPACK, pass the
-flag `-DBLA_VENDOR=AOCL`.
+To instruct CMake to compile to the native CPU architecture and use the AMD accelerated versions BLAS and LAPACK,
+pass the flags `-DBLA_VENDOR=AOCL -DCMAKE_C_FLAGS_RELEASE="-O2 -march=native -DNDEBUG" -DCMAKE_Fortran_FLAGS_RELEASE="-O2 -march=native -DNDEBUG"`.
 
 Make sure the correct compiler, BLAS, and LAPACK versions are found by CMake:
 ```{terminal}
-$ CC=clang FC=flang cmake -S . -B build --fresh -DBLA_VENDOR=AOCL
+$ CC=clang FC=flang cmake -S . -B build --fresh -DBLA_VENDOR=AOCL -DCMAKE_C_FLAGS_RELEASE="-O2 -march=native -DNDEBUG" -DCMAKE_Fortran_FLAGS_RELEASE="-O2 -march=native -DNDEBUG"
 ```
 Should produce an output similar to
 ```{terminal}
