@@ -52,9 +52,6 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   # set( CMAKE_VERBOSE_MAKEFILE on ) # Caller can set this
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
   message("WARNING: Profile version - not to be used in production code.")
-elseif(CMAKE_BUILD_TYPE MATCHES Release)
-  #  set(CMAKE_C_FLAGS_RELEASE "-O2 -march=native -mtune=native")
-  #  set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -march=native -mtune=native")
 endif()
 
 
