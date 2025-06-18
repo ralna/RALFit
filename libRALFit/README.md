@@ -23,7 +23,7 @@ The package uses CMake to configure and Make build. The following
 CMake options are briefly described
 
   * `-DCMAKE_BUILD_TYPE={Release|Debug}` defines the type of build, default `Release`
-  * `-DBUILD_PYTHON={On|Off}` option to build the python interface (package), default `On`
+  * `-DBUILD_PYTHON={On|Off}` option to build the Python interface (package), default `On`
   * `-DSINGLE_PRECISION={Off|On}` selects which floating point type to
     use, default `Off` (double precision)
 
@@ -66,7 +66,7 @@ The compiled example executables can be found in `build/examples/`
 
 ## Building with custom compiler and libraries
 
-This sections shows how to build RALFit using an accelerated compiler (AMD,
+This section shows how to build RALFit using an accelerated compiler (AMD,
 Intel, etc) and linking to performant LAPACK/BLAS libraries (e.g. AOCL, MKL).
 We illustrate how to build using AMD's AOCC compiler and AOCL accelerated BLAS
 and LAPACK libraries.
@@ -74,7 +74,7 @@ and LAPACK libraries.
 ### Requirements
 
 Prior to building an accelerated version of RALFit, install compiler and libraries.
-Refer here to install and load [AMD AOCC compilers](https://www.amd.com/en/developer/aocc.html) and here to install and configure [AOCL BLAS and LAPACK](https://www.amd.com/en/developer/aocl.html).
+Refer [here](https://www.amd.com/en/developer/aocc.html) to install and load [AMD AOCC compilers](https://www.amd.com/en/developer/aocc.html) and [here](https://www.amd.com/en/developer/aocl.html) to install and configure [AOCL BLAS and LAPACK](https://www.amd.com/en/developer/aocl.html).
 
 Make sure the correct compiler version is available on the path:
 ```{terminal}
