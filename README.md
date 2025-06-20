@@ -1,4 +1,4 @@
-![STFC logo](http://www.stfc.ac.uk/stfc/includes/themes/MuraSTFC/assets/legacy/2473_web_2.png)
+<img alt="STFC logo" src="https://www.ukri.org/wp-content/uploads/2022/03/ukri-stfc-square-logo.png" width=100>
 
 # RALFit
 
