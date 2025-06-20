@@ -95,17 +95,14 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \date December 2016
-*
-*> \ingroup doubleOTHERauxiliary
+*> \ingroup lauum
 *
 *  =====================================================================
       SUBROUTINE DLAUUM( UPLO, N, A, LDA, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.7.0) --
+*  -- LAPACK auxiliary routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     December 2016
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -197,14 +194,16 @@
 *
             DO 20 I = 1, N, NB
                IB = MIN( NB, N-I+1 )
-               CALL DTRMM( 'Left', 'Lower', 'Transpose', 'Non-unit', IB,
+               CALL DTRMM( 'Left', 'Lower', 'Transpose', 'Non-unit',
+     $                     IB,
      $                     I-1, ONE, A( I, I ), LDA, A( I, 1 ), LDA )
                CALL DLAUU2( 'Lower', IB, A( I, I ), LDA, INFO )
                IF( I+IB.LE.N ) THEN
                   CALL DGEMM( 'Transpose', 'No transpose', IB, I-1,
      $                        N-I-IB+1, ONE, A( I+IB, I ), LDA,
      $                        A( I+IB, 1 ), LDA, ONE, A( I, 1 ), LDA )
-                  CALL DSYRK( 'Lower', 'Transpose', IB, N-I-IB+1, ONE,
+                  CALL DSYRK( 'Lower', 'Transpose', IB, N-I-IB+1,
+     $                        ONE,
      $                        A( I+IB, I ), LDA, ONE, A( I, I ), LDA )
                END IF
    20       CONTINUE

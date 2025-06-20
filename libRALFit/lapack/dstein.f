@@ -2,25 +2,25 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DSTEIN + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dstein.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dstein.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dstein.f"> 
+*> Download DSTEIN + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dstein.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dstein.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dstein.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       SUBROUTINE DSTEIN( N, D, E, M, W, IBLOCK, ISPLIT, Z, LDZ, WORK,
 *                          IWORK, IFAIL, INFO )
-* 
+*
 *       .. Scalar Arguments ..
 *       INTEGER            INFO, LDZ, M, N
 *       ..
@@ -29,7 +29,7 @@
 *      $                   IWORK( * )
 *       DOUBLE PRECISION   D( * ), E( * ), W( * ), WORK( * ), Z( LDZ, * )
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -161,23 +161,20 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date November 2015
-*
-*> \ingroup doubleOTHERcomputational
+*> \ingroup stein
 *
 *  =====================================================================
       SUBROUTINE DSTEIN( N, D, E, M, W, IBLOCK, ISPLIT, Z, LDZ, WORK,
      $                   IWORK, IFAIL, INFO )
 *
-*  -- LAPACK computational routine (version 3.6.0) --
+*  -- LAPACK computational routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     November 2015
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, LDZ, M, N
@@ -209,11 +206,12 @@
 *     ..
 *     .. External Functions ..
       INTEGER            IDAMAX
-      DOUBLE PRECISION   DASUM, DDOT, DLAMCH, DNRM2
-      EXTERNAL           IDAMAX, DASUM, DDOT, DLAMCH, DNRM2
+      DOUBLE PRECISION   DDOT, DLAMCH, DNRM2
+      EXTERNAL           IDAMAX, DDOT, DLAMCH, DNRM2
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DAXPY, DCOPY, DLAGTF, DLAGTS, DLARNV, DSCAL,
+      EXTERNAL           DAXPY, DCOPY, DLAGTF, DLAGTS, DLARNV,
+     $                   DSCAL,
      $                   XERBLA
 *     ..
 *     .. Intrinsic Functions ..
@@ -357,7 +355,8 @@
 *           Compute LU factors with partial pivoting  ( PT = LU )
 *
             TOL = ZERO
-            CALL DLAGTF( BLKSIZ, WORK( INDRV4+1 ), XJ, WORK( INDRV2+2 ),
+            CALL DLAGTF( BLKSIZ, WORK( INDRV4+1 ), XJ,
+     $                   WORK( INDRV2+2 ),
      $                   WORK( INDRV3+1 ), TOL, WORK( INDRV5+1 ), IWORK,
      $                   IINFO )
 *
@@ -378,7 +377,8 @@
 *
 *           Solve the system LU = Pb.
 *
-            CALL DLAGTS( -1, BLKSIZ, WORK( INDRV4+1 ), WORK( INDRV2+2 ),
+            CALL DLAGTS( -1, BLKSIZ, WORK( INDRV4+1 ),
+     $                   WORK( INDRV2+2 ),
      $                   WORK( INDRV3+1 ), WORK( INDRV5+1 ), IWORK,
      $                   WORK( INDRV1+1 ), TOL, IINFO )
 *
@@ -391,7 +391,8 @@
      $         GPIND = J
             IF( GPIND.NE.J ) THEN
                DO 80 I = GPIND, J - 1
-                  ZTR = -DDOT( BLKSIZ, WORK( INDRV1+1 ), 1, Z( B1, I ),
+                  ZTR = -DDOT( BLKSIZ, WORK( INDRV1+1 ), 1, Z( B1,
+     $                         I ),
      $                  1 )
                   CALL DAXPY( BLKSIZ, ZTR, Z( B1, I ), 1,
      $                        WORK( INDRV1+1 ), 1 )

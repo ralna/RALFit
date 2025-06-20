@@ -2,31 +2,31 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DORG2L + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dorg2l.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dorg2l.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dorg2l.f"> 
+*> Download DORG2L + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dorg2l.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dorg2l.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dorg2l.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       SUBROUTINE DORG2L( M, N, K, A, LDA, TAU, WORK, INFO )
-* 
+*
 *       .. Scalar Arguments ..
 *       INTEGER            INFO, K, LDA, M, N
 *       ..
 *       .. Array Arguments ..
 *       DOUBLE PRECISION   A( LDA, * ), TAU( * ), WORK( * )
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -102,22 +102,19 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date September 2012
-*
-*> \ingroup doubleOTHERcomputational
+*> \ingroup ung2l
 *
 *  =====================================================================
       SUBROUTINE DORG2L( M, N, K, A, LDA, TAU, WORK, INFO )
 *
-*  -- LAPACK computational routine (version 3.4.2) --
+*  -- LAPACK computational routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     September 2012
 *
 *     .. Scalar Arguments ..
       INTEGER            INFO, K, LDA, M, N
@@ -136,7 +133,7 @@
       INTEGER            I, II, J, L
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLARF, DSCAL, XERBLA
+      EXTERNAL           DLARF1L, DSCAL, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          MAX
@@ -179,8 +176,9 @@
 *
 *        Apply H(i) to A(1:m-k+i,1:n-k+i) from the left
 *
-         A( M-N+II, II ) = ONE
-         CALL DLARF( 'Left', M-N+II, II-1, A( 1, II ), 1, TAU( I ), A,
+         !A(M-N+II, II) = ONE
+         CALL DLARF1L( 'Left', M-N+II, II-1, A( 1, II ), 1, TAU( I ),
+     $               A,
      $               LDA, WORK )
          CALL DSCAL( M-N+II-1, -TAU( I ), A( 1, II ), 1 )
          A( M-N+II, II ) = ONE - TAU( I )
