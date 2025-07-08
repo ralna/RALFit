@@ -76,6 +76,27 @@ function(generate_ral_nlls_modules precision obj_list)
     "NAG_EXPORT_MOD_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
   add_dependencies("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
   add_dependencies("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
+
+  # Replicate tree to be compatible with Ninja
+  target_link_libraries("RAL_NLLS_DTRS_${precision}" "RAL_NLLS_TYPES_${precision}"
+                        "RAL_NLLS_SYMBOLS_${precision}")
+  target_link_libraries("RAL_NLLS_WORKSPACES_${precision}"
+                        "RAL_NLLS_DTRS_${precision}")
+  target_link_libraries("NAG_EXPORT_MOD_${precision}"
+                        "RAL_NLLS_WORKSPACES_${precision}")
+  target_link_libraries("RAL_NLLS_PRINTING_${precision}"
+                        "RAL_NLLS_WORKSPACES_${precision}")
+  target_link_libraries("RAL_NLLS_BOUNDS_${precision}"
+                        "RAL_NLLS_WORKSPACES_${precision}")
+  target_link_libraries(
+    "RAL_NLLS_FD_${precision}" "RAL_NLLS_WORKSPACES_${precision}"
+    "RAL_NLLS_PRINTING_${precision}")
+  target_link_libraries(
+    "RAL_NLLS_INTERNAL_${precision}" "RAL_NLLS_PRINTING_${precision}"
+    "RAL_NLLS_BOUNDS_${precision}" "RAL_NLLS_FD_${precision}"
+    "NAG_EXPORT_MOD_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
+  target_link_libraries("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
+  target_link_libraries("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
 endfunction()
 
 # Post ################
