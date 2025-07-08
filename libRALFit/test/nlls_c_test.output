@@ -1,5 +1,55 @@
+
+ [Test: #1.......] config(model=1, method=1)
+ [Test: #1...PASS] config(model=1, method=1)
+
+ [Test: #2.......] config(model=1, method=2)
+ [Test: #2...PASS] config(model=1, method=2)
+
+ [Test: #3.......] config(model=1, method=3)
+ [Test: #3...PASS] config(model=1, method=3)
+
+ [Test: #4.......] config(model=1, method=4)
+ [Test: #4...PASS] config(model=1, method=4)
+
+ [Test: #5.......] config(model=2, method=1)
+ [Test: #5...PASS] config(model=2, method=1)
+
+ [Test: #6.......] config(model=2, method=2)
+ [Test: #6...PASS] config(model=2, method=2)
+
+ [Test: #7.......] config(model=2, method=3)
+ [Test: #7...PASS] config(model=2, method=3)
+
+ [Test: #8.......] config(model=2, method=4)
+ [Test: #8...PASS] config(model=2, method=4)
+
+ [Test: #9.......] config(model=3, method=1)
+ [Test: #9...PASS] config(model=3, method=1)
+
+ [Test: #10.......] config(model=3, method=2)
+ [Test: #10...PASS] config(model=3, method=2)
+
+ [Test: #11.......] config(model=3, method=3)
+ [Test: #11...PASS] config(model=3, method=3)
+
+ [Test: #12.......] config(model=3, method=4)
+ [Test: #12...PASS] config(model=3, method=4)
+
+ [Test: #13.......] config(model=0, method=1)
 Unsupported model passed in options                                              
+ [Test: #13...PASS] config(model=0, method=1)
+
+ [Test: #14.......] config(model=0, method=2)
 Unsupported model passed in options                                              
+ [Test: #14...PASS] config(model=0, method=2)
+
+ [Test: #15.......] config(model=0, method=3)
 Unsupported model passed in options                                              
+ [Test: #15...PASS] config(model=0, method=3)
+
+ [Test: #16.......] config(model=0, method=4)
 Unsupported model passed in options                                              
+ [Test: #16...PASS] config(model=0, method=4)
+
+
 ** C tests passed succcessfully! **
