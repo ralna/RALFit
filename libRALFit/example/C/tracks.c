@@ -40,7 +40,7 @@
 #include "ral_nlls.h"
 
 #define CHK(OK) ((OK) ? "PASS" : "FAIL")
-#ifdef SINGLE_PRECION
+#ifdef SINGLE_PRECISION
 #define LOG logf
 #define FABS fabsf
 #define SQRT sqrtf
