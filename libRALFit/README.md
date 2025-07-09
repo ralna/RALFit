@@ -12,7 +12,7 @@ To read more about the solver, see
 
 ## Requirements
 
-* CMake (tested on 3.18 and 3.31) and GNU Make
+* CMake (tested on 3.31) and GNU Make
 * Modern Fortran compiler
 * C compiler
 * Python 3 (tested on 3.11.4) if building the Python package
