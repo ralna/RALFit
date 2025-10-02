@@ -60,9 +60,20 @@ aocc-debug)
 esac
 
 
+module load cmake/latest
 # TODO Selectively use openblas OR AOCL
-module load cmake/latest openblas/latest
-export BLAS_LIBRARIES=-lopenblas
+case $compiler in
+    aocc*)
+        export BLAS_LIBRARIES=
+        clang --version
+        echo $AOCL_ROOT
+    ;;
+    *)
+        module load openblas/latest
+        export BLAS_LIBRARIES=-lopenblas
+    ;;
+esac
+
 
 case $compiler in
     nagfor-debug)
