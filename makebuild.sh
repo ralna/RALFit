@@ -9,6 +9,14 @@ SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 cd $SCRIPTPATH/libRALFit/
 mkdir build
 cd build
+
+#########################
+## Setup a virtualenv  ##
+#########################
+# TODO REMOVE ONCE THE ALL/PYTHON TARGET IS FIXED
+python3 -m venv p3venv
+source p3venv/bin/activate
+
 cmake .. ${RALFIT_FLAGS}
 make
 make install
