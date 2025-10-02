@@ -7,6 +7,9 @@ gfortran)
    export CC=gcc
    export F77=gfortran
    export FC=gfortran
+   export CFLAGS="-march=native -O3 -Wall -fopenmp"
+   export FFLAGS="-march=native -O3 -Wall -fopenmp"
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
 gfortran-debug)
    module load gcc/latest
@@ -14,21 +17,15 @@ gfortran-debug)
    export F77=gfortran
    export FC=gfortran
    export CFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
-   export CXXFLAGS="-g -O2 -Wall -pedantic fno-omit-frame-pointer -fopenmp"
    export FFLAGS="-g -O2 -Wall -pedantic -fcheck=all -fbacktrace -fno-omit-frame-pointer -finit-real=nan -finit-integer=-9999 -fopenmp"
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
 ifort)
    module load intel/latest
    export CC=icx
    export F77=ifort
    export FC=ifort
-   ;;
-nagfor) 
-   module load gcc/latest
-   module load nag/7.2
-   export CC=gcc
-   export F77=nagfor
-   export FC=nagfor
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
 nagfor-debug) 
    module load gcc/latest
@@ -37,10 +34,33 @@ nagfor-debug)
    export F77=nagfor
    export FC=nagfor
    export FFLAGS="-g -nan -C=all -C=undefined -u -ieee=full -kind=unique"
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
+   ;;
+aocc) 
+   module load amd
+   export CC=clang
+   export F77=flang
+   export FC=flang
+   export CFLAGS="-march=native -O3 -Wall -fopenmp"
+   export FFLAGS="-march=native -O3 -Wall -fopenmp"
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
+   ;;
+aocc-debug) 
+   module load amd
+   export CC=clang
+   export F77=flang
+   export FC=flang
+   export CFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
+   export FFLAGS="-g -O2 -Wall -pedantic -fcheck=all -fbacktrace -fno-omit-frame-pointer -finit-real=nan -finit-integer=-9999 -fopenmp"
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
+   ;;
+*)
+    echo "Unknown compiler $compiler"
+    exit 0 # for now exit wth success TODO RETURN ERROR
 esac
 
 
-#module load cmake/3.3.1 openblas/0.2.14
+# TODO Selectively use openblas OR AOCL
 module load cmake/latest openblas/latest
 export BLAS_LIBRARIES=-lopenblas
 
