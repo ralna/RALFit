@@ -29,7 +29,7 @@ ifort|ifx|icx|intel)
    export FC=ifx
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
-nagfor-debug) 
+nagfor*) 
    module load gcc/latest
    module load nag/7.2
    export CC=gcc
