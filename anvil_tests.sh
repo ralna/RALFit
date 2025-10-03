@@ -35,7 +35,8 @@ nagfor*)
    export CC=gcc
    export F77=nagfor
    export FC=nagfor
-   export FFLAGS="-g -nan -C=all -C=undefined -u -ieee=full -kind=unique"
+   # FFLAGS already set in the CMakeLists.txt
+   # export FFLAGS="-g -nan -C=all -C=undefined -u -ieee=full -kind=unique"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
 aocc|amd) 
