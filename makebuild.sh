@@ -38,13 +38,12 @@ RESULT=$?
 ./nlls_c_test &> nlls_c_test.output
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
+
+ls -la $SCRIPTPATH/libRALFit/test/nlls_c_test.output 
+
 diff nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
 RESULT=$?
-if [ $RESULT -gt 1 ] 
-then
-  echo "[C test]: Something is wrong with the diff"
-  exit 4
-elif [ $RESULT -eq 1 ]
+if [ $RESULT -ne 0 ] 
 then
   echo "[C test]: Something is wrong with the diff"
   exit 4
