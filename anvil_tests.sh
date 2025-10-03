@@ -51,7 +51,7 @@ aocc-debug)
    export F77=flang
    export FC=flang
    export CFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
-   export FFLAGS="-g -O2 -Wall -pedantic -fcheck=all -fbacktrace -fno-omit-frame-pointer -finit-real=nan -finit-integer=-9999 -fopenmp"
+   export FFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
 *)
