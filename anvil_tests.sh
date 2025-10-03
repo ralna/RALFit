@@ -44,8 +44,8 @@ aocc|amd)
    export CC=clang
    export F77=flang
    export FC=flang
-   export CFLAGS="-march=native -O3 -Wall -fopenmp"
-   export FFLAGS="-march=native -O3 -Wall -fopenmp"
+   export CFLAGS="-march=native -O2 -Wall -fopenmp"
+   export FFLAGS="-march=native -O2 -Wall -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
 aocc-debug|amd-debug) 
