@@ -1160,7 +1160,9 @@ program nlls_test
      write(options%out,*) 'Solution (F): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.3199787042575630E+00, 0.2752509146444680E-01/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
+        write(*,*) 'Error: [id:1] FD solve: unexpected status value or wrong solution (Status = ', status%status,')'
+        write(*,*) 'Solution (F): ', x(1:n)
+        write(*,*) 'Expected: ', (/0.3199787042575630E+00, 0.2752509146444680E-01/)
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1174,7 +1176,9 @@ program nlls_test
      write(options%out,*) 'Solution (C): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.3199787042575630E+00, 0.2752509146444680E-01/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
+        write(*,*) 'Error: [id:2] FD solve: unexpected status value or wrong solution (Status = ', status%status,')'
+        write(*,*) 'Solution (C): ', x(1:n)
+        write(*,*) 'Expected: ', (/0.3199787042575630E+00, 0.2752509146444680E-01/)
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1193,7 +1197,9 @@ program nlls_test
      write(options%out,*) 'Solution (C): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.0, 0.9244158/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
+        write(*,*) 'Error: [id:3] FD solve: unexpected status value or wrong solution (Status = ', status%status,')'
+        write(*,*) 'Solution (C): ', x(1:n)
+        write(*,*) 'Expected: ', (/0.0, 0.9244158/)
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1210,7 +1216,9 @@ program nlls_test
      write(options%out,*) 'Solution (F): ', x(1:n)
      write(options%out,*) 'Expected: ', (/0.32, 2.7447762174312485E-002/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
-        write(*,*) 'Error: FD solve: unexpected status value or wrong solution'
+        write(*,*) 'Error: [id:4] FD solve: unexpected status value or wrong solution (Status = ', status%status,')'
+        write(*,*) 'Solution (F): ', x(1:n)
+        write(*,*) 'Expected: ', (/0.32, 2.7447762174312485E-002/)
         no_errors_main = no_errors_main + 1
      end if
 
