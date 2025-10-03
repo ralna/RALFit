@@ -35,11 +35,9 @@ RESULT=$?
 #################
 ## run c tests ##
 #################
-./nlls_c_test &> nlls_c_test.output
+./nlls_c_test > nlls_c_test.output 2> nlls_c_test.stderr
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 3
-
-ls -la $SCRIPTPATH/libRALFit/test/nlls_c_test.output 
 
 diff nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
 RESULT=$?
@@ -49,6 +47,11 @@ then
   echo "Diff file content:"
   diff -y nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
   exit 4
+fi
+
+if [ -s nlls_c_test.stderr ]; then
+  echo "** C test passed successfully WITH RUNTIME WARNINGS (see nlls_c_test.stderr) **"
+  head nlls_c_test.stderr
 else
   echo "** C test passed successfully **"
 fi
@@ -56,6 +59,14 @@ fi
 ######################
 ## run python tests ##
 ######################
+
+# ASAN may not play nice with python - so disable the python tests
+# Infer if debug mode is on
+# TODO FIXME re-enable once -DASAN=Off option is added to CMakeLists.txt
+if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' ]]; then
+    echo "Note: Debug (ASAN) mode - skipping python tests"
+    exit 0
+fi
 
 export LD_LIBRARY_PATH=$SCRIPTPATH/libRALFit/build/src/:$LD_LIBRARY_PATH
 ./nlls_python_test &> nlls_python_test.output
