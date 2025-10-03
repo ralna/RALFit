@@ -36,27 +36,37 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   message("WARNING: Debug version - not to be used in production code.")
   # compile lapack from source...
   set(CompileMiniLAPACK On)
-  # set the test coverage switch
-  set(TestCoverage On)
+
+  if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    # set the test coverage switch
+    set(TestCoverage On)
+    set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fsanitize=address -fsanitize=leak")
+    set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fsanitize=address -fsanitize=leak")
+    set(CMAKE_LDFLAGS_DEBUG "-g -fsanitize=address -fsanitize=leak")
+  elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
+    set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0")
+    set(CMAKE_Fortran_FLAGS_DEBUG "-g -nan -C=all -C=undefined -u -ieee=full -kind=unique")
+    set(CMAKE_LDFLAGS_DEBUG "-g")
+  else()
+    set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fsanitize=address -fsanitize=leak")
+    set(CMAKE_Fortran_FLAGS_DEBUG "-g -O0 -Wall -pedantic -fsanitize=address -fsanitize=leak")
+    set(CMAKE_LDFLAGS_DEBUG "-g -fsanitize=address -fsanitize=leak")
+  endif()
+
+  set( CMAKE_VERBOSE_MAKEFILE on )
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
   message("WARNING: Debug version - not to be used in production code.")
 endif()
-
 
 # Set flags
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) # SET fPIC
 set(CMAKE_C_STANDARD 99) # SET -std=c99
 
-if(TestCoverage)
-   set( CMAKE_VERBOSE_MAKEFILE on )
+if(TestCoverage) # Only enabled for GNU compiler
    INCLUDE(CodeCoverage)
-   set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
-   if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-     set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
-   else()
-     set(CMAKE_Fortran_FLAGS_DEBUG "-g -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
-   endif()
-   set(CMAKE_LDFLAGS_DEBUG "-g -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
+   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+   set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+   set(CMAKE_LDFLAGS_DEBUG "${CMAKE_LDFLAGS_DEBUG} -g -fprofile-arcs -ftest-coverage")
    SETUP_TARGET_FOR_COVERAGE(test_coverage test/nlls_f90_test coverage)
 endif(TestCoverage)
 
