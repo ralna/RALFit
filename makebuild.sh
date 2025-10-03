@@ -32,6 +32,12 @@ cd test
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 2
 
+# Quick exit if NAGFOR compiler
+if [ "$FC" == "nagfor" ]; then
+    echo "Note: NAGFOR compiler - skipping C and Python tests"
+    exit 0
+fi
+
 #################
 ## run c tests ##
 #################

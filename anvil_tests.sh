@@ -78,11 +78,4 @@ case $compiler in
 esac
 
 
-case $compiler in
-    nagfor-debug)
-	./makebuild_fortran.sh
-	;;
-    *)
-	./makebuild.sh
-	;;
-esac
+./makebuild.sh
