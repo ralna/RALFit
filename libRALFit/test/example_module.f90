@@ -2155,8 +2155,8 @@ contains
          fails = fails + 1
       end if
 
-      n = 115
-      m = 100
+      n = 75
+      m = 70
       deallocate (J, f, Jd, d)
       allocate (J(n*m), f(m), d(n)) ! f has wrong size
 

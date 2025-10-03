@@ -1187,7 +1187,7 @@ program nlls_test
      options%print_level = 0
      options%check_derivatives = 0
      options%maxit = 100
-     options%fd_step = 1.2e-7
+     options%fd_step = 1.01e-7
      blx(:) = (/0.0, 0.0/)
      bux(:) = (/0.0, 1.0/)
      X(1:2) = (/1.0, 0.923/)
