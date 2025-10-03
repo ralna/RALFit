@@ -2965,11 +2965,7 @@ contains
 
       fails = 0
       n = 2
-      m = 67
-
-      allocate (params%x_values(m))
-      allocate (params%y_values(m))
-
+      ! Set by generate_data_example m = 67
       call generate_data_example(params)
 
       ! let's check the workspace errors
@@ -3201,6 +3197,17 @@ contains
             status%status
          fails = fails + 1
       end if
+
+      ! Release memory
+      If (Allocated(params%x_values)) Then
+         Deallocate(params%x_values)
+      End If
+      If (Allocated(params%y_values)) Then
+         Deallocate(params%y_values)
+      End If
+      If (Allocated(X)) Then
+         Deallocate(X)
+      End If
 
       call reset_default_options(options)
 

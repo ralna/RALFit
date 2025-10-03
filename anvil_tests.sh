@@ -23,8 +23,8 @@ gfortran-debug)
 ifort)
    module load intel/latest
    export CC=icx
-   export F77=ifort
-   export FC=ifort
+   export F77=ifx
+   export FC=ifx
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
 nagfor-debug) 
