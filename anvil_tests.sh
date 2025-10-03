@@ -1,5 +1,7 @@
 #module spider
 #
+
+
 echo "Compiler $compiler on target $target"
 case $compiler in
 gfortran)
@@ -20,7 +22,7 @@ gfortran-debug)
    export FFLAGS="-g -O2 -Wall -pedantic -fcheck=all -fbacktrace -fno-omit-frame-pointer -finit-real=nan -finit-integer=-9999 -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
-ifort)
+ifort|ifx|icx|intel)
    module load intel/latest
    export CC=icx
    export F77=ifx
@@ -36,7 +38,7 @@ nagfor-debug)
    export FFLAGS="-g -nan -C=all -C=undefined -u -ieee=full -kind=unique"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
-aocc) 
+aocc|amd) 
    module load amd
    export CC=clang
    export F77=flang
@@ -45,7 +47,7 @@ aocc)
    export FFLAGS="-march=native -O3 -Wall -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
-aocc-debug) 
+aocc-debug|amd-debug) 
    module load amd
    export CC=clang
    export F77=flang
@@ -56,7 +58,7 @@ aocc-debug)
    ;;
 *)
     echo "Unknown compiler $compiler"
-    exit 0 # for now exit wth success TODO RETURN ERROR
+    exit 10
 esac
 
 

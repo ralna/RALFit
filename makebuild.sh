@@ -46,6 +46,8 @@ RESULT=$?
 if [ $RESULT -ne 0 ] 
 then
   echo "[C test]: Something is wrong with the diff"
+  echo "Diff file content:"
+  diff -y nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
   exit 4
 else
   echo "** C test passed successfully **"
@@ -63,13 +65,9 @@ then
    echo "[Python test]: Failed"
    exit 5
 fi
-diff nlls_python_test.output $SCRIPTPATH/libRALFit/test/solve_python.output
+diff nlls_python_test.output $SCRIPTPATH/libRALFit/test/solve_python.output 
 RESULT=$?
-if [ $RESULT -gt 1 ] 
-then
-  echo "[Python test]: Something is wrong with the diff"
-  exit 5
-elif [ $RESULT -eq 1 ]
+if [ $RESULT -ne 0 ] 
 then
   echo "[Python test]: Something is wrong with the diff"
   exit 5
