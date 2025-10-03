@@ -2112,7 +2112,7 @@ contains
       call solve_LLS(J, f, n, m, d, status, &
                      work%calculate_step_ws%dogleg_ws%solve_LLS_ws, .True.)
       if (status%status .ne. 0) then
-         write (*, *) 'solve_LLS test failed: wrong error message returned'
+         write (*, *) '[id:1] solve_LLS test failed: wrong error message returned'
          write (*, *) 'status = ', status%status, " (expected ", NLLS_ERROR_FROM_EXTERNAL, ")"
          fails = fails + 1
       end if
@@ -2139,7 +2139,7 @@ contains
       call solve_LLS(J, f, n, m, d, status, &
                      work%calculate_step_ws%dogleg_ws%solve_LLS_ws, .False.)
       if (status%status .ne. 0) then
-         write (*, *) 'solve_LLS test failed: wrong error message returned'
+         write (*, *) '[id:2] solve_LLS test failed: wrong error message returned'
          write (*, *) 'status = ', status%status, " (expected ", NLLS_ERROR_FROM_EXTERNAL, ")"
          fails = fails + 1
       end if
@@ -2167,7 +2167,7 @@ contains
       call solve_LLS(J, f, n, m, d, status, &
                      work%calculate_step_ws%dogleg_ws%solve_LLS_ws, .True.)
       if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
-         write (*, *) 'solve_LLS test failed: wrong error message returned'
+         write (*, *) '[id:3] solve_LLS test failed: wrong error message returned'
          write (*, *) 'status = ', status%status, " (expected ", NLLS_ERROR_FROM_EXTERNAL, ")"
          fails = fails + 1
       end if
