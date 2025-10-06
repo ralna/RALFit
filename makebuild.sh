@@ -28,8 +28,14 @@ RESULT=$?
 #######################
 
 cd test
+
+echo 'Begin Fortran test nlls_f90_test'
+
 ./nlls_f90_test
 RESULT=$?
+
+echo 'End Fortran test nlls_f90_test: return code' $RESULT
+
 [ $RESULT -ne 0 ] && exit 2
 
 # Quick exit if NAGFOR compiler
@@ -41,8 +47,14 @@ fi
 #################
 ## run c tests ##
 #################
+
+echo 'Begin C test nlls_c_test'
+
 ./nlls_c_test > nlls_c_test.output 2> nlls_c_test.stderr
 RESULT=$?
+
+echo 'End C test nlls_c_test: return code' $RESULT
+
 [ $RESULT -ne 0 ] && exit 3
 
 diff nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
@@ -75,8 +87,14 @@ if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' ]]; then
 fi
 
 export LD_LIBRARY_PATH=$SCRIPTPATH/libRALFit/build/src/:$LD_LIBRARY_PATH
+
+echo 'Begin Python test nlls_python_test'
+
 ./nlls_python_test &> nlls_python_test.output
 RESULT=$?
+
+echo 'End Python test nlls_python_test: return code' $RESULT
+
 if [ $RESULT -ne 0 ]
 then
    echo "[Python test]: Failed"
@@ -91,5 +109,7 @@ then
 else
   echo "** Python test passed successfully **"
 fi
+
+echo "All tests executed. Bye."
 
 exit 0
