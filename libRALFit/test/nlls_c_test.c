@@ -70,7 +70,6 @@ int eval_HF(int n, int m, void * params, double const* x, double const* r, doubl
 int generic_test(int model, int method){
   // Data to be fitted
   int m = 5;
-  char errstr[81];
 
   struct params_type params = {
     .t = (double []) { 1.0, 2.0, 4.0,  5.0,  8.0 },

@@ -1187,10 +1187,10 @@ program nlls_test
      options%print_level = 0
      options%check_derivatives = 0
      options%maxit = 100
-     options%fd_step = 1.0e-7
+     options%fd_step = 5.0e-7
      blx(:) = (/0.0, 0.0/)
      bux(:) = (/0.0, 1.0/)
-     X(1:2) = (/1.0, 0.924/)
+     X(1:2) = (/1.0, 0.9242/)
      options%box_gamma = 0.99999 ! discourage any linesearch
      call solve_basic(X,params,options,status,use_fd=.True.,blx=blx,bux=bux)
      oki = abs(x(1) - 0.0) <= 1.e-6 .And. abs(x(2)-0.9244158) < 1.e-6

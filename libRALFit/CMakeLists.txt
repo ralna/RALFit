@@ -13,6 +13,9 @@ set(CMAKE_Fortran_PREPROCESS ON)
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
 
+# Export Release Information automatically
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Set the location for cmake module files
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
