@@ -55,7 +55,13 @@ RESULT=$?
 
 echo 'End C test nlls_c_test: return code' $RESULT
 
-[ $RESULT -ne 0 ] && exit 3
+if [ $RESULT -ne 0 ]; then
+    echo "\n\nstdout:"
+    cat nlls_c_test.output
+    echo "\n\nstderr:"
+    cat nlls_c_test.stderr
+    exit 3
+fi
 
 diff nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
 RESULT=$?
