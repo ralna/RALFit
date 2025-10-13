@@ -42,7 +42,7 @@ add_custom_target(
   coverage
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
-  COMMAND ${LCOV_PATH} --ignore-errors unused --remove coverage.info 'lapack/*' '/usr/*'
+  COMMAND ${LCOV_PATH} --ignore-errors unused --remove coverage.info 'lapack/*' '/usr/*' --exclude '*/lapack/*'
           --output-file coverage.info.cleaned
   COMMAND ${GENHTML_PATH} -o coverage coverage.info.cleaned
   DEPENDS coverage-run-all)
