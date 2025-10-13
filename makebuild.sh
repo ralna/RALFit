@@ -86,6 +86,10 @@ if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' ]]; then
         echo "Executing the coverage target"
         make coverage
     fi
+else
+    # Make CI happy
+    mkdir coverage
+    echo "For coverage info check GNU gfortran-debug build workspace." > coverage/index.html
 fi
 
 ######################
