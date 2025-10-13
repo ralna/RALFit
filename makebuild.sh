@@ -81,6 +81,9 @@ else
   echo "** C test passed successfully **"
 fi
 
+# Go back
+cd $SCRIPTPATH/libRALFit/build
+
 if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' ]]; then
     if [ "$FC" == "gfortran" ]; then
         echo "Executing the coverage target"
