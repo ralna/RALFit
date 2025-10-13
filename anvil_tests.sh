@@ -1,25 +1,22 @@
-#module spider
-#
+#!/bin/bash
+# Anvil launch script
+# Usage: anvil_tests.sh <compiler>
 
+echo 'Building using $compiler' $compiler
 
-echo "Compiler $compiler on target $target"
 case $compiler in
-gfortran)
+gfortran|gcc)
    module load gcc/latest
    export CC=gcc
    export F77=gfortran
    export FC=gfortran
-   export CFLAGS="-march=native -O3 -Wall -fopenmp"
-   export FFLAGS="-march=native -O3 -Wall -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
-gfortran-debug)
+gfortran-debug|gcc-debug)
    module load gcc/latest
    export CC=gcc
    export F77=gfortran
    export FC=gfortran
-   export CFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
-   export FFLAGS="-g -O2 -Wall -pedantic -fcheck=all -fbacktrace -fno-omit-frame-pointer -finit-real=nan -finit-integer=-9999 -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
 ifort|ifx|icx|intel)
@@ -35,8 +32,6 @@ nagfor*)
    export CC=gcc
    export F77=nagfor
    export FC=nagfor
-   # FFLAGS already set in the CMakeLists.txt
-   # export FFLAGS="-g -nan -C=all -C=undefined -u -ieee=full -kind=unique"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
 aocc|amd) 
@@ -44,8 +39,6 @@ aocc|amd)
    export CC=clang
    export F77=flang
    export FC=flang
-   export CFLAGS="-march=native -O2 -Wall -fopenmp"
-   export FFLAGS="-march=native -O2 -Wall -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release"
    ;;
 aocc-debug|amd-debug) 
@@ -53,23 +46,21 @@ aocc-debug|amd-debug)
    export CC=clang
    export F77=flang
    export FC=flang
-   export CFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
-   export FFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
    ;;
 *)
-    echo "Unknown compiler $compiler"
+    echo "$0 Error: Unknown compiler \"$compiler\"?"
     exit 10
 esac
 
 
 module load cmake/latest
-# TODO Selectively use openblas OR AOCL
+# TODO Selectively use OpenBLAS OR AOCL
 case $compiler in
     aocc*)
         export BLAS_LIBRARIES=
         clang --version
-        echo $AOCL_ROOT
+        echo '$AOCL_ROOT='$AOCL_ROOT
     ;;
     *)
         module load openblas/latest
@@ -77,5 +68,6 @@ case $compiler in
     ;;
 esac
 
+echo '$BLAS_LIBRARIES='$BLAS_LIBRARIES
 
 ./makebuild.sh

@@ -17,6 +17,7 @@ cd build
 python3 -m venv p3venv
 source p3venv/bin/activate
 
+echo "Building configuration: cmake .. ${RALFIT_FLAGS}"
 cmake .. ${RALFIT_FLAGS}
 make
 make install
@@ -78,6 +79,13 @@ if [ -s nlls_c_test.stderr ]; then
   head nlls_c_test.stderr
 else
   echo "** C test passed successfully **"
+fi
+
+if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' ]]; then
+    if [ "$FC" == "gfortran" ]; then
+        echo "Executing the coverage target"
+        make coverage
+    fi
 fi
 
 ######################
