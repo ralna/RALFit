@@ -120,6 +120,7 @@ echo 'End Python test nlls_python_test: return code' $RESULT
 if [ $RESULT -ne 0 ]
 then
    echo "[Python test]: Failed"
+   cat nlls_python_test.output
    exit 5
 fi
 diff nlls_python_test.output $SCRIPTPATH/libRALFit/test/solve_python.output 
@@ -127,7 +128,7 @@ RESULT=$?
 if [ $RESULT -ne 0 ] 
 then
   echo "[Python test]: Something is wrong with the diff"
-  exit 5
+  exit 4
 else
   echo "** Python test passed successfully **"
 fi
