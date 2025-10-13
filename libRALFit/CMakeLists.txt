@@ -156,7 +156,7 @@ endif()
 # Python interface
 find_package(Python COMPONENTS Interpreter)
 
-if(PYTHON_Interpreter_FOUND)
+if(Python_Interpreter_FOUND)
   message(STATUS "looking for files in ${CMAKE_CURRENT_SOURCE_DIR}")
   set(PYPROJ_IN "${CMAKE_CURRENT_SOURCE_DIR}/pyproject.toml.in")
   set(PYPROJ "${CMAKE_CURRENT_BINARY_DIR}/pyproject.toml")
@@ -167,16 +167,14 @@ if(PYTHON_Interpreter_FOUND)
   configure_file(${PYPROJ_IN} ${PYPROJ})
   configure_file(${SETUP_PY_IN} ${SETUP_PY})
 
-  execute_process(COMMAND which ${PYTHON_EXECUTABLE} OUTPUT_VARIABLE outVar)
-  message(STATUS ${outVar})
   message(STATUS "python found -- writing to ${CMAKE_CURRENT_BINARY_DIR}")
-  message(STATUS "To install the python library, run: ${PYTHON_EXECUTABLE} -m pip install .")
+  message(STATUS "To install the python library, run: ${Python_EXECUTABLE} -m pip install .")
   add_custom_command(
     OUTPUT ${OUTPUT}
-    COMMAND ${PYTHON_EXECUTABLE} -m pip install .
+    COMMAND ${Python_EXECUTABLE} -m pip install .
     COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT})
   install(CODE "execute_process(
-           COMMAND ${PYTHON_EXECUTABLE} -m pip install .
+           COMMAND ${Python_EXECUTABLE} -m pip install .
            )")
 
   add_custom_target(target ALL DEPENDS ${OUTPUT} ral_nlls)
