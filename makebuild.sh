@@ -112,7 +112,7 @@ export LD_LIBRARY_PATH=$SCRIPTPATH/libRALFit/build/src/:$LD_LIBRARY_PATH
 
 echo 'Begin Python test nlls_python_test'
 
-./nlls_python_test &> nlls_python_test.output
+../test/nlls_python_test &> nlls_python_test.output
 RESULT=$?
 
 echo 'End Python test nlls_python_test: return code' $RESULT
