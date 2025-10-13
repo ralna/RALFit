@@ -57,9 +57,9 @@ RESULT=$?
 echo 'End C test nlls_c_test: return code' $RESULT
 
 if [ $RESULT -ne 0 ]; then
-    echo "\n\nstdout:"
+    echo -e "\n\nstdout:"
     cat nlls_c_test.output
-    echo "\n\nstderr:"
+    echo -e "\n\nstderr:"
     cat nlls_c_test.stderr
     exit 3
 fi
@@ -84,8 +84,7 @@ fi
 # Go back
 cd $SCRIPTPATH/libRALFit/build
 
-if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' ]]; then
-    if [ "$FC" == "gfortran" ]; then
+if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' -a "$FC" == "gfortran" ]]; then
         echo "Executing the coverage target"
         make coverage
     fi
