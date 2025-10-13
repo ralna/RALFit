@@ -84,10 +84,9 @@ fi
 # Go back
 cd $SCRIPTPATH/libRALFit/build
 
-if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' -a "$FC" == "gfortran" ]]; then
+if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' && "$FC" == "gfortran" ]]; then
         echo "Executing the coverage target"
         make coverage
-    fi
 else
     # Make CI happy
     mkdir -v coverage
