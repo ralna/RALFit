@@ -91,8 +91,8 @@ if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' ]]; then
     fi
 else
     # Make CI happy
-    mkdir coverage
-    echo "Coverage dummy report: `pwd`"
+    mkdir -v coverage
+    echo "Coverage dummy report: `pwd`/coverage"
     echo "For coverage info check GNU gfortran-debug build workspace." > coverage/index.html
 fi
 
