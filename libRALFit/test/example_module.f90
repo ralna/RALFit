@@ -2162,7 +2162,7 @@ contains
 
       call setup_workspaces(work, n, m, options, status)
 
-      J = 1.0e+20_wp
+      J = 1.0e+80_wp
       f = 1.0_wp
       call solve_LLS(J, f, n, m, d, status, &
                      work%calculate_step_ws%dogleg_ws%solve_LLS_ws, .True.)
