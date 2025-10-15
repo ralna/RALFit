@@ -1182,24 +1182,24 @@ program nlls_test
         no_errors_main = no_errors_main + 1
      end if
 
-     ! Solve with one fixed variable
+     ! Solve with one fixed variable and solution is active
      options%Fortran_Jacobian = .False.
      options%print_level = 0
      options%check_derivatives = 0
      options%maxit = 100
      options%fd_step = 5.0e-7
      blx(:) = (/0.0, 0.0/)
-     bux(:) = (/0.0, 1.0/)
-     X(1:2) = (/1.0, 0.9242/)
-     options%box_gamma = 0.9999999 ! discourage any linesearch
+     bux(:) = (/0.0, 0.9244/)
+     X(1:2) = (/1.0, 0.92/)
+     options%box_gamma = 0.99999 ! discourage any linesearch
      call solve_basic(X,params,options,status,use_fd=.True.,blx=blx,bux=bux)
-     oki = abs(x(1) - 0.0) <= 1.e-6 .And. abs(x(2)-0.9244158) < 1.e-4
+     oki = abs(x(1) - 0.0) <= 0.0_wp .And. abs(x(2)-0.9244) <= 0.0_wp
      write(options%out,*) 'Solution (C): ', x(1:n)
-     write(options%out,*) 'Expected: ', (/0.0, 0.9244158/)
+     write(options%out,*) 'Expected: ', (/0.0, 0.9244/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
         write(*,*) 'Error: [id:3] FD solve: unexpected status value or wrong solution (Status = ', status%status,')'
         write(*,*) 'Solution (C): ', x(1:n)
-        write(*,*) 'Expected: ', (/0.0, 0.9244158/)
+        write(*,*) 'Expected: ', (/0.0, 0.9244/)
         no_errors_main = no_errors_main + 1
      end if
 
