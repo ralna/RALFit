@@ -10,6 +10,8 @@ cd $SCRIPTPATH/libRALFit/
 mkdir build
 cd build
 
+echo "CWD: `pwd`"
+
 #########################
 ## Setup a virtualenv  ##
 #########################
