@@ -10,6 +10,7 @@ case $libtype in
 shared)
    echo "Building shared library"
    CMAKE_EXTRA="$CMAKE_EXTRA -DBUILD_SHARED_LIBS=ON"
+   ;;
 *)
    echo "Building static library"
    CMAKE_EXTRA="$CMAKE_EXTRA -DBUILD_SHARED_LIBS=OFF"
