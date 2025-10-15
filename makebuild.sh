@@ -39,7 +39,7 @@ RESULT=$?
 
 echo 'End Fortran test nlls_f90_test: return code' $RESULT
 
-####### FIXME ENABLE BACK [ $RESULT -ne 0 ] && exit 2
+[ $RESULT -ne 0 ] && exit 2
 
 # Quick exit if NAGFOR compiler
 if [ "$FC" == "nagfor" ]; then
