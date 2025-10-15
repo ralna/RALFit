@@ -10,6 +10,10 @@ cd $SCRIPTPATH/libRALFit/
 mkdir build
 cd build
 
+# Make CI/HTML plugin happy
+mkdir -v coverage
+echo "For coverage info check GNU gfortran-debug build workspace." > coverage/index.html
+
 echo "CWD: `pwd`"
 
 #########################
@@ -89,11 +93,6 @@ cd $SCRIPTPATH/libRALFit/build
 if [[ "$RALFIT_FLAGS" =~ 'CMAKE_BUILD_TYPE=Debug' && "$FC" == "gfortran" ]]; then
         echo "Executing the coverage target"
         make coverage
-else
-    # Make CI happy
-    mkdir -v coverage
-    echo "Coverage dummy report: `pwd`/coverage"
-    echo "For coverage info check GNU gfortran-debug build workspace." > coverage/index.html
 fi
 
 ######################
