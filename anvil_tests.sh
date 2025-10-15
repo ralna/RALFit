@@ -1,9 +1,20 @@
 #!/bin/bash
 # Anvil launch script
-# Usage: anvil_tests.sh <compiler> [<extra_flags>]
+# Usage: anvil_tests.sh <compiler> <libtype> [<extra_flags>]
 
-echo 'Building using $compiler=' $compiler
-echo 'Extra flags: $CMAKE_EXTRA=' $CMAKE_EXTRA
+echo 'Building using AXIS $compiler='$compiler
+echo 'Building using AXIS $libtype='$libtype
+echo 'PARAM Extra flags: $CMAKE_EXTRA='$CMAKE_EXTRA
+
+case $libtype in
+shared)
+   echo "Building shared library"
+   CMAKE_EXTRA="$CMAKE_EXTRA -DBUILD_SHARED_LIBS=ON"
+*)
+   echo "Building static library"
+   CMAKE_EXTRA="$CMAKE_EXTRA -DBUILD_SHARED_LIBS=OFF"
+   ;;
+esac
 
 case $compiler in
 gfortran|gcc)
