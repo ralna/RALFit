@@ -1191,7 +1191,7 @@ program nlls_test
      blx(:) = (/0.0, 0.0/)
      bux(:) = (/0.0, 1.0/)
      X(1:2) = (/1.0, 0.9242/)
-     options%box_gamma = 0.99999 ! discourage any linesearch
+     options%box_gamma = 0.9999999 ! discourage any linesearch
      call solve_basic(X,params,options,status,use_fd=.True.,blx=blx,bux=bux)
      oki = abs(x(1) - 0.0) <= 1.e-6 .And. abs(x(2)-0.9244158) < 1.e-4
      write(options%out,*) 'Solution (C): ', x(1:n)
