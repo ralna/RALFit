@@ -2,34 +2,45 @@
 # All rights reserved.
 # Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 # CMake project file for libral_nlls
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required (VERSION 3.25)
 
 project (RALFit LANGUAGES Fortran C)
 
 # Request to run pre-processor
 set(CMAKE_Fortran_PREPROCESS ON)
 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "" "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
 # Option to compile our own LAPACK
 option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
+
+# Build the library with floating point single precision (WP=float)
+option(SINGLE_PRECISION "Build library in single precion (default off)" Off)
+
+# Option to supress some compiler warning in debug mode
+option(SUPPRESS_INTERNAL_FIXMES "Suppress compiler warnings of known issues" Off)
+
+# Option to build the Python interface of RALFit
+option(BUILD_PYTHON "Build RalNLLS Python wheel (default On)" On)
+
+if (SINGLE_PRECISION)
+    message(STATUS "Floating point precision type: SINGLE")
+    add_compile_definitions(SINGLE_PRECISION)
+else()
+    message(STATUS "Floating point precision type: DOUBLE")
+endif(SINGLE_PRECISION)
 
 # Set the location for cmake module files
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
 set(CMAKE_EXE_LINKER_FLAGS "-Wl,-export-dynamic")
 
-# Set the source files that we're going to compile
-set ( SRC_FILES
-       src/ral_nlls_double.f90
-       src/ral_nlls_internal.f90
-       src/ral_nlls_dtrs_double.f90
-       src/ral_nlls_symbols.f90
-       src/ral_nlls_ciface.f90
-       src/ral_nlls_workspaces.f90
-       src/ral_nlls_printing.f90
-       src/ral_nlls_types.F90
-       src/ral_nlls_fd.f90
-	)
+set(CMAKE_EXPORT_COMPILE_COMMANDS On)
 
 # Support for CMAKE_BUILD_TYPE={Debug,Release,Profile}
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -38,21 +49,22 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   set(CompileMiniLAPACK On)
   # set the test coverage switch
   set(TestCoverage On)
+  # set( CMAKE_VERBOSE_MAKEFILE on ) # Caller can set this
 elseif(CMAKE_BUILD_TYPE MATCHES Profile)
-  message("WARNING: Debug version - not to be used in production code.")
+  message("WARNING: Profile version - not to be used in production code.")
 endif()
 
 
 # Set flags
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) # SET fPIC
 set(CMAKE_C_STANDARD 99) # SET -std=c99
+set(CMAKE_Fortran_PREPROCESS ON)
 
 if(TestCoverage)
-   set( CMAKE_VERBOSE_MAKEFILE on )
    INCLUDE(CodeCoverage)
-   set(CMAKE_C_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
-   set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
-   set(CMAKE_LDFLAGS_DEBUG "-g -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
+   set(CMAKE_C_FLAGS_DEBUG "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
+   set(CMAKE_Fortran_FLAGS_DEBUG "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fcheck=all -fbacktrace -finit-real=nan -finit-integer=-9999 -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
+   set(CMAKE_LDFLAGS_DEBUG "-g3 -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
    SETUP_TARGET_FOR_COVERAGE(test_coverage test/nlls_f90_test coverage)
 endif(TestCoverage)
 
@@ -73,25 +85,20 @@ endif()
 # LAPACK routines
 if(CompileMiniLAPACK)
    message("*****************************WARNING**********************************")
-   message("* Compiling our own LAPACK library.                                  *")
+   message("* Compiling our own BLAS/LAPACK library.                             *")
    message("* This should be avoided as it is likely to be less optimised than a *")
    message("* vendor supplied version, and may also be out of date.              *")
    message("**********************************************************************")
-   # note that blas is a dependency of lapack, so blas only explicitly needed here,
-   # if we've built our own lapack
-   find_package(BLAS REQUIRED)
-   if ( NOT BLAS_FOUND )
-     message( FATAL_ERROR "BLAS required, but not found!")
-   endif ( NOT BLAS_FOUND )
-   message( STATUS "The BLAS library was found at" ${BLAS_LIBRARIES} )
-   set(LIBS ${LIBS} ${BLAS_LIBRARIES})
+   # Unit-test should only be run/verified when using the provided BLAS and LAPACK
    add_subdirectory(lapack)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 endif()
 
 # Python interface
-find_package (PythonInterp)
+if (BUILD_PYTHON)
+  find_package (PythonInterp)
+endif()
 
 if (PYTHONINTERP_FOUND)
    message( STATUS "looking for files in ${CMAKE_CURRENT_SOURCE_DIR}")
