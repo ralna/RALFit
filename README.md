@@ -24,8 +24,8 @@ make
 
 The package is written in modern Fortran, and we provide a number of interfaces for other languages.  For documentation, follow the links below:
 
-[![Fortran doc](https://readthedocs.org/projects/ralfit-fortran/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Fortran/en/latest/?badge=latest) Fortran documentation.
+[![Fortran doc](https://readthedocs.org/projects/ralfit-fortran/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Fortran/en/latest/?badge=latest Fortran documentation)
 
-[![C doc](https://readthedocs.org/projects/ralfit-c/badge/?version=latest)](http://ralfit.readthedocs.io/projects/C/en/latest/?badge=latest) C interface documentation.
+[![C doc](https://readthedocs.org/projects/ralfit-c/badge/?version=latest)](http://ralfit.readthedocs.io/projects/C/en/latest/?badge=latest C interface documentation)
 
-[![Python doc](https://readthedocs.org/projects/ralfit-python/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Python/en/latest/?badge=latest) Python interface documentation.
+[![Python doc](https://readthedocs.org/projects/ralfit-python/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Python/en/latest/?badge=latest Python interface documentation)
