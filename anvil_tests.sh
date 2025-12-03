@@ -1,54 +1,74 @@
-#module spider
-#
-echo "Compiler $compiler on target $target"
+#!/bin/bash
+# Anvil launch script
+# Usage: anvil_tests.sh <compiler> [<extra_flags>]
+
+echo 'AXIS   Building compiler:   $compiler='$compiler
+echo 'PARAM  Extra flags:         $CMAKE_EXTRA='$CMAKE_EXTRA
+
 case $compiler in
-gfortran)
+gfortran|gcc)
    module load gcc/latest
    export CC=gcc
    export F77=gfortran
    export FC=gfortran
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release $CMAKE_EXTRA"
    ;;
-gfortran-debug)
+gfortran-debug|gcc-debug)
    module load gcc/latest
    export CC=gcc
    export F77=gfortran
    export FC=gfortran
-   export CFLAGS="-g -O2 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
-   export CXXFLAGS="-g -O2 -Wall -pedantic fno-omit-frame-pointer -fopenmp"
-   export FFLAGS="-g -O2 -Wall -pedantic -fcheck=all -fbacktrace -fno-omit-frame-pointer -finit-real=nan -finit-integer=-9999 -fopenmp"
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug $CMAKE_EXTRA"
    ;;
-ifort)
+ifort|ifx|icx|intel)
    module load intel/latest
    export CC=icx
-   export F77=ifort
-   export FC=ifort
+   export F77=ifx
+   export FC=ifx
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release $CMAKE_EXTRA"
    ;;
-nagfor) 
+nagfor*) 
    module load gcc/latest
    module load nag/7.2
    export CC=gcc
    export F77=nagfor
    export FC=nagfor
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug $CMAKE_EXTRA"
    ;;
-nagfor-debug) 
-   module load gcc/latest
-   module load nag/7.2
-   export CC=gcc
-   export F77=nagfor
-   export FC=nagfor
-   export FFLAGS="-g -nan -C=all -C=undefined -u -ieee=full -kind=unique"
+aocc|amd) 
+   module load amd
+   export CC=clang
+   export F77=flang
+   export FC=flang
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release $CMAKE_EXTRA"
+   ;;
+aocc-debug|amd-debug) 
+   module load amd
+   export CC=clang
+   export F77=flang
+   export FC=flang
+   export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Debug $CMAKE_EXTRA"
+   ;;
+*)
+    echo "$0 Error: Unknown compiler \"$compiler\"?"
+    exit 10
 esac
 
 
-#module load cmake/3.3.1 openblas/0.2.14
-module load cmake/latest openblas/latest
-export BLAS_LIBRARIES=-lopenblas
-
+module load cmake/latest
+# TODO Selectively use OpenBLAS OR AOCL
 case $compiler in
-    nagfor-debug)
-	./makebuild_fortran.sh
-	;;
+    aocc*)
+        export BLAS_LIBRARIES=
+        clang --version
+        echo '$AOCL_ROOT='$AOCL_ROOT
+    ;;
     *)
-	./makebuild.sh
-	;;
+        module load openblas/latest
+        export BLAS_LIBRARIES=-lopenblas
+    ;;
 esac
+
+echo '$BLAS_LIBRARIES='$BLAS_LIBRARIES
+
+./makebuild.sh

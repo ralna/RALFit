@@ -2,9 +2,8 @@
 # Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
 # All rights reserved.
 
-
 python ../example/Python/solve.py
 RESULT=$?
-[ $RESULT -ne 0 ] && exit -1
+[ $RESULT -ne 0 ] && exit 10
 
 exit 0
