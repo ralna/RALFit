@@ -1136,7 +1136,7 @@ program nlls_test
      bux(1:n) = 1.0
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( .Not. ( status%status == 0 ) ) then
-        write(*,*) 'Error: [id:6] check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:6] check_derivatives: unexpected status value: ', status%status
         if ( status%status == NLLS_ERROR_FROM_EXTERNAL ) then
             write(*,*) 'external name: ', status%external_name
             write(*,*) 'external return: ', status%external_return
