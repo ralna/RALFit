@@ -36,8 +36,6 @@ libRALFit/test/comparison_tests/OUTSDIF.d
 libRALFit/test/comparison_tests/RAL_NLLS.SPC
 libRALFit/test/comparison_tests/RANGE.f
 *.out
-*.png
-*.jp*g
 /libRALFit/test/comparison_tests/cutest/sif/ELFUN.f
 /libRALFit/test/comparison_tests/cutest/sif/GROUP.f
 /libRALFit/test/comparison_tests/cutest/sif/RANGE.f
