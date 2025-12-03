@@ -1093,7 +1093,7 @@ program nlls_test
 
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( .Not. ( status%status == -1 ) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:1] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1103,14 +1103,14 @@ program nlls_test
           eval_F, eval_J_bad, ral_nlls_eval_hf_dummy, params,  &
           options, status )
      if ( .Not. ( status%status == -19 ) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:2] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
      options%print_level = 0
 
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( .Not. ( status%status == -1 ) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:3] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1118,7 +1118,7 @@ program nlls_test
      w(1:m) = 1.5
      call solve_basic(X,params,options,status,blx=blx,bux=bux,weights=w)
      if ( .Not. ( status%status == -1 ) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:4] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1126,7 +1126,7 @@ program nlls_test
      options%Fortran_Jacobian = .False.
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( .Not. ( status%status == -19) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:5] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
      options%Fortran_Jacobian = .True.
@@ -1136,7 +1136,7 @@ program nlls_test
      bux(1:n) = 1.0
      call solve_basic(X,params,options,status,blx=blx,bux=bux)
      if ( .Not. ( status%status == 0 ) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:6] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1145,7 +1145,7 @@ program nlls_test
      options%print_level = 1
      call solve_basic(X,params,options,status)
      if ( .Not. ( status%status == -19 ) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:7] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
      options%derivative_test_tol = 1.0e-4
@@ -1229,7 +1229,7 @@ program nlls_test
           eval_F_one_error, eval_J, ral_nlls_eval_hf_dummy, params,  &
           options, status )
      if ( .Not. ( status%status == -4 .And. status%external_return==2101) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:8] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
      ! try now with rubbish eval_f residual - no recovery
@@ -1238,7 +1238,7 @@ program nlls_test
           eval_F_one_NaN, eval_J, ral_nlls_eval_hf_dummy, params,  &
           options, status )
      if ( .Not. ( status%status == -4 .And. status%external_return==2031) ) then
-        write(*,*) 'Error: check_derivatives: unexpected status value'
+        write(*,*) 'Error: [id:9] check_derivatives: unexpected status value'
         no_errors_main = no_errors_main + 1
      end if
      options%check_derivatives = 0
