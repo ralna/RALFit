@@ -7,11 +7,11 @@ SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 ###########
 
 cd $SCRIPTPATH/libRALFit/
-mkdir build
+mkdir -pv build
 cd build
 
 # Make CI/HTML plugin happy
-mkdir -v coverage
+mkdir -pv coverage
 echo "For coverage info check GNU gfortran-debug build workspace." > coverage/index.html
 
 echo "CWD: `pwd`"
@@ -40,10 +40,12 @@ echo 'Begin Fortran test nlls_f90_test'
 
 ./nlls_f90_test
 RESULT=$?
-
-echo 'End Fortran test nlls_f90_test: return code' $RESULT
-
-[ $RESULT -ne 0 ] && exit 2
+FRESULT=$RESULT
+if [ $RESULT -ne 0 ]; then
+    echo 'End Fortran test nlls_f90_test: FAILED!'
+else
+    echo "End Fortran test nlls_f90_test: passed successfully"
+fi
 
 # Quick exit if NAGFOR compiler
 if [ "$FC" == "nagfor" ]; then
@@ -59,25 +61,27 @@ echo 'Begin C test nlls_c_test'
 
 ./nlls_c_test > nlls_c_test.output 2> nlls_c_test.stderr
 RESULT=$?
+CRESULT=$RESULT
+if [ $CRESULT -ne 0 ]; then
+    echo 'End C test nlls_c_test: FAILED!'
+else
+    echo "End C test nlls_c_test: passed successfully"
+fi
 
-echo 'End C test nlls_c_test: return code' $RESULT
-
-if [ $RESULT -ne 0 ]; then
+if [ $CRESULT -ne 0 ]; then
     echo -e "\n\nstdout:"
     cat nlls_c_test.output
     echo -e "\n\nstderr:"
     cat nlls_c_test.stderr
-    exit 3
 fi
 
 diff nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
 RESULT=$?
-if [ $RESULT -ne 0 ] 
-then
+if [ $RESULT -ne 0 ]; then
+  CRESULT=14 # request exit
   echo "[C test]: Something is wrong with the diff"
   echo "Diff file content:"
   diff -y nlls_c_test.output $SCRIPTPATH/libRALFit/test/nlls_c_test.output
-  exit 4
 fi
 
 if [ -s nlls_c_test.stderr ]; then
@@ -85,6 +89,12 @@ if [ -s nlls_c_test.stderr ]; then
   head nlls_c_test.stderr
 else
   echo "** C test passed successfully **"
+fi
+
+# Stop if either Fortran or C test failed
+if [ $FRESULT -ne 0 ] || [ $CRESULT -ne 0 ]; then
+    echo "Fortran or C test failed - stopping here."
+    exit 2
 fi
 
 # Go back
