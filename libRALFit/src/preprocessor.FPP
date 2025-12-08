@@ -7,7 +7,7 @@
 
 ! BLAS nomenclature
 #define PREC(fn) CONCAT(s,fn)
-! Module precion nomenclature
+! Module precision nomenclature
 #define MODULE_PREC(fn) CONCAT(fn,_single)
 ! CIFACE nomenclature
 #define IFACE_PREC(fn) CONCAT(fn,_s)
@@ -16,7 +16,7 @@
 
     ! BLAS nomenclature
 #define PREC(fn) CONCAT(d,fn)
-! Module precion nomenclature
+! Module precision nomenclature
 #define MODULE_PREC(fn) CONCAT(fn,_double)
 ! CIFACE nomenclature
 #define IFACE_PREC(fn) CONCAT(fn,_d)

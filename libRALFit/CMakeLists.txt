@@ -27,7 +27,7 @@ option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
 
 # Build the library with floating point single precision (WP=float)
-option(SINGLE_PRECISION "Build library in single precion (default off)" Off)
+option(SINGLE_PRECISION "Build library in SINGLE precision (default off)" Off)
 
 # Option to supress some compiler warning in debug mode
 option(SUPPRESS_INTERNAL_FIXMES "Suppress compiler warnings of known issues" Off)

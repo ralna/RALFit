@@ -19,8 +19,8 @@ module MODULE_PREC(ral_nlls)
 
   implicit none
 
-  public :: wp ! working precion of the library
-  public :: lp, np ! low and normal precion kinds
+  public :: wp ! working precision of the library
+  public :: lp, np ! low and normal precision kinds
   ! Abstract interfaces for call-backs
   public :: eval_f_type, eval_j_type, eval_hf_type, eval_hp_type
   public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
