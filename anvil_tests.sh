@@ -3,7 +3,7 @@
 # Usage: anvil_tests.sh <compiler> [<extra_flags>]
 
 echo 'AXIS   Building compiler:   $compiler='$compiler
-echo 'PARAM  Extra flags:         $CMAKE_EXTRA='$CMAKE_EXTRA
+echo 'PARAM  Extra flags:         $CMAKE_EXTRA='-DSUPPRESS_INTERNAL_FIXMES=ON  '$CMAKE_EXTRA
 
 case $compiler in
 gfortran|gcc)
