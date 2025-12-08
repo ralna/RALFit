@@ -1,4 +1,6 @@
-<img alt="STFC logo" src="https://www.ukri.org/wp-content/uploads/2022/03/ukri-stfc-square-logo.png" width=100>
+<table border="0"><tr style="background-color: white;">
+<td><img alt="STFC logo" src="../.github/assets/ukri-stfc-square-logo.png" width=100></td>
+<td vertical-align='center'><img alt="AMD logo" src="../.github/assets/amd-official-logo.jpg" width=200></td></tr></table>
 
 # RALFit
 
