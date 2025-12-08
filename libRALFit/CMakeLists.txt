@@ -36,10 +36,7 @@ option(SUPPRESS_INTERNAL_FIXMES "Suppress compiler warnings of known issues" Off
 option(BUILD_PYTHON "Build RalNLLS Python wheel (default On)" On)
 
 if (SINGLE_PRECISION)
-    message(STATUS "Floating point precision type: SINGLE")
     add_compile_definitions(SINGLE_PRECISION)
-else()
-    message(STATUS "Floating point precision type: DOUBLE")
 endif(SINGLE_PRECISION)
 
 # Set the location for cmake module files
@@ -118,6 +115,11 @@ endif(TestCoverage)
 message(STATUS "")
 message(STATUS "  ${PROJECT_NAME} v${PROJECT_VERSION}")
 message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
+if (SINGLE_PRECISION)
+    message(STATUS "  Floating point precision: SINGLE")
+else()
+    message(STATUS "  Floating point precision: DOUBLE")
+endif(SINGLE_PRECISION)
 message(STATUS "")
 
 # Add clean-all target as alias to clean
@@ -151,7 +153,7 @@ endif()
 
 # Python interface
 if (BUILD_PYTHON)
-  find_package (PythonInterp)
+    find_package(Python COMPONENTS Interpreter)
 endif()
 
 if(Python_Interpreter_FOUND)
