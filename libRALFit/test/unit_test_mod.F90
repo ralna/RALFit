@@ -2167,8 +2167,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call solve_LLS(J,f,n,m,d,status, &
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if ( status%status .ne. 0 ) then
-        write(*,*) 'solve_LLS test failed: wrong error message returned'
-        write(*,*) 'status = ', status%status, " (expected ",0,")"
+         write (*, *) '[id:1] solve_LLS test failed: wrong error message returned'
+        write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
      end if
      ! check answer
@@ -2194,8 +2194,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call solve_LLS(J,f,n,m,d,status, &
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.False.)
      if ( status%status .ne. 0 ) then
-        write(*,*) 'solve_LLS test failed: wrong error message returned'
-        write(*,*) 'status = ', status%status, " (expected ",0,")"
+         write (*, *) '[id:2] solve_LLS test failed: wrong error message returned'
+        write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
      end if
      ! check answer using J and not JT!!!
@@ -2210,20 +2210,20 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
 
-
-     n = 50
-     m = 5
+      n = 65
+      m = 60
      deallocate(J,f,Jd,d)
      allocate(J(n*m), f(m), d(n))
 
      call setup_workspaces(work,n,m,options,status)
 
-     J(:) = 1.0_wp ! Matrix is rank deficient ?GELS can not compute LLS solution
-     f(:) = 1.0_wp
+     J = 1.0_wp
+     J(1:m) = 0.0_wp
+     f = 1.0_wp
      call solve_LLS(J,f,n,m,d,status, &
           work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
      if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then
-        write(*,*) 'solve_LLS test failed: wrong error message returned'
+         write (*, *) '[id:3] solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
      end if
@@ -3059,11 +3059,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      fails = 0
      n = 2
-     m = 67
-
-     allocate(params%x_values(m))
-     allocate(params%y_values(m))
-
+      ! Set by generate_data_example m = 67
      call generate_data_example(params)
 
      ! let's check the workspace errors
@@ -3308,6 +3304,17 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
               status%status
          fails = fails + 1
      end if
+
+      ! Release memory
+      If (Allocated(params%x_values)) Then
+         Deallocate(params%x_values)
+      End If
+      If (Allocated(params%y_values)) Then
+         Deallocate(params%y_values)
+      End If
+      If (Allocated(X)) Then
+         Deallocate(X)
+      End If
 
      call reset_default_options(options)
 

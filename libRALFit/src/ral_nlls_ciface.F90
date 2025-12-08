@@ -531,7 +531,7 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
 !  real( wp ), dimension(*), optional :: cweights
 
   logical :: f_arrays
-  logical :: lb_sent_in, ub_sent_in
+  logical :: lb_sent_in, ub_sent_in, weights_sent_in
   logical :: hp_sent_in = .false.
 
   ! copy data in and associate pointers correctly
@@ -564,6 +564,7 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
   ! and is considered not present.
   ! However, there seems to be a bug in aocc5.0 where that behaviour is inconsistent.
   ! A lot of the below if statements can be replaced once this is fixed.
+  weights_sent_in = ASSOCIATED(fweights) ! Part of the workaround as well.
   nullify(flower_bounds)
   lb_sent_in = .false.
   if (C_ASSOCIATED(clower_bounds)) then
@@ -580,6 +581,7 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
 
   if (hp_sent_in) then
       if (lb_sent_in .and. ub_sent_in) then
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
                c_eval_r, c_eval_j,   &
                c_eval_hf, fparams,   &
@@ -588,7 +590,17 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
                eval_hp=c_eval_hp, &
                lower_bounds=flower_bounds, &
                upper_bounds=fupper_bounds)
+        else
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               eval_hp=c_eval_hp, &
+               lower_bounds=flower_bounds, &
+               upper_bounds=fupper_bounds)
+        end if
       elseif (lb_sent_in) then
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
                c_eval_r, c_eval_j,   &
                c_eval_hf, fparams,   &
@@ -596,7 +608,16 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
                weights=fweights, &
                eval_hp=c_eval_hp, &
                lower_bounds=flower_bounds)
+        else
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               eval_hp=c_eval_hp, &
+               lower_bounds=flower_bounds)
+        end if
       elseif (ub_sent_in) then
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
                c_eval_r, c_eval_j,   &
                c_eval_hf, fparams,   &
@@ -604,16 +625,34 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
                weights=fweights, &
                eval_hp=c_eval_hp, &
                upper_bounds=fupper_bounds)
+        else
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               eval_hp=c_eval_hp, &
+               upper_bounds=fupper_bounds)
+        end if
       else
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
                c_eval_r, c_eval_j,   &
                c_eval_hf, fparams,   &
                foptions,finform, &
                weights=fweights, &
                eval_hp=c_eval_hp)
+        else
+         call f_nlls_solve( n, m, cx, &
+               c_eval_r, c_eval_j,   &
+               c_eval_hf, fparams,   &
+               foptions,finform, &
+               weights=fweights, &
+               eval_hp=c_eval_hp)
+        end if
       endif
   else
      if (lb_sent_in .and. ub_sent_in) then
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
             c_eval_r, c_eval_j,   &
             c_eval_hf, fparams,   &
@@ -621,26 +660,57 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
             weights=fweights, &
             lower_bounds=flower_bounds, &
             upper_bounds=fupper_bounds)
+        else
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform, &
+            lower_bounds=flower_bounds, &
+            upper_bounds=fupper_bounds)
+        end if
       elseif (lb_sent_in) then
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
             c_eval_r, c_eval_j,   &
             c_eval_hf, fparams,   &
             foptions,finform, &
             weights=fweights, &
             lower_bounds=flower_bounds)
+        else
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform, &
+            lower_bounds=flower_bounds)
+        end if
       elseif (ub_sent_in) then
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
             c_eval_r, c_eval_j,   &
             c_eval_hf, fparams,   &
             foptions,finform, &
             weights=fweights, &
             upper_bounds=fupper_bounds)
+        else
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform, &
+            upper_bounds=fupper_bounds)
+        end if
       else
+        if (weights_sent_in) then
          call f_nlls_solve( n, m, cx, &
             c_eval_r, c_eval_j,   &
             c_eval_hf, fparams,   &
             foptions,finform, &
             weights=fweights)
+        else
+         call f_nlls_solve( n, m, cx, &
+            c_eval_r, c_eval_j,   &
+            c_eval_hf, fparams,   &
+            foptions,finform)
+        end if
       end if
   end if
 

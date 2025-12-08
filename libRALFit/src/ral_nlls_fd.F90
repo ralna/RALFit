@@ -511,6 +511,8 @@ Contains
 
       Continue
 
+      status = 0
+
       perturbation = iparams%options%fd_step
       Fortran_Jacobian = iparams%options%Fortran_Jacobian
 

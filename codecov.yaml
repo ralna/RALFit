@@ -1,7 +1,0 @@
-# YAML file for codecov
-
-ignore:
-  - "libRALFit/test"  # ignore test folder
-  - "libRALFit/src/ral_nlls_dtrs_double.f90"  # ignore dtrs from galahad
-  - "libRALFit/src/ral_nlls_symbols.f90"  # ignore symbols from galahad
-  - "libRALFit/lapack"  # ignore lapack folder
