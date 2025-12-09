@@ -175,7 +175,7 @@ if(CompileMiniLAPACK)
 endif()
 
 message(STATUS "The LAPACK / BLAS libraries: " ${LAPACK_LIBRARIES})
-set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
+set(LIBS ${LAPACK_LIBRARIES})
 
 # Python interface
 if (BUILD_PYTHON)
