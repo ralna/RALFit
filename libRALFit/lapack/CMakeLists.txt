@@ -11,7 +11,9 @@ dgelq2.f  dgesv.f   dggev.f    dlae2.f   dlamch.f    dlarf1f.f  dlas2.f     dlas
 
 )
 
-set_source_files_properties(dlaebz.f iparmq.f dlabad.f slaebz.f slabad.f PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
-set_source_files_properties(dlamch.f dorgbr.f dgesvd.f slamch.f sorgbr.f sgesvd.f PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-conversion>")
-# Supress computed Go To
-set_source_files_properties(dggbal.f sggbal.f ilaenv.f PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-pedantic>")
+if((CMAKE_Fortran_COMPILER_ID STREQUAL "Flang") OR (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU"))
+  set_source_files_properties(dlaebz.f iparmq.f dlabad.f slaebz.f slabad.f PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
+  set_source_files_properties(dlamch.f dorgbr.f dgesvd.f slamch.f sorgbr.f sgesvd.f PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-conversion>")
+  # Supress computed Go To
+  set_source_files_properties(dggbal.f sggbal.f ilaenv.f PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-pedantic>")
+endif()
