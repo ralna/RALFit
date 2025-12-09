@@ -20,7 +20,6 @@ if (SINGLE_PRECISION)
 else()
 # Only double
     add_executable (LanczosBox LanczosBox.F90)
-    target_compile_options(LanczosBox PRIVATE "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
     target_link_libraries(LanczosBox ral_nlls)
 
     add_executable (LanczosFD2 LanczosFD2.F90)
@@ -30,6 +29,14 @@ else()
     target_link_libraries(nlls_example ral_nlls)
 
     add_executable (stp_x0sol stp_x0sol.F90)
-    target_compile_options(stp_x0sol PRIVATE "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
     target_link_libraries(stp_x0sol ral_nlls)
+
+    if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(LanczosBox PRIVATE "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
+        target_compile_options(stp_x0sol PRIVATE "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
+    # elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
+    elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
+        target_compile_options(LanczosBox PRIVATE "$<$<CONFIG:DEBUG>:-w=uda>")
+        target_compile_options(stp_x0sol PRIVATE "$<$<CONFIG:DEBUG>:-w=uda>")
+    endif()
 endif()
