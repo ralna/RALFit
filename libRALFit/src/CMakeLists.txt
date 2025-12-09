@@ -20,13 +20,25 @@ set(source_files
 
 # Suppress warnings ############
 if (SUPPRESS_INTERNAL_WONTFIX)
-    set_source_files_properties(ral_nlls_ciface.F90 ral_nlls_fd.F90 ral_nlls_internal.F90 ral_nlls_workspaces.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "-Wno-unused-dummy-argument")
+    if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+        set_source_files_properties(ral_nlls_ciface.F90 ral_nlls_fd.F90 ral_nlls_internal.F90 ral_nlls_workspaces.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "-Wno-unused-dummy-argument")
+    # elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
+    #   set_source_files_properties(ral_nlls_ciface.F90 ral_nlls_fd.F90 ral_nlls_internal.F90 ral_nlls_workspaces.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "-Wno-unused-dummy-argument")
+    elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
+        set_source_files_properties(ral_nlls_ciface.F90 ral_nlls_fd.F90 ral_nlls_internal.F90 ral_nlls_workspaces.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "-Wuda")
+    endif()
 endif(SUPPRESS_INTERNAL_WONTFIX)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   if (SUPPRESS_INTERNAL_FIXMES)
     message(AUTHOR_WARNING "Suppressing known compiler warnings for some source files")
     # False positives
-    set_source_files_properties(ral_nlls_internal.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-variable -Wno-unused-dummy-argument>")
+    if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+        set_source_files_properties(ral_nlls_internal.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-variable -Wno-unused-dummy-argument>")
+    # elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
+    # ...
+    elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
+        set_source_files_properties(ral_nlls_internal.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-variable -Wuda>")
+    endif()
   endif(SUPPRESS_INTERNAL_FIXMES)
 endif()
 # End Supress warnings #########

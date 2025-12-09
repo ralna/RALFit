@@ -100,16 +100,10 @@ elseif(CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fno-fast-math")
     set(CMAKE_Fortran_FLAGS_DEBUG "-g -gline -nan -u -ieee=full -kind=unique -C=undefined -C=all")
     set(CMAKE_LDFLAGS_DEBUG "-g")
-    # Don't add unsupported debug flags, nagfor compiler does not supports these flags
-    set(SUPPRESS_INTERNAL_FIXMES Off)
-    set(SUPPRESS_INTERNAL_WONTFIX Off)
   else()
     set(CMAKE_C_FLAGS_DEBUG "-g -O0")
     set(CMAKE_Fortran_FLAGS_DEBUG "-g -O0")
     set(CMAKE_LDFLAGS_DEBUG "-g")
-    # Don't add unsupported debug flags, not known if the compiler supports the flags
-    set(SUPPRESS_INTERNAL_FIXMES Off)
-    set(SUPPRESS_INTERNAL_WONTFIX Off)
   endif()
 endif()
 
