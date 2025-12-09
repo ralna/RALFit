@@ -19,12 +19,16 @@ set(source_files
     CACHE INTERNAL "source_files" FORCE)
 
 # Suppress warnings ############
-set_source_files_properties(ral_nlls_ciface.F90 ral_nlls_fd.F90 ral_nlls_internal.F90 ral_nlls_workspaces.F90 PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
-if (SUPPRESS_INTERNAL_FIXMES)
-message(AUTHOR_WARNING "Suppressing known compiler warnings for some source files")
-# False positives
-set_source_files_properties(ral_nlls_internal.F90 PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-variable -Wno-unused-dummy-argument>")
-endif(SUPPRESS_INTERNAL_FIXMES)
+if (SUPPRESS_INTERNAL_WONTFIX)
+    set_source_files_properties(ral_nlls_ciface.F90 ral_nlls_fd.F90 ral_nlls_internal.F90 ral_nlls_workspaces.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "-Wno-unused-dummy-argument")
+endif(SUPPRESS_INTERNAL_WONTFIX)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if (SUPPRESS_INTERNAL_FIXMES)
+    message(AUTHOR_WARNING "Suppressing known compiler warnings for some source files")
+    # False positives
+    set_source_files_properties(ral_nlls_internal.F90 APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-variable -Wno-unused-dummy-argument>")
+  endif(SUPPRESS_INTERNAL_FIXMES)
+endif()
 # End Supress warnings #########
 
 # Generate target name based on filename (remove file extension and convert to

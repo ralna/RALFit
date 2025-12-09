@@ -11,9 +11,6 @@ project(
   VERSION 2.0.0
   LANGUAGES Fortran C)
 
-# Request to run pre-processor
-set(CMAKE_Fortran_PREPROCESS ON)
-
 # Set default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE
@@ -27,13 +24,24 @@ option(CompileMiniLAPACK "Compile our own LAPACK (discouraged)" Off)
 option(TestCoverage "Perform code coverage analysis" Off)
 
 # Build the library with floating point single precision (WP=float)
-option(SINGLE_PRECISION "Build library in SINGLE precision (default off)" Off)
+option(SINGLE_PRECISION "Build library in SINGLE precision (default Off)" Off)
 
-# Option to supress some compiler warning in debug mode
+# Internal option to avoid compiler warning noise issues that wont-be-fixed (unused iface dummies, etc)
+set(SUPPRESS_INTERNAL_WONTFIX On)
+
+# Internal option to supress some compiler warning in debug mode (issues from legacy code)
 option(SUPPRESS_INTERNAL_FIXMES "Suppress compiler warnings of known issues" Off)
+
+# Address SANitizer option (only for GCC and Clang)
+# Debug build will turn it On if option set to "Debug" (default)
+set(ASAN "Debug" CACHE STRING "Build with Address / Leak SANitizer (Off/On/Debug)")
+set_property(CACHE ASAN PROPERTY STRINGS "Off" "On" "Debug")
 
 # Option to build the Python interface of RALFit
 option(BUILD_PYTHON "Build RalNLLS Python wheel (default On)" On)
+
+
+set(CMAKE_VERBOSE_MAKEFILE On)
 
 if (SINGLE_PRECISION)
     add_compile_definitions(SINGLE_PRECISION)
@@ -73,31 +81,50 @@ elseif(CMAKE_BUILD_TYPE MATCHES Debug)
     # set the test coverage switch
     set(TestCoverage On)
     ##
-    set(CMAKE_LDFLAGS_DEBUG "-g3 -fprofile-arcs -ftest-coverage -fsanitize=address -fsanitize=leak")
+    set(CMAKE_LDFLAGS_DEBUG "-g3 -fprofile-arcs -ftest-coverage")
     ##
     set(CMAKE_C_FLAGS_DEBUG
-        "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fno-fast-math -fsanitize=address -fsanitize=leak -fopenmp")
+        "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fno-fast-math -fopenmp")
     set(CMAKE_Fortran_FLAGS_DEBUG
-        "-pg -g -O0 -gdwarf-5 -Wall -pedantic -Warray-temporaries -fno-omit-frame-pointer -fcheck=all -fbacktrace -fopenmp -finit-real=nan -finit-integer=-9999 -fsanitize=address -fsanitize=leak"
+        "-pg -g -O0 -gdwarf-5 -Wall -pedantic -Warray-temporaries -fno-omit-frame-pointer -fcheck=all -fbacktrace -fopenmp -finit-real=nan -finit-integer=-9999"
     )
-    set(CMAKE_LDFLAGS_DEBUG "-g -fsanitize=address -fsanitize=leak")
+    set(CMAKE_LDFLAGS_DEBUG "-g")
   elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
     set(CMAKE_C_FLAGS_DEBUG
-        "-pg -g3 -O0 -Wall -pedantic -fno-fast-math -fsanitize=address -fsanitize=leak -fopenmp")
+        "-pg -g3 -O0 -Wall -pedantic -fno-fast-math -fopenmp")
     set(CMAKE_Fortran_FLAGS_DEBUG
-        "-g -O0 -Wall -pedantic -fsanitize=address -fno-omit-frame-pointer -fsanitize=leak -fopenmp"
+        "-g -O0 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
     )
-    set(CMAKE_LDFLAGS_DEBUG "-g -fsanitize=address -fsanitize=leak")
+    set(CMAKE_LDFLAGS_DEBUG "-g")
   elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
     set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fno-fast-math")
     set(CMAKE_Fortran_FLAGS_DEBUG "-g -gline -nan -u -ieee=full -kind=unique -C=undefined -C=all")
     set(CMAKE_LDFLAGS_DEBUG "-g")
+    # Don't add unsupported debug flags, nagfor compiler does not supports these flags
+    set(SUPPRESS_INTERNAL_FIXMES Off)
+    set(SUPPRESS_INTERNAL_WONTFIX Off)
   else()
     set(CMAKE_C_FLAGS_DEBUG "-g -O0")
     set(CMAKE_Fortran_FLAGS_DEBUG "-g -O0")
     set(CMAKE_LDFLAGS_DEBUG "-g")
+    # Don't add unsupported debug flags, not known if the compiler supports the flags
+    set(SUPPRESS_INTERNAL_FIXMES Off)
+    set(SUPPRESS_INTERNAL_WONTFIX Off)
   endif()
-  # set( CMAKE_VERBOSE_MAKEFILE on )
+endif()
+
+string(TOLOWER "${ASAN}" ASAN)
+if((CMAKE_Fortran_COMPILER_ID STREQUAL "Flang") OR (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU"))
+  if(ASAN STREQUAL "debug" AND CMAKE_BUILD_TYPE MATCHES Debug)
+    message(STATUS "Address / Leak SANitizer enabled by Debug build")
+    set(ASAN "on")
+  endif()
+  if(ASAN STREQUAL "on")
+    message(STATUS "Address / Leak SANitizer enabled")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fsanitize=address -fsanitize=leak")
+    set(CMAKE_LDFLAGS "${CMAKE_LDFLAGS} -fsanitize=address -fsanitize=leak")
+  endif()
 endif()
 
 # Set flags
@@ -132,9 +159,6 @@ if(NOT CompileMiniLAPACK)
   if(NOT LAPACK_FOUND)
     # Couldn't find LAPACK, Compile mini reference BLAS / LAPACK
     set(CompileMiniLAPACK On)
-  else()
-    message(STATUS "The LAPACK library was found at" ${LAPACK_LIBRARIES})
-    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
   endif()
 endif()
 
@@ -150,6 +174,9 @@ if(CompileMiniLAPACK)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
    set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 endif()
+
+message(STATUS "The LAPACK / BLAS libraries: " ${LAPACK_LIBRARIES})
+set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 
 # Python interface
 if (BUILD_PYTHON)
