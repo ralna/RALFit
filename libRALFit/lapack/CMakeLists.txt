@@ -22,5 +22,5 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
   # Supress computed Go To
   set_source_files_properties(dggbal.f sggbal.f ilaenv.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-pedantic>")
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
-  set_source_files_properties(${Mini_LAPACK_SOURCES} APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=obs -w=ques -w=uda>")
+  set_source_files_properties(${Mini_LAPACK_SOURCES} APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=all>")
 endif()
