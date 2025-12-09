@@ -172,7 +172,6 @@ if(CompileMiniLAPACK)
    # Unit-test should only be run/verified when using the provided BLAS and LAPACK
    add_subdirectory(lapack)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
-   set(LIBS ${LIBS} ${LAPACK_LIBRARIES})
 endif()
 
 message(STATUS "The LAPACK / BLAS libraries: " ${LAPACK_LIBRARIES})
