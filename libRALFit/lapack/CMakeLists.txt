@@ -1,5 +1,4 @@
-add_library(ral_nlls_lapack SHARED
-
+set(Mini_LAPACK_SOURCES
 dasum.f   dgelqf.f  dgesvd.f   dgghrd.f  dlaebz.f    dlange.f   dlarf1l.f   dlascl.f  dlasr.f     dnrm2.f90  dorgtr.f  dormtr.f          dscal.f   dsymv.f   dtrmv.f   iladlr.f          la_xisnan.F90  sgebrd.f  sger.f     sggbal.f  sladiv.f    slaln2.f  slarf.f     slaruv.f  slasq5.f    slauu2.f   sorgql.f  sormql.f   srot.f            ssyev.f   stgevc.f
 daxpy.f   dgels.f   dgetf2.f   dhgeqz.f  dlaev2.f    dlanhs.f   dlarfb.f    dlaset.f  dlasrt.f    dorg2l.f   dorm2l.f  dposv.f           dstebz.f  dsyr2.f   dtrsm.f   ilaenv.f          lsame.f        sgelq2.f  sgesv.f    sggev.f   slae2.f     slamch.f  slarf1f.f   slas2.f   slasq6.f    slauum.f   sorgqr.f  sormqr.f   sroundup_lwork.f  ssyevx.f  strmm.f
 dbdsqr.f  dgemm.f   dgetrf.f   disnan.f  dlag2.f     dlanst.f   dlarfg.f    dlasq1.f  dlassq.f90  dorg2r.f   dorm2r.f  dpotrf.f          dstein.f  dsyr2k.f  dtrti2.f  ilaslc.f          sasum.f        sgelqf.f  sgesvd.f   sgghrd.f  slaebz.f    slange.f  slarf1l.f   slascl.f  slasr.f     snrm2.f90  sorgtr.f  sormtr.f   sscal.f           ssymv.f   strmv.f
@@ -8,8 +7,9 @@ ddot.f    dgeqr2.f  dgetrs.f   dlabrd.f  dlagts.f    dlapy2.f   dlarnv.f    dlas
 dgebd2.f  dgeqrf.f  dggbak.f   dlacpy.f  dlaisnan.f  dlapy3.f   dlartg.f90  dlasq4.f  dlatrd.f    dorglq.f   dormlq.f  dpotrs.f          dswap.f   dsytrd.f  idamax.f  iparmq.f          scopy.f        sgemv.f   sgetrf2.f  slabad.f  slagtf.f    slansy.f  slarft.f    slasq2.f  slasv2.f    sorgbr.f   sormbr.f  spotrf2.f  ssteqr.f          ssyrk.f   strtri.f
 dgebrd.f  dger.f    dggbal.f   dladiv.f  dlaln2.f    dlarf.f    dlaruv.f    dlasq5.f  dlauu2.f    dorgql.f   dormql.f  drot.f            dsyev.f   dtgevc.f  ieeeck.f  isamax.f          sdot.f         sgeqr2.f  sgetrs.f   slabrd.f  slagts.f    slapy2.f  slarnv.f    slasq3.f  slaswp.f    sorgl2.f   sorml2.f  spotri.f   ssterf.f          ssytd2.f  strtrs.f
 dgelq2.f  dgesv.f   dggev.f    dlae2.f   dlamch.f    dlarf1f.f  dlas2.f     dlasq6.f  dlauum.f    dorgqr.f   dormqr.f  droundup_lwork.f  dsyevx.f  dtrmm.f   iladlc.f  la_constants.f90  sgebd2.f       sgeqrf.f  sggbak.f   slacpy.f  slaisnan.f  slapy3.f  slartg.f90  slasq4.f  slatrd.f    sorglq.f   sormlq.f  spotrs.f   sswap.f           ssytrd.f  xerbla.f
-
 )
+
+add_library(ral_nlls_lapack SHARED ${Mini_LAPACK_SOURCES})
 
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   set_source_files_properties(dlaebz.f iparmq.f dlabad.f slaebz.f slabad.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
@@ -22,7 +22,5 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
   # Supress computed Go To
   set_source_files_properties(dggbal.f sggbal.f ilaenv.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-pedantic>")
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
-  set_source_files_properties(dlaebz.f iparmq.f dlabad.f slaebz.f slabad.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=obs -w=ques -w=uda>")
-  # Supress computed Go To
-  set_source_files_properties(dggbal.f sggbal.f ilaenv.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=obs -w=ques>")
+  set_source_files_properties(${Mini_LAPACK_SOURCES} APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=obs -w=ques -w=uda>")
 endif()
