@@ -24,5 +24,5 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
   set_source_files_properties(dlaebz.f iparmq.f dlabad.f slaebz.f slabad.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=obs -w=ques -w=uda>")
   # Supress computed Go To
-  set_source_files_properties(dggbal.f sggbal.f ilaenv.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-=obs -w=ques>")
+  set_source_files_properties(dggbal.f sggbal.f ilaenv.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=obs -w=ques>")
 endif()
