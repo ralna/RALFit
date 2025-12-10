@@ -31,7 +31,7 @@ ifort|ifx|icx|intel)
    export FC=ifx
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release $CMAKE_EXTRA"
    # Relax test tolerance check for these builds 
-   export RALFIT_UT_CMD_ARGS="--tol_type=both"
+   export RALFIT_UT_CMD_ARGS="--tol=both"
    ;;
 nagfor*) 
    module load gcc/latest
