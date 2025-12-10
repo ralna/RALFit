@@ -23,17 +23,95 @@ program nlls_test
   integer :: nlls_method, model, tr_update, inner_method
   logical :: test_all, test_subs, oki
   integer :: fails, exp_status
-
   integer :: number_of_models
   integer, allocatable :: model_to_test(:)
-!  character*40 :: details
+
+  character(len=100) :: arg
+  integer :: num_args, iarg
+  character(len=20) :: test_type, tol_type
+
+  Continue
+
+  ! Print welcome banner
+  write(*,'(A)') repeat('=', 70)
+  write(*,'(A)') '                       RALFit Unit Test Suite'
+  write(*,'(A)') repeat('=', 70)
+  write(*,'(A)') ''
+
+  ! Initialize default values
+  test_all = .true.
+  test_subs = .true.
+  test_type = 'all'
+  tol_type = 'abs'
+
+  ! Parse command line arguments
+  num_args = command_argument_count()
+  do iarg = 1, num_args
+      call get_command_argument(iarg, arg)
+      
+      if (trim(arg) == '-h' .or. trim(arg) == '--help') then
+          write(*,'(A)') 'Usage: nlls_test [OPTIONS]'
+          write(*,'(A)') ''
+          write(*,'(A)') 'Options:'
+          write(*,'(A)') '  --test=TYPE     Specify test type to run'
+          write(*,'(A)') '                   all    - Run all tests (default)'
+          write(*,'(A)') '                   solver - Run solver tests only'
+          write(*,'(A)') '                   aux    - Run auxiliary tests only'
+          write(*,'(A)') ''
+          write(*,'(A)') '  --tol=TYPE      Specify tolerance type'
+          write(*,'(A)') '                   abs    - Use absolute tolerance check (default)'
+          write(*,'(A)') '                   both   - Use absolute first then relative tolerance checks'
+          write(*,'(A)') ''
+          write(*,'(A)') '  -h, --help      Display this help message'
+          write(*,'(A)') ''
+          stop 0
+      else if (index(arg, '--test=') == 1) then
+          test_type = trim(adjustl(arg(8:)))
+      else if (index(arg, '--tol=') == 1) then
+          tol_type = trim(adjustl(arg(7:)))
+      else
+          write(*,*) 'Warning: unknown argument: ', trim(arg)
+          write(*,*) 'Use -h or --help for usage information.'
+          stop 1
+      end if
+  end do
+
+  ! Set test flags based on test_type
+  select case (trim(test_type))
+  case ('all')
+      ! Default - run all tests
+      ! nothing to do
+  case ('solver')
+      test_subs = .false.
+  case ('aux')
+      test_all = .false.
+  case default
+      write(*,*) 'Warning: unknown test type: ', trim(test_type)
+      write(*,*) 'Using default (all)'
+      test_type = 'all'
+   end select
+
+   ! Handle tolerance type (can be used to set options later if needed)
+   select case (trim(tol_type))
+   case ('both', 'abs')
+       ! Valid tolerance type - could be used to modify options
+       continue
+   case default
+       write(*,*) 'Warning: unknown tolerance type: ', trim(tol_type)
+       write(*,*) 'Using default (abs)'
+       tol_type = 'abs'
+   end select
+
+   write(*,*) 'Configuration'
+   write(*,*) '  Test type      : ', trim(test_type)
+   write(*,*) '  Tolerance type : ', trim(tol_type)
+   write(*,*) '  Output log file: nlls_test.out'
+   write(*,*)
 
   options%out   = 17
   options%print_level = 0
   open(unit = options%out, file="nlls_test.out")
 
-  test_all = .true.
-  test_subs = .true.
   exp_status = 0
   no_errors_main = 0
 
@@ -75,19 +153,20 @@ program nlls_test
               options%exact_second_derivatives = .true.
               options%output_progress_vectors = .true.
               call print_line(options%out)
-              write(options%out,*) "tr_update_strategy = ", options%tr_update_strategy
-              write(options%out,*) "nlls_method        = ", options%nlls_method
-              write(options%out,*) "model              = ", options%model
+              write(options%out,*) "tr_update_strategy        = ", options%tr_update_strategy
+              write(options%out,*) "nlls_method               = ", options%nlls_method
+              write(options%out,*) "model                     = ", options%model
+              write(options%out,*) "Tolerance type for resvec = ", tol_type
               call print_line(options%out)
               if (nlls_method == 4) then
                  do inner_method = 1,3
                     ! check the tests with c and fortran jacobians
                     ! pass individually, and give consistent results.
                     options%inner_method = inner_method
-                    call c_fortran_tests(options,no_errors_main)
+                    call c_fortran_tests(options,no_errors_main, tol_type)
                  end do
               else
-                 call c_fortran_tests(options,no_errors_main)
+                 call c_fortran_tests(options,no_errors_main, tol_type)
               end if
            end do
         end do

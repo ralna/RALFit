@@ -1335,15 +1335,26 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
     end subroutine solve_basic_c
 
-    subroutine c_fortran_tests(options,fails)
+    subroutine c_fortran_tests(options, fails, tol_type)
+      Implicit None
       type( NLLS_options ), intent(inout) :: options
       integer, intent(inout) :: fails
-
+      Character(len=*), intent(in) :: tol_type
       real(wp), allocatable :: x(:)
       type( user_type ), target :: params
       type( NLLS_inform )  :: status, c_status
-      real(wp) :: resvec_error
+      real(wp) :: resvec_error, abstol, reltol
       integer :: n
+      Logical :: Ok
+
+      Continue
+
+      abstol = 1.0e-8_wp
+      reltol = -1.0_wp
+
+      if (trim(tol_type) == 'both') then
+        reltol = 1.0e-8_wp
+      end if
 
       n = 2
 
@@ -1400,16 +1411,18 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       if ( c_status%iter == status%iter ) then
          resvec_error = norm2(c_status%resvec(1:c_status%iter+1) - &
               status%resvec(1:status%iter+1))
-         if (resvec_error > 1e-8_wp) then
-            write(*,*) 'error: fortran and c jacobians'
-            write(*,*) 'have different resvecs'
+         if (resvec_error > abstol) then
+            write(*,*) 'Warning: fortran and c resvec differ!'
+            write(*,*) 'Different resvecs in 2-norm for'
             write(*,*) 'NLLS_METHOD = ', options%nlls_method
             write(*,*) 'MODEL = ', options%model
             write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
             write(*,*) 'inner_method = ', options%inner_method
+            ! Report all entries and show how much they differ in L2 and relative L2
+            ! Ok will inform is at least reltol is met
             Call check_resvec(c_status%resvec(1:c_status%iter+1), &
-               status%resvec(1:status%iter+1), 1e-8_wp, reltol=-1.0_wp, prn=.true.)
-            fails = fails + 1
+               status%resvec(1:status%iter+1), atol=abstol, reltol=reltol, prn=.true., Ok=Ok)
+            fails = fails + merge(0,1,Ok)
          end if
       else
          write(*,*) 'error: fortran and c jacobians'
