@@ -43,9 +43,9 @@ RESULT=$?
 
 cd test
 
-echo 'Begin Fortran test nlls_f90_test'
+echo 'Begin Fortran test nlls_f90_test (with RALFIT_UT_CMD_ARGS='$RALFIT_UT_CMD_ARGS')'
 
-./nlls_f90_test
+./nlls_f90_test $RALFIT_UT_CMD_ARGS
 RESULT=$?
 FRESULT=$RESULT
 if [ $RESULT -ne 0 ]; then
