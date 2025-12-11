@@ -53,7 +53,7 @@ trap -p
 RESULT=$?
 FRESULT=$RESULT
 if [ $RESULT -ne 0 ]; then
-    echo 'End Fortran test nlls_f90_test: FAILED!'
+    echo 'End Fortran test nlls_f90_test: FAILED! Return code: ' $RESULT
 else
     echo "End Fortran test nlls_f90_test: passed successfully"
 fi
@@ -61,7 +61,7 @@ fi
 # Quick exit if NAGFOR compiler
 if [ "$FC" == "nagfor" ]; then
     echo "Note: NAGFOR compiler - skipping C and Python tests"
-    exit 0
+    exit $RESULT
 fi
 
 #################
