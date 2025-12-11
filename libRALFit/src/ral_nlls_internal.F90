@@ -106,7 +106,7 @@ contains
     call setup_iparams_type(m, iparams, params, eval_F, eval_J, eval_HF, &
             inform, options, w%box_ws, x)
 
-    select type (params)
+    select type (iparams)
     type is (params_internal_type)
         print *, "*** NLLS_SOLVE iparma associated? x ", associated(iparams%x)
     end select
@@ -281,6 +281,7 @@ contains
        End If
 
        ! Store a copy of f (before applying weights)
+       print *, "+++ About to call iparams_set from nlls_iterate"
        call iparams_set(params, x=x, f=w%f, check=.False.)
 
        if ( present(weights)) then
@@ -325,7 +326,8 @@ contains
           type is (params_internal_type)
 !            Is user requesting to check the Jacobian derivatives and fd not activated
              If (options%check_derivatives /= 0 .And. params%fd_type == 'N') Then
-                print *, 'is params%x associated? ', associated(params%x), '     CALLING CHECK_JACOBIAN'
+                print *, '+++ calling CHECK_JACOBIAN: is params%x associated? '
+                print *, '+++ ' , associated(params%x), '     CALLING CHECK_JACOBIAN'
                 call check_jacobian(n, m, w%J, params)
                 If (params%inform%status /= 0) Then
                    goto 100
