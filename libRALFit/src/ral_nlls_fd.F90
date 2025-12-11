@@ -343,6 +343,8 @@ Contains
          goto 100
       end if
 
+call date_and_time(time=rec)
+print *, trim(rec), '   ->  iparams%x = ', iparams%x
       Call fd_jacobian(ierr, n, m, iparams%x, iparams%f, J_fd, iparams)
       if (ierr == -2031 ) then
          ! eval_f provided a rubbish FD estimation
