@@ -45,6 +45,10 @@ cd test
 
 echo 'Begin Fortran test nlls_f90_test (with RALFIT_UT_CMD_ARGS='$RALFIT_UT_CMD_ARGS')'
 
+# Set traps for  *most* core dumps
+trap "exit 31" SIGABRT SIGBUS SIGILL SIGQUIT SIGSEGV 
+trap -p
+
 ./nlls_f90_test $RALFIT_UT_CMD_ARGS
 RESULT=$?
 FRESULT=$RESULT
