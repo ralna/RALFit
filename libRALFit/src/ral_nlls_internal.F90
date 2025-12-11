@@ -320,6 +320,7 @@ contains
           type is (params_internal_type)
 !            Is user requesting to check the Jacobian derivatives and fd not activated
              If (options%check_derivatives /= 0 .And. params%fd_type == 'N') Then
+                print *, 'is params%x associated? ', associated(params%x), '     CALLING CHECK_JACOBIAN'
                 call check_jacobian(n, m, w%J, params)
                 If (params%inform%status /= 0) Then
                    goto 100

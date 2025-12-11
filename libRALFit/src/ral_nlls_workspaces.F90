@@ -1936,6 +1936,7 @@ contains
       Integer :: m
       Logical chk
       Continue
+      print *, "iparams_set called"
       ! if check == .True. then copy f and set x, since we don't know yet
       ! if FD is required...
       Select Type (params)
@@ -1943,6 +1944,7 @@ contains
          chk = .True.
          if (present(check)) chk = check
          if ( chk .And. params%fd_type == 'N') return
+         print *, "associating x in iparams_set"
          if (present(x)) params%x => x ! Point to interate
          if (present(f)) then
             m = params%m

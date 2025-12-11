@@ -330,6 +330,11 @@ Contains
          iparams%inform%status = NLLS_ERROR_UNEXPECTED
          goto 100
       end if
+      if (.Not. Associated(iparams%x)) Then
+        print *, "check_jacobian: iparams%x is not associated!"
+         iparams%inform%status = NLLS_ERROR_UNEXPECTED
+         goto 100
+      end if
 
       Allocate(iparams%f_pert(m), stat=ierr)
       if (ierr /= 0) Then
@@ -343,8 +348,6 @@ Contains
          goto 100
       end if
 
-call date_and_time(time=rec)
-print *, trim(rec), '   ->  iparams%x = ', iparams%x
       Call fd_jacobian(ierr, n, m, iparams%x, iparams%f, J_fd, iparams)
       if (ierr == -2031 ) then
          ! eval_f provided a rubbish FD estimation
