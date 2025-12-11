@@ -1944,8 +1944,8 @@ contains
          chk = .True.
          if (present(check)) chk = check
          if ( chk .And. params%fd_type == 'N') return
-         print *, "associating x in iparams_set"
          if (present(x)) params%x => x ! Point to interate
+         print *, "*** iparma associating x in iparams_set ", associated(params%x)
          if (present(f)) then
             m = params%m
             if (present(weights)) then
@@ -1986,6 +1986,7 @@ contains
          iparams%fd_type = 'N'
          if (present(x)) then
             iparams%x => x
+            print *, "*** SETUP iparma associating x in iparams_set ", associated(iparams%x)
          end if
          if (Allocated(iparams%f_pert)) Deallocate(iparams%f_pert)
          if (Allocated(iparams%f)) Deallocate(iparams%f)
