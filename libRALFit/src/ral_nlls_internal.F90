@@ -106,10 +106,7 @@ contains
     call setup_iparams_type(m, iparams, params, eval_F, eval_J, eval_HF, &
             inform, options, w%box_ws, x)
 
-    select type (iparams)
-    type is (params_internal_type)
-        print *, "*** NLLS_SOLVE iparma associated? x ", associated(iparams%x)
-    end select
+    print *, "*** NLLS_SOLVE iparma associated? x ", associated(iparams%x)
 
     main_loop: do i = 1,options%maxit
        call nlls_iterate(n, m, X,                                     &
