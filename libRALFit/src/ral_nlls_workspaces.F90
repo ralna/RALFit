@@ -580,7 +580,7 @@ module MODULE_PREC(ral_nlls_workspaces)
     type( nlls_inform ), pointer :: inform => Null()
     type( nlls_options ), pointer :: options => Null()
     ! Iterate
-    Real(Kind=wp), pointer :: x(:)
+    Real(Kind=wp), pointer :: x(:) => Null()
   end type params_internal_type
 
   type, public :: max_eig_work ! workspace for subroutine max_eig
