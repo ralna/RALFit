@@ -1928,10 +1928,10 @@ contains
 
   subroutine iparams_set(params, x, f, weights, check)
       Implicit None
-      Class(params_base_type), Intent(InOut) :: params
-      Real(Kind=wp), Dimension(:), Optional, Target, Intent(InOut) :: x
-      Real(Kind=wp), Dimension(:), Optional, Target, Intent(InOut) :: f
-      Real (Kind=wp), Dimension(:), Optional, Intent (InOut) :: weights
+      Class(params_base_type) :: params
+      Real(Kind=wp), Dimension(:), Optional, Target :: x
+      Real(Kind=wp), Dimension(:), Optional, Target :: f
+      Real (Kind=wp), Dimension(:), Optional :: weights
       Logical, Optional, Intent(In) :: check
       Integer :: m
       Logical chk
@@ -1961,15 +1961,15 @@ contains
       inform, options, box_ws, x)
       Implicit None
       Integer, Intent(In) :: m
-      Class(params_base_type), Intent(InOut) :: iparams
-      Class(params_base_type), Target, Intent(InOut) :: params
+      Class(params_base_type) :: iparams
+      Class(params_base_type), Target :: params
       procedure( eval_f_type ) :: eval_F
       procedure( eval_j_type ) :: eval_J
       procedure( eval_hf_type ) :: eval_HF
-      TYPE( NLLS_inform ), TARGET, INTENT( InOut ) :: inform
-      TYPE( NLLS_options ), TARGET, INTENT( InOut ) :: options
-      TYPE( box_type ), TARGET, INTENT( InOut ) :: box_ws
-      Real(Kind=wp), Optional, Intent(InOut), Target :: x(:)
+      TYPE( NLLS_inform ), TARGET :: inform
+      TYPE( NLLS_options ), TARGET :: options
+      TYPE( box_type ), TARGET :: box_ws
+      Real(Kind=wp), Optional, Target :: x(:)
       Integer :: status
       Continue
 !     Encapsulate user-params and call-backs for finite-differences
