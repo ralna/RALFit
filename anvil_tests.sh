@@ -7,6 +7,7 @@
 
 
 echo 'AXIS   Building compiler:   $compiler='$compiler
+echo 'AXIS   Building precision:  $precision='$precision
 echo 'PARAM  Extra flags:         $CMAKE_EXTRA='$CMAKE_EXTRA
 
 case $compiler in
@@ -58,8 +59,17 @@ aocc-debug|amd-debug)
 *)
     echo "$0 Error: Unknown compiler \"$compiler\"?"
     exit 10
+    ;;
 esac
 
+case $precision in
+single)
+    RALFIT_FLAGS="$RALFIT_FLAGS -DSINGLE_PRECISION=On"
+    ;;
+*)
+    RALFIT_FLAGS="$RALFIT_FLAGS -DSINGLE_PRECISION=Off"
+    ;;
+esac
 
 module load cmake/latest
 # TODO Selectively use OpenBLAS OR AOCL
