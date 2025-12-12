@@ -2,24 +2,24 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DLARNV + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlarnv.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlarnv.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlarnv.f"> 
+*> Download DLARNV + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlarnv.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlarnv.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlarnv.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       SUBROUTINE DLARNV( IDIST, ISEED, N, X )
-* 
+*
 *       .. Scalar Arguments ..
 *       INTEGER            IDIST, N
 *       ..
@@ -27,7 +27,7 @@
 *       INTEGER            ISEED( 4 )
 *       DOUBLE PRECISION   X( * )
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -74,14 +74,12 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date September 2012
-*
-*> \ingroup auxOTHERauxiliary
+*> \ingroup larnv
 *
 *> \par Further Details:
 *  =====================
@@ -97,10 +95,9 @@
 *  =====================================================================
       SUBROUTINE DLARNV( IDIST, ISEED, N, X )
 *
-*  -- LAPACK auxiliary routine (version 3.4.2) --
+*  -- LAPACK auxiliary routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     September 2012
 *
 *     .. Scalar Arguments ..
       INTEGER            IDIST, N
@@ -118,7 +115,7 @@
       INTEGER            LV
       PARAMETER          ( LV = 128 )
       DOUBLE PRECISION   TWOPI
-      PARAMETER          ( TWOPI = 6.2831853071795864769252867663D+0 )
+      PARAMETER  ( TWOPI = 6.28318530717958647692528676655900576839D+0 )
 *     ..
 *     .. Local Scalars ..
       INTEGER            I, IL, IL2, IV

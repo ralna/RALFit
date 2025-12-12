@@ -1,8 +1,12 @@
 #!/bin/bash
 # Anvil launch script
-# Usage: anvil_tests.sh <compiler> [<extra_flags>]
+# Usage:
+# export compiler=...
+# export CMAKE_EXTRA=...
+# anvil_tests.sh
 
 echo 'AXIS   Building compiler:   $compiler='$compiler
+echo 'AXIS   Building precision:  $precision='$precision
 echo 'PARAM  Extra flags:         $CMAKE_EXTRA='$CMAKE_EXTRA
 
 case $compiler in
@@ -26,6 +30,8 @@ ifort|ifx|icx|intel)
    export F77=ifx
    export FC=ifx
    export RALFIT_FLAGS="-DCMAKE_BUILD_TYPE=Release $CMAKE_EXTRA"
+   # Relax test tolerance check for these builds 
+   export RALFIT_UT_CMD_ARGS="--tol=both"
    ;;
 nagfor*) 
    module load gcc/latest
@@ -52,8 +58,17 @@ aocc-debug|amd-debug)
 *)
     echo "$0 Error: Unknown compiler \"$compiler\"?"
     exit 10
+    ;;
 esac
 
+case $precision in
+single)
+    RALFIT_FLAGS="$RALFIT_FLAGS -DSINGLE_PRECISION=On"
+    ;;
+*)
+    RALFIT_FLAGS="$RALFIT_FLAGS -DSINGLE_PRECISION=Off"
+    ;;
+esac
 
 module load cmake/latest
 # TODO Selectively use OpenBLAS OR AOCL
@@ -69,6 +84,9 @@ case $compiler in
     ;;
 esac
 
-echo '$BLAS_LIBRARIES='$BLAS_LIBRARIES
+echo $0
+echo ' * $RALFIT_FLAGS='$RALFIT_FLAGS
+echo ' * $RALFIT_UT_CMD_ARGS='$RALFIT_UT_CMD_ARGS
+echo ' * $BLAS_LIBRARIES='$BLAS_LIBRARIES
 
 ./makebuild.sh

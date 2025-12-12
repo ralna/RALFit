@@ -2,29 +2,29 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download ILAENV + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/ilaenv.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/ilaenv.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/ilaenv.f"> 
+*> Download ILAENV + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/ilaenv.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/ilaenv.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/ilaenv.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       INTEGER FUNCTION ILAENV( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
-* 
+*
 *       .. Scalar Arguments ..
 *       CHARACTER*( * )    NAME, OPTS
 *       INTEGER            ISPEC, N1, N2, N3, N4
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -79,9 +79,9 @@
 *>          = 9: maximum size of the subproblems at the bottom of the
 *>               computation tree in the divide-and-conquer algorithm
 *>               (used by xGELSD and xGESDD)
-*>          =10: ieee NaN arithmetic can be trusted not to trap
+*>          =10: ieee infinity and NaN arithmetic can be trusted not to trap
 *>          =11: infinity arithmetic can be trusted not to trap
-*>          12 <= ISPEC <= 16:
+*>          12 <= ISPEC <= 17:
 *>               xHSEQR or related subroutines,
 *>               see IPARMQ for detailed explanation
 *> \endverbatim
@@ -127,14 +127,12 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date November 2015
-*
-*> \ingroup auxOTHERauxiliary
+*> \ingroup ilaenv
 *
 *> \par Further Details:
 *  =====================
@@ -162,10 +160,9 @@
 *  =====================================================================
       INTEGER FUNCTION ILAENV( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
 *
-*  -- LAPACK auxiliary routine (version 3.6.0) --
+*  -- LAPACK auxiliary routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     November 2015
 *
 *     .. Scalar Arguments ..
       CHARACTER*( * )    NAME, OPTS
@@ -176,20 +173,20 @@
 *
 *     .. Local Scalars ..
       INTEGER            I, IC, IZ, NB, NBMIN, NX
-      LOGICAL            CNAME, SNAME
-      CHARACTER          C1*1, C2*2, C4*2, C3*3, SUBNAM*6
+      LOGICAL            CNAME, SNAME, TWOSTAGE
+      CHARACTER          C1*1, C2*2, C4*2, C3*3, SUBNAM*16
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          CHAR, ICHAR, INT, MIN, REAL
 *     ..
 *     .. External Functions ..
-      INTEGER            IEEECK, IPARMQ
-      EXTERNAL           IEEECK, IPARMQ
+      INTEGER            IEEECK, IPARMQ, IPARAM2STAGE
+      EXTERNAL           IEEECK, IPARMQ, IPARAM2STAGE
 *     ..
 *     .. Executable Statements ..
 *
       GO TO ( 10, 10, 10, 80, 90, 100, 110, 120,
-     $        130, 140, 150, 160, 160, 160, 160, 160 )ISPEC
+     $        130, 140, 150, 160, 160, 160, 160, 160, 160)ISPEC
 *
 *     Invalid value for ISPEC
 *
@@ -256,6 +253,8 @@
       C2 = SUBNAM( 2: 3 )
       C3 = SUBNAM( 4: 6 )
       C4 = C3( 2: 3 )
+      TWOSTAGE = LEN( SUBNAM ).GE.11
+     $           .AND. SUBNAM( 11: 11 ).EQ.'2'
 *
       GO TO ( 50, 60, 70 )ISPEC
 *
@@ -269,7 +268,16 @@
 *
       NB = 1
 *
-      IF( C2.EQ.'GE' ) THEN
+      IF( SUBNAM(2:6).EQ.'LAORH' ) THEN
+*
+*        This is for *LAORHR_GETRFNP routine
+*
+         IF( SNAME ) THEN
+             NB = 32
+         ELSE
+             NB = 32
+         END IF
+      ELSE IF( C2.EQ.'GE' ) THEN
          IF( C3.EQ.'TRF' ) THEN
             IF( SNAME ) THEN
                NB = 64
@@ -282,6 +290,52 @@
                NB = 32
             ELSE
                NB = 32
+            END IF
+         ELSE IF( C3.EQ.'QR ') THEN
+            IF( N3 .EQ. 1) THEN
+               IF( SNAME ) THEN
+*     M*N
+                  IF ((N1*N2.LE.131072).OR.(N1.LE.8192)) THEN
+                     NB = N1
+                  ELSE
+                     NB = 32768/N2
+                  END IF
+               ELSE
+                  IF ((N1*N2.LE.131072).OR.(N1.LE.8192)) THEN
+                     NB = N1
+                  ELSE
+                     NB = 32768/N2
+                  END IF
+               END IF
+            ELSE
+               IF( SNAME ) THEN
+                  NB = 1
+               ELSE
+                  NB = 1
+               END IF
+            END IF
+         ELSE IF( C3.EQ.'LQ ') THEN
+            IF( N3 .EQ. 2) THEN
+               IF( SNAME ) THEN
+*     M*N
+                  IF ((N1*N2.LE.131072).OR.(N1.LE.8192)) THEN
+                     NB = N1
+                  ELSE
+                     NB = 32768/N2
+                  END IF
+               ELSE
+                  IF ((N1*N2.LE.131072).OR.(N1.LE.8192)) THEN
+                     NB = N1
+                  ELSE
+                     NB = 32768/N2
+                  END IF
+               END IF
+            ELSE
+               IF( SNAME ) THEN
+                  NB = 1
+               ELSE
+                  NB = 1
+               END IF
             END IF
          ELSE IF( C3.EQ.'HRD' ) THEN
             IF( SNAME ) THEN
@@ -301,6 +355,12 @@
             ELSE
                NB = 64
             END IF
+         ELSE IF( SUBNAM( 4: 7 ).EQ.'QP3RK' ) THEN
+            IF( SNAME ) THEN
+               NB = 32
+            ELSE
+               NB = 32
+            END IF
          END IF
       ELSE IF( C2.EQ.'PO' ) THEN
          IF( C3.EQ.'TRF' ) THEN
@@ -313,9 +373,17 @@
       ELSE IF( C2.EQ.'SY' ) THEN
          IF( C3.EQ.'TRF' ) THEN
             IF( SNAME ) THEN
-               NB = 64
+               IF( TWOSTAGE ) THEN
+                  NB = 192
+               ELSE
+                  NB = 64
+               END IF
             ELSE
-               NB = 64
+               IF( TWOSTAGE ) THEN
+                  NB = 192
+               ELSE
+                  NB = 64
+               END IF
             END IF
          ELSE IF( SNAME .AND. C3.EQ.'TRD' ) THEN
             NB = 32
@@ -324,7 +392,11 @@
          END IF
       ELSE IF( CNAME .AND. C2.EQ.'HE' ) THEN
          IF( C3.EQ.'TRF' ) THEN
-            NB = 64
+            IF( TWOSTAGE ) THEN
+               NB = 192
+            ELSE
+               NB = 64
+            END IF
          ELSE IF( C3.EQ.'TRD' ) THEN
             NB = 32
          ELSE IF( C3.EQ.'GST' ) THEN
@@ -397,6 +469,21 @@
             ELSE
                NB = 64
             END IF
+         ELSE IF ( C3.EQ.'EVC' ) THEN
+            IF( SNAME ) THEN
+               NB = 64
+            ELSE
+               NB = 64
+            END IF
+         ELSE IF( C3.EQ.'SYL' ) THEN
+*           The upper bound is to prevent overly aggressive scaling.
+            IF( SNAME ) THEN
+               NB = MIN( MAX( 48, INT( ( MIN( N1, N2 ) * 16 ) / 100) ),
+     $                   240 )
+            ELSE
+               NB = MIN( MAX( 24, INT( ( MIN( N1, N2 ) * 8 ) / 100) ),
+     $                   80 )
+            END IF
          END IF
       ELSE IF( C2.EQ.'LA' ) THEN
          IF( C3.EQ.'UUM' ) THEN
@@ -404,6 +491,12 @@
                NB = 64
             ELSE
                NB = 64
+            END IF
+         ELSE IF( C3.EQ.'TRS' ) THEN
+            IF( SNAME ) THEN
+               NB = 32
+            ELSE
+               NB = 32
             END IF
          END IF
       ELSE IF( SNAME .AND. C2.EQ.'ST' ) THEN
@@ -454,7 +547,14 @@
             ELSE
                NBMIN = 2
             END IF
+         ELSE IF( SUBNAM( 4: 7 ).EQ.'QP3RK' ) THEN
+            IF( SNAME ) THEN
+               NBMIN = 2
+            ELSE
+               NBMIN = 2
+            END IF
          END IF
+
       ELSE IF( C2.EQ.'SY' ) THEN
          IF( C3.EQ.'TRF' ) THEN
             IF( SNAME ) THEN
@@ -526,6 +626,12 @@
                NX = 128
             END IF
          ELSE IF( C3.EQ.'BRD' ) THEN
+            IF( SNAME ) THEN
+               NX = 128
+            ELSE
+               NX = 128
+            END IF
+         ELSE IF( SUBNAM( 4: 7 ).EQ.'QP3RK' ) THEN
             IF( SNAME ) THEN
                NX = 128
             ELSE
@@ -611,7 +717,7 @@
 *
   140 CONTINUE
 *
-*     ISPEC = 10: ieee NaN arithmetic can be trusted not to trap
+*     ISPEC = 10: ieee and infinity NaN arithmetic can be trusted not to trap
 *
 *     ILAENV = 0
       ILAENV = 1
@@ -622,7 +728,7 @@
 *
   150 CONTINUE
 *
-*     ISPEC = 11: infinity arithmetic can be trusted not to trap
+*     ISPEC = 11: ieee infinity arithmetic can be trusted not to trap
 *
 *     ILAENV = 0
       ILAENV = 1
@@ -633,7 +739,7 @@
 *
   160 CONTINUE
 *
-*     12 <= ISPEC <= 16: xHSEQR or related subroutines.
+*     12 <= ISPEC <= 17: xHSEQR or related subroutines.
 *
       ILAENV = IPARMQ( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
       RETURN

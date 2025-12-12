@@ -2,6 +2,8 @@
 
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
+JOBS=${NJOBS:-4}
+
 ###########
 ## build ##
 ###########
@@ -14,6 +16,8 @@ cd build
 mkdir -pv coverage
 echo "For coverage info check GNU gfortran-debug build workspace." > coverage/index.html
 
+echo "Starting build"
+echo '$JOBS='"$JOBS"
 echo "CWD: `pwd`"
 
 #########################
@@ -25,8 +29,11 @@ source p3venv/bin/activate
 
 echo "Building configuration: cmake .. ${RALFIT_FLAGS}"
 cmake .. ${RALFIT_FLAGS}
-make
-make install
+make -j${JOBS}
+RESULT=$?
+[ $RESULT -ne 0 ] && exit 1
+
+make -j${JOBS} install
 RESULT=$?
 [ $RESULT -ne 0 ] && exit 1
 
@@ -36,13 +43,17 @@ RESULT=$?
 
 cd test
 
-echo 'Begin Fortran test nlls_f90_test'
+echo 'Begin Fortran test nlls_f90_test (with RALFIT_UT_CMD_ARGS='$RALFIT_UT_CMD_ARGS')'
 
-./nlls_f90_test
+# Set traps for  *most* core dumps
+trap "exit 31" SIGABRT SIGBUS SIGILL SIGQUIT SIGSEGV 
+trap -p
+
+./nlls_f90_test $RALFIT_UT_CMD_ARGS
 RESULT=$?
 FRESULT=$RESULT
 if [ $RESULT -ne 0 ]; then
-    echo 'End Fortran test nlls_f90_test: FAILED!'
+    echo 'End Fortran test nlls_f90_test: FAILED! Return code: ' $FRESULT
 else
     echo "End Fortran test nlls_f90_test: passed successfully"
 fi
@@ -50,7 +61,7 @@ fi
 # Quick exit if NAGFOR compiler
 if [ "$FC" == "nagfor" ]; then
     echo "Note: NAGFOR compiler - skipping C and Python tests"
-    exit 0
+    exit $FRESULT
 fi
 
 #################

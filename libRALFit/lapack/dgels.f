@@ -2,25 +2,25 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DGELS + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dgels.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dgels.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dgels.f"> 
+*> Download DGELS + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dgels.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dgels.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dgels.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       SUBROUTINE DGELS( TRANS, M, N, NRHS, A, LDA, B, LDB, WORK, LWORK,
 *                         INFO )
-* 
+*
 *       .. Scalar Arguments ..
 *       CHARACTER          TRANS
 *       INTEGER            INFO, LDA, LDB, LWORK, M, N, NRHS
@@ -28,7 +28,7 @@
 *       .. Array Arguments ..
 *       DOUBLE PRECISION   A( LDA, * ), B( LDB, * ), WORK( * )
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -37,7 +37,17 @@
 *>
 *> DGELS solves overdetermined or underdetermined real linear systems
 *> involving an M-by-N matrix A, or its transpose, using a QR or LQ
-*> factorization of A.  It is assumed that A has full rank.
+*> factorization of A.
+*>
+*> It is assumed that A has full rank, and only a rudimentary protection
+*> against rank-deficient matrices is provided. This subroutine only detects
+*> exact rank-deficiency, where a diagonal element of the triangular factor
+*> of A is exactly zero.
+*>
+*> It is conceivable for one (or more) of the diagonal elements of the triangular
+*> factor of A to be subnormally tiny numbers without this subroutine signalling
+*> an error. The solutions computed for such almost-rank-deficient matrices may
+*> be less accurate due to a loss of numerical precision.
 *>
 *> The following options are provided:
 *>
@@ -49,7 +59,7 @@
 *>    an underdetermined system A * X = B.
 *>
 *> 3. If TRANS = 'T' and m >= n:  find the minimum norm solution of
-*>    an undetermined system A**T * X = B.
+*>    an underdetermined system A**T * X = B.
 *>
 *> 4. If TRANS = 'T' and m < n:  find the least squares solution of
 *>    an overdetermined system, i.e., solve the least squares problem
@@ -162,7 +172,7 @@
 *>          = 0:  successful exit
 *>          < 0:  if INFO = -i, the i-th argument had an illegal value
 *>          > 0:  if INFO =  i, the i-th diagonal element of the
-*>                triangular factor of A is zero, so that A does not have
+*>                triangular factor of A is exactly zero, so that A does not have
 *>                full rank; the least squares solution could not be
 *>                computed.
 *> \endverbatim
@@ -170,23 +180,21 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date November 2011
-*
-*> \ingroup doubleGEsolve
+*> \ingroup gels
 *
 *  =====================================================================
-      SUBROUTINE DGELS( TRANS, M, N, NRHS, A, LDA, B, LDB, WORK, LWORK,
+      SUBROUTINE DGELS( TRANS, M, N, NRHS, A, LDA, B, LDB, WORK,
+     $                  LWORK,
      $                  INFO )
 *
-*  -- LAPACK driver routine (version 3.4.0) --
+*  -- LAPACK driver routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     November 2011
 *
 *     .. Scalar Arguments ..
       CHARACTER          TRANS
@@ -214,10 +222,11 @@
       LOGICAL            LSAME
       INTEGER            ILAENV
       DOUBLE PRECISION   DLAMCH, DLANGE
-      EXTERNAL           LSAME, ILAENV, DLABAD, DLAMCH, DLANGE
+      EXTERNAL           LSAME, ILAENV, DLAMCH, DLANGE
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DGELQF, DGEQRF, DLASCL, DLASET, DORMLQ, DORMQR,
+      EXTERNAL           DGELQF, DGEQRF, DLASCL, DLASET, DORMLQ,
+     $                   DORMQR,
      $                   DTRTRS, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
@@ -230,7 +239,8 @@
       INFO = 0
       MN = MIN( M, N )
       LQUERY = ( LWORK.EQ.-1 )
-      IF( .NOT.( LSAME( TRANS, 'N' ) .OR. LSAME( TRANS, 'T' ) ) ) THEN
+      IF( .NOT.( LSAME( TRANS, 'N' ) .OR.
+     $    LSAME( TRANS, 'T' ) ) ) THEN
          INFO = -1
       ELSE IF( M.LT.0 ) THEN
          INFO = -2
@@ -298,7 +308,6 @@
 *
       SMLNUM = DLAMCH( 'S' ) / DLAMCH( 'P' )
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
 *
 *     Scale A, B if max element outside range [SMLNUM,BIGNUM]
 *
@@ -349,7 +358,8 @@
 *
 *        compute QR factorization of A
 *
-         CALL DGEQRF( M, N, A, LDA, WORK( 1 ), WORK( MN+1 ), LWORK-MN,
+         CALL DGEQRF( M, N, A, LDA, WORK( 1 ), WORK( MN+1 ),
+     $                LWORK-MN,
      $                INFO )
 *
 *        workspace at least N, optimally N*NB
@@ -368,7 +378,8 @@
 *
 *           B(1:N,1:NRHS) := inv(R) * B(1:N,1:NRHS)
 *
-            CALL DTRTRS( 'Upper', 'No transpose', 'Non-unit', N, NRHS,
+            CALL DTRTRS( 'Upper', 'No transpose', 'Non-unit', N,
+     $                   NRHS,
      $                   A, LDA, B, LDB, INFO )
 *
             IF( INFO.GT.0 ) THEN
@@ -379,7 +390,7 @@
 *
          ELSE
 *
-*           Overdetermined system of equations A**T * X = B
+*           Underdetermined system of equations A**T * X = B
 *
 *           B(1:N,1:NRHS) := inv(R**T) * B(1:N,1:NRHS)
 *
@@ -414,7 +425,8 @@
 *
 *        Compute LQ factorization of A
 *
-         CALL DGELQF( M, N, A, LDA, WORK( 1 ), WORK( MN+1 ), LWORK-MN,
+         CALL DGELQF( M, N, A, LDA, WORK( 1 ), WORK( MN+1 ),
+     $                LWORK-MN,
      $                INFO )
 *
 *        workspace at least M, optimally M*NB.
@@ -425,7 +437,8 @@
 *
 *           B(1:M,1:NRHS) := inv(L) * B(1:M,1:NRHS)
 *
-            CALL DTRTRS( 'Lower', 'No transpose', 'Non-unit', M, NRHS,
+            CALL DTRTRS( 'Lower', 'No transpose', 'Non-unit', M,
+     $                   NRHS,
      $                   A, LDA, B, LDB, INFO )
 *
             IF( INFO.GT.0 ) THEN

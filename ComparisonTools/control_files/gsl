@@ -1,9 +1,0 @@
-1000                  maximum number of iterations
-1.0e-5 		      absolute tolerance
-1.0e-8                relative tolerance		      
-1                     stopping test (1=our own, 2=delta_x, 3=gsl grad)
-1                     write summary? (not 1 == don't write)
-gsl.out               summary file (max 20 characters)		      
-1                     write iteration summary (not 1 == don't write)
-gsl_iter.out	      iteration summary file (max 20 characters)
-0                     should we print updates?
