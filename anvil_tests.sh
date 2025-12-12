@@ -5,7 +5,6 @@
 # export CMAKE_EXTRA=...
 # anvil_tests.sh
 
-
 echo 'AXIS   Building compiler:   $compiler='$compiler
 echo 'AXIS   Building precision:  $precision='$precision
 echo 'PARAM  Extra flags:         $CMAKE_EXTRA='$CMAKE_EXTRA
