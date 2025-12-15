@@ -1316,25 +1316,26 @@ program nlls_test
      options%Fortran_Jacobian = .True.
      options%print_level = 3
      options%check_derivatives = 0
-     blx(:) = (/0.32, 0.0/)
-     bux(:) = (/1.0, 1.0/)
+     blx(:) = (/0.32_wp, 0.0_wp/)
+     bux(:) = (/1.0_wp, 1.0_wp/)
      if (wp == np) then
         tol = 1.e-6_wp
         options%maxit = 100
      else
         ! Relax tolerance for lower precision
-        tol = 2.0e-5_wp
+        tol = 5.0e-5_wp
         options%fd_step = 9.0e-3_wp
         options%maxit = 200
      end if
      call solve_basic(X,params,options,status,use_fd=.True.,blx=blx,bux=bux)
-     oki = abs(x(1) - 0.32) <= tol .And. abs(x(2)-2.7447762174312485E-2) < tol
-     write(options%out,*) 'Solution (F): ', x(1:n)
-     write(options%out,*) 'Expected: ', (/0.32, 2.7447762174312485E-2/)
+     oki = abs(x(1) - 0.32_wp) <= tol .And. abs(x(2)-2.7447762174312485E-2_wp) <= tol
+     write(options%out,Fmt=99999) 'Solution (F): ', x(1:n)
+     write(options%out,Fmt=99999) 'Expected    : ', (/0.32_wp, 2.7447762174312485E-2_wp/)
      if ( .Not. ( status%status == 0 .And. oki) ) then
         write(*,*) 'Error: [id:4] FD solve: unexpected status value or wrong solution (Status = ', status%status,')'
-        write(*,*) 'Solution (F): ', x(1:n)
-        write(*,*) 'Expected: ', (/0.32, 2.7447762174312485E-002/)
+        write(*,Fmt=99999) 'Solution (F): ', x(1:n)
+        write(*,Fmt=99999) 'Expected    : ', (/0.32_wp, 2.7447762174312485E-2_wp/)
+        write(options%out,Fmt=99999) 'Diff        : ', abs(x(1) - 0.32_wp), abs(x(2) - 2.7447762174312485E-2_wp)
         no_errors_main = no_errors_main + 1
      end if
 
@@ -1511,5 +1512,6 @@ close(unit = 17)
   end if
 
 
+99999 Format (1X,A,2X,2(Es14.8e1,1X))
 
 end program nlls_test

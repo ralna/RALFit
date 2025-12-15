@@ -60,12 +60,12 @@ if(CMAKE_BUILD_TYPE MATCHES Release)
     set(CMAKE_C_FLAGS_RELEASE
         "-O2 -Wall -pedantic -march=native -fno-fast-math -fopenmp -fno-omit-frame-pointer")
     set(CMAKE_Fortran_FLAGS_RELEASE
-        "-O2 -Wall -pedantic -march=native -fopenmp -fno-omit-frame-pointer")
+        "-O2 -Wall -pedantic -fno-fast-math -march=native -fopenmp -fno-omit-frame-pointer")
   elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
     set(CMAKE_C_FLAGS_RELEASE
         "-O2 -Wall -pedantic -march=native -fno-fast-math -fopenmp -fno-omit-frame-pointer")
     set(CMAKE_Fortran_FLAGS_RELEASE
-        "-O2 -Wall -pedantic -march=native -fopenmp -fno-omit-frame-pointer")
+        "-O2 -Wall -pedantic -fno-fast-math -march=native -fopenmp -fno-omit-frame-pointer")
   elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
     set(CMAKE_C_FLAGS_RELEASE "-O2")
     set(CMAKE_Fortran_FLAGS_RELEASE "-O2")
@@ -86,14 +86,14 @@ elseif(CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_C_FLAGS_DEBUG
         "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fno-fast-math -fopenmp")
     set(CMAKE_Fortran_FLAGS_DEBUG
-        "-pg -g -O0 -gdwarf-5 -Wall -pedantic -Warray-temporaries -fno-omit-frame-pointer -fcheck=all -fbacktrace -fopenmp -finit-real=nan -finit-integer=-9999"
+        "-pg -g -O0 -gdwarf-5 -Wall -fno-fast-math -pedantic -Warray-temporaries -fno-omit-frame-pointer -fcheck=all -fbacktrace -fopenmp -finit-real=nan -finit-integer=-9999"
     )
     set(CMAKE_LDFLAGS_DEBUG "-g")
   elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
     set(CMAKE_C_FLAGS_DEBUG
         "-pg -g3 -O0 -Wall -pedantic -fno-fast-math -fopenmp")
     set(CMAKE_Fortran_FLAGS_DEBUG
-        "-g -O0 -Wall -pedantic -fno-omit-frame-pointer -fopenmp"
+        "-g -O0 -Wall -fno-fast-math -pedantic -fno-omit-frame-pointer -fopenmp"
     )
     set(CMAKE_LDFLAGS_DEBUG "-g")
   elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
