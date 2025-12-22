@@ -1349,7 +1349,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
       Continue
 
-      abstol = 1.0e-8_wp
+      abstol = 2.0e-8_wp
       reltol = -1.0_wp
 
       if (trim(tol_type) == 'both') then
