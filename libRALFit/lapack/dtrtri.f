@@ -102,17 +102,14 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \date December 2016
-*
-*> \ingroup doubleOTHERcomputational
+*> \ingroup trtri
 *
 *  =====================================================================
       SUBROUTINE DTRTRI( UPLO, DIAG, N, A, LDA, INFO )
 *
-*  -- LAPACK computational routine (version 3.7.0) --
+*  -- LAPACK computational routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     December 2016
 *
 *     .. Scalar Arguments ..
       CHARACTER          DIAG, UPLO
@@ -200,9 +197,11 @@
 *
 *              Compute rows 1:j-1 of current block column
 *
-               CALL DTRMM( 'Left', 'Upper', 'No transpose', DIAG, J-1,
+               CALL DTRMM( 'Left', 'Upper', 'No transpose', DIAG,
+     $                     J-1,
      $                     JB, ONE, A, LDA, A( 1, J ), LDA )
-               CALL DTRSM( 'Right', 'Upper', 'No transpose', DIAG, J-1,
+               CALL DTRSM( 'Right', 'Upper', 'No transpose', DIAG,
+     $                     J-1,
      $                     JB, -ONE, A( J, J ), LDA, A( 1, J ), LDA )
 *
 *              Compute inverse of current diagonal block

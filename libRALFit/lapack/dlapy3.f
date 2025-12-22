@@ -2,28 +2,28 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DLAPY3 + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlapy3.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlapy3.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlapy3.f"> 
+*> Download DLAPY3 + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dlapy3.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dlapy3.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dlapy3.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       DOUBLE PRECISION FUNCTION DLAPY3( X, Y, Z )
-* 
+*
 *       .. Scalar Arguments ..
 *       DOUBLE PRECISION   X, Y, Z
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -31,7 +31,7 @@
 *> \verbatim
 *>
 *> DLAPY3 returns sqrt(x**2+y**2+z**2), taking care not to cause
-*> unnecessary overflow.
+*> unnecessary overflow and unnecessary underflow.
 *> \endverbatim
 *
 *  Arguments:
@@ -56,22 +56,19 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date September 2012
-*
-*> \ingroup auxOTHERauxiliary
+*> \ingroup lapy3
 *
 *  =====================================================================
       DOUBLE PRECISION FUNCTION DLAPY3( X, Y, Z )
 *
-*  -- LAPACK auxiliary routine (version 3.4.2) --
+*  -- LAPACK auxiliary routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     September 2012
 *
 *     .. Scalar Arguments ..
       DOUBLE PRECISION   X, Y, Z
@@ -84,18 +81,22 @@
       PARAMETER          ( ZERO = 0.0D0 )
 *     ..
 *     .. Local Scalars ..
-      DOUBLE PRECISION   W, XABS, YABS, ZABS
+      DOUBLE PRECISION   W, XABS, YABS, ZABS, HUGEVAL
+*     ..
+*     .. External Subroutines ..
+      DOUBLE PRECISION   DLAMCH
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, MAX, SQRT
 *     ..
 *     .. Executable Statements ..
 *
+      HUGEVAL = DLAMCH( 'Overflow' )
       XABS = ABS( X )
       YABS = ABS( Y )
       ZABS = ABS( Z )
       W = MAX( XABS, YABS, ZABS )
-      IF( W.EQ.ZERO ) THEN
+      IF( W.EQ.ZERO .OR. W.GT.HUGEVAL ) THEN
 *     W can be zero for max(0,nan,0)
 *     adding all three entries together will make sure
 *     NaN will not disappear.
