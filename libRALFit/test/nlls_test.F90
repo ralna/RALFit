@@ -1323,7 +1323,7 @@ program nlls_test
         options%maxit = 100
      else
         ! Relax tolerance for lower precision
-        tol = 5.0e-5_wp
+        tol = 2.0e-5_wp
         options%fd_step = 9.0e-3_wp
         options%maxit = 200
      end if

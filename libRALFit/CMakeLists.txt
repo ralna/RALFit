@@ -86,7 +86,7 @@ elseif(CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_C_FLAGS_DEBUG
         "-pg -g3 -gdwarf-5 -O0 -Wall -pedantic -fno-fast-math -fopenmp")
     set(CMAKE_Fortran_FLAGS_DEBUG
-        "-pg -g -O0 -gdwarf-5 -Wall -fno-fast-math -pedantic -Warray-temporaries -fno-omit-frame-pointer -fcheck=all -fbacktrace -fopenmp -finit-real=nan -finit-integer=-9999"
+        "-pg -g -O0 -gdwarf-5 -Wall -fno-fast-math -pedantic -Warray-temporaries -fno-omit-frame-pointer -fcheck=all -fbacktrace -fopenmp -finit-real=nan -finit-integer=-9999 -ffree-line-length-0"
     )
     set(CMAKE_LDFLAGS_DEBUG "-g")
   elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
