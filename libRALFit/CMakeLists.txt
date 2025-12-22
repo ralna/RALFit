@@ -132,17 +132,6 @@ if(TestCoverage) # Only enabled for GNU compiler
   set(CMAKE_LDFLAGS_DEBUG "${CMAKE_LDFLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
 endif(TestCoverage)
 
-# Print build information
-message(STATUS "")
-message(STATUS "  ${PROJECT_NAME} v${PROJECT_VERSION}")
-message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
-if (SINGLE_PRECISION)
-    message(STATUS "  Floating point precision: SINGLE")
-else()
-    message(STATUS "  Floating point precision: DOUBLE")
-endif(SINGLE_PRECISION)
-message(STATUS "")
-
 # Add clean-all target as alias to clean
 add_custom_target(clean-all COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target clean)
 
@@ -168,7 +157,6 @@ if(CompileMiniLAPACK)
    set(LAPACK_LIBRARIES ral_nlls_lapack)
 endif()
 
-message(STATUS "The LAPACK / BLAS libraries: " ${LAPACK_LIBRARIES})
 set(LIBS ${LAPACK_LIBRARIES})
 
 # Python interface
@@ -213,3 +201,24 @@ add_subdirectory(example/Python)
 if(TestCoverage) # Only enabled for GNU compiler
   include(CodeCoverage)
 endif(TestCoverage)
+
+# Pretty print the build configuration and parameters
+message(STATUS "")
+message(STATUS "  ${PROJECT_NAME} v${PROJECT_VERSION} (${CMAKE_BUILD_TYPE} Build)")
+message(STATUS "")
+message(STATUS "  Configuration Summary")
+message(STATUS "  ---------------------")
+message(STATUS "  Compiler (Fortran):       FC=${CMAKE_Fortran_COMPILER_ID}")
+message(STATUS "  Compiler (C):             CC=${CMAKE_C_COMPILER_ID}")
+message(STATUS "  Build Type:               CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+message(STATUS "  Address SANitizer:        ASAN=${ASAN} (On/Off/Debug: only on for debug builds)")
+message(STATUS "  Build Python (wheel):     BUILD_PYTHON=${BUILD_PYTHON}")
+if (SINGLE_PRECISION)
+message(STATUS "  Floating point precision: SINGLE_PRECISION=${SINGLE_PRECISION} (Single precision)")
+else()
+message(STATUS "  Floating point precision: SINGLE_PRECISION=${SINGLE_PRECISION} (Double precision)")
+endif(SINGLE_PRECISION)
+message(STATUS "  Compile MiniLAPACK:       ${CompileMiniLAPACK}")
+message(STATUS "  BLAS / LAPACK Libraries:  ${LAPACK_LIBRARIES}")
+message(STATUS "  Test Coverage:            ${TestCoverage}")
+message(STATUS "")
