@@ -24,7 +24,7 @@
 !     |                                                                  |
 !     --------------------------------------------------------------------
 
-      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp
+      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp, HSEQR, PREC(dot)
       USE MODULE_PREC(RAL_NLLS_SYMBOLS)
 
       IMPLICIT NONE
@@ -62,29 +62,6 @@
       REAL ( KIND = wp ), PARAMETER :: epsmch = EPSILON( one )
       REAL ( KIND = wp ), PARAMETER :: infinity = HUGE( one )
 
-!  interface to LAPACK: eigenvalues of a Hessenberg matrix
-
-      INTERFACE HSEQR
-        SUBROUTINE SHSEQR( job, compz, n, ilo, ihi, H, ldh,  WR, WI, Z, ldz,   &
-                           WORK, lwork, info )
-        import :: lp
-        INTEGER, INTENT( IN ) :: ihi, ilo, ldh, ldz, lwork, n
-        INTEGER, INTENT( OUT ) :: info
-        CHARACTER ( LEN = 1 ), INTENT( IN ) :: compz, job
-        REAL(KIND=lp), INTENT( INOUT ) :: H( ldh, * ), Z( ldz, * )
-        REAL(KIND=lp), INTENT( OUT ) :: WI( * ), WR( * ), WORK( * )
-        END SUBROUTINE SHSEQR
-
-        SUBROUTINE DHSEQR( job, compz, n, ilo, ihi, H, ldh,  WR, WI, Z, ldz,   &
-                           WORK, lwork, info )
-        import :: np
-        INTEGER, INTENT( IN ) :: ihi, ilo, ldh, ldz, lwork, n
-        INTEGER, INTENT( OUT ) :: info
-        CHARACTER ( LEN = 1 ), INTENT( IN ) :: compz, job
-        REAL(KIND=np), INTENT( INOUT ) :: H( ldh, * ), Z( ldz, * )
-        REAL(KIND=np), INTENT( OUT ) :: WI( * ), WR( * ), WORK( * )
-        END SUBROUTINE DHSEQR
-      END INTERFACE HSEQR
 
    CONTAINS
 
@@ -742,7 +719,7 @@
 !      |                                               |
 !       -----------------------------------------------
 
-      USE MODULE_PREC(ral_nlls_types), Only: lp, np, wp
+      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp, PREC(dot)
       USE MODULE_PREC(RAL_NLLS_SYMBOLS)
       USE MODULE_PREC(RAL_NLLS_ROOTS), ONLY: ROOTS_cubic
 
@@ -1178,6 +1155,7 @@
       REAL ( KIND = wp ), DIMENSION( 0 : max_degree ) :: x_norm2, pi_beta
       LOGICAL :: printi, printt, printd, problem_file_exists
       CHARACTER ( LEN = 1 ) :: region
+      REAL ( KIND = wp) :: ctx
 
 !  prefix for all output
 
@@ -1345,8 +1323,9 @@
               X( i_hard ) = X( i_hard ) + alpha
             END IF
             inform%x_norm = TWO_NORM( X )
+            ctx = PREC(dot)(n, C, 1, X, 1)
             inform%obj =                                                       &
-                f + half * ( DOT_PRODUCT( C, X ) - lambda * radius ** 2 )
+                f + half * ( ctx - lambda * radius ** 2 )
             IF ( printi ) THEN
               WRITE( out, "( A, A2, I4, 3ES22.15 )" )  prefix, region,         &
               0, ABS( inform%x_norm - radius ), lambda, ABS( delta_lambda )
@@ -1425,7 +1404,8 @@
 !  if the Newton step lies within the trust region, exit
 
         IF ( lambda == zero .AND. inform%x_norm <= radius ) THEN
-          inform%obj = f + half * DOT_PRODUCT( C, X )
+          ctx = PREC(dot)(n, C, 1, X, 1)
+          inform%obj = f + half * ctx
           inform%status = RAL_NLLS_ok
           region = 'L'
           IF ( printi ) THEN
@@ -1619,7 +1599,8 @@
 
 !  Record the optimal obective value
 
-      inform%obj = f + half * ( DOT_PRODUCT( C, X ) - lambda * x_norm2( 0 ) )
+      ctx = PREC(dot)(n, C, 1, X, 1)
+      inform%obj = f + half * ( ctx - lambda * x_norm2( 0 ) )
 
 !  ----
 !  Exit
@@ -1754,7 +1735,7 @@
 !      |                                            |
 !       --------------------------------------------
 
-      USE MODULE_PREC(ral_nlls_types), Only: lp, np, wp
+      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp, PREC(dot)
       USE MODULE_PREC(RAL_NLLS_SYMBOLS)
       USE MODULE_PREC(RAL_NLLS_ROOTS)
 
@@ -2192,7 +2173,7 @@
       REAL ( KIND = wp ) :: alpha, utx, distx, c_norm, v_norm2, w_norm2, h_norm
       REAL ( KIND = wp ) :: beta, z_norm2, pm2, oopm2, oos, oos2
       REAL ( KIND = wp ) :: lambda_min, lambda_max, lambda_plus, topm2
-      REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max, c2
+      REAL ( KIND = wp ) :: a_0, a_1, a_2, a_3, a_max, c2, ctx
       REAL ( KIND = wp ), DIMENSION( 4 ) :: roots
       REAL ( KIND = wp ), DIMENSION( 9 ) :: lambda_new
       INTEGER, DIMENSION( 1 ) :: mloc
@@ -2316,7 +2297,8 @@
         END IF
         lambda = sigma ; target = sigma
         inform%x_norm = TWO_NORM( X )
-        inform%obj_regularized = f + half * DOT_PRODUCT( C, X )
+        ctx = PREC(dot)(n, C, 1, X, 1)
+        inform%obj_regularized = f + half * ctx
         inform%obj = inform%obj_regularized - half * sigma * inform%x_norm ** 2
         inform%status = RAL_NLLS_ok
         GO TO 900
@@ -2414,8 +2396,9 @@
               X( i_hard ) = X( i_hard ) + alpha
             END IF
             inform%x_norm = TWO_NORM( X )
+            ctx = PREC(dot)(n, C, 1, X, 1)
             inform%obj =                                                       &
-                f + half * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
+                f + half * ( ctx - lambda * target ** 2 )
             inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
 
             IF ( printi ) THEN
@@ -2953,13 +2936,13 @@
 
       END DO
 
-!  Record the optimal obective value
-
-      inform%obj = f + half * ( DOT_PRODUCT( C, X ) - lambda * target ** 2 )
+!  Record the optimal objective value
+      ctx = PREC(dot)(n, C, 1, X, 1)
+      inform%obj = f + half * ( ctx - lambda * target ** 2 )
       inform%obj_regularized = inform%obj + ( lambda / p ) * target ** 2
       IF ( printi ) WRITE( out,                                                &
         "( A, ' estimated, true objective values =', 2ES21.13 )" ) prefix,     &
-          inform%obj_regularized, f + DOT_PRODUCT( C, X ) +                    &
+          inform%obj_regularized, f + ctx +                                    &
             half * DOT_PRODUCT( X, H( : n ) * X ) +                            &
           ( sigma / p ) * inform%x_norm ** p
 

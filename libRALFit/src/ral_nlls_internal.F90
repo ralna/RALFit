@@ -13,6 +13,7 @@ module MODULE_PREC(ral_nlls_internal)
   use MODULE_PREC(ral_nlls_workspaces)
   Use MODULE_PREC(ral_nlls_printing)
   Use MODULE_PREC(ral_nlls_bounds)
+  Use MODULE_PREC(ral_nlls_types), Only: PREC(nrm2), PREC(dot)
 
   implicit none
 
@@ -290,7 +291,7 @@ contains
           w%f(1:m) = weights(1:m)*w%f(1:m)
           w%Wf(1:m) = weights(1:m)*w%f(1:m)
        end if
-       w%normf = norm2(x=w%f(1:m))
+       w%normf = PREC(nrm2)(m, w%f(1:m), 1)
        If ((log(1.0_wp+w%normf)>100.0_wp) .Or. (w%normf/=w%normf)) Then
          ! Initial guess x0 is not usable
          inform%external_name = 'eval_F'
@@ -299,7 +300,7 @@ contains
          Go To 100
        End If
        If (options%regularization>0) Then
-         normx = norm2(x=x(1:n))
+         normx = PREC(nrm2)(n, x(1:n), 1)
          Call update_regularized_normf(normf=w%normf,normx=normx,    &
            options=options)
        End If
@@ -340,9 +341,9 @@ contains
           Jmax = 0.0_wp
           do i = 1, n
              if (options%Fortran_Jacobian) then
-                JtJdiag = norm2( w%J( (i-1)*m + 1 : i*m ) )
+                JtJdiag = PREC(nrm2)(m, w%J( (i-1)*m + 1 : i*m ), 1 )
              else
-                JtJdiag = norm2( w%J( i : n*m : n ) )
+                JtJdiag = PREC(nrm2)(n, w%J( i : n*m), n )
              end if
              if (JtJdiag > Jmax) Jmax = JtJdiag
           end do
@@ -357,7 +358,7 @@ contains
        call mult_Jt(w%J,n,m,w%f,w%g,options%Fortran_Jacobian)
        w%g(:) = -w%g(:)
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
-       w%normJF = norm2(w%g)
+       w%normJF = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
        w%normJFold = w%normJF
 
        If ( (log(1.0_wp+w%normJF)>100.0_wp) .or. (w%normJF/=w%normJF) ) Then
@@ -613,7 +614,7 @@ lp: do while (.not. success)
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
            If (w%box_ws%prjchd) Then
               w%d(1:n) = w%Xnew(1:n)-X(1:n)
-              w%norm_2_d = norm2(w%d)
+              w%norm_2_d = PREC(nrm2)(n, w%d, 1)
            End If
            ! tau = |P(X+d)-X| / |d|.
            ! if tau << 1 then the TR step is orthogonal to the active constraints
@@ -646,7 +647,7 @@ lp: do while (.not. success)
            ! set f -> Wf
            w%fnew(1:m) = weights(1:m)*w%fnew(1:m)
          end if
-         normFnew = norm2(w%fnew(1:m))
+         normFnew = PREC(nrm2)(m, w%fnew(1:m), 1)
 
          If ((log(1.0_wp+normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
            rho = -1.0_wp
@@ -656,7 +657,7 @@ lp: do while (.not. success)
        End If
        If (eval_f_status==0) Then
          if (options%regularization > 0) then
-           normX = norm2(w%Xnew)
+           normX = PREC(nrm2)(n, w%Xnew, 1) ! w%Xnew(1:n)
            call update_regularized_normF(normFnew,normX,options)
          end if
 
@@ -713,7 +714,7 @@ lp: do while (.not. success)
              call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
              w%g(:) = -w%g(:)
              if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
-             normJFnew = norm2(w%g)
+             normJFnew = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
 
              If ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
 !              trigger reset_gradients
@@ -876,7 +877,7 @@ lp: do while (.not. success)
          call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
          w%g(:) = -w%g(:)
          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
-         normJFnew = norm2(w%g)
+         normJFnew = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
          if ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
             ! Recover: force to take a PG step
             takestep = .False.
@@ -1332,7 +1333,7 @@ lp: do while (.not. success)
          Call printmsg(4, .False., options, 1, rec)
        End If
        ! Note: we don't need to worry about error returns here
-       norm_2_d = norm2(d(1:n)) ! ||d||_D
+       norm_2_d = PREC(nrm2)(n, d, 1) ! ||d||_D ; d(1:n)
        Xnew = X + d
        call evaluate_model(f,J,hf,X,Xnew,d,md_bad,md_gn,m,n,options,inform,w%evaluate_model_ws)
        If (inform%status/=0) Then
@@ -1370,7 +1371,7 @@ lp: do while (.not. success)
             end if
           end if
           call outer_product(X,n,w%xxt)
-          normx = norm2(X(1:n))
+          normx = PREC(nrm2)(n, X, 1) ! X(1:n)
           if (normx > epsmch) then
              ! add term from J^TJ
              w%A(1:n,1:n) = w%A(1:n,1:n) + &
@@ -1792,8 +1793,8 @@ lp: do while (.not. success)
      call mult_J(J,n,m,g,w%Jg,options%Fortran_Jacobian)
 
     !alpha = norm2(g)**2 / norm2( w%Jg )**2
-     nrmg = norm2(g)
-     alpha = nrmg**2 / norm2( w%Jg )**2
+     nrmg = PREC(nrm2)(n, g, 1) ! g(1:n)
+     alpha = nrmg**2 / PREC(dot)(m, w%Jg, 1, w%Jg, 1)
 
      w%d_sd(:) = alpha * g;
      nrm_d_sd = alpha * nrmg
@@ -1809,10 +1810,10 @@ lp: do while (.not. success)
         goto 100
      end select
 
-     if (norm2(w%d_gn) <= Delta) then
+     if (PREC(nrm2)(n, w%d_gn, 1) <= Delta) then
         ! Gauss-Newton step
         d(:) = w%d_gn
-        normd = norm2(d)
+        normd = PREC(nrm2)(n, d, 1)
         nstep = 1
     !else if (norm2( alpha * w%d_sd ) >= Delta) then
      else if (alpha * nrm_d_sd >= Delta) then
@@ -1832,7 +1833,7 @@ lp: do while (.not. success)
         call findbeta(w%d_sd,w%ghat,Delta,beta,inform)
         if ( inform%status /= 0 ) goto 100
         d(:) = w%d_sd + beta * w%ghat
-        normd = norm2(d)
+        normd = PREC(nrm2)(n, d, 1)
         nstep = 3
      end if
 
@@ -1926,7 +1927,7 @@ lp: do while (.not. success)
      call max_eig(w%M0,w%M1,2*n,lam, w%y, w%y_hardcase, options, inform, w%max_eig_ws)
      if ( inform%status /= 0 ) goto 100
 
-     if (norm2(w%y(1:n)) < tau) then
+     if (PREC(nrm2)(n, w%y(1:n), 1) < tau) then
         ! Hard case
         If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=2010)
@@ -2022,7 +2023,7 @@ lp: do while (.not. success)
         End If
      end if
 
-     normd = norm2(d)
+     normd = PREC(nrm2)(n, d, 1)
 
 100 continue
 2000 FORMAT('Evaluating the model at ',A2,':')
@@ -2134,7 +2135,7 @@ lp: do while (.not. success)
         End If
      end if
 
-     nd = norm2(d)
+     nd = PREC(nrm2)(n, d, 1)
 
      If (buildmsg(5,.False.,options)) Then
        Write(rec(1), Fmt=5000)
@@ -2183,7 +2184,7 @@ lp: do while (.not. success)
         call findbeta(d,w%y1,Delta,alpha,inform)
         if (inform%status /= 0 ) goto 100
         d = d + alpha * w%y1
-        nd = norm2(d)
+        nd = PREC(nrm2)(n, d, 1)
         If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=5010) 0, nd, sigma, 0.0_wp
           Call Printmsg(5,.False.,options,1,rec)
@@ -2224,7 +2225,7 @@ lp:  do i = 1, options%more_sorensen_maxits
         CALL PREC(trsm)( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, &
              1, 1.0_wp, w%AplusSigma, n, w%q, n ) ! AplusSigma now holds the chol. factors
 
-        nq = norm2(w%q)
+        nq = PREC(nrm2)(n, w%q, 1)
         If (buildmsg(5,.False.,options)) Then
           Write(rec(1), Fmt=6080) nq
           Call Printmsg(5,.False.,options,1,rec)
@@ -2254,7 +2255,7 @@ lp:  do i = 1, options%more_sorensen_maxits
         end if
         if (inform%status /= 0) goto 100
 
-        nd = norm2(d)
+        nd = PREC(nrm2)(n, d, 1)
      end do lp
      ! maxits reached, not converged
      inform%status = NLLS_ERROR_MS_MAXITS
@@ -2312,7 +2313,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      real(wp) :: normF_A, norminf_A
      real(wp) :: PREC(lange), PREC(asum)
      real(wp) :: Aii, abs_Aii_sum, lower_sum, upper_sum, min_Aii, max_lower_sum, max_upper_sum, nv
-     real(wp) :: uHu, dHd, theta, kappa_easy, kappa_hard, indef_delta
+     real(wp) :: uHu, dHd, theta, kappa_easy, kappa_hard, indef_delta, nrmy1
      integer :: location_of_breakdown
      character(1) :: region_char
      logical :: factorization_done
@@ -2356,7 +2357,7 @@ lp:  do i = 1, options%more_sorensen_maxits
            max_upper_sum = max(upper_sum, max_upper_sum)
         end if
      end do
-     nv = norm2(v)
+     nv = PREC(nrm2)(n,v,1) ! v(1:n)
 
      sigma_l = max(0.0_wp, -min_Aii, nv/Delta - min(max_lower_sum,normF_A,norminf_A))
      sigma_u = max(0.0_wp,nv/Delta + min(max_upper_sum,normF_A,norminf_A))
@@ -2392,7 +2393,7 @@ lp:  do i = 1, options%more_sorensen_maxits
              Write(rec(1), Fmt=6000)
              Call printmsg(5,.False.,options,1,rec)
            End If
-           nd = norm2(d)
+           nd = PREC(nrm2)(n, d, 1)
            if (nd < Delta) then
               region = 3
               region_char = 'G'
@@ -2446,7 +2447,7 @@ lp:  do i = 1, options%more_sorensen_maxits
            w%q(:) = d ! w%q = R'\d
            CALL PREC(trsm)( 'Left', 'Lower', 'No Transpose', 'Non-unit', n, &
                 1, 1.0_wp, w%LtL, n, w%q, n )
-           nq = norm2(w%q)
+           nq = PREC(nrm2)(n, w%q, 1) ! w%q(1:n)
            If (buildmsg(5,.False.,options)) Then
              Write(rec(1), Fmt=6080) nq
              Call printmsg(5,.False.,options,1,rec)
@@ -2509,8 +2510,8 @@ lp:  do i = 1, options%more_sorensen_maxits
               end do
               w%y1(jj) = -w%y1(jj) / w%LtL(jj,jj)
            end do
-
-           sigma_l = max(sigma_l, sigma + indef_delta/norm2(w%y1))
+           nrmy1 = PREC(nrm2)(n,w%y1,1) ! w%y1(1:n)
+           sigma_l = max(sigma_l, sigma + indef_delta/nrmy1)
         end if
 
         ! check for termination
@@ -2543,7 +2544,7 @@ lp:  do i = 1, options%more_sorensen_maxits
         end if
 
 
-        if ( ( region == 2 ) .and. ( norm2(v) > 0) ) then
+        if ( ( region == 2 ) .and. ( nv > 0.0_wp) ) then
            sigma = sigma + sigma_shift
             If (buildmsg(5,.False.,options)) Then
               Write(rec(1), Fmt=6040) sigma
@@ -2597,7 +2598,7 @@ lp:  do i = 1, options%more_sorensen_maxits
 100 continue
 
   If (inform%status==0) Then
-    nd = norm2(d)
+    nd = PREC(nrm2)(n, d, 1)
     If (buildmsg(5,.False.,options)) Then
       Write(rec(1), Fmt=5010) i, region_char, nd, sigma_l, sigma, sigma_u
       Call printmsg(5,.False.,options,1,rec)
@@ -2673,7 +2674,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      ! now set u = L'\u
      CALL PREC(trsm)( 'Left', 'Lower', 'Transpose', 'Non-unit', n, &
           1, 1.0_wp, mLLt, n, u, n )
-     u = u / norm2(u)   ! and normalize
+     u = u / PREC(nrm2)(n,u,1)   ! and normalize
 
 !!$     write(*,*) 'H = '
 !!$     do i = 1, n
@@ -2867,7 +2868,7 @@ lp:  do i = 1, options%more_sorensen_maxits
   ! and return the un-transformed vector
      call mult_J(w%ev,n,n,w%d_trans,d,.True.)
 
-     normd = norm2(d) ! ||d||_D
+     normd = PREC(nrm2)(n,d,1) ! ||d||_D
 
 100 continue
 
@@ -2911,7 +2912,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      end if
 
      If (inform%status==0) Then
-       normd = norm2(d)
+       normd = PREC(nrm2)(n,d,1) ! ||d||_D
      Else
        normd = 1.0e10_wp
      End If
@@ -2983,11 +2984,15 @@ lp:  do i = 1, options%more_sorensen_maxits
      type( nlls_inform ), intent(inout) :: inform
 
      real(wp) :: c, normb2, norma2, discrim
+     integer :: na, nb
 
-     c = dot_product(a,b)
+     beta = -1.0e10_wp ! define output
+     na = size(a)
+     nb = size(b)
+     c = PREC(dot)(na,a,1,b,1) ! c = dot_product(a,b)
 
-     norma2 = norm2(a)**2
-     normb2 = norm2(b)**2
+     norma2 = PREC(dot)(na,a,1,a,1)
+     normb2 = PREC(dot)(nb,b,1,b,1)
 
      discrim = c**2 + (normb2)*(Delta**2 - norma2);
      if ( discrim < 0.0_wp ) then
@@ -3060,10 +3065,10 @@ lp:  do i = 1, options%more_sorensen_maxits
        sigma = options%regularization_term
        select case (options%regularization)
        case (1)
-          md_gn = md_gn + 0.5_wp * sigma * norm2(Xnew(1:n))**2
+          md_gn = md_gn + 0.5_wp * sigma * PREC(dot)(n,Xnew,1,Xnew,1)
        case (2)
-          normx = norm2(X(1:n))
-          xtd = dot_product(X(1:n),d(1:n))
+          normx = PREC(nrm2)(n,X,1)
+          xtd = PREC(dot)(n,X,1,d,1) ! dot_product(X(1:n),d(1:n))
           md_gn = md_gn + &
                sigma * ( 1.0_wp/p * (normx**p) + &
                (normx**(p-2.0_wp)) * xtd + &
@@ -3227,7 +3232,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        if (options%regularization == 2 ) then
           p = options%regularization_power
           sigma = options%regularization_term
-          normx = norm2(X(1:n))
+          normx = PREC(nrm2)(n,X,1) ! norm2(X(1:n))
           do ii = 1,n
              do jj = 1,n
                 hf_local = x(ii)*x(jj)
@@ -3527,7 +3532,7 @@ lp:  do i = 1, options%more_sorensen_maxits
           w%g(:) = -w%g(:)
        end if
 
-       normjfnew = norm2(x=w%g)
+       normjfnew = PREC(nrm2)(n, w%g, 1) ! norm2(x=w%g)
        If ((log(1.0_wp+normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
          inform%external_name = 'eval_J'
          inform%external_return = 2512
@@ -3819,7 +3824,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        type( max_eig_work ),Intent(Inout) :: w
 
        integer :: lwork, maxindex(1), no_null, halfn
-       real(wp):: tau
+       real(wp):: tau, nrmvr
        integer :: i, ierr_dummy
 
        if (.not. w%allocated) then
@@ -3865,13 +3870,15 @@ lp:  do i = 1, options%more_sorensen_maxits
 
        tau = 1.0e-4_wp ! todo -- pass this through from above...
        ! note n/2 always even -- validated by test on entry
-       if (norm2( w%vr(1:halfn,maxindex(1)) ) < tau) then
+       nrmvr = PREC(nrm2)(halfn, w%vr(1:halfn,maxindex(1)),1)
+       if (nrmvr  < tau) then
           ! hard case
           ! let's find which ev's are null...
           w%nullindex = 0
           no_null = 0
           do i = 1,n
-             if (norm2( w%vr(1:halfn,i)) < 1.0e-4_wp ) then
+             nrmvr = PREC(nrm2)(halfn, w%vr(1:halfn,i),1)
+             if (nrmvr < 1.0e-4_wp ) then
                 no_null = no_null + 1
                 w%nullindex(no_null) = i
              end if
@@ -4056,7 +4063,8 @@ lp:    do i = 1, w%tensor_options%maxit
           Go To 100
         End If
 
-        md = 0.5_wp * norm2( w%model_tensor(1:m) )**2
+        ! md = 0.5_wp * norm2( w%model_tensor(1:m) )**2
+        md = 0.5_wp * PREC(dot)(m, w%model_tensor(1:m), 1, w%model_tensor(1:m), 1)
         ! + 0.5 * (1.0/Delta) * (norm2(d(1:n))**2)
 
 100   continue
@@ -4076,7 +4084,7 @@ lp:    do i = 1, w%tensor_options%maxit
        real(wp), dimension(*), intent(in)    :: s
        real(wp), dimension(*), intent(out)   :: f
        class( params_base_type ), intent(inout) :: params
-       real(wp) :: regp
+       real(wp) :: regp, nrms
        integer :: k
 
        ! Add default return value for status
@@ -4116,8 +4124,9 @@ lp:    do i = 1, w%tensor_options%maxit
                f(params%m + k) = regp * s(k)
              End Do
           elseif (params%extra == 2) then
+             nrms = PREC(nrm2)(n, s(1:n), 1) ! s(1:n)
              f(params%m + 1) = sqrt(2.0_wp/(params%Delta * params%p)) * &
-                               (norm2(s(1:n))**(params%p/2.0_wp))
+                               (nrms**(params%p/2.0_wp))
           end if
        end select
      end subroutine evaltensor_f
@@ -4165,7 +4174,7 @@ lp:    do i = 1, w%tensor_options%maxit
        real(wp), dimension(*), intent(out)   :: J
        class( params_base_type ), intent(inout) :: params
        integer :: ii, jj, kk, offset_j, offset_pj
-       real(wp) :: v
+       real(wp) :: v, nrms
        ! Add default return value for status
        status = 0
        ! The function we need to return is
@@ -4197,9 +4206,9 @@ lp:    do i = 1, w%tensor_options%maxit
                   J(m*(ii-1) + params%m + ii) = v
                end do
             elseif (params%extra == 2) then
-
+               nrms = PREC(nrm2)(n, s(1:n), 1) ! s(1:n)
                v = sqrt( (params%p)/(2.0_wp * params%Delta) ) *                &
-                    (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
+                    (nrms**( (params%p/2.0_wp) - 2.0_wp))
                ! J(m*(ii-1) + params%m + ii) = v * s(ii)
                call PREC(copy)(n, s, 1, J(m), m)
                call PREC(scal)(n, v, J(m), m )
@@ -4221,8 +4230,9 @@ lp:    do i = 1, w%tensor_options%maxit
                end do
             elseif (params%extra == 2) then
               ! Update last column of J
+              nrms = PREC(nrm2)(n, s(1:n), 1) ! s(1:n)
               v = sqrt( (params%p)/(2.0_wp * params%Delta) ) *                 &
-                    (norm2(s(1:n))**( (params%p/2.0_wp) - 2.0_wp))
+                    (nrms**( (params%p/2.0_wp) - 2.0_wp))
               ! avoid auto allocation
               ! J((m-1)*n+1 : m*n) = v * s(1:n)
               call PREC(copy)(n, s, 1, J((m-1)*n+1), 1 )
@@ -4258,7 +4268,7 @@ lp:    do i = 1, w%tensor_options%maxit
 !!$
 !!$          HF(1:n**2) = reshape(params%tenJ%H(1:n,1:n), (/n**2/))
           if (params%extra == 2) then
-             normx = norm2(s(1:n))
+             normx = PREC(nrm2)(n, s(1:n), 1) ! norm2(s(1:n))
              do jj = 1,n
                 do kk = 1,n
                    hf_local = s(jj)*s(kk)
@@ -4368,7 +4378,7 @@ lp:    do i = 1, w%tensor_options%maxit
           lstype = 1
 !         Rescale search direction to match norm of gradient
           w%d(1:n) = (w%normjf/w%norm_2_d)*w%d(1:n)
-          w%norm_2_d = norm2(w%d)
+          w%norm_2_d = PREC(nrm2)(n, w%d, 1) ! norm2(w%d)
           Select Case (options%box_linesearch_type)
           Case (1)
             alpha = 1.0_wp
@@ -4435,7 +4445,7 @@ lp:    do i = 1, w%tensor_options%maxit
        End If
        !       Update LS/PG step data
        w%d(1:n) = w%xnew(1:n) - x(1:n)
-       w%norm_2_d = norm2(w%d)
+       w%norm_2_d = PREC(nrm2)(n, w%d, 1) ! norm2(w%d)
        !       ---------------------------------!
        !       Update TR radius with LS/PG step !
        !       ---------------------------------!
@@ -4478,17 +4488,17 @@ lp:    do i = 1, w%tensor_options%maxit
                                           tmp1, tmp2, pfpls, plmbda, normfnew, &
                                           normx
         Character(Len=80)              :: rec(4)
-        Intrinsic                      :: huge, norm2, max, abs
+        Intrinsic                      :: huge, max, abs
 
         Continue
 
         firstback = 1
         pfpls = 0.0_wp
         plmbda = 0.0_wp
-        scl = 1.0_wp
+        scl = 1.0_wp ! positive scaling factor
         mxtake = .False.
         iretcd = 2
-        sln = norm2(scl*p)
+        sln = scl * PREC(nrm2)(n, p, 1) ! = norm2(scl*p)
         If (sln>stepmx) Then
 !         newton step longer than maximum allowed
           scl = stepmx/sln
@@ -4497,7 +4507,7 @@ lp:    do i = 1, w%tensor_options%maxit
         slp = 0.0_wp
         rln = 0.0_wp
         Do i = n, 1, -1
-!         RALFit is providing -g so we need to invert the dot produdct
+!         RALFit is providing -g so we need to invert the dot product
 !         slp = slp + g(i)*scl*p(i) ! g^T * scl*p
           slp = slp - g(i)*scl*p(i) ! g^T * scl*p
           tmp1 = max(abs(x(i)),1.0_wp)
@@ -4540,10 +4550,10 @@ lp:    do i = 1, w%tensor_options%maxit
 !               set f -> Wf
                 fnew = weights*fnew
               End If
-              normfnew = norm2(fnew)
+              normfnew = PREC(nrm2)(m, fnew, 1) ! norm2(fnew)
 
               If (options%regularization>0) Then
-                normx = norm2(xpls)
+                normx = PREC(nrm2)(n, xpls, 1) ! norm2(xpls)
                 Call update_regularized_normf(normfnew,normx,options)
               End If
             End If
@@ -4563,10 +4573,10 @@ lp:    do i = 1, w%tensor_options%maxit
 !               set f -> Wf
                 fnew = weights*fnew
               End If
-              normfnew = norm2(fnew)
+              normfnew = PREC(nrm2)(m, fnew, 1) ! norm2(fnew)
 
               If (options%regularization>0) Then
-                normx = norm2(xpls)
+                normx = PREC(nrm2)(n, xpls, 1) ! norm2(xpls)
                 Call update_regularized_normf(normfnew,normx,options)
               End If
             End If
@@ -4672,7 +4682,6 @@ lp:    do i = 1, w%tensor_options%maxit
 
         Logical                        :: mxtake
         Real (Kind=wp)                 :: alpn, f0, steptl, stepmx, fpls
-        Intrinsic                      :: norm2
         Continue
         ierr = 0
         If (alpha/=alpha) Then
@@ -4739,7 +4748,7 @@ lp:    do i = 1, w%tensor_options%maxit
           call update_regularized_gradient(w%g,w%Xnew,normX,options)
         End If
 
-        normJFnew = norm2(w%g)
+        normJFnew = PREC(nrm2)(n, w%g, 1) ! norm2(w%g(1:n))
         If ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) Then
           ! Initial guess x0 is not usable
           inform%external_name = 'eval_J'
@@ -4841,7 +4850,7 @@ lp:    do i = 1, w%tensor_options%maxit
             call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
             w%g(:) = -w%g(:)
             if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
-            normJFnew = norm2(w%g)
+            normJFnew = PREC(nrm2)(n, w%g, 1) ! norm2(w%g)
             If ((log(1.0_wp+normjfnew)>100.0_wp) .Or. (normjfnew/=normjfnew)) Then
               inform%external_name = 'eval_J'
               inform%external_return = 2512
@@ -4879,7 +4888,6 @@ lp:    do i = 1, w%tensor_options%maxit
         Integer                        :: iflag, ils(nps_ils_len), nlab
         Real (Kind=wp)                 :: rls(nps_rls_len), pi0, f0, falpn
         Logical                        :: evalok
-        Intrinsic                      :: norm2
         Character (Len=80)             :: rec(4)
         Character(Len=5), Parameter    :: lab(0:2)=(/'  Ok ','evalf', 'error'/)
         Continue
@@ -4919,14 +4927,14 @@ armijo: Do
 !             set f -> Wf
               fnew(1:m) = weights(1:m)*fnew(1:m)
             End If
-            normfnew = norm2(fnew(1:m))
+            normfnew = PREC(nrm2)(m, fnew, 1) ! norm2(fnew(1:m))
             If ((log(1.0_wp+normfnew)>100.0_wp) .Or. (normfnew/=normfnew)) Then
               evalok = .False.
             End If
           End If
           If (evalok) Then
             If (options%regularization>0) Then
-              normx = norm2(xnew)
+              normx = PREC(nrm2)(n, xnew, 1) ! norm2(xnew)
               Call update_regularized_normF(normfnew,normx,options)
             End If
             falpn = 0.5_wp*normfnew**2

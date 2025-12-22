@@ -112,5 +112,42 @@ module MODULE_PREC(ral_nlls_types)
    Real(Kind=wp), Parameter :: test_very_small = 1.00e-100_wp
 #endif
 
+! BLAS / LAPACK Interfaces
+! Interface for BLAS nrm2 function
+interface
+real( wp ) function PREC(nrm2)( n, x, incx )
+    import :: wp
+    integer, intent(in) :: n, incx
+    real( wp ), intent(in) :: x(*)
+end function PREC(nrm2)
+end interface
+interface
+real( wp ) function PREC(dot)( n, x, incx, y, incy )
+    import :: wp
+    integer, intent(in) :: n, incx, incy
+    real( wp ), intent(in) :: x(*), y(*)
+end function PREC(dot)
+end interface
+INTERFACE HSEQR
+SUBROUTINE SHSEQR( job, compz, n, ilo, ihi, H, ldh,  WR, WI, Z, ldz,   &
+                    WORK, lwork, info )
+import :: lp
+INTEGER, INTENT( IN ) :: ihi, ilo, ldh, ldz, lwork, n
+INTEGER, INTENT( OUT ) :: info
+CHARACTER ( LEN = 1 ), INTENT( IN ) :: compz, job
+REAL(KIND=lp), INTENT( INOUT ) :: H( ldh, * ), Z( ldz, * )
+REAL(KIND=lp), INTENT( OUT ) :: WI( * ), WR( * ), WORK( * )
+END SUBROUTINE SHSEQR
+SUBROUTINE DHSEQR( job, compz, n, ilo, ihi, H, ldh,  WR, WI, Z, ldz,   &
+                    WORK, lwork, info )
+import :: np
+INTEGER, INTENT( IN ) :: ihi, ilo, ldh, ldz, lwork, n
+INTEGER, INTENT( OUT ) :: info
+CHARACTER ( LEN = 1 ), INTENT( IN ) :: compz, job
+REAL(KIND=np), INTENT( INOUT ) :: H( ldh, * ), Z( ldz, * )
+REAL(KIND=np), INTENT( OUT ) :: WI( * ), WR( * ), WORK( * )
+END SUBROUTINE DHSEQR
+END INTERFACE HSEQR
+
 end module MODULE_PREC(ral_nlls_types)
 
