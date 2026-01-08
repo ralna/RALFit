@@ -27,7 +27,7 @@ module lanczos_module_fd2
       integer :: cnt, reset ! counter and reset
       real(wp) :: fd_step
       ! pointer to x(:)
-      real(wp), dimension(:), pointer :: x
+      real(wp), dimension(:), pointer, contiguous :: x
       ! telemetry
       integer :: f_cnt = 0, j_cnt = 0
    end type params_type
@@ -96,8 +96,7 @@ contains
             params%f_cnt = params%f_cnt + 1
             if (status /= 0) return
             call assign(params%x, x(1:n))
-            Call jacobian_calc(status, params%handle, params%x(1:n), params%r(1:m), &
-               J(1:n*m), params%fd_step)
+            Call jacobian_calc(status, params%handle, params%x, params%r, J, params%fd_step)
             params%f_cnt = params%f_cnt + n ! FD issues n calls to eval_r
          end if
       end select

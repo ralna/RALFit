@@ -1685,7 +1685,7 @@
 !  Dummy arguments
 
        REAL ( KIND = wp ) :: TWO_NORM
-       REAL ( KIND = wp ), INTENT( IN ), DIMENSION( : ) :: X
+       REAL ( KIND = wp ), INTENT( IN ), CONTIGUOUS :: X(:)
 
 !  Local variable
 
@@ -3297,7 +3297,7 @@
 !  Dummy arguments
 
        REAL ( KIND = wp ) :: TWO_NORM
-       REAL ( KIND = wp ), INTENT( IN ), DIMENSION( : ) :: X
+       REAL ( KIND = wp ), INTENT( IN ), CONTIGUOUS :: X(:)
 
 !  Local variable
 

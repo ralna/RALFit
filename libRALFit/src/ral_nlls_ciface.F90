@@ -523,10 +523,11 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
   TYPE( C_PTR ), value :: cweights
   TYPE( C_PTR ), value :: clower_bounds
   TYPE( C_PTR ), value :: cupper_bounds
-  real( ral_c_real ), dimension(:), pointer :: fweights
+   real( ral_c_real ), dimension(:), pointer, contiguous :: fweights
   type( C_FUNPTR ), value :: hp
-  real( ral_c_real ), dimension(:), pointer :: flower_bounds
-  real( ral_c_real ), dimension(:), pointer :: fupper_bounds
+   real( ral_c_real ), dimension(:), pointer, contiguous :: flower_bounds
+   real( ral_c_real ), dimension(:), pointer, contiguous :: fupper_bounds
+   integer :: shp(1)
 
 !  real( wp ), dimension(*), optional :: cweights
 
@@ -558,7 +559,8 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
   ! requires a compiler compatible with Fortran 2008+TS29113
   nullify(fweights)
   if (C_ASSOCIATED(cweights)) then
-     call c_f_pointer(cweights, fweights, shape = (/ m /) )
+     shp(1) = m
+     call c_f_pointer(cweights, fweights, shape = shp)
   end if
   ! In the Fortran standard, passing null pointers as an optional argument is valid
   ! and is considered not present.
@@ -569,13 +571,15 @@ subroutine IFACE_PREC(nlls_solve)(n, m, cx, r, j, hf,  params, coptions, cinform
   lb_sent_in = .false.
   if (C_ASSOCIATED(clower_bounds)) then
      lb_sent_in = .true.
-     call c_f_pointer(clower_bounds, flower_bounds, shape = (/ n /) )
+     shp(1) = n
+     call c_f_pointer(clower_bounds, flower_bounds, shape = shp)
   end if
   nullify(fupper_bounds)
   ub_sent_in = .false.
   if (C_ASSOCIATED(cupper_bounds)) then
      ub_sent_in = .true.
-     call c_f_pointer(cupper_bounds, fupper_bounds, shape = (/ n /) )
+     shp(1) = n
+     call c_f_pointer(cupper_bounds, fupper_bounds, shape = shp)
   end if
 
 
@@ -775,10 +779,12 @@ subroutine IFACE_PREC(ral_nlls_iterate)(n, m, cx, cw, r, j, hf, params, coptions
   type( params_wrapper ) :: fparams
   TYPE( f_nlls_inform) :: finform
   TYPE( f_nlls_workspace ), pointer :: fw
-  real( ral_c_real ), dimension(:), pointer :: fweights
-  real( ral_c_real ), dimension(:), pointer :: flower_bounds
-  real( ral_c_real ), dimension(:), pointer :: fupper_bounds
+   real( ral_c_real ), dimension(:), pointer, contiguous :: fweights
+   real( ral_c_real ), dimension(:), pointer, contiguous :: flower_bounds
+   real( ral_c_real ), dimension(:), pointer, contiguous :: fupper_bounds
   TYPE( f_nlls_options) :: foptions
+
+   integer :: shp(1)
 
   logical :: f_arrays
 
@@ -795,15 +801,18 @@ subroutine IFACE_PREC(ral_nlls_iterate)(n, m, cx, cw, r, j, hf, params, coptions
 
   nullify(fweights)
   if (C_ASSOCIATED(cweights)) then
-     call c_f_pointer(cweights, fweights, shape = (/ m /) )
+     shp(1) = m
+     call c_f_pointer(cweights, fweights, shape = shp)
   end if
   nullify(flower_bounds)
   if (C_ASSOCIATED(clower_bounds)) then
-     call c_f_pointer(clower_bounds, flower_bounds, shape = (/ n /) )
+     shp(1) = n
+     call c_f_pointer(clower_bounds, flower_bounds, shape = shp)
   end if
   nullify(fupper_bounds)
   if (C_ASSOCIATED(cupper_bounds)) then
-     call c_f_pointer(cupper_bounds, fupper_bounds, shape = (/ n /) )
+     shp(1) = n
+     call c_f_pointer(cupper_bounds, fupper_bounds, shape = shp)
   end if
 
   call f_nlls_iterate( n, m, cx, fw, &

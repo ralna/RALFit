@@ -1854,9 +1854,10 @@ lp: do while (.not. success)
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in) :: J(:), A(:,:), hf(:), f(:), v(:), X(:), Delta
+     REAL(wp), intent(in), contiguous :: J(:), A(:,:), hf(:), f(:), v(:), X(:)
+     REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out), contiguous :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -1950,7 +1951,9 @@ lp: do while (.not. success)
             Go To 100
           End If
         End If
-        w%By_hardcase(:,:) = matmul(w%B,w%y_hardcase)
+        ! w%By_hardcase(:,:) = matmul(w%B,w%y_hardcase) ! <--- CODE-CHANGE
+        call PREC(gemm)('N','N', n, size_hard2, n, 1.0_wp, w%B, n, &
+             w%y_hardcase, n, 0.0_wp, w%By_hardcase, n)
         call matmult_outer( w%By_hardcase, size_hard2, n, w%M1_small)
         w%M0_small(:,:) = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
@@ -2040,9 +2043,10 @@ lp: do while (.not. success)
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in) :: A(:,:), v(:), Delta
+     REAL(wp), intent(in), contiguous :: A(:,:), v(:)
+     REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out), contiguous :: d(:)
      real(wp), intent(out) :: nd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -2069,9 +2073,10 @@ lp: do while (.not. success)
      ! main output :: d, the soln to the TR subproblem
      ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in) :: A(:,:), v(:), Delta
+     REAL(wp), intent(in), contiguous :: A(:,:), v(:)
+     REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
-     real(wp), intent(out) :: d(:)
+     real(wp), intent(out), contiguous :: d(:)
      real(wp), intent(out) :: nd ! ||d||_D
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
@@ -2467,7 +2472,8 @@ lp:  do i = 1, options%more_sorensen_maxits
               End If
              !dHd = dot_product(d, matmul(w%AplusSigma,d))
              !reuse w%q to store intermediary MV product
-              w%q(:) = matmul(w%AplusSigma,d)
+              ! w%q(:) = matmul(w%AplusSigma,d) ! <--- CODE-CHANGE
+              call PREC(gemv)('N', n, n, 1.0_wp, w%AplusSigma, n, d, 1, 0.0_wp, w%q, 1)
               dHd = dot_product(d, w%q)
               call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
               if (inform%status /= 0 ) goto 100
@@ -2701,10 +2707,10 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      Implicit None
      integer, intent(in) :: n
-     real(wp), intent(in) :: A(:,:), v(:)
-     real(wp), intent(inout) :: AplusSigma(:,:)
+     real(wp), intent(in), contiguous :: A(:,:), v(:)
+     real(wp), intent(inout), contiguous :: AplusSigma(:,:)
      real(wp), intent(inout) :: sigma
-     real(wp), intent(inout) :: d(:)
+     real(wp), intent(inout), contiguous :: d(:)
      TYPE( nlls_options ), INTENT( IN ) :: options
      TYPE( nlls_inform ), INTENT( INOUT ) :: inform
      type( more_sorensen_work ), intent(inout) :: w
@@ -2885,11 +2891,11 @@ lp:  do i = 1, options%more_sorensen_maxits
      !--------------------------------------------
 
      Implicit None
-     REAL(wp), intent(in) :: A(:,:), v(:)
+     REAL(wp), intent(in), contiguous :: A(:,:), v(:)
      REAL(wp), intent(inout) :: Delta
      integer, intent(in)  :: n, m
      integer, intent(in) :: num_successful_steps
-     real(wp), intent(out) :: d(:)
+   real(wp), intent(out), contiguous :: d(:)
      real(wp), intent(out) :: normd ! ||d||_D, where D is the scaling
      real(wp), intent(in) :: reg_order
      type( regularization_solver_work ), Intent(inout) :: w
@@ -2978,7 +2984,7 @@ lp:  do i = 1, options%more_sorensen_maxits
 !  -----------------------------------------------------------------
 
      Implicit None
-     real(wp), dimension(:), intent(in) :: a, b
+     real(wp), intent(in), contiguous :: a(:), b(:)
      real(wp), intent(in) ::  Delta
      real(wp), intent(out) :: beta
      type( nlls_inform ), intent(inout) :: inform
@@ -3220,8 +3226,8 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      subroutine update_regularized_hessian(hf,X,n,options)
        Implicit None
-       real(wp), intent(inout) :: hf(:)
-       real(wp), intent(in) :: X(:)
+       real(wp), intent(inout), contiguous :: hf(:)
+       real(wp), intent(in), contiguous :: X(:)
        integer, intent(in) :: n
        type( nlls_options), intent(in) :: options
 
@@ -3825,7 +3831,7 @@ lp:  do i = 1, options%more_sorensen_maxits
 
        integer :: lwork, maxindex(1), no_null, halfn
        real(wp):: tau, nrmvr
-       integer :: i, ierr_dummy
+       integer :: i, j, ierr_dummy
 
        if (.not. w%allocated) then
          inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -3905,7 +3911,10 @@ lp:  do i = 1, options%more_sorensen_maxits
               goto 100
             end if
           End If
-          nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
+          !nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null)) ! CODE-CHANGE
+          do j = 1, no_null
+            nullevs(1:halfn,j) = w%vr(halfn+1:n, w%nullindex(j))
+          end do
        end if
 
        ew = w%alphaR(maxindex(1))/w%beta(maxindex(1))

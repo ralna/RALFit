@@ -1263,13 +1263,13 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      subroutine solve_basic(X,params,options,inform,warm_start,blx,bux,weights,use_fd)
 
-       real(wp), intent(inout) :: X(:)
+      real(wp), intent(inout), contiguous :: X(:)
 !      type( user_type ), intent(inout) :: params
        Class ( params_base_type ), intent(inout) :: params
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        Logical, Optional, Intent(In) :: warm_start, use_fd
-       real(wp), intent(inout),optional :: blx(:), bux(:), weights(:)
+      real(wp), intent(inout), optional, contiguous :: blx(:), bux(:), weights(:)
 
        logical fd
        integer :: n, m
@@ -1306,13 +1306,13 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      subroutine solve_basic_c(X,params,options,inform,warm_start,blx,bux)
 
-       real(wp), intent(inout) :: X(:)
+      real(wp), intent(inout), contiguous :: X(:)
        !      type( user_type ), intent(inout) :: params
        Class ( params_base_type ), intent(inout) :: params
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        Logical, Optional, Intent(In) :: warm_start
-       real(wp), intent(inout),optional :: blx(:), bux(:)
+      real(wp), intent(inout), optional, contiguous :: blx(:), bux(:)
 
        integer :: n, m
 
@@ -2619,9 +2619,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      n = 2
      allocate(A(n,n), b(n), LtL(n,n), x_calc(n), x_true(n))
-     A = reshape([ 4.0, 1.0, 1.0, 2.0 ], shape(A))
-     x_true = [1.0, 1.0]
-     b = [5.0, 3.0]
+     A = 0.0_wp
+     A(1,1) = 4.0_wp
+     A(2,1) = 1.0_wp
+     A(1,2) = 1.0_wp
+     A(2,2) = 2.0_wp
+     x_true(1) = 1.0_wp
+     x_true(2) = 1.0_wp
+     b(1) = 5.0_wp
+     b(2) = 3.0_wp
      ! note: b is inverted in minus_solve_spd, so we need to invert it (previously)
      b(:) = -b(:)
      call minus_solve_spd(A,b,LtL,x_calc,n,status)
@@ -2673,9 +2679,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%model = 2
      call setup_workspaces(work,n,m,options,status)
 
-     A = reshape([4.0, 1.0, 2.0, 2.0], shape(A))
-     x_true = [1.0, 1.0]
-     b = [6.0, 3.0]
+     A = 0.0_wp
+     A(1,1) = 4.0_wp
+     A(2,1) = 1.0_wp
+     A(1,2) = 2.0_wp
+     A(2,2) = 2.0_wp
+     x_true(1) = 1.0_wp
+     x_true(2) = 1.0_wp
+     b(1) = 6.0_wp
+     b(2) = 3.0_wp
      ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
      b(:) = -b(:)
      call minus_solve_general(A,b,x_calc,n,status,&
@@ -2689,8 +2701,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
 
-     A = reshape( [ 0.0, 0.0, 0.0, 0.0 ],shape(A))
-     b = [ 6.0, 3.0 ]
+     A = 0.0_wp
+     b(1) = 6.0_wp
+     b(2) = 3.0_wp
      ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
      b(:) = -b(:)
      call minus_solve_general(A,b,x_calc,n,status,&
@@ -2711,7 +2724,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      integer, intent(out) :: fails
 
      real(wp), allocatable :: A(:,:), AtA(:,:), AtA_expected(:,:), diff(:)
-     integer :: n, m, i
+      integer :: n, m, i
 
      fails = 0
 
@@ -2719,13 +2732,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      n = 2
      m = 3
      allocate(A(m,n), AtA(n,n), AtA_expected(n,n), diff(n))
-     A = reshape( [ 1.0, 2.0, 3.0,  &
-                    2.0, 4.0, 6.0 ],&
-                    shape(A))
+     A = 0.0_wp
+     A(1,1) = 1.0_wp; A(2,1) = 2.0_wp; A(3,1) = 3.0_wp
+     A(1,2) = 2.0_wp; A(2,2) = 4.0_wp; A(3,2) = 6.0_wp
      call matmult_inner(A,n,m,AtA)
-     AtA_expected = reshape( [ 14.0, 28.0,  &
-                               28.0, 56.0 ] &
-                               , shape(AtA_expected))
+     AtA_expected(1,1)= 14.0_wp
+     AtA_expected(2,1)= 28.0_wp
+     AtA_expected(1,2)= 28.0_wp
+     AtA_expected(2,2)= 56.0_wp
+
      do i = 1,n
         diff(i) = norm2(AtA(:,i) - AtA_expected(:,i))
      end do
@@ -2752,14 +2767,19 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      n = 2
      m = 3
      allocate(A(m,n), AAt(m,m), AAt_expected(m,m), diff(m))
-     A = reshape( [1.0, 2.0, 3.0,  &
-                   2.0, 4.0, 6.0],&
-                   shape(A))
+     A = 0.0_wp
+     A(1,1) = 1.0_wp; A(2,1) = 2.0_wp; A(3,1) = 3.0_wp
+     A(1,2) = 2.0_wp; A(2,2) = 4.0_wp; A(3,2) = 6.0_wp
      call matmult_outer(A,n,m,AAt)
-     AAt_expected = reshape( [  5.0, 10.0, 15.0,  &
-                               10.0, 20.0, 30.0, &
-                               15.0, 30.0, 45.0 ] &
-                               , shape(AAt_expected))
+     AAt_expected(1,1) = 5.0_wp
+     AAt_expected(2,1) = 10.0_wp
+     AAt_expected(3,1) = 15.0_wp
+     AAt_expected(1,2) = 10.0_wp
+     AAt_expected(2,2) = 20.0_wp
+     AAt_expected(3,2) = 30.0_wp
+     AAt_expected(1,3) = 15.0_wp
+     AAt_expected(2,3) = 30.0_wp
+     AAt_expected(3,3) = 45.0_wp
      do i = 1,m
         diff(i) = norm2(AAt(:,i) - AAt_expected(:,i))
      end do
@@ -2778,17 +2798,25 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      integer, intent(out) :: fails
 
      real(wp), allocatable :: x(:), xxt(:,:), xxt_exact(:,:), diff(:)
-     integer :: n, i
+     integer :: n, i, j
 
      fails = 0
 
      n = 4
      allocate(x(n), xxt(n,n), xxt_exact(n,n), diff(n))
-     x = [ 1.0, 2.0, 3.0, 4.0 ]
-     xxt_exact = reshape( [1.0, 2.0,  3.0,  4.0, &
-                           2.0, 4.0,  6.0,  8.0, &
-                           3.0, 6.0,  9.0, 12.0, &
-                           4.0, 8.0, 12.0, 16.0], shape(xxt_exact))
+     ! x = [ 1  2  3  4 ]^T
+     ! xxt_exact = [1  2   3    4]
+     !             [2  4   6    8]
+     !             [3  6   9   12]
+     !             [4  8  12   16]
+     do i = 1, n
+        x(i) = real(i, wp)
+     end do
+     do j = 1, n
+        do i = 1, n
+           xxt_exact(i,j) = x(i) * x(j)
+        end do
+     end do
      call outer_product(x,n,xxt)
      do i = 1, n
         diff(i) = norm2(xxt(i,:) - xxt_exact(i,:))
@@ -2808,12 +2836,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
 
-     real(wp), allocatable :: A(:,:), ev(:)
-     real(wp) :: ew, tol
+     real(wp), allocatable :: A(:,:), ev(:), avec(:)
+     real(wp) :: ew, tol, errnorm
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
-     integer :: n, m, i
+     integer :: n, m, i, row, col
 
      fails = 0
      work%iw_ptr => iw
@@ -2828,7 +2856,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         tol = 1.5e-6_wp
      end if
 
-     allocate(ev(n), A(n,n))
+     allocate(ev(n), A(n,n), avec(n))
 
      ! make sure min_eig_symm gets called
      do i = 1, 2
@@ -2851,10 +2879,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            fails = fails +1
         end if
 
-        A = reshape( [-5.0, 1.0, 0.0, 0.0, &
-                      1.0, -5.0, 0.0, 0.0, &
-                      0.0,  0.0, 4.0, 2.0, &
-                      0.0,  0.0, 2.0, 4.0], shape(A))
+        ! A = [ -5  1  0  0 ]
+        !     [  1 -5  0  0 ]
+        !     [  0  0  4  2 ]
+        !     [  0  0  2  4 ]
+
+        A = 0.0_wp
+        A(1,1) = -5.0_wp; A(2,1) = 1.0_wp
+        A(1,2) = 1.0_wp;  A(2,2) = -5.0_wp
+        A(3,3) = 4.0_wp;  A(4,3) = 2.0_wp
+        A(3,4) = 2.0_wp;  A(4,4) = 4.0_wp
 
         call min_eig_symm(A,n,ew,ev,options,status, &
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
@@ -2863,10 +2897,24 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            write(*,*) 'error :: min_eig_symm test failed -- wrong eig found'
            write(*,*) 'diff = ', abs( ew + 6.0_wp ), 'tol = ', tol
            fails = fails +1
-        elseif ( norm2(matmul(A,ev) - ew*ev) > tol ) then
-           write(*,*) 'error :: min_eig_symm test failed -- not an eigenvector'
-           write(*,*) 'diff = ', norm2(matmul(A,ev) - ew*ev), 'tol = ', tol
-           fails = fails +1
+        else
+            ! <--- CODE-CHANGE BEGIN --->
+           avec = 0.0_wp
+           do row = 1, n
+              do col = 1, n
+                 avec(row) = avec(row) + A(row,col) * ev(col)
+              end do
+           end do
+           errnorm = 0.0_wp
+           do row = 1, n
+              errnorm = errnorm + (avec(row) - ew * ev(row))**2
+           end do
+           if (sqrt(errnorm) > tol) then
+              write(*,*) 'error :: min_eig_symm test failed -- not an eigenvector'
+              write(*,*) 'diff = ', sqrt(errnorm), 'tol = ', tol
+              fails = fails +1
+           end if
+           ! CODE-CHANGE END --->
         end if
 
         call nlls_finalize(work,options,status)
@@ -2890,11 +2938,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      integer, intent(out) :: fails
 
      real(wp), allocatable :: A(:,:), B(:,:), ev(:), nullevs(:,:), shapenull(:), diff(:)
-     real(wp) :: ew, tol
+     real(wp) :: ew, tol, diff_vec(2), tmpA(2), tmpB(2)
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
-     integer :: n, m, i
+     integer :: n, m, i, row, col
 
      fails = 0
      work%iw_ptr => iw
@@ -2914,10 +2962,16 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%nlls_method = 2
      call setup_workspaces(work,n,m,options,status)
 
-     A = reshape( [ 1.0, 2.0, 3.0,  4.0, &
-                    2.0, 4.0, 6.0,  8.0, &
-                    3.0, 6.0, 9.0, 12.0, &
-                    4.0, 8.0, 12.0,16.0 ], shape(A))
+     ! A = [ 1  2   3   4 ]
+     !     [ 2  4   6   8 ]
+     !     [ 3  6   9  12 ]
+     !     [ 4  8  12  16 ]
+     A = 0.0_wp
+     do col = 1, 2*n
+        do row = 1, 2*n
+           A(row,col) = real(row*col, wp)
+        end do
+     end do
      B = 0.0_wp
      do i = 1,2*n
         B(i,i) = real(i,wp)
@@ -2963,10 +3017,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            B = A
            A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
            do i = 1, n
-              diff(i) = norm2(                        &
-                   matmul( A(3:4,3:4),nullevs(1:2,i) )         &
-                   - ew * matmul(B(3:4,3:4),nullevs(1:2,i)) &
-                   )
+              ! <--- CODE-CHANGE BEGIN --->
+              tmpA(1) = A(3,3) * nullevs(1,i) + A(4,3) * nullevs(2,i)
+              tmpA(2) = A(3,4) * nullevs(1,i) + A(4,4) * nullevs(2,i)
+              tmpB(1) = B(3,3) * nullevs(1,i) + B(4,3) * nullevs(2,i)
+              tmpB(2) = B(3,4) * nullevs(1,i) + B(4,4) * nullevs(2,i)
+              diff_vec(1) = tmpA(1) - ew * tmpB(1)
+              diff_vec(2) = tmpA(2) - ew * tmpB(2)
+              diff(i) = sqrt(diff_vec(1)**2 + diff_vec(2)**2)
+              ! CODE-CHANGE END --->
            end do
            if (norm2(diff) > 1e-10) then
               write(*,*) 'error :: hard case of max_eig test failed - wrong vectors returned'
@@ -3617,7 +3676,11 @@ subroutine evaltensor_J_tests(options, fails)
     options%fortran_jacobian = .True.
     params%fortran_jacobian = options%fortran_jacobian
     !  fill params%j by COLUMNS
-    params%j(1:params%m*n) = (/(Real(i, Kind=wp), i=1,n*params%m)/)
+    ! CODE-CHANGE begins
+      do i = 1, params%m * n
+         params%j(i) = real(i, kind=wp)
+      end do
+    ! CODE-CHANGE ends
     !Print *, 'Matrix p%J'
     !Do i = 1, params%m
     !  Write(*,'(*(F8.1,2X))') params%J( (/(  (k-1)*params%m + i, k = 1, n )/) )
@@ -3628,9 +3691,13 @@ subroutine evaltensor_J_tests(options, fails)
     options%fortran_jacobian = .False.
     params%fortran_jacobian = options%fortran_jacobian
     !  fill params%j by ROWS
-    Do i = 1, params%m
-      params%j( (i-1) * n + 1 : i*n ) = (/( Real((k-1)*params%m+i, Kind=wp), k=1,n)/)
-    End Do
+    ! CODE-CHANGE begins
+      Do i = 1, params%m
+         Do k = 1, n
+            params%j((i-1)*n + k) = real((k-1)*params%m + i, kind=wp)
+         End Do
+      End Do
+    ! CODE-CHANGE ends
     !Print *, 'Matrix p%JT'
     !Do i = 1, n
     !  Write(*,'(*(F8.1,2X))') params%J( (/(  (k-1)*n + i, k = 1, params%m )/) )
@@ -3640,7 +3707,13 @@ subroutine evaltensor_J_tests(options, fails)
     ! === COMPARE and TEST ====================================================
     ok = .True.
     Do i = 1, n
-      Ok = Ok .And. all ( J( (i-1)*m+1:i*m ) == JT( (/((k-1)*n+i, k = 1, m)/) )  )
+      ! CODE-CHANGE Begins
+      Do k = 1, m
+         if (J((i-1)*m + k) /= JT((k-1)*n + i)) then
+            Ok = .False.
+         end if
+      End Do
+      ! CODE-CHANGE Ends
     End Do
 
     If (.not. Ok) Then
@@ -3652,12 +3725,12 @@ subroutine evaltensor_J_tests(options, fails)
       Print *, ''
       Print *, 'Matrix J'
       Do i = 1, m
-        Write(*,'(*(F8.1,2X))') J( (/(  (k-1)*m + i, k = 1, n )/) )
+        Write(*,'(*(F8.1,2X))') (J((k-1)*m + i), k = 1, n) ! CODE-CHANGE
       End Do
       Print *, ''
       Print *, 'Matrix JT'
       Do i = 1, n
-        Write(*,'(*(F8.1,2X))') Jt( (/(  (k-1)*n + i, k = 1, m )/) )
+        Write(*,'(*(F8.1,2X))') (Jt((k-1)*n + i), k = 1, m) ! CODE-CHANGE
       End Do
     End If
   End Do

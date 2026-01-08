@@ -580,7 +580,7 @@ module MODULE_PREC(ral_nlls_workspaces)
     type( nlls_inform ), pointer :: inform => Null()
     type( nlls_options ), pointer :: options => Null()
     ! Iterate
-    Real(Kind=wp), pointer :: x(:)
+    Real(Kind=wp), pointer, contiguous :: x(:)
   end type params_internal_type
 
   type, public :: max_eig_work ! workspace for subroutine max_eig
@@ -1929,8 +1929,8 @@ contains
   subroutine iparams_set(params, x, f, weights, check)
       Implicit None
       Class(params_base_type), Intent(InOut) :: params
-      Real(Kind=wp), Dimension(:), Optional, Target, Intent(In) :: x
-      Real(Kind=wp), Dimension(:), Optional, Target, Intent(Inout) :: f
+      Real(Kind=wp), Dimension(:), Optional, Target, Contiguous, Intent(In) :: x
+      Real(Kind=wp), Dimension(:), Optional, Target, Contiguous, Intent(Inout) :: f
       Real (Kind=wp), Dimension(:), Optional, Intent (In) :: weights
       Logical, Optional, Intent(In) :: check
       Integer :: m
@@ -1967,7 +1967,7 @@ contains
       TYPE( NLLS_inform ), TARGET, INTENT( In ) :: inform
       TYPE( NLLS_options ), TARGET, INTENT( IN ) :: options
       TYPE( box_type ), TARGET, INTENT( IN ) :: box_ws
-      Real(Kind=wp), Optional, Target :: x(:)
+      Real(Kind=wp), Optional, Target, Contiguous :: x(:)
       Integer :: status
       Continue
 !     Encapsulate user-params and call-backs for finite-differences

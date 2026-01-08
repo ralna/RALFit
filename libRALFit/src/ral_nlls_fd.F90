@@ -172,8 +172,8 @@ Contains
       implicit none
       integer, intent(out) :: status
       Type(jacobian_handle), Intent(Inout) :: handle
-      Real(Kind=wp), dimension(*), intent(inout) :: x
-      Real(Kind=wp), dimension(*), intent(in) :: f
+      Real(Kind=wp), intent(inout), contiguous :: x(:)
+      Real(Kind=wp), intent(in), contiguous :: f(:)
       Real(Kind=wp), dimension(*), intent(out) :: J
       Real(Kind=wp), optional :: fd_step
 
@@ -188,7 +188,7 @@ Contains
          handle%iparams%options%fd_step = fd_step
       End If
 
-      Call fd_jacobian(status, handle%n, handle%m, x, f, J, handle%iparams)
+      Call fd_jacobian(status, handle%n, handle%m, x(1:handle%n), f(1:handle%m), J, handle%iparams)
 
       return
    end subroutine jacobian_calc
@@ -227,7 +227,7 @@ Contains
          if ( params%fd_type /= 'N' ) then
             ! Finite-differences
             ! Assumes that eval_F was called previously and that f(:) is valid
-            Call fd_jacobian(status, n, m, params%x, params%f, J, params)
+            Call fd_jacobian(status, n, m, params%x(1:n), params%f(1:m), J, params)
             return
          end if
       End Select
@@ -343,7 +343,7 @@ Contains
          goto 100
       end if
 
-      Call fd_jacobian(ierr, n, m, iparams%x, iparams%f, J_fd, iparams)
+      Call fd_jacobian(ierr, n, m, iparams%x(1:n), iparams%f(1:m), J_fd, iparams)
       if (ierr == -2031 ) then
          ! eval_f provided a rubbish FD estimation
          iparams%inform%external_name = 'eval_F/fd_jacobian'
@@ -500,8 +500,8 @@ Contains
       Implicit None
       integer, intent(out) :: status
       integer, intent(in) :: n, m
-      Real(Kind=wp), dimension(*), intent(inout) :: x
-      Real(Kind=wp), dimension(*), intent(in) :: f
+      Real(Kind=wp), intent(inout), contiguous :: x(:)
+      Real(Kind=wp), intent(in), contiguous :: f(:)
       Real(Kind=wp), dimension(*), intent(out) :: J
       type(params_internal_type), intent(inout) :: iparams
 
