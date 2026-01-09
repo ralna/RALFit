@@ -2898,23 +2898,21 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            write(*,*) 'diff = ', abs( ew + 6.0_wp ), 'tol = ', tol
            fails = fails +1
         else
-            ! <--- CODE-CHANGE BEGIN --->
+           ! norm2(matmul(A,ev) - ew*ev) > tol 
            avec = 0.0_wp
+           errnorm = 0.0_wp
            do row = 1, n
               do col = 1, n
                  avec(row) = avec(row) + A(row,col) * ev(col)
               end do
-           end do
-           errnorm = 0.0_wp
-           do row = 1, n
               errnorm = errnorm + (avec(row) - ew * ev(row))**2
            end do
-           if (sqrt(errnorm) > tol) then
+           errnorm = sqrt(errnorm)
+           if (errnorm > tol) then
               write(*,*) 'error :: min_eig_symm test failed -- not an eigenvector'
-              write(*,*) 'diff = ', sqrt(errnorm), 'tol = ', tol
+              write(*,*) 'diff = ', errnorm, 'tol = ', tol
               fails = fails +1
            end if
-           ! CODE-CHANGE END --->
         end if
 
         call nlls_finalize(work,options,status)
@@ -2938,7 +2936,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      integer, intent(out) :: fails
 
      real(wp), allocatable :: A(:,:), B(:,:), ev(:), nullevs(:,:), shapenull(:), diff(:)
-     real(wp) :: ew, tol, diff_vec(2), tmpA(2), tmpB(2)
+     real(wp) :: ew, tol, tmpA(2), tmpB(2)
      type( nlls_inform ) :: status
      type( nlls_workspace ) :: work
      type( nlls_workspace ), Target :: iw
@@ -3017,15 +3015,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            B = A
            A(1,1) = 1.0_wp; A(2,2) = 1.0_wp
            do i = 1, n
-              ! <--- CODE-CHANGE BEGIN --->
-              tmpA(1) = A(3,3) * nullevs(1,i) + A(4,3) * nullevs(2,i)
-              tmpA(2) = A(3,4) * nullevs(1,i) + A(4,4) * nullevs(2,i)
-              tmpB(1) = B(3,3) * nullevs(1,i) + B(4,3) * nullevs(2,i)
-              tmpB(2) = B(3,4) * nullevs(1,i) + B(4,4) * nullevs(2,i)
-              diff_vec(1) = tmpA(1) - ew * tmpB(1)
-              diff_vec(2) = tmpA(2) - ew * tmpB(2)
-              diff(i) = sqrt(diff_vec(1)**2 + diff_vec(2)**2)
-              ! CODE-CHANGE END --->
+              ! diff(i) = norm2( matmul( A(3:4,3:4),nullevs(1:2,i) )         &
+              !                - ew * matmul(B(3:4,3:4),nullevs(1:2,i))     )
+              tmpA(1) = A(3,3) * nullevs(1,i) + A(3,4) * nullevs(2,i)
+              tmpA(2) = A(4,3) * nullevs(1,i) + A(4,4) * nullevs(2,i)
+              tmpB(1) = B(3,3) * nullevs(1,i) + B(3,4) * nullevs(2,i)
+              tmpB(2) = B(4,3) * nullevs(1,i) + B(4,4) * nullevs(2,i)
+              diff(i) = (tmpA(1) - ew * tmpB(1))**2
+              diff(i) = diff(i) + (tmpA(2) - ew * tmpB(2))**2
+              diff(i) = sqrt(diff(i))
            end do
            if (norm2(diff) > 1e-10) then
               write(*,*) 'error :: hard case of max_eig test failed - wrong vectors returned'
@@ -3676,11 +3674,10 @@ subroutine evaltensor_J_tests(options, fails)
     options%fortran_jacobian = .True.
     params%fortran_jacobian = options%fortran_jacobian
     !  fill params%j by COLUMNS
-    ! CODE-CHANGE begins
+    ! params%j(1:params%m*n) = (/(Real(i, Kind=wp), i=1,n*params%m)/)
       do i = 1, params%m * n
          params%j(i) = real(i, kind=wp)
       end do
-    ! CODE-CHANGE ends
     !Print *, 'Matrix p%J'
     !Do i = 1, params%m
     !  Write(*,'(*(F8.1,2X))') params%J( (/(  (k-1)*params%m + i, k = 1, n )/) )
@@ -3691,29 +3688,25 @@ subroutine evaltensor_J_tests(options, fails)
     options%fortran_jacobian = .False.
     params%fortran_jacobian = options%fortran_jacobian
     !  fill params%j by ROWS
-    ! CODE-CHANGE begins
-      Do i = 1, params%m
-         Do k = 1, n
-            params%j((i-1)*n + k) = real((k-1)*params%m + i, kind=wp)
-         End Do
+    ! params%j( (i-1) * n + 1 : i*n ) = (/( Real((k-1)*params%m+i, Kind=wp), k=1,n)/)
+    Do i = 1, params%m
+      Do k = 1, n
+          params%j((i-1)*n + k) = real((k-1)*params%m + i, kind=wp)
       End Do
-    ! CODE-CHANGE ends
+    End Do
     !Print *, 'Matrix p%JT'
     !Do i = 1, n
     !  Write(*,'(*(F8.1,2X))') params%J( (/(  (k-1)*n + i, k = 1, params%m )/) )
     !End Do
     Call evaltensor_J(status, n, m, s, Jt, params)
 
-    ! === COMPARE and TEST ====================================================
     ok = .True.
     Do i = 1, n
-      ! CODE-CHANGE Begins
       Do k = 1, m
          if (J((i-1)*m + k) /= JT((k-1)*n + i)) then
             Ok = .False.
          end if
       End Do
-      ! CODE-CHANGE Ends
     End Do
 
     If (.not. Ok) Then
@@ -3725,12 +3718,12 @@ subroutine evaltensor_J_tests(options, fails)
       Print *, ''
       Print *, 'Matrix J'
       Do i = 1, m
-        Write(*,'(*(F8.1,2X))') (J((k-1)*m + i), k = 1, n) ! CODE-CHANGE
+        Write(*,'(*(F8.1,2X))') (J((k-1)*m + i), k = 1, n)
       End Do
       Print *, ''
       Print *, 'Matrix JT'
       Do i = 1, n
-        Write(*,'(*(F8.1,2X))') (Jt((k-1)*n + i), k = 1, m) ! CODE-CHANGE
+        Write(*,'(*(F8.1,2X))') (Jt((k-1)*n + i), k = 1, m)
       End Do
     End If
   End Do
