@@ -1951,7 +1951,7 @@ lp: do while (.not. success)
             Go To 100
           End If
         End If
-        ! w%By_hardcase(:,:) = matmul(w%B,w%y_hardcase) ! <--- CODE-CHANGE
+        ! w%By_hardcase(:,:) = matmul(w%B,w%y_hardcase)
         call PREC(gemm)('N','N', n, size_hard2, n, 1.0_wp, w%B, n, &
              w%y_hardcase, n, 0.0_wp, w%By_hardcase, n)
         call matmult_outer( w%By_hardcase, size_hard2, n, w%M1_small)
@@ -2472,7 +2472,7 @@ lp:  do i = 1, options%more_sorensen_maxits
               End If
              !dHd = dot_product(d, matmul(w%AplusSigma,d))
              !reuse w%q to store intermediary MV product
-              ! w%q(:) = matmul(w%AplusSigma,d) ! <--- CODE-CHANGE
+              ! w%q(:) = matmul(w%AplusSigma,d)
               call PREC(gemv)('N', n, n, 1.0_wp, w%AplusSigma, n, d, 1, 0.0_wp, w%q, 1)
               dHd = dot_product(d, w%q)
               call findbeta(d,w%y1,Delta,alpha,inform) ! check -- is this what I need?!?!
@@ -3911,7 +3911,7 @@ lp:  do i = 1, options%more_sorensen_maxits
               goto 100
             end if
           End If
-          !nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null)) ! CODE-CHANGE
+          !nullevs(1:halfn,1:no_null) = w%vr(halfn+1 : n,w%nullindex(1:no_null))
           do j = 1, no_null
             nullevs(1:halfn,j) = w%vr(halfn+1:n, w%nullindex(j))
           end do
