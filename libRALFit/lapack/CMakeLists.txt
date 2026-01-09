@@ -1,29 +1,26 @@
-add_library(ral_nlls_lapack SHARED
-         dbdsqr.f dgebd2.f dgebrd.f dgebrd.f
-         dgebrd.f dgelq2.f dgelqf.f dgels.f
-         dgeqr2.f dgeqrf.f dgesvd.f dgesv.f
-         dgetrf2.f dgetrf.f dgetrs.f dggbak.f
-         dggbal.f dggev.f dggev.f dgghrd.f
-         dhgeqz.f disnan.f dlabad.f dlabrd.f
-         dlacpy.f dladiv.f dlae2.f dlaebz.f
-         dlaev2.f dlag2.f dlagtf.f dlagts.f
-         dlaisnan.f dlaln2.f dlange.f dlanhs.f
-         dlanst.f dlansy.f dlapy2.f dlapy3.f
-         dlarfb.f dlarf.f dlarfg.f dlarft.f
-         dlarnv.f dlartg.f dlaruv.f dlas2.f
-         dlascl.f dlaset.f dlasq1.f dlasq2.f
-         dlasq3.f dlasq4.f dlasq5.f dlasq6.f
-         dlasr.f dlasrt.f dlassq.f dlasv2.f
-         dlaswp.f dlatrd.f dlauu2.f dlauum.f
-	 dorg2l.f dorg2r.f
-         dorgbr.f dorgl2.f dorglq.f dorgql.f
-         dorgqr.f dorgtr.f dorm2l.f dorm2r.f
-         dormbr.f dorml2.f dormlq.f dormql.f 
-         dormqr.f dormtr.f dposv.f dpotrf2.f
-         dpotrf.f dpotri.f dpotrs.f dstebz.f
-	 dstein.f
-         dsteqr.f dsterf.f dsyev.f dsyevx.f
-         dsytd2.f dsytrd.f dtgevc.f dtrtri.f
-	 dtrti2.f dtrtrs.f
-         ieeeck.f iladlc.f iladlr.f ilaenv.f
-         iparmq.f dlamch.f)
+set(Mini_LAPACK_SOURCES
+dasum.f   dgelqf.f  dgesvd.f   dgghrd.f  dlaebz.f    dlange.f   dlarf1l.f   dlascl.f  dlasr.f     dnrm2.f90  dorgtr.f  dormtr.f          dscal.f   dsymv.f   dtrmv.f   iladlr.f          la_xisnan.F90  sgebrd.f  sger.f     sggbal.f  sladiv.f    slaln2.f  slarf.f     slaruv.f  slasq5.f    slauu2.f   sorgql.f  sormql.f   srot.f            ssyev.f   stgevc.f
+daxpy.f   dgels.f   dgetf2.f   dhgeqz.f  dlaev2.f    dlanhs.f   dlarfb.f    dlaset.f  dlasrt.f    dorg2l.f   dorm2l.f  dposv.f           dstebz.f  dsyr2.f   dtrsm.f   ilaenv.f          lsame.f        sgelq2.f  sgesv.f    sggev.f   slae2.f     slamch.f  slarf1f.f   slas2.f   slasq6.f    slauum.f   sorgqr.f  sormqr.f   sroundup_lwork.f  ssyevx.f  strmm.f
+dbdsqr.f  dgemm.f   dgetrf.f   disnan.f  dlag2.f     dlanst.f   dlarfg.f    dlasq1.f  dlassq.f90  dorg2r.f   dorm2r.f  dpotrf.f          dstein.f  dsyr2k.f  dtrti2.f  ilaslc.f          sasum.f        sgelqf.f  sgesvd.f   sgghrd.f  slaebz.f    slange.f  slarf1l.f   slascl.f  slasr.f     snrm2.f90  sorgtr.f  sormtr.f   sscal.f           ssymv.f   strmv.f
+dcopy.f   dgemv.f   dgetrf2.f  dlabad.f  dlagtf.f    dlansy.f   dlarft.f    dlasq2.f  dlasv2.f    dorgbr.f   dormbr.f  dpotrf2.f         dsteqr.f  dsyrk.f   dtrtri.f  ilaslr.f          saxpy.f        sgels.f   sgetf2.f   shgeqz.f  slaev2.f    slanhs.f  slarfb.f    slaset.f  slasrt.f    sorg2l.f   sorm2l.f  sposv.f    sstebz.f          ssyr2.f   strsm.f
+ddot.f    dgeqr2.f  dgetrs.f   dlabrd.f  dlagts.f    dlapy2.f   dlarnv.f    dlasq3.f  dlaswp.f    dorgl2.f   dorml2.f  dpotri.f          dsterf.f  dsytd2.f  dtrtrs.f  iparam2stage.F    sbdsqr.f       sgemm.f   sgetrf.f   sisnan.f  slag2.f     slanst.f  slarfg.f    slasq1.f  slassq.f90  sorg2r.f   sorm2r.f  spotrf.f   sstein.f          ssyr2k.f  strti2.f
+dgebd2.f  dgeqrf.f  dggbak.f   dlacpy.f  dlaisnan.f  dlapy3.f   dlartg.f90  dlasq4.f  dlatrd.f    dorglq.f   dormlq.f  dpotrs.f          dswap.f   dsytrd.f  idamax.f  iparmq.f          scopy.f        sgemv.f   sgetrf2.f  slabad.f  slagtf.f    slansy.f  slarft.f    slasq2.f  slasv2.f    sorgbr.f   sormbr.f  spotrf2.f  ssteqr.f          ssyrk.f   strtri.f
+dgebrd.f  dger.f    dggbal.f   dladiv.f  dlaln2.f    dlarf.f    dlaruv.f    dlasq5.f  dlauu2.f    dorgql.f   dormql.f  drot.f            dsyev.f   dtgevc.f  ieeeck.f  isamax.f          sdot.f         sgeqr2.f  sgetrs.f   slabrd.f  slagts.f    slapy2.f  slarnv.f    slasq3.f  slaswp.f    sorgl2.f   sorml2.f  spotri.f   ssterf.f          ssytd2.f  strtrs.f
+dgelq2.f  dgesv.f   dggev.f    dlae2.f   dlamch.f    dlarf1f.f  dlas2.f     dlasq6.f  dlauum.f    dorgqr.f   dormqr.f  droundup_lwork.f  dsyevx.f  dtrmm.f   iladlc.f  la_constants.f90  sgebd2.f       sgeqrf.f  sggbak.f   slacpy.f  slaisnan.f  slapy3.f  slartg.f90  slasq4.f  slatrd.f    sorglq.f   sormlq.f  spotrs.f   sswap.f           ssytrd.f  xerbla.f
+)
+
+add_library(ral_nlls_lapack SHARED ${Mini_LAPACK_SOURCES})
+
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+  set_source_files_properties(dlaebz.f iparmq.f dlabad.f slaebz.f slabad.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
+  set_source_files_properties(dlamch.f dorgbr.f dgesvd.f slamch.f sorgbr.f sgesvd.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-conversion>")
+  # Supress computed Go To
+  set_source_files_properties(dggbal.f sggbal.f ilaenv.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-pedantic>")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang")
+  set_source_files_properties(dlaebz.f iparmq.f dlabad.f slaebz.f slabad.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-unused-dummy-argument>")
+  set_source_files_properties(dlamch.f dorgbr.f dgesvd.f slamch.f sorgbr.f sgesvd.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-conversion>")
+  # Supress computed Go To
+  set_source_files_properties(dggbal.f sggbal.f ilaenv.f APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Wno-pedantic>")
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
+  set_source_files_properties(${Mini_LAPACK_SOURCES} APPEND_STRING PROPERTIES COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-w=all>")
+endif()
