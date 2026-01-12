@@ -16,10 +16,9 @@ def relpath(path):
     return os.path.relpath(path, start=setup_dir)
 
 extra_opts = {}
-if platform.system() != 'Windows':
-    extra_opts['runtime_library_dirs'] = [
-        relpath('${CMAKE_CURRENT_BINARY_DIR}/src/')
-    ]
+library_dirs = [relpath('${CMAKE_CURRENT_BINARY_DIR}/src/')]
+if '${CompileMiniLAPACK}'.upper() == 'ON':
+    library_dirs.append(relpath('${CMAKE_CURRENT_BINARY_DIR}/lapack/')  )
 
 setup(
     ext_modules=[
@@ -27,7 +26,7 @@ setup(
             'ral_nlls',
             sources = [relpath(t) for t in src_targets],
             libraries = ['ral_nlls','${LIBS}'],
-            library_dirs = [relpath('${CMAKE_CURRENT_BINARY_DIR}/src/')],
+            library_dirs = library_dirs,
             extra_compile_args = ['-std=c99'],
             include_dirs = [relpath('${CMAKE_CURRENT_SOURCE_DIR}/include/'),
                             np.get_include()],

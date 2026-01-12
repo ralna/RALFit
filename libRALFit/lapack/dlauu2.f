@@ -95,17 +95,14 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \date December 2016
-*
-*> \ingroup doubleOTHERauxiliary
+*> \ingroup lauu2
 *
 *  =====================================================================
       SUBROUTINE DLAUU2( UPLO, N, A, LDA, INFO )
 *
-*  -- LAPACK auxiliary routine (version 3.7.0) --
+*  -- LAPACK auxiliary routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     December 2016
 *
 *     .. Scalar Arguments ..
       CHARACTER          UPLO
@@ -167,8 +164,10 @@
          DO 10 I = 1, N
             AII = A( I, I )
             IF( I.LT.N ) THEN
-               A( I, I ) = DDOT( N-I+1, A( I, I ), LDA, A( I, I ), LDA )
-               CALL DGEMV( 'No transpose', I-1, N-I, ONE, A( 1, I+1 ),
+               A( I, I ) = DDOT( N-I+1, A( I, I ), LDA, A( I, I ),
+     $            LDA )
+               CALL DGEMV( 'No transpose', I-1, N-I, ONE, A( 1,
+     $                     I+1 ),
      $                     LDA, A( I, I+1 ), LDA, AII, A( 1, I ), 1 )
             ELSE
                CALL DSCAL( I, AII, A( 1, I ), 1 )
@@ -183,7 +182,8 @@
             AII = A( I, I )
             IF( I.LT.N ) THEN
                A( I, I ) = DDOT( N-I+1, A( I, I ), 1, A( I, I ), 1 )
-               CALL DGEMV( 'Transpose', N-I, I-1, ONE, A( I+1, 1 ), LDA,
+               CALL DGEMV( 'Transpose', N-I, I-1, ONE, A( I+1, 1 ),
+     $                     LDA,
      $                     A( I+1, I ), 1, AII, A( I, 1 ), LDA )
             ELSE
                CALL DSCAL( I, AII, A( I, 1 ), LDA )

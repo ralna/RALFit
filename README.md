@@ -6,23 +6,23 @@
 
 A non-linear least squares solver that is primarily developed by the Numerical Analysis group at STFC Rutherford Appleton Laboratory hsl@stfc.ac.uk.
 
-## Installation
+The package is written in modern Fortran, and it provides a number of interfaces for other languages.
 
-### Requirements
+## Requirements
 
-RALFit has been tested on Linux, although it should work on other platforms.  It requires Fortran and C compilers, and BLAS and LAPACK must be installed on the system
+RALFit has been tested on Linux, although it should work on other platforms. It requires
 
-### Compilation instructions
+ * a modern Fortran compiler
+ * a C compiler
+ * a BLAS and LAPACK distribution
 
-To compile, move to the `libRALFit` directory and issue the commands:
-```
-mkdir build
-cd build
-cmake ..
-make
-```
+### Compilation
 
-The package is written in modern Fortran, and we provide a number of interfaces for other languages.  For documentation, follow the links below:
+To compile, follow the instructions in [libRALFit/README.md](libRALFit/README.md).
+
+## Documentation
+
+For documentation, follow the links below:
 
 [![Fortran doc](https://readthedocs.org/projects/ralfit-fortran/badge/?version=latest)](http://ralfit.readthedocs.io/projects/Fortran/en/latest/?badge=latest)
 [Fortran documentation](http://ralfit.readthedocs.io/projects/Fortran/en/latest/)

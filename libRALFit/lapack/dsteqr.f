@@ -2,24 +2,24 @@
 *
 *  =========== DOCUMENTATION ===========
 *
-* Online html documentation available at 
-*            http://www.netlib.org/lapack/explore-html/ 
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
 *
 *> \htmlonly
-*> Download DSTEQR + dependencies 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dsteqr.f"> 
-*> [TGZ]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dsteqr.f"> 
-*> [ZIP]</a> 
-*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dsteqr.f"> 
+*> Download DSTEQR + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/dsteqr.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/dsteqr.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/dsteqr.f">
 *> [TXT]</a>
-*> \endhtmlonly 
+*> \endhtmlonly
 *
 *  Definition:
 *  ===========
 *
 *       SUBROUTINE DSTEQR( COMPZ, N, D, E, Z, LDZ, WORK, INFO )
-* 
+*
 *       .. Scalar Arguments ..
 *       CHARACTER          COMPZ
 *       INTEGER            INFO, LDZ, N
@@ -27,7 +27,7 @@
 *       .. Array Arguments ..
 *       DOUBLE PRECISION   D( * ), E( * ), WORK( * ), Z( LDZ, * )
 *       ..
-*  
+*
 *
 *> \par Purpose:
 *  =============
@@ -119,22 +119,19 @@
 *  Authors:
 *  ========
 *
-*> \author Univ. of Tennessee 
-*> \author Univ. of California Berkeley 
-*> \author Univ. of Colorado Denver 
-*> \author NAG Ltd. 
+*> \author Univ. of Tennessee
+*> \author Univ. of California Berkeley
+*> \author Univ. of Colorado Denver
+*> \author NAG Ltd.
 *
-*> \date November 2011
-*
-*> \ingroup auxOTHERcomputational
+*> \ingroup steqr
 *
 *  =====================================================================
       SUBROUTINE DSTEQR( COMPZ, N, D, E, Z, LDZ, WORK, INFO )
 *
-*  -- LAPACK computational routine (version 3.4.0) --
+*  -- LAPACK computational routine --
 *  -- LAPACK is a software package provided by Univ. of Tennessee,    --
 *  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
-*     November 2011
 *
 *     .. Scalar Arguments ..
       CHARACTER          COMPZ
@@ -166,7 +163,8 @@
       EXTERNAL           LSAME, DLAMCH, DLANST, DLAPY2
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLAE2, DLAEV2, DLARTG, DLASCL, DLASET, DLASR,
+      EXTERNAL           DLAE2, DLAEV2, DLARTG, DLASCL, DLASET,
+     $                   DLASR,
      $                   DLASRT, DSWAP, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
@@ -272,13 +270,15 @@
      $   GO TO 10
       IF( ANORM.GT.SSFMAX ) THEN
          ISCALE = 1
-         CALL DLASCL( 'G', 0, 0, ANORM, SSFMAX, LEND-L+1, 1, D( L ), N,
+         CALL DLASCL( 'G', 0, 0, ANORM, SSFMAX, LEND-L+1, 1, D( L ),
+     $                N,
      $                INFO )
          CALL DLASCL( 'G', 0, 0, ANORM, SSFMAX, LEND-L, 1, E( L ), N,
      $                INFO )
       ELSE IF( ANORM.LT.SSFMIN ) THEN
          ISCALE = 2
-         CALL DLASCL( 'G', 0, 0, ANORM, SSFMIN, LEND-L+1, 1, D( L ), N,
+         CALL DLASCL( 'G', 0, 0, ANORM, SSFMIN, LEND-L+1, 1, D( L ),
+     $                N,
      $                INFO )
          CALL DLASCL( 'G', 0, 0, ANORM, SSFMIN, LEND-L, 1, E( L ), N,
      $                INFO )
@@ -321,7 +321,8 @@
 *
          IF( M.EQ.L+1 ) THEN
             IF( ICOMPZ.GT.0 ) THEN
-               CALL DLAEV2( D( L ), E( L ), D( L+1 ), RT1, RT2, C, S )
+               CALL DLAEV2( D( L ), E( L ), D( L+1 ), RT1, RT2, C,
+     $                      S )
                WORK( L ) = C
                WORK( N-1+L ) = S
                CALL DLASR( 'R', 'V', 'B', N, 2, WORK( L ),
@@ -380,7 +381,8 @@
 *
          IF( ICOMPZ.GT.0 ) THEN
             MM = M - L + 1
-            CALL DLASR( 'R', 'V', 'B', N, MM, WORK( L ), WORK( N-1+L ),
+            CALL DLASR( 'R', 'V', 'B', N, MM, WORK( L ),
+     $                  WORK( N-1+L ),
      $                  Z( 1, L ), LDZ )
          END IF
 *
@@ -428,7 +430,8 @@
 *
          IF( M.EQ.L-1 ) THEN
             IF( ICOMPZ.GT.0 ) THEN
-               CALL DLAEV2( D( L-1 ), E( L-1 ), D( L ), RT1, RT2, C, S )
+               CALL DLAEV2( D( L-1 ), E( L-1 ), D( L ), RT1, RT2, C,
+     $                      S )
                WORK( M ) = C
                WORK( N-1+M ) = S
                CALL DLASR( 'R', 'V', 'F', N, 2, WORK( M ),
@@ -487,7 +490,8 @@
 *
          IF( ICOMPZ.GT.0 ) THEN
             MM = L - M + 1
-            CALL DLASR( 'R', 'V', 'F', N, MM, WORK( M ), WORK( N-1+M ),
+            CALL DLASR( 'R', 'V', 'F', N, MM, WORK( M ),
+     $                  WORK( N-1+M ),
      $                  Z( 1, M ), LDZ )
          END IF
 *
@@ -513,12 +517,14 @@
       IF( ISCALE.EQ.1 ) THEN
          CALL DLASCL( 'G', 0, 0, SSFMAX, ANORM, LENDSV-LSV+1, 1,
      $                D( LSV ), N, INFO )
-         CALL DLASCL( 'G', 0, 0, SSFMAX, ANORM, LENDSV-LSV, 1, E( LSV ),
+         CALL DLASCL( 'G', 0, 0, SSFMAX, ANORM, LENDSV-LSV, 1,
+     $                E( LSV ),
      $                N, INFO )
       ELSE IF( ISCALE.EQ.2 ) THEN
          CALL DLASCL( 'G', 0, 0, SSFMIN, ANORM, LENDSV-LSV+1, 1,
      $                D( LSV ), N, INFO )
-         CALL DLASCL( 'G', 0, 0, SSFMIN, ANORM, LENDSV-LSV, 1, E( LSV ),
+         CALL DLASCL( 'G', 0, 0, SSFMIN, ANORM, LENDSV-LSV, 1,
+     $                E( LSV ),
      $                N, INFO )
       END IF
 *

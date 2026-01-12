@@ -6,12 +6,8 @@
 *.a
 build/*
 galahad/*
-libRALFit/build/*
-libRALFit/build_cov/*
-libRALFit/build_test_install/*
+libRALFit/build*
 libRALFit/debug/*
-libRALFit/build-compiled-lapack/*
-libRALFit/buildx/*
 libRALFit/coverage/*
 libRALFit/doc/Fortran/_build/*
 libRALFit/doc/C/_build/*
