@@ -2724,7 +2724,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      integer, intent(out) :: fails
 
      real(wp), allocatable :: A(:,:), AtA(:,:), AtA_expected(:,:), diff(:)
-      integer :: n, m, i
+     integer :: n, m, i
 
      fails = 0
 
