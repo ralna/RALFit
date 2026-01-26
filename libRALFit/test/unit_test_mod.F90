@@ -10,6 +10,7 @@ module MODULE_PREC(unit_test_mod)
 
   use MODULE_PREC(ral_nlls)
   use MODULE_PREC(ral_nlls_internal)
+  use MODULE_PREC(ral_nlls_linear)
   use MODULE_PREC(ral_nlls_workspaces)
   implicit none
 
@@ -2177,8 +2178,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
      f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
 
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
+     call solve_LLS(j,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
+                    d,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+     d(:) = -d(:)
      if ( status%status .ne. 0 ) then
          write (*, *) '[id:1] solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -2204,8 +2207,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            8.0_wp, 4.0_wp, 9.0_wp, 5.0_wp, 10.0_wp ]
      f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
 
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.False.)
+
+     call solve_LLS(j,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
+                    d,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+     d(:) = -d(:)
+
      if ( status%status .ne. 0 ) then
          write (*, *) '[id:2] solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -2233,8 +2240,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      J = 1.0_wp
      J(1:m) = 0.0_wp
      f = 1.0_wp
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
+     call solve_LLS(j,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
+                    d,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+
      if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then
          write (*, *) '[id:3] solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -2244,8 +2253,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      call nlls_finalize(work, options, status)
 
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
+     call solve_LLS(j,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
+                    d,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1

@@ -14,6 +14,7 @@ module MODULE_PREC(ral_nlls_internal)
   Use MODULE_PREC(ral_nlls_printing)
   Use MODULE_PREC(ral_nlls_bounds)
   Use MODULE_PREC(ral_nlls_types), Only: PREC(nrm2), PREC(dot)
+  use MODULE_PREC(ral_nlls_linear), only: solve_LLS, solve_LLS_nocopy
 
   implicit none
 
@@ -28,7 +29,7 @@ module MODULE_PREC(ral_nlls_internal)
     public :: calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info, rank_one_update
     public :: test_convergence, calculate_rho
-    public :: solve_LLS, shift_matrix
+    public :: shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton, evaltensor_J
     public :: setup_iparams_type, free_iparams_type
@@ -1802,9 +1803,10 @@ lp: do while (.not. success)
      ! Solve the linear problem...
      select case (options%model)
      case (1)
-        ! linear model...
-        call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws,options%Fortran_Jacobian)
+        ! linear model... 
+        call solve_LLS(J,f,w%solve_LLS_ws%Jlls,w%d_gn,n,m,inform,w%solve_LLS_ws,options,.false.)
         if ( inform%status /= 0 ) goto 100
+        w%d_gn(:) = -w%d_gn(:)
      case default
         inform%status = NLLS_ERROR_DOGLEG_MODEL
         goto 100
@@ -2923,54 +2925,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        normd = 1.0e10_wp
      End If
    end subroutine regularization_solver
-
-   SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w,Fortran_Jacobian)
-!  -----------------------------------------------------------------
-!  solve_LLS, a subroutine to solve a linear least squares problem
-!  -----------------------------------------------------------------
-
-       Implicit None
-       REAL(wp), DIMENSION(:), INTENT(IN) :: J
-       REAL(wp), DIMENSION(:), INTENT(IN) :: f
-       INTEGER, INTENT(IN) :: n, m
-       REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
-       type(NLLS_inform), INTENT(INOUT) :: inform
-       logical, Intent(In) :: Fortran_Jacobian
-
-       integer, Parameter :: nrhs = 1
-       integer :: lwork, lda, ldb
-       type( solve_LLS_work ), Intent(inout) :: w
-
-       If (.not. w%allocated) Then
-         inform%status = NLLS_ERROR_WORKSPACE_ERROR
-         goto 100
-       End If
-
-       w%temp(1:m) = f(1:m)
-       lwork = size(w%work)
-
-       w%Jlls(:) = J(:)
-       If (Fortran_Jacobian) Then
-          lda = m
-          ldb = max(m,n)
-          call PREC(gels)('N', m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
-               inform%external_return)
-       else
-          lda = n
-          ldb = max(m,n)
-          call PREC(gels)('T', n, m, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
-               inform%external_return)
-       end If
-       if (inform%external_return .ne. 0 ) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?gels'
-          Go To 100
-       end if
-
-       d_gn = -w%temp(1:n)
-
-100   continue
-     END SUBROUTINE solve_LLS
 
      SUBROUTINE findbeta(a, b, Delta, beta, inform)
 
