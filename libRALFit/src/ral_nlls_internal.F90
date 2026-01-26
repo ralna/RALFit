@@ -23,7 +23,6 @@ module MODULE_PREC(ral_nlls_internal)
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: solve_galahad, findbeta, mult_j
     public :: mult_jt, matmult_inner
-    public :: minus_solve_spd, minus_solve_spd_nocopy, minus_solve_general
     public :: matmult_outer, outer_product, min_eig_symm, max_eig, all_eig_symm
     public :: remove_workspaces, setup_workspaces
     public :: calculate_step, evaluate_model
@@ -1461,7 +1460,6 @@ lp: do while (.not. success)
                         options, inform)
                 end if
                 subproblem_method = 2 ! try aint next
-
                 call dogleg(J,f,hf,g,n,m,Delta,d,norm_S_d, &
                      options,inform,w%dogleg_ws)
                 if (inform%status == 0) subproblem_success = .true.
@@ -1803,10 +1801,12 @@ lp: do while (.not. success)
      ! Solve the linear problem...
      select case (options%model)
      case (1)
-        ! linear model... 
-        call solve_LLS(J,f,w%solve_LLS_ws%Jlls,w%d_gn,n,m,inform,w%solve_LLS_ws,options,.false.)
+        ! linear model...
+        w%solve_LLS_ws%Jlls = reshape(J, [n,m])
+        w%solve_LLS_ws%temp(1:m) = f(1:m)
+        call solve_LLS_nocopy(w%solve_LLS_ws%Jlls,w%solve_LLS_ws%temp,n,m,inform,w%solve_LLS_ws,options,.false.)
         if ( inform%status /= 0 ) goto 100
-        w%d_gn(:) = -w%d_gn(:)
+        w%d_gn = -w%solve_LLS_ws%temp(1:n)
      case default
         inform%status = NLLS_ERROR_DOGLEG_MODEL
         goto 100
@@ -1869,6 +1869,9 @@ lp: do while (.not. success)
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
      Character(Len=80) :: rec(1)
+     logical :: pd  ! whether A is positive-definite
+
+     pd = (options%model == 1)
 
      If ( .not. w%allocated ) Then
        inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -1894,15 +1897,11 @@ lp: do while (.not. success)
         w%B(i,i) = 1.0_wp
      end do
 
-     select case (options%model)
-     case (1)
-        call minus_solve_spd(A,v,w%LtL,w%p0,n,inform)
-        if (inform%status /= 0) goto 100
-     case default
-        ! note: v is mult by -1 in minus_solve_general
-        call minus_solve_general(A,v,w%p0,n,inform,w%minus_solve_general_ws)
-        if (inform%status /= 0) goto 100
-     end select
+     w%LtL(:, :) = A(:, :)
+     w%p0(:) = -v(:)
+     call solve_LLS_nocopy(w%LtL,w%p0,n,n,inform,w%solve_LLS_ws,options,pd)
+     if (inform%status /= 0) goto 100
+
 
      call matrix_norm(w%p0,w%B,norm_p0)
 
@@ -1959,19 +1958,9 @@ lp: do while (.not. success)
         call matmult_outer( w%By_hardcase, size_hard2, n, w%M1_small)
         w%M0_small(:,:) = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
-        select case (options%model)
-        case (1)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%M0_small,v,w%LtL,w%q,n,inform)
-           if (inform%status /= 0) goto 100
-        case default
-          ! note: v is mult by -1 in minus_solve_general
-          call minus_solve_general(w%M0_small,v,w%q,n,inform,w%minus_solve_general_ws)
-          if (inform%status /= 0) goto 100
-        end select
-        ! note -- a copy of the matrix is taken on entry to the solve routines
-        ! (I think..) and inside...fix
-
+        w%q(:) = -v(:)
+        call solve_LLS_nocopy(w%M0_small, w%q, n, n, inform, w%solve_LLS_ws, options, pd)
+        if (inform%status /= 0) goto 100
 
         ! find max eta st ||q + eta v(:,1)||_B = Delta
         call findbeta(w%q,w%y_hardcase(:,1),Delta,eta,inform)
@@ -1984,25 +1973,15 @@ lp: do while (.not. success)
         w%p1(:) = w%q(:) + eta * w%y_hardcase(:,1)
 
      else
-       ! Solve (A+lam*w%B)x=-v:
-       ! 1. we can use w%B to actually store A + lam * w%B
-       ! 2. b=v is then inverted inside of `minus_solve_spd` or `minus_solve_general`
+       ! Solve (A+lam*B)x=-v:
+       ! 1. we can use w%B to actually store A + lam * B
         w%B(:,:) = A(:,:)
+        w%p1(:) = -v(:)
         Do i = 1, n
           w%B(i,i) = w%B(i,i) + lam
         End Do
-        select case (options%model)
-        case (1)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%B,v,w%LtL,w%p1,n,inform)
-           if (inform%status /= 0) goto 100
-        case default
-           ! note: v is mult by -1 in minus_solve_general
-           call minus_solve_general(w%B,v,w%p1,n,inform,w%minus_solve_general_ws)
-           if (inform%status /= 0) goto 100
-        end select
-        ! note -- a copy of the matrix is taken on entry to the solve routines
-        ! and inside...fix
+        call solve_LLS_nocopy(w%B, w%p1, n, n, inform, w%solve_LLS_ws, options, pd)
+        if (inform%status /= 0) goto 100
      end if
 
      ! get obj_p1: the value of the model at p1
@@ -2089,6 +2068,13 @@ lp: do while (.not. success)
      integer :: i, no_restarts
      Character(Len=80) :: rec(2)
 
+     ! reset error calls from previous method
+     ! else a previous method failure will force
+     ! min_eig_symm no matter what
+     inform%status = 0
+     inform%external_return = 0
+     inform%external_name = ''
+
      ! The code finds
      !  d = arg min_p   v^T p + 0.5 * p^T A p
      !       s.t. ||p|| \leq Delta
@@ -2107,11 +2093,12 @@ lp: do while (.not. success)
      w%AplusSigma(1:n,1:n) = A(1:n,1:n)
 
      If (options%force_min_eig_symm) Then
-       ! Skip minus_solve_spd_nocopy and jump directly to min_eig_symm
+       ! Skip solve and jump directly to min_eig_symm
        inform%status = 1
      Else
-       ! note: v is mult by -1 in minus_solve_spd_nocopy
-       call minus_solve_spd_nocopy(w%AplusSigma,v,d,n,inform)
+       ! solve (A+sigma)d = -v
+       d(1:n) = -v(1:n)
+       call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
      End If
      if (inform%status == 0) then
         ! A is symmetric positive definite....
@@ -2121,6 +2108,10 @@ lp: do while (.not. success)
           Call Printmsg(5,.False.,options,1,rec)
         End If
      else
+        If (buildmsg(5,.False.,options)) Then
+          Write(rec(1), Fmt=6010) inform%external_return
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
         ! reset the error calls -- handled in the code....
         inform%status = 0
         inform%external_return = 0
@@ -2128,10 +2119,6 @@ lp: do while (.not. success)
         call min_eig_symm(A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws)
         if (inform%status /= 0) goto 100
         sigma = -(sigma - local_ms_shift)
-        If (buildmsg(5,.False.,options)) Then
-          Write(rec(1), Fmt=6010)
-          Call Printmsg(5,.False.,options,1,rec)
-        End If
         ! find a shift that makes (A + sigma I) positive definite,
         ! and solve (A + sigma I) (-v) = d
         call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
@@ -2225,7 +2212,7 @@ lp:  do i = 1, options%more_sorensen_maxits
              Write(rec(1), Fmt=5040)
              Call Printmsg(5,.False.,options,1,rec)
            End If
-           goto 100
+           goto 100 
         end if
 
         w%q(:) = d ! w%q = R'\d
@@ -2257,8 +2244,9 @@ lp:  do i = 1, options%more_sorensen_maxits
           End If
            sigma = sigma + sigma_shift
            call shift_matrix(A,sigma,w%AplusSigma,n)
-           ! note: v is mult by -1 in minus_solve_spd_nocopy
-           call minus_solve_spd_nocopy(w%AplusSigma,v,d,n,inform)
+           ! solve (A + sigma)d = -v 
+           d(1:n) = -v(1:n) 
+           call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
         end if
         if (inform%status /= 0) goto 100
 
@@ -2281,7 +2269,7 @@ lp:  do i = 1, options%more_sorensen_maxits
 5040 FORMAT('Leaving More-Sorensen')
 ! print_level >= 3
 6000 FORMAT('A is symmetric positive definite')
-6010 FORMAT('Trying a shift of sigma = ',ES12.4)
+6010 FORMAT('A is not symmetric PD: non-PD principal minor ',i4)
 6020 FORMAT('A + sigma I is symmetric positive definite')
 6030 FORMAT('We''re within the trust region radius initially')
 6035 FORMAT('We''re within the trust region radius')
@@ -2389,8 +2377,10 @@ lp:  do i = 1, options%more_sorensen_maxits
         ! d = -A\v
         if (.not. factorization_done) then
            call shift_matrix(A,sigma,w%AplusSigma,n)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%AplusSigma,v,w%LtL,d,n,inform)
+           ! solve (A + sigma)d = -v
+           w%LtL(1:n,1:n) = w%AplusSigma(1:n,1:n)
+           d(1:n) = -v(1:n)
+           call solve_LLS_nocopy(w%LtL,d,n,n,inform,w%lls_ws,options,.true.) 
         else
            factorization_done = .false.
         end if
@@ -2437,10 +2427,6 @@ lp:  do i = 1, options%more_sorensen_maxits
              Call printmsg(5,.False.,options,1,rec)
            End If
            location_of_breakdown = inform%external_return
-           ! reset the error calls -- handled in the code....
-           inform%status = 0
-           inform%external_return = 0
-           inform%external_name = REPEAT( ' ', 80 )
            region = 1 ! N
            region_char = 'N'
            sigma_l = sigma
@@ -2449,6 +2435,10 @@ lp:  do i = 1, options%more_sorensen_maxits
              Call printmsg(5,.False.,options,1,rec)
            End If
         end if
+        ! reset the error calls -- handled in the code....
+        inform%status = 0
+        inform%external_return = 0
+        inform%external_name = REPEAT( ' ', 80 )
 
         if (region .ne. 1 ) then ! in F
            w%q(:) = d ! w%q = R'\d
@@ -2493,7 +2483,8 @@ lp:  do i = 1, options%more_sorensen_maxits
                 Call printmsg(5,.False.,options,1,rec)
               End If
            end if
-        else  ! not in F
+         else if (location_of_breakdown > 0) then
+           ! not in F 
            ! find an alpha and y1 such that
            !  (A + sigmaI + alpha e_k e_k^T)v = 0
 !!$           write(*,*) 'location of breakdown = ', location_of_breakdown
@@ -2520,6 +2511,11 @@ lp:  do i = 1, options%more_sorensen_maxits
            end do
            nrmy1 = PREC(nrm2)(n,w%y1,1) ! w%y1(1:n)
            sigma_l = max(sigma_l, sigma + indef_delta/nrmy1)
+        else
+            ! `dposv` found internal error (this is a developer error!) 
+            inform%status = NLLS_ERROR_FROM_EXTERNAL
+            inform%external_return = location_of_breakdown
+            goto 100
         end if
 
         ! check for termination
@@ -2560,8 +2556,11 @@ lp:  do i = 1, options%more_sorensen_maxits
             End If
         elseif (region == 3) then
            call shift_matrix(A,sigma + sigma_shift,w%AplusSigma,n)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%AplusSigma,v,w%LtL,d,n,inform)
+           ! solve (A + sigma)d = -v
+           w%LtL(1:n,1:n) = w%AplusSigma(1:n,1:n)
+           d(1:n) = -v(1:n)
+           call solve_LLS_nocopy(w%LtL,d,n,n,inform,w%lls_ws,options,.true.) 
+
            if (inform%status == 0) then
               region = 2
               sigma = sigma + sigma_shift
@@ -2593,6 +2592,10 @@ lp:  do i = 1, options%more_sorensen_maxits
           Write(rec(1), Fmt=5010) i, region_char, nd, sigma_l, sigma, sigma_u
           Call printmsg(5,.False.,options,1,rec)
         End If
+        ! reset the error calls -- handled in the code....
+        inform%status = 0
+        inform%external_return = 0
+        inform%external_name = REPEAT( ' ', 80 )
 
      end do
 
@@ -2724,14 +2727,17 @@ lp:  do i = 1, options%more_sorensen_maxits
      no_shifts = 0
      successful_shift = .false.
      do while( .not. successful_shift )
+        If (buildmsg(5,.False.,options)) Then
+          Write(rec(1), Fmt=99999) sigma
+          Call Printmsg(5,.False.,options,1,rec)
+        end if
         call shift_matrix(A,sigma,w%AplusSigma,n)
-        ! note: v is mult by -1 in minus_solve_spd_nocopy
-        call minus_solve_spd_nocopy(w%AplusSigma,v,d,n,inform)
-        if ( inform%status /= 0 ) then
-           ! reset the error calls -- handled in the code....
-           inform%status = 0
-           inform%external_return = 0
-           inform%external_name = REPEAT( ' ', 80 )
+        ! solve (A + sigma)d = -v 
+        d(:) = -v(:)
+        call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
+        if ( inform%status == 0 ) then
+            successful_shift = .true.
+        else
            no_shifts = no_shifts + 1
            If ( no_shifts >= 10 ) Then
              inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
@@ -2739,15 +2745,18 @@ lp:  do i = 1, options%more_sorensen_maxits
            End If
            sigma =  sigma + (10.0_wp**no_shifts) * options%more_sorensen_shift
            If (buildmsg(5,.False.,options)) Then
-             Write(rec(1), Fmt=99999) sigma
+             Write(rec(1), Fmt=99998) inform%external_return
              Call Printmsg(5,.False.,options,1,rec)
-           End If
-        else
-           successful_shift = .true.
+           end if
+           ! reset the error calls -- handled in the code....
+           inform%status = 0
+           inform%external_return = 0
+           inform%external_name = REPEAT( ' ', 80 )
         end if
      end do
 
 100   continue
+99998 FORMAT('A + sigma I has non-positive principal minor', i4)
 99999 FORMAT('Trying a shift of sigma = ',ES12.4)
    end subroutine check_shift_and_solve
 
@@ -2889,7 +2898,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      ! regularization_solver
      ! Solve the regularized subproblem using
      ! a home-rolled algorithm
-     ! Note: inform%status is set by minus_solve_spd
+     ! Note: inform%status is set by solve_LLS 
      !--------------------------------------------
 
      Implicit None
@@ -2910,8 +2919,10 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      if ( reg_order == 2.0_wp ) then
         call shift_matrix(A,reg_param,w%AplusSigma,n)
-        ! note: v is mult by -1 in minus_solve_spd
-        call minus_solve_spd(w%AplusSigma,v,w%LtL,d,n,inform)
+        ! solve (A+sigma)d = -v
+        w%LtL(1:n, 1:n) = w%AplusSigma(1:n,1:n)
+        d(1:n) = -v(1:n)
+        call solve_LLS_nocopy(w%LtL,d,n,n,inform,w%lls_ws,options,.true.)
         ! informa%status is passed along, this routine exits here
      else
 !      Feature not yet implemented, this should have been caught in
@@ -3435,6 +3446,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        End If
      end subroutine mult_Jt
 
+
      subroutine scale_J_by_weights(J,n,m,weights,options)
        Implicit None
        real(wp), intent(inout) :: J(*)
@@ -3532,76 +3544,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        ! J held by columns....
        Jij = J(ii + (jj-1)*m)
      end subroutine get_element_of_matrix
-
-     subroutine minus_solve_spd(A,b,LtL,x,n,inform)
-       Implicit None
-       REAL(wp), intent(in), contiguous :: A(:,:)
-       REAL(wp), intent(in), contiguous :: b(:)
-       REAL(wp), intent(out), contiguous :: LtL(:,:)
-       REAL(wp), intent(out), contiguous :: x(:)
-       integer, intent(in) :: n
-       type( nlls_inform), intent(inout) :: inform
-       inform%status = 0
-       ! Wrapper for the lapack subroutine ?posv
-       ! Given A and b, solves
-       !       A x = -b
-       LtL(1:n,1:n) = A(1:n,1:n)
-       x(1:n) = -b(1:n)
-       call PREC(posv)('L', n, 1, LtL, n, x, n, inform%external_return)
-       if (inform%external_return .ne. 0) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?posv'
-       end if
-     end subroutine minus_solve_spd
-
-     subroutine minus_solve_spd_nocopy(A,b,x,n,inform)
-       Implicit None
-       REAL(wp), intent(inout), contiguous :: A(:,:)
-       REAL(wp), intent(in), contiguous :: b(:)
-       REAL(wp), intent(out), contiguous :: x(:)
-       integer, intent(in) :: n
-       type( nlls_inform), intent(inout) :: inform
-       inform%status = 0
-       ! Wrapper for the lapack subroutine ?posv
-       ! NOTE: A will be destroyed
-       ! Given A and b, solves
-       !       A x = -b
-       x(1:n) = -b(1:n)
-       call PREC(posv)('L', n, 1, A, n, x, n, inform%external_return)
-       if (inform%external_return .ne. 0) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?posv'
-       end if
-     end subroutine minus_solve_spd_nocopy
-
-     subroutine minus_solve_general(A,b,x,n,inform,w)
-       Implicit None
-       REAL(wp), intent(in), contiguous :: A(:,:)
-       REAL(wp), intent(in), contiguous :: b(:)
-       REAL(wp), intent(out), contiguous :: x(:)
-       integer, intent(in) :: n
-       type( nlls_inform ), intent(inout) :: inform
-       type( minus_solve_general_work ),Intent(inout) :: w
-       ! Wrapper for the lapack subroutine ?gesv
-       ! NOTE: A would be destroyed
-       ! Given A and b, solves
-       !       A x = -b
-
-       If (.not. w%allocated) Then
-         inform%status = NLLS_ERROR_WORKSPACE_ERROR
-         goto 100
-       End If
-
-       w%A(1:n,1:n) = A(1:n,1:n)
-       x(1:n) = -b(1:n)
-       call PREC(gesv)( n, 1, w%A, n, w%ipiv, x, n, inform%external_return)
-       if (inform%external_return .ne. 0 ) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?gesv'
-       end if
-
-100    continue
-     end subroutine minus_solve_general
 
      subroutine matrix_norm(x,A,norm_A_x)
        Implicit None
