@@ -4233,8 +4233,8 @@ lp:    do i = 1, w%tensor_options%maxit
          inform%status = NLLS_ERROR_PRINT_LEVEL
        ElseIf (opt%box_linesearch_type<1 .Or. opt%box_linesearch_type>2) Then
          inform%status = NLLS_ERROR_UNSUPPORTED_LINESEARCH
-!      ElseIf
-!        ...
+       ElseIf (opt%lls_solver == 2 .and. opt%sketch_size <= 0) then
+          inform%status = NLLS_ERROR_BAD_SKETCH_SIZE
        End If
 
      End Subroutine check_options

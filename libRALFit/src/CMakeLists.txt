@@ -19,6 +19,11 @@ set(source_files
     ral_nlls_ciface.F90
     CACHE INTERNAL "source_files" FORCE)
 
+# subdirectory for external routines e.g. LSQR
+add_subdirectory(external)
+set_property(SOURCE ral_nlls_linear.F90 APPEND PROPERTY COMPILE_OPTIONS "-I./external")
+set_property(SOURCE ral_nlls_workspaces.F90 APPEND PROPERTY COMPILE_OPTIONS "-I./external")
+
 # Suppress warnings ############
 if (SUPPRESS_INTERNAL_WONTFIX)
     if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
@@ -94,6 +99,9 @@ function(generate_ral_nlls_modules precision obj_list)
   add_dependencies("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
   add_dependencies("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
   add_dependencies("RAL_NLLS_INTERNAL_${precision}" "RAL_NLLS_LINEAR_${precision}")
+  add_dependencies("RAL_NLLS_LINEAR_${precision}" "dct_module_${precision}")
+  add_dependencies("RAL_NLLS_LINEAR_${precision}" "lsqr_reverse_${precision}")
+  add_dependencies("RAL_NLLS_WORKSPACES_${precision}" "lsqr_reverse_${precision}")
   add_dependencies("RAL_NLLS_LINEAR_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
 
   # Replicate tree to be compatible with Ninja
@@ -117,6 +125,9 @@ function(generate_ral_nlls_modules precision obj_list)
   target_link_libraries("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
   target_link_libraries("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
   target_link_libraries("RAL_NLLS_INTERNAL_${precision}" "RAL_NLLS_LINEAR_${precision}")
+  target_link_libraries("RAL_NLLS_LINEAR_${precision}" "dct_module_${precision}")
+  target_link_libraries("RAL_NLLS_LINEAR_${precision}" "lsqr_reverse_${precision}")
+  target_link_libraries("RAL_NLLS_WORKSPACES_${precision}" "lsqr_reverse_${precision}")
   target_link_libraries("RAL_NLLS_LINEAR_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
 endfunction()
 
@@ -124,13 +135,18 @@ endfunction()
 set(nlls_obj_list "")
 if(SINGLE_PRECISION)
     # Generate single-precision library
-    generate_ral_nlls_modules("single" obj_list)
+    set(precision "single")
 else()
     # Generate double-precision library
-    generate_ral_nlls_modules("double" obj_list)
+    set(precision "double")
 endif()
+generate_ral_nlls_modules(${precision} obj_list)
+
 add_library (ral_nlls-static STATIC ${obj_list})
 add_library (ral_nlls SHARED ${obj_list})
+target_link_libraries(ral_nlls)
+target_link_libraries(ral_nlls lsqr_reverse_${precision})
+target_link_libraries(ral_nlls dct_module_${precision})
 target_link_libraries(ral_nlls ${LIBS} m ${CMAKE_DL_LIBS})
 target_include_directories(ral_nlls PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/src)
 # End Post ################

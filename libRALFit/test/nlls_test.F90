@@ -1436,6 +1436,12 @@ program nlls_test
      call solve_LLS_dgesv_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
+     call solve_LLS_lsqr_tests(options,fails)
+     no_errors_helpers = no_errors_helpers + fails
+
+     call solve_LLS_randomised_tests(options,fails)
+     no_errors_helpers = no_errors_helpers + fails
+
      call findbeta_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 

@@ -2427,6 +2427,175 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
    end subroutine solve_LLS_dgesv_tests
 
+   subroutine solve_LLS_lsqr_tests(options, fails)
+     type( nlls_options ), intent(inout) :: options
+     integer, intent(out) :: fails
+
+     real(wp), allocatable :: J(:,:), J_copy(:,:), Jd(:), f(:), d(:), x_calc(:), x_true(:)
+     real(wp) :: normerror
+     integer :: n, m, i, k, l
+     type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
+     type( nlls_inform ) :: inform
+
+     fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
+
+     n = 5
+     m = 30
+
+     fails = 0
+
+     ! setup without LSQR option, so LSQR workspace isn't initialised
+     options%lls_solver = 1
+     allocate(J(m,n), J_copy(m,n), f(m), d(m), Jd(m), x_calc(n), x_true(n))
+     call setup_workspaces(work,n,m,options,inform)
+
+     ! this is mostly a generic version of the matrices in the other tests;
+     ! i.e. J = [ 1, 2, 3, 4, 5...] reshaped to (n, m)
+     ! but in this case we need a bigger matrix to ensure we get a decent sketch
+     ! and we add a multiplicative factor to make the matrix full-rank
+     do k = 1, m*n
+       i = ((k-1) / n) + 1
+       l = mod(k-1, n) + 1
+       J(i, l) = real(k + i*l, wp)
+     end do
+   
+     do k = 1, m
+       f(k) = 7.0_wp + real(k, wp) * 2.0_wp
+     end do
+
+     J_copy = J
+     d = f
+     options%nlls_method = 1 ! dogleg (just so we know what workspace we're in)
+     options%lls_solver = 2 ! LSQR
+     options%allow_fallback_method = .false.
+
+     call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+     if ( inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR ) then
+         write (*, *) 'solve_LLS LSQR test failed: wrong error message returned when workspace unallocated'
+        write(*,*) 'status = ', inform%status, " (expected ",NLLS_ERROR_WORKSPACE_ERROR,")"
+        fails = fails + 1
+     end if
+
+     call remove_workspaces(work,options)
+     call setup_workspaces(work,n,m,options,inform)
+
+
+     ! test correct residual
+     call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+     if ( inform%status .ne. 0 ) then
+         write (*, *) 'solve_LLS LSQR test failed: error message returned'
+         write(*,*) 'status = ', inform%status, " (expected 0)"
+        if (inform%status == NLLS_ERROR_FROM_EXTERNAL) then
+           write(*,*) 'external return = ', inform%external_return 
+           write(*,*) 'external name = ', inform%external_name
+        end if
+        fails = fails + 1
+     end if
+
+     ! check answer
+     call mult_J(J,n,m,d,Jd,.True.)
+     normerror = norm2(Jd - f)
+     if ( .not. normerror < 1.0e-12_wp ) then
+        ! wrong answer, as data chosen to fit
+        write(*,*) 'solve_LLS LSQR test failed: wrong solution returned'
+        write(*,*) '||Jd - f|| = ', normerror
+        fails = fails + 1
+     end if
+     
+     call nlls_finalize(work,options,inform)
+     call reset_default_options(options)
+   end subroutine solve_LLS_lsqr_tests
+
+   subroutine solve_LLS_randomised_tests(options,fails)
+     type( nlls_options ), intent(inout) :: options
+     integer, intent(out) :: fails
+  
+     real(wp), allocatable :: J(:,:), J_copy(:,:), Jd(:), d(:), f(:)
+     real(wp) :: normerror
+     integer :: n,m,k,i,l,sketch_method
+     type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
+     type( nlls_inform ) :: inform
+
+     fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
+  
+     n = 5
+     m = 60
+     
+     options%nlls_method = 1 ! dogleg (just so we know what workspace we're in)
+     options%lls_solver = 3  ! randomised solver
+     options%allow_fallback_method = .false.
+  
+     allocate(J(m,n), J_copy(m,n), Jd(m), d(m), f(m))
+
+     call setup_workspaces(work,n,m,options,inform)
+
+     ! ensure solver gives error if sketch size is not a positive integer
+     options%sketch_size = 0
+     call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+     if ( inform%status .ne. NLLS_ERROR_BAD_SKETCH_SIZE ) then
+         write (*, *) 'solve_LLS randomised test failed: wrong error message returned'
+         write(*,*) 'status = ', inform%status, " (expected ",NLLS_ERROR_BAD_SKETCH_SIZE,")"
+         fails = fails + 1
+     end if
+     inform%status = 0
+
+     call remove_workspaces(work,options)
+
+     options%sketch_size = 10 ! reset to valid sketch size
+
+     ! this is mostly a generic version of the matrices in the other tests;
+     ! i.e. J = [ 1, 2, 3, 4, 5...] reshaped to (n, m)
+     ! but in this case we need a bigger matrix to ensure we get a decent sketch
+     ! and we add a multiplicative factor to make the matrix full-rank
+     do k = 1, m*n
+       i = ((k-1) / n) + 1
+       l = mod(k-1, n) + 1
+       J(i, l) = real(k + i*l, wp)
+     end do
+    
+     do k = 1, m
+       f(k) = 7.0_wp + real(k, wp) * 2.0_wp
+     end do
+
+     do sketch_method = 1, 2
+       options%sketch_method = sketch_method
+       call setup_workspaces(work,n,m,options,inform)
+
+       J_copy = J
+       d = f
+       call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+       if ( inform%status .ne. 0 ) then
+        write (*, *) 'solve_LLS randomised test failed: error message returned'
+        write(*,*) 'status = ', inform%status, " (expected 0)"
+        write(*,*) 'sketch method = ', sketch_method
+        if (inform%status == NLLS_ERROR_FROM_EXTERNAL) then
+          write(*,*) 'external return = ', inform%external_return 
+          write(*,*) 'external name = ', inform%external_name
+        end if
+        fails = fails + 1
+      end if
+      call mult_J(J,n,m,d,Jd,.True.)
+      normerror = norm2(Jd - f)
+      if ( .not. normerror < 1.0e-11_wp ) then
+           ! wrong answer, as data chosen to fit
+           write(*,*) 'solve_LLS randomised test failed: wrong solution returned'
+           write(*,*) '||Jd - f|| = ', normerror
+           write(*,*) 'sketch method = ', sketch_method
+           fails = fails + 1
+        end if
+        call remove_workspaces(work,options)
+      end do
+      call nlls_finalize(work,options,inform)
+      call reset_default_options(options)
+  
+    end subroutine solve_LLS_randomised_tests
+
    subroutine findbeta_tests(options,fails)
 
      type( nlls_options ), intent(inout) :: options
