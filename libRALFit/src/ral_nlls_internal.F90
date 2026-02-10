@@ -1460,6 +1460,7 @@ lp: do while (.not. success)
                         options, inform)
                 end if
                 subproblem_method = 2 ! try aint next
+
                 call dogleg(J,f,hf,g,n,m,Delta,d,norm_S_d, &
                      options,inform,w%dogleg_ws)
                 if (inform%status == 0) subproblem_success = .true.
@@ -1976,9 +1977,9 @@ lp: do while (.not. success)
        ! Solve (A+lam*B)x=-v:
        ! 1. we can use w%B to actually store A + lam * B
         w%B(:,:) = A(:,:)
-        w%p1(:) = -v(:)
         Do i = 1, n
           w%B(i,i) = w%B(i,i) + lam
+          w%p1(i) = -v(i)
         End Do
         call solve_LLS_nocopy(w%B, w%p1, n, n, inform, w%solve_LLS_ws, options, pd)
         if (inform%status /= 0) goto 100
@@ -2212,7 +2213,7 @@ lp:  do i = 1, options%more_sorensen_maxits
              Write(rec(1), Fmt=5040)
              Call Printmsg(5,.False.,options,1,rec)
            End If
-           goto 100 
+           goto 100
         end if
 
         w%q(:) = d ! w%q = R'\d
@@ -2557,9 +2558,8 @@ lp:  do i = 1, options%more_sorensen_maxits
         elseif (region == 3) then
            call shift_matrix(A,sigma + sigma_shift,w%AplusSigma,n)
            ! solve (A + sigma)d = -v
-           w%LtL(1:n,1:n) = w%AplusSigma(1:n,1:n)
            d(1:n) = -v(1:n)
-           call solve_LLS_nocopy(w%LtL,d,n,n,inform,w%lls_ws,options,.true.) 
+           call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.) 
 
            if (inform%status == 0) then
               region = 2
@@ -3445,7 +3445,6 @@ lp:  do i = 1, options%more_sorensen_maxits
          call PREC(gemv)('T',m,n,alpha,J,max(1,m),x,1,beta,Jtx,1)
        End If
      end subroutine mult_Jt
-
 
      subroutine scale_J_by_weights(J,n,m,weights,options)
        Implicit None

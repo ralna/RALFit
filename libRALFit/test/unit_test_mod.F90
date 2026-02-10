@@ -2174,10 +2174,22 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      call setup_workspaces(work,n,m,options,status)
 
-     allocate(J(m,n), JT(m,n), f(m), d(n), Jd(m))
-     J = reshape([ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
-           6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ], [m, n])
-     f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
+     allocate(J(m,n), JT(n,m), f(m), d(n), Jd(m))
+     J(1, 1) = 1.0_wp
+     J(2, 1) = 2.0_wp
+     J(3, 1) = 3.0_wp
+     J(4, 1) = 4.0_wp
+     J(5, 1) = 5.0_wp
+     J(1, 2) = 6.0_wp
+     J(2, 2) = 7.0_wp
+     J(3, 2) = 8.0_wp
+     J(4, 2) = 9.0_wp
+     J(5, 2) = 10.0_wp
+     f(1) = 7.0_wp
+     f(2) = 9.0_wp
+     f(3) = 11.0_wp
+     f(4) = 13.0_wp
+     f(5) = 15.0_wp
 
      call solve_LLS(j,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
                     d,n,m,status, &
@@ -2204,9 +2216,21 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 !          4.0_wp,  9.0_wp,
 !          5.0_wp, 10.0_wp ]
 !    Jacobian Transpose:
-     JT = reshape([ 1.0_wp, 6.0_wp, 2.0_wp, 7.0_wp, 3.0_wp, &
-           8.0_wp, 4.0_wp, 9.0_wp, 5.0_wp, 10.0_wp ], [n,m])
-     f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
+     JT(1, 1) = 1.0_wp
+     JT(2, 1) = 6.0_wp
+     JT(1, 2) = 2.0_wp
+     JT(2, 2) = 7.0_wp
+     JT(1, 3) = 3.0_wp
+     JT(2, 3) = 8.0_wp
+     JT(1, 4) = 4.0_wp
+     JT(2, 4) = 9.0_wp
+     JT(1, 5) = 5.0_wp
+     JT(2, 5) = 10.0_wp
+     f(1) = 7.0_wp
+     f(2) = 9.0_wp
+     f(3) = 11.0_wp
+     f(4) = 13.0_wp
+     f(5) = 15.0_wp
 
      options%fortran_jacobian = .false.
      call solve_LLS(jt,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &

@@ -1,3 +1,7 @@
+! Copyright (c) 2020, The Science and Technology Facilities Council (STFC)
+! All rights reserved.
+! Copyright (C) 2020 Numerical Algorithms Group (NAG). All rights reserved.
+! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
 ! ral_nlls_linear :: linear solvers for internal use in RALFit
 
 #include "preprocessor.FPP"
