@@ -13,11 +13,11 @@ module MODULE_PREC(ral_nlls_linear)
   implicit none
 
   private
-  public :: solve_LLS, solve_LLS_nocopy
+  public :: solve_LLS
 
 contains
   ! todo: Jacobian argument
-  subroutine solve_LLS(A,b,A_out,x,n,m,inform,w,options,pd)
+  subroutine solve_LLS(A, b, n, m, inform, w, options, pd)
 !  -----------------------------------------------------------------
 !  solve_LLS, a subroutine to solve a linear least squares problem
 !  -----------------------------------------------------------------
@@ -25,51 +25,20 @@ contains
 !  using the method specified in options%lls_solver
 !  Input:
 !    A         - LHS matrix of the least squares problem 
-!    b         - The RHS, overwritten with x on output 
+!    b         - The RHS, overwritten with result x on output
 !    n         - Number of columns in A
 !    m         - Number of rows in A
 !    inform    - NLLS_inform structure
-!    options   - NLLS_options structure
 !    w         - workspace structure
+!    options   - NLLS_options structure
 !    pd        - logical, true if A is known to be positive definite
-!  Output:
-!    A_out     - output copy of the original A matrix
-!    x         - solution vector 
-!    inform    - NLLS_inform structure
-!    work      - updated workspace structure
 !  -----------------------------------------------------------------
     implicit none
+    real(wp), intent(inout), contiguous :: A(:,:), b(:)
     integer, intent(in) :: n, m
-    real(wp), intent(in) :: A(n,m)
-    real(wp), intent(in) :: b(m)
-    real(wp), intent(out) :: A_out(n,m)
-    real(wp), intent(out) :: x(n)
     type(NLLS_inform), intent(inout) :: inform
-    type(NLLS_options), Intent(In) :: options 
     type(solve_LLS_work), intent(inout) :: w
-    logical, intent(in) :: pd
-
-    real(wp) :: b_out(m)
-
-    A_out = A
-    b_out = b
-
-    call solve_LLS_nocopy(A_out, b_out, n, m, inform, w, options, pd)
-    if (inform%status == 0) then
-      x(1:n) = b_out(1:n)
-    end if
-
-  end subroutine solve_LLS
-
-  subroutine solve_LLS_nocopy(A, b, n, m, inform, w, options, pd)
-!  linear solver core which overwrites A and b. 
-    implicit none
-    integer, intent(in) :: n, m
-    real(wp), dimension(m,n), intent(inout) :: A
-    real(wp), dimension(m), intent(inout) :: b
-    type(NLLS_inform), intent(inout) :: inform
     type(NLLS_options), intent(in) :: options 
-    type(solve_LLS_work), intent(inout) :: w
     logical, intent(in) :: pd
 
     select case (options%lls_solver) 
@@ -92,13 +61,12 @@ contains
     end select
 
 100 continue
-  end subroutine solve_LLS_nocopy
+  end subroutine solve_LLS
 
   subroutine solve_gels(A,b,n,m,inform,w,options)
 !   Wrapper around LAPACK's ?gels
    implicit none 
-   REAL(wp), DIMENSION(:,:), INTENT(INOUT) :: A
-   REAL(wp), DIMENSION(:), INTENT(INOUT) :: b
+   real(wp), intent(inout), contiguous :: A(:,:), b(:)
    INTEGER, INTENT(IN) :: n, m
    type(NLLS_inform), INTENT(INOUT) :: inform
    type(NLLS_options), Intent(In) :: options 
@@ -129,8 +97,7 @@ contains
   subroutine solve_gesv(A,b,n,inform)
 !   Wrapper around LAPACK's ?gesv
     implicit none
-    REAL(wp), DIMENSION(:,:), INTENT(INOUT) :: A
-    REAL(wp), DIMENSION(:), INTENT(INOUT) :: b
+    real(wp), intent(inout), contiguous :: A(:,:), b(:)
     INTEGER, INTENT(IN) :: n
     type(NLLS_inform), INTENT(INOUT) :: inform
 
@@ -148,8 +115,8 @@ contains
   subroutine solve_posv(A,b,n,inform)
 !   Wrapper around LAPACK's ?posv for positive definite systems
     implicit none
-    REAL(wp), DIMENSION(:,:), INTENT(INOUT) :: A
-    REAL(wp), DIMENSION(:), INTENT(INOUT) :: b
+    REAL(wp), DIMENSION(:,:), INTENT(INOUT), contiguous :: A
+    REAL(wp), DIMENSION(:), INTENT(INOUT), contiguous :: b
     INTEGER, INTENT(IN) :: n
     type(NLLS_inform), INTENT(INOUT) :: inform
 

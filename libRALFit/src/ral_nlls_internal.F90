@@ -14,7 +14,7 @@ module MODULE_PREC(ral_nlls_internal)
   Use MODULE_PREC(ral_nlls_printing)
   Use MODULE_PREC(ral_nlls_bounds)
   Use MODULE_PREC(ral_nlls_types), Only: PREC(nrm2), PREC(dot)
-  use MODULE_PREC(ral_nlls_linear), only: solve_LLS, solve_LLS_nocopy
+  use MODULE_PREC(ral_nlls_linear), only: solve_LLS
 
   implicit none
 
@@ -1805,7 +1805,7 @@ lp: do while (.not. success)
         ! linear model...
         w%solve_LLS_ws%Jlls = reshape(J, [n,m])
         w%solve_LLS_ws%temp(1:m) = f(1:m)
-        call solve_LLS_nocopy(w%solve_LLS_ws%Jlls,w%solve_LLS_ws%temp,n,m,inform,w%solve_LLS_ws,options,.false.)
+        call solve_LLS(w%solve_LLS_ws%Jlls,w%solve_LLS_ws%temp,n,m,inform,w%solve_LLS_ws,options,.false.)
         if ( inform%status /= 0 ) goto 100
         w%d_gn = -w%solve_LLS_ws%temp(1:n)
      case default
@@ -1900,7 +1900,7 @@ lp: do while (.not. success)
 
      w%LtL(:, :) = A(:, :)
      w%p0(:) = -v(:)
-     call solve_LLS_nocopy(w%LtL,w%p0,n,n,inform,w%solve_LLS_ws,options,pd)
+     call solve_LLS(w%LtL,w%p0,n,n,inform,w%solve_LLS_ws,options,pd)
      if (inform%status /= 0) goto 100
 
 
@@ -1960,7 +1960,7 @@ lp: do while (.not. success)
         w%M0_small(:,:) = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
         w%q(:) = -v(:)
-        call solve_LLS_nocopy(w%M0_small, w%q, n, n, inform, w%solve_LLS_ws, options, pd)
+        call solve_LLS(w%M0_small, w%q, n, n, inform, w%solve_LLS_ws, options, pd)
         if (inform%status /= 0) goto 100
 
         ! find max eta st ||q + eta v(:,1)||_B = Delta
@@ -1981,7 +1981,7 @@ lp: do while (.not. success)
           w%B(i,i) = w%B(i,i) + lam
           w%p1(i) = -v(i)
         End Do
-        call solve_LLS_nocopy(w%B, w%p1, n, n, inform, w%solve_LLS_ws, options, pd)
+        call solve_LLS(w%B, w%p1, n, n, inform, w%solve_LLS_ws, options, pd)
         if (inform%status /= 0) goto 100
      end if
 
@@ -2099,7 +2099,7 @@ lp: do while (.not. success)
      Else
        ! solve (A+sigma)d = -v
        d(1:n) = -v(1:n)
-       call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
+       call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
      End If
      if (inform%status == 0) then
         ! A is symmetric positive definite....
@@ -2247,7 +2247,7 @@ lp:  do i = 1, options%more_sorensen_maxits
            call shift_matrix(A,sigma,w%AplusSigma,n)
            ! solve (A + sigma)d = -v 
            d(1:n) = -v(1:n) 
-           call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
+           call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
         end if
         if (inform%status /= 0) goto 100
 
@@ -2381,7 +2381,7 @@ lp:  do i = 1, options%more_sorensen_maxits
            ! solve (A + sigma)d = -v
            w%LtL(1:n,1:n) = w%AplusSigma(1:n,1:n)
            d(1:n) = -v(1:n)
-           call solve_LLS_nocopy(w%LtL,d,n,n,inform,w%lls_ws,options,.true.) 
+           call solve_LLS(w%LtL,d,n,n,inform,w%lls_ws,options,.true.) 
         else
            factorization_done = .false.
         end if
@@ -2559,7 +2559,7 @@ lp:  do i = 1, options%more_sorensen_maxits
            call shift_matrix(A,sigma + sigma_shift,w%AplusSigma,n)
            ! solve (A + sigma)d = -v
            d(1:n) = -v(1:n)
-           call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.) 
+           call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.) 
 
            if (inform%status == 0) then
               region = 2
@@ -2734,7 +2734,7 @@ lp:  do i = 1, options%more_sorensen_maxits
         call shift_matrix(A,sigma,w%AplusSigma,n)
         ! solve (A + sigma)d = -v 
         d(:) = -v(:)
-        call solve_LLS_nocopy(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
+        call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
         if ( inform%status == 0 ) then
             successful_shift = .true.
         else
@@ -2922,7 +2922,7 @@ lp:  do i = 1, options%more_sorensen_maxits
         ! solve (A+sigma)d = -v
         w%LtL(1:n, 1:n) = w%AplusSigma(1:n,1:n)
         d(1:n) = -v(1:n)
-        call solve_LLS_nocopy(w%LtL,d,n,n,inform,w%lls_ws,options,.true.)
+        call solve_LLS(w%LtL,d,n,n,inform,w%lls_ws,options,.true.)
         ! informa%status is passed along, this routine exits here
      else
 !      Feature not yet implemented, this should have been caught in
