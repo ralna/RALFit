@@ -40,6 +40,8 @@ Possible values are:
       -  One or more elements in the Jacobian appear to be wrong
     * - -20
       -  Weights vector must be sufficiently positive
+    * - -21
+      -  Unsupported LLS solver (``lls_solver``) specified in options. 
     * - -101
       -  Unsupported model in dogleg (``nlls_method=1``).
     * - -201

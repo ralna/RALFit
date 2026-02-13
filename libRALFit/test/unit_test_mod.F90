@@ -10,6 +10,7 @@ module MODULE_PREC(unit_test_mod)
 
   use MODULE_PREC(ral_nlls)
   use MODULE_PREC(ral_nlls_internal)
+  use MODULE_PREC(ral_nlls_linear)
   use MODULE_PREC(ral_nlls_workspaces)
   implicit none
 
@@ -1767,7 +1768,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
-        write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
+        write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift and nd /= Delta'
         write(*,*) 'status = ', status%status, ' returned'
         fails = fails + 1
         status%status = 0
@@ -1781,7 +1782,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call more_sorensen(A,g,n,m,Delta,d,normd,options,status,&
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. 0) then
-        write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift'
+        write(*,*) 'Error: unexpected error in more-sorensen test with non-zero shift and nd = Delta'
         write(*,*) 'status = ', status%status, ' returned'
         fails = fails + 1
         status%status = 0
@@ -1813,6 +1814,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
           work%calculate_step_ws%more_sorensen_ws)
      if (status%status .ne. NLLS_ERROR_MS_MAXITS) then
         write(*,*) 'Error: Expected maximum iterations error in more_sorensen'
+        write(*,*) 'status = ', status%status, ' returned'
         fails = fails + 1
      end if
      status%status = 0
@@ -1934,6 +1936,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            if ( (status%status .ne. 0)) then
               write(*,*) 'Error: unexpected error in ', method_name
               write(*,*) '(status = ',status%status,')'
+              write(*,*) '(external return = ',status%external_return,')'
               write(*,*) 'TR Book Example ',problem_name
               fails = fails + 1
               status%status = 0
@@ -2149,12 +2152,37 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
    end subroutine all_eig_symm_tests
 
-   subroutine solve_LLS_tests(options,fails)
+   subroutine solve_LLS_general_tests(options,fails)
+     ! Tests for solve_LLS that do not depend on any actual solvers, just the logic of the routine itself
+     type( nlls_options ), intent(inout) :: options
+     integer, intent(out) :: fails
+
+     ! test that a BAD_LLS_SOLVER error is returned if an invalid solver is passed in
+     real(wp), allocatable :: J(:,:), d(:)
+     integer :: n,m
+     type( solve_LLS_work ) :: work
+     type( nlls_inform ) :: inform
+
+     fails = 0
+     options%lls_solver = -1 ! invalid solver
+
+     call solve_LLS(J,d,n,m,inform,work,options,.false.)
+
+      if (inform%status .ne. NLLS_ERROR_BAD_LLS_SOLVER) then
+          write(*,*) 'Error: expected BAD_LLS_SOLVER error when passing uninitialized work to solve_LLS'
+          write(*,*) 'status = ', inform%status, ' returned'
+          fails = fails + 1
+      end if 
+
+   end subroutine solve_LLS_general_tests
+
+
+   subroutine solve_LLS_dgels_tests(options,fails)
 
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
 
-     real(wp), allocatable :: J(:), f(:), d(:), Jd(:)
+     real(wp), allocatable :: J(:,:), J_copy(:,:), f(:), d(:), Jd(:), JT(:,:), JT_copy(:,:)
      real(wp) :: normerror
      integer :: n,m
      type( nlls_workspace ) :: work
@@ -2165,20 +2193,37 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      work%iw_ptr => iw
      iw%iw_ptr => iw
 
+     options%lls_solver = 1 ! LAPACK
      options%nlls_method = 1 ! dogleg
-
      n = 2
      m = 5
 
      call setup_workspaces(work,n,m,options,status)
 
-     allocate(J(n*m), f(m), d(n), Jd(m))
-     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
-           6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
-     f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
+     allocate(J(m,n), J_copy(m,n), &
+              JT(n,m), JT_copy(n,m), &
+              f(m), d(n), Jd(m))
+     J(1, 1) = 1.0_wp
+     J(2, 1) = 2.0_wp
+     J(3, 1) = 3.0_wp
+     J(4, 1) = 4.0_wp
+     J(5, 1) = 5.0_wp
+     J(1, 2) = 6.0_wp
+     J(2, 2) = 7.0_wp
+     J(3, 2) = 8.0_wp
+     J(4, 2) = 9.0_wp
+     J(5, 2) = 10.0_wp
+     f(1) = 7.0_wp
+     f(2) = 9.0_wp
+     f(3) = 11.0_wp
+     f(4) = 13.0_wp
+     f(5) = 15.0_wp
 
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
+     J_copy = J
+     d = f
+
+     call solve_LLS(J_copy,d,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
      if ( status%status .ne. 0 ) then
          write (*, *) '[id:1] solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -2186,13 +2231,14 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
      ! check answer
      call mult_J(J,n,m,d,Jd,.True.)
-     normerror = norm2(Jd + f)
+     normerror = norm2(Jd - f)
      if ( normerror > 1.0e-12_wp ) then
         ! wrong answer, as data chosen to fit
         write(*,*) 'solve_LLS test failed: wrong solution returned'
         write(*,*) '||Jd - f|| = ', normerror
         fails = fails + 1
      end if
+     status%status = 0
 
 !    J = [ 1.0_wp,  6.0_wp,
 !          2.0_wp,  7.0_wp,
@@ -2200,41 +2246,59 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 !          4.0_wp,  9.0_wp,
 !          5.0_wp, 10.0_wp ]
 !    Jacobian Transpose:
-     J = [ 1.0_wp, 6.0_wp, 2.0_wp, 7.0_wp, 3.0_wp, &
-           8.0_wp, 4.0_wp, 9.0_wp, 5.0_wp, 10.0_wp ]
-     f = [ 7.0_wp, 9.0_wp, 11.0_wp, 13.0_wp, 15.0_wp ]
+     JT(1, 1) = 1.0_wp
+     JT(2, 1) = 6.0_wp
+     JT(1, 2) = 2.0_wp
+     JT(2, 2) = 7.0_wp
+     JT(1, 3) = 3.0_wp
+     JT(2, 3) = 8.0_wp
+     JT(1, 4) = 4.0_wp
+     JT(2, 4) = 9.0_wp
+     JT(1, 5) = 5.0_wp
+     JT(2, 5) = 10.0_wp
+     f(1) = 7.0_wp
+     f(2) = 9.0_wp
+     f(3) = 11.0_wp
+     f(4) = 13.0_wp
+     f(5) = 15.0_wp
 
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.False.)
+     JT_copy = JT
+     d = f
+
+     options%fortran_jacobian = .false.
+     call solve_LLS(JT_copy,d,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+
      if ( status%status .ne. 0 ) then
-         write (*, *) '[id:2] solve_LLS test failed: wrong error message returned'
+        write (*, *) '[id:2] solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
         fails = fails + 1
-     end if
+     else
      ! check answer using J and not JT!!!
-     J = [ 1.0_wp, 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, &
-           6.0_wp, 7.0_wp, 8.0_wp, 9.0_wp, 10.0_wp ]
      call mult_J(J,n,m,d,Jd,.True.)
-     normerror = norm2(Jd + f)
+     normerror = norm2(Jd - f)
      if ( normerror > 1.0e-12_wp ) then
         ! wrong answer, as data chosen to fit
         write(*,*) 'solve_LLS transpose test failed: wrong solution returned'
         write(*,*) '||J^Td - f|| = ', normerror
         fails = fails + 1
      end if
+     end if
+     options%fortran_jacobian = .true.
 
-      n = 65
-      m = 60
-     deallocate(J,f,Jd,d)
-     allocate(J(n*m), f(m), d(n))
+     n = 65
+     m = 60
+     deallocate(J,JT,f,Jd,d)
+     allocate(J(m,n), f(m), d(n))
 
      call setup_workspaces(work,n,m,options,status)
 
-     J = 1.0_wp
-     J(1:m) = 0.0_wp
+     J(:,:) = 1.0_wp
+     J(:,1) = 0.0_wp
      f = 1.0_wp
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
+     call solve_LLS(j,f,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+
      if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then
          write (*, *) '[id:3] solve_LLS test failed: wrong error message returned'
         write(*,*) 'status = ', status%status, " (expected ",NLLS_ERROR_FROM_EXTERNAL,")"
@@ -2242,20 +2306,126 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
      status%status = 0
 
-     call nlls_finalize(work, options, status)
+     call remove_workspaces(work, options)
 
-     call solve_LLS(J,f,n,m,d,status, &
-          work%calculate_step_ws%dogleg_ws%solve_LLS_ws,.True.)
+     call solve_LLS(j,f,n,m,status, &
+                    work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
         fails = fails + 1
      end if
+     deallocate(J,f,d)
 
 
      call reset_default_options(options)
 
-   end subroutine solve_LLS_tests
+   end subroutine solve_LLS_dgels_tests
 
+   subroutine solve_LLS_dposv_tests(options,fails)
+
+     type( nlls_options ), intent(inout) :: options
+     integer, intent(out) :: fails
+
+     real(wp), allocatable :: A(:,:), b(:), LtL(:,:), x_calc(:), x_true(:), tol
+     integer :: n
+     type( nlls_inform ) :: status
+     type(solve_LLS_work) :: w
+
+     continue
+     if (wp == np) then
+        tol = 1.0e-12_wp
+     else
+        tol = 5.0e-7_wp
+     end if
+
+     fails = 0
+     options%lls_solver = 1 ! LAPACK
+
+     n = 2
+     allocate(A(n,n), b(n), LtL(n,n), x_calc(n), x_true(n))
+     A = 0.0_wp
+     A(1,1) = 4.0_wp
+     A(2,1) = 1.0_wp
+     A(1,2) = 1.0_wp
+     A(2,2) = 2.0_wp
+     x_true(1) = 1.0_wp
+     x_true(2) = 1.0_wp
+     b(1) = 5.0_wp
+     b(2) = 3.0_wp
+     call solve_LLS(A, b, n, n, status, w, options, .true.)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: solve_LLS info = ', status%status, ' returned from solve_LLS'
+        fails = fails + 1
+     else if (norm2(b-x_true) > tol) then
+       write(*,*) 'Error: incorrect value returned from solve_LLS for `dposv` case'
+        write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', tol
+        fails = fails + 1
+     end if
+
+     call reset_default_options(options)
+
+   end subroutine solve_LLS_dposv_tests
+
+   subroutine solve_LLS_dgesv_tests(options,fails)
+
+     type( nlls_options ), intent(inout) :: options
+     integer, intent(out) :: fails
+
+     real(wp), allocatable :: A(:,:), b(:), x_calc(:), x_true(:)
+     integer :: n,m
+     type( nlls_inform ) :: status
+     type( nlls_workspace ) :: work
+     type( nlls_workspace ), Target :: iw
+
+     fails = 0
+     work%iw_ptr => iw
+     iw%iw_ptr => iw
+
+     n = 2
+     m = 3
+
+     allocate(A(n,n), b(n), x_calc(n), x_true(n))
+
+     options%lls_solver = 1 ! LAPACK
+     options%nlls_method = 2
+     options%model = 2
+     call setup_workspaces(work,n,m,options,status)
+
+     A = 0.0_wp
+     A(1,1) = 4.0_wp
+     A(2,1) = 1.0_wp
+     A(1,2) = 2.0_wp
+     A(2,2) = 2.0_wp
+     x_true(1) = 1.0_wp
+     x_true(2) = 1.0_wp
+     x_calc(1) = 6.0_wp
+     x_calc(2) = 3.0_wp
+     call solve_LLS(A, x_calc, n, n, status, &
+          work%calculate_step_ws%AINT_tr_ws%solve_LLS_ws, options, .false.)
+     if (status%status .ne. 0) then
+        write(*,*) 'Error: info = ', status%status, ' returned from solve_LLS'
+        fails = fails + 1
+        status%status = 0
+     else if (norm2(x_true-x_calc) > 1e-12) then
+       write(*,*) 'Error: incorrect value returned from solve_LLS for `dgesv` case'
+       write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', 1e-12 
+       fails = fails + 1
+     end if
+
+     A = 0.0_wp
+     b(1) = 6.0_wp
+     b(2) = 3.0_wp
+     call solve_LLS(A, b, n, n, status, &
+          work%calculate_step_ws%AINT_tr_ws%solve_LLS_ws, options, .false.)
+     if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
+        write(*,*) 'Error: expected error return from solve_LLS, got info = ', status%status
+        fails = fails + 1
+     end if
+
+     call nlls_finalize(work,options,status)
+     call reset_default_options(options)
+
+   end subroutine solve_LLS_dgesv_tests
 
    subroutine findbeta_tests(options,fails)
 
@@ -2597,126 +2767,6 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      call reset_default_options(options)
 
    end subroutine switch_to_quasi_newton_tests
-
-
-   subroutine minus_solve_spd_tests(options,fails)
-
-     type( nlls_options ), intent(inout) :: options
-     integer, intent(out) :: fails
-
-     real(wp), allocatable :: A(:,:), b(:), LtL(:,:), x_calc(:), x_true(:), tol
-     integer :: n
-     type( nlls_inform ) :: status
-
-     continue
-     if (wp == np) then
-        tol = 1.0e-12_wp
-     else
-        tol = 5.0e-7_wp
-     end if
-
-     fails = 0
-
-     n = 2
-     allocate(A(n,n), b(n), LtL(n,n), x_calc(n), x_true(n))
-     A = 0.0_wp
-     A(1,1) = 4.0_wp
-     A(2,1) = 1.0_wp
-     A(1,2) = 1.0_wp
-     A(2,2) = 2.0_wp
-     x_true(1) = 1.0_wp
-     x_true(2) = 1.0_wp
-     b(1) = 5.0_wp
-     b(2) = 3.0_wp
-     ! note: b is inverted in minus_solve_spd, so we need to invert it (previously)
-     b(:) = -b(:)
-     call minus_solve_spd(A,b,LtL,x_calc,n,status)
-     if (status%status .ne. 0) then
-        write(*,*) 'Error: minus_solve_spd info = ', status%status, ' returned from minus_solve_spd'
-        fails = fails + 1
-     else if (norm2(x_calc-x_true) > tol) then
-        write(*,*) 'Error: incorrect value returned from minus_solve_spd'
-        write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', tol
-        fails = fails + 1
-     end if
-
-     ! test also _nocopy variant !
-     call minus_solve_spd_nocopy(A,b,x_calc,n,status)
-     if (status%status .ne. 0) then
-        write(*,*) 'Error: minus_solve_spd_nocopy info = ', status%status, ' returned from minus_solve_spd'
-        fails = fails + 1
-     else if (norm2(x_calc-x_true) > tol) then
-        write(*,*) 'Error: incorrect value returned from minus_solve_spd_nocopy'
-        write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', tol
-        fails = fails + 1
-     end if
-
-     call reset_default_options(options)
-
-   end subroutine minus_solve_spd_tests
-
-   subroutine minus_solve_general_tests(options,fails)
-
-     type( nlls_options ), intent(inout) :: options
-     integer, intent(out) :: fails
-
-     real(wp), allocatable :: A(:,:), b(:), x_calc(:), x_true(:)
-     integer :: n,m
-     type( nlls_inform ) :: status
-     type( nlls_workspace ) :: work
-     type( nlls_workspace ), Target :: iw
-
-     fails = 0
-     work%iw_ptr => iw
-     iw%iw_ptr => iw
-
-     n = 2
-     m = 3
-
-     allocate(A(n,n), b(n), x_calc(n), x_true(n))
-
-     options%nlls_method = 2
-     options%model = 2
-     call setup_workspaces(work,n,m,options,status)
-
-     A = 0.0_wp
-     A(1,1) = 4.0_wp
-     A(2,1) = 1.0_wp
-     A(1,2) = 2.0_wp
-     A(2,2) = 2.0_wp
-     x_true(1) = 1.0_wp
-     x_true(2) = 1.0_wp
-     b(1) = 6.0_wp
-     b(2) = 3.0_wp
-     ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
-     b(:) = -b(:)
-     call minus_solve_general(A,b,x_calc,n,status,&
-          work%calculate_step_ws%AINT_tr_ws%minus_solve_general_ws)
-     if (status%status .ne. 0) then
-        write(*,*) 'Error: info = ', status%status, ' returned from minus_solve_general'
-        fails = fails + 1
-        status%status = 0
-     else if (norm2(x_true-x_calc) > 1e-12) then
-        write(*,*) 'Error: incorrect value returned from minus_solve_general'
-        fails = fails + 1
-     end if
-
-     A = 0.0_wp
-     b(1) = 6.0_wp
-     b(2) = 3.0_wp
-     ! note: b is inverted in minus_solve_general, so we need to invert it (previously)
-     b(:) = -b(:)
-     call minus_solve_general(A,b,x_calc,n,status,&
-          work%calculate_step_ws%AINT_tr_ws%minus_solve_general_ws)
-     if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
-        write(*,*) 'Error: expected error return from minus_solve_general, got info = ', status%status
-        fails = fails + 1
-     end if
-
-     call nlls_finalize(work,options,status)
-     call reset_default_options(options)
-
-   end subroutine minus_solve_general_tests
 
    subroutine matmult_inner_tests(options,fails)
 
