@@ -2157,7 +2157,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
 
-     real(wp), allocatable :: J(:,:), f(:), d(:), Jd(:), JT(:,:)
+     real(wp), allocatable :: J(:,:), J_copy(:,:), f(:), d(:), Jd(:), JT(:,:), JT_copy(:,:)
      real(wp) :: normerror
      integer :: n,m
      type( nlls_workspace ) :: work
@@ -2174,7 +2174,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      call setup_workspaces(work,n,m,options,status)
 
-     allocate(J(m,n), JT(n,m), f(m), d(n), Jd(m))
+     allocate(J(m,n), J_copy(m,n), &
+              JT(n,m), JT_copy(n,m), &
+              f(m), d(n), Jd(m))
      J(1, 1) = 1.0_wp
      J(2, 1) = 2.0_wp
      J(3, 1) = 3.0_wp
@@ -2191,8 +2193,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      f(4) = 13.0_wp
      f(5) = 15.0_wp
 
-     call solve_LLS(j,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
-                    d,n,m,status, &
+     J_copy = J
+     d = f
+
+     call solve_LLS(J_copy,d,n,m,status, &
                     work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
      if ( status%status .ne. 0 ) then
          write (*, *) '[id:1] solve_LLS test failed: wrong error message returned'
@@ -2232,9 +2236,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      f(4) = 13.0_wp
      f(5) = 15.0_wp
 
+     JT_copy = JT
+     d = f
+
      options%fortran_jacobian = .false.
-     call solve_LLS(jt,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
-                    d,n,m,status, &
+     call solve_LLS(JT_copy,d,n,m,status, &
                     work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
 
      if ( status%status .ne. 0 ) then
@@ -2264,8 +2270,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      J(:,:) = 1.0_wp
      J(:,1) = 0.0_wp
      f = 1.0_wp
-     call solve_LLS(j,f,work%calculate_step_ws%dogleg_ws%solve_lls_ws%jlls, &
-                    d,n,m,status, &
+     call solve_LLS(j,f,n,m,status, &
                     work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
 
      if ( status%status .ne. NLLS_ERROR_FROM_EXTERNAL ) then
@@ -2277,8 +2282,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      call remove_workspaces(work, options)
 
-     call solve_LLS(j,f,j, &
-                    d,n,m,status, &
+     call solve_LLS(j,f,n,m,status, &
                     work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
      if (status%status .ne. NLLS_ERROR_WORKSPACE_ERROR) then
         write(*,*) 'Error: workspace error not flagged when workspaces not setup'
@@ -2321,23 +2325,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      x_true(2) = 1.0_wp
      b(1) = 5.0_wp
      b(2) = 3.0_wp
-     call solve_LLS(A, b, LtL, x_calc, n, n, status, w, options, .true.)
+     call solve_LLS(A, b, n, n, status, w, options, .true.)
      if (status%status .ne. 0) then
         write(*,*) 'Error: solve_LLS info = ', status%status, ' returned from solve_LLS'
         fails = fails + 1
-     else if (norm2(x_calc-x_true) > tol) then
+     else if (norm2(b-x_true) > tol) then
        write(*,*) 'Error: incorrect value returned from solve_LLS for `dposv` case'
-        write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', tol
-        fails = fails + 1
-     end if
-
-     ! test also _nocopy variant !
-     call solve_LLS_nocopy(A, b, n, n, status, w, options, .true.)
-     if (status%status .ne. 0) then
-        write(*,*) 'Error: solve_LLS info = ', status%status, ' returned from solve_LLS'
-        fails = fails + 1
-     else if (norm2(x_calc-x_true) > tol) then
-       write(*,*) 'Error: incorrect value returned from solve_LLS for `dposv` case (nocopy)'
         write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', tol
         fails = fails + 1
      end if
@@ -2379,7 +2372,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      x_true(2) = 1.0_wp
      x_calc(1) = 6.0_wp
      x_calc(2) = 3.0_wp
-     call solve_LLS_nocopy(A, x_calc, n, n, status, &
+     call solve_LLS(A, x_calc, n, n, status, &
           work%calculate_step_ws%AINT_tr_ws%solve_LLS_ws, options, .false.)
      if (status%status .ne. 0) then
         write(*,*) 'Error: info = ', status%status, ' returned from solve_LLS'
@@ -2394,7 +2387,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      A = 0.0_wp
      b(1) = 6.0_wp
      b(2) = 3.0_wp
-     call solve_LLS_nocopy(A, b, n, n, status, &
+     call solve_LLS(A, b, n, n, status, &
           work%calculate_step_ws%AINT_tr_ws%solve_LLS_ws, options, .false.)
      if (status%status .ne. NLLS_ERROR_FROM_EXTERNAL) then
         write(*,*) 'Error: expected error return from solve_LLS, got info = ', status%status
