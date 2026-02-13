@@ -2152,6 +2152,31 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
    end subroutine all_eig_symm_tests
 
+   subroutine solve_LLS_general_tests(options,fails)
+     ! Tests for solve_LLS that do not depend on any actual solvers, just the logic of the routine itself
+     type( nlls_options ), intent(inout) :: options
+     integer, intent(out) :: fails
+
+     ! test that a BAD_LLS_SOLVER error is returned if an invalid solver is passed in
+     real(wp), allocatable :: J(:,:), d(:)
+     integer :: n,m
+     type( solve_LLS_work ) :: work
+     type( nlls_inform ) :: inform
+
+     fails = 0
+     options%lls_solver = -1 ! invalid solver
+
+     call solve_LLS(J,d,n,m,inform,work,options,.false.)
+
+      if (inform%status .ne. NLLS_ERROR_BAD_LLS_SOLVER) then
+          write(*,*) 'Error: expected BAD_LLS_SOLVER error when passing uninitialized work to solve_LLS'
+          write(*,*) 'status = ', inform%status, ' returned'
+          fails = fails + 1
+      end if 
+
+   end subroutine solve_LLS_general_tests
+
+
    subroutine solve_LLS_dgels_tests(options,fails)
 
      type( nlls_options ), intent(inout) :: options
@@ -2168,6 +2193,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      work%iw_ptr => iw
      iw%iw_ptr => iw
 
+     options%lls_solver = 1 ! LAPACK
      options%nlls_method = 1 ! dogleg
      n = 2
      m = 5
@@ -2313,6 +2339,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      end if
 
      fails = 0
+     options%lls_solver = 1 ! LAPACK
 
      n = 2
      allocate(A(n,n), b(n), LtL(n,n), x_calc(n), x_true(n))
@@ -2359,6 +2386,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      allocate(A(n,n), b(n), x_calc(n), x_true(n))
 
+     options%lls_solver = 1 ! LAPACK
      options%nlls_method = 2
      options%model = 2
      call setup_workspaces(work,n,m,options,status)

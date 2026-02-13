@@ -1424,6 +1424,9 @@ program nlls_test
      call all_eig_symm_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
+     call solve_LLS_general_tests(options,fails)
+     no_errors_helpers = no_errors_helpers + fails
+
      call solve_LLS_dgels_tests(options,fails)
      no_errors_helpers = no_errors_helpers + fails
 
