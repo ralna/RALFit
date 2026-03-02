@@ -1412,7 +1412,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       if ( c_status%iter == status%iter ) then
          resvec_error = norm2(c_status%resvec(1:c_status%iter+1) - &
               status%resvec(1:status%iter+1))
-         if (resvec_error > abstol) then
+         if (.not. resvec_error < abstol) then
             write(*,*) 'Warning: fortran and c resvec differ!'
             write(*,*) 'Different resvecs in 2-norm for'
             write(*,*) 'NLLS_METHOD = ', options%nlls_method
@@ -1940,7 +1940,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
               write(*,*) 'TR Book Example ',problem_name
               fails = fails + 1
               status%status = 0
-           elseif ( normd - Delta > 1e-3 ) then
+           elseif ( .not. normd - Delta < 1e-3 ) then
               write(*,*) 'Error: answer returned outside the TR Radius'
               write(*,*) 'TR Book Example ', trim(problem_name),' using method ',method_name
               write(*,*) 'Delta = ', Delta, '||d|| = ', normd
@@ -2051,7 +2051,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
         if (i == 1) then
            ! check result lies within the trust region
-           if ( abs(dot_product(d,d) - Delta**2) > tol ) then
+           if ( .not. abs(dot_product(d,d) - Delta**2) < tol ) then
               write(*,*) testname,'failed'
               write(*,*) 'Delta = ', Delta, '||d|| = ', sqrt(dot_product(d,d))
               write(*,*) 'sq diff = ', abs(dot_product(d,d) - Delta**2), 'tol = ', tol
@@ -2232,7 +2232,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! check answer
      call mult_J(J,n,m,d,Jd,.True.)
      normerror = norm2(Jd - f)
-     if ( normerror > 1.0e-12_wp ) then
+     if ( .not. normerror < 1.0e-12_wp ) then
         ! wrong answer, as data chosen to fit
         write(*,*) 'solve_LLS test failed: wrong solution returned'
         write(*,*) '||Jd - f|| = ', normerror
@@ -2277,7 +2277,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! check answer using J and not JT!!!
      call mult_J(J,n,m,d,Jd,.True.)
      normerror = norm2(Jd - f)
-     if ( normerror > 1.0e-12_wp ) then
+     if ( .not. normerror < 1.0e-12_wp ) then
         ! wrong answer, as data chosen to fit
         write(*,*) 'solve_LLS transpose test failed: wrong solution returned'
         write(*,*) '||J^Td - f|| = ', normerror
@@ -2356,7 +2356,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      if (status%status .ne. 0) then
         write(*,*) 'Error: solve_LLS info = ', status%status, ' returned from solve_LLS'
         fails = fails + 1
-     else if (norm2(b-x_true) > tol) then
+     else if (.not. norm2(b-x_true) < tol) then
        write(*,*) 'Error: incorrect value returned from solve_LLS for `dposv` case'
         write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', tol
         fails = fails + 1
@@ -2406,7 +2406,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) 'Error: info = ', status%status, ' returned from solve_LLS'
         fails = fails + 1
         status%status = 0
-     else if (norm2(x_true-x_calc) > 1e-12) then
+     else if (.not. norm2(x_true-x_calc) < 1e-12) then
        write(*,*) 'Error: incorrect value returned from solve_LLS for `dgesv` case'
        write(*,*) 'diff norm 2 = ', norm2(x_calc-x_true), 'tol = ', 1e-12 
        fails = fails + 1
@@ -2449,7 +2449,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      if (status%status .ne. 0) then
         write(*,*) 'error -- findbeta did not work: info /= 0'
         fails = fails + 1
-     else if ( ( norm2( a + beta * b ) - 10.0_wp ) > 1e-12 ) then
+     else if ( .not. ( norm2( a + beta * b ) - 10.0_wp ) < 1e-12 ) then
         write(*,*) 'error -- findbeta did not work'
         write(*,*) '|| x + beta y|| = ', norm2( (a + beta * b)-10.0_wp)
         fails = fails + 1
@@ -2493,7 +2493,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      normfnew = 1.0_wp
      md = 1.5_wp
      call calculate_rho(normf, normfnew, md, rho,options)
-     if ( abs(rho - 3.0_wp) > 1e-10) then
+     if ( .not. abs(rho - 3.0_wp) < 1e-10) then
         write(*,*) 'Unexpected answer from calculate_rho'
         write(*,*) 'Expected 3.0, got ', rho
         fails = fails + 1
@@ -2502,7 +2502,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! now, let's check one is returned if alpha = beta
      normfnew = 2.0_wp
      call calculate_rho(normf, normfnew, md, rho,options)
-     if (abs(rho - 1.0_wp) > 1e-10) then
+     if (.not. abs(rho - 1.0_wp) < 1e-10) then
         write(*,*) 'Unexpected answer from calculate_rho'
         write(*,*) 'Expected 1.0, got ', rho
         fails = fails + 1
@@ -2512,7 +2512,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! finally, check that 1 is returned if denominator = 0
      md = 2.0_wp
      call calculate_rho(normf, normfnew, md, rho,options)
-     if (abs(rho - 1.0_wp) > 1e-10) then
+     if (.not. abs(rho - 1.0_wp) < 1e-10) then
         write(*,*) 'Unexpected answer from calculate_rho'
         write(*,*) 'Expected 1.0, got ', rho
         fails = fails + 1
@@ -2552,7 +2552,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! check if rho reduced...
      rho = options%eta_success_but_reduce - 0.5_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta >= 100.0_wp ) then
+     if ( .not. work%Delta <= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         fails = fails + 1
@@ -2562,7 +2562,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! check if rho stays the same...
      rho = (options%eta_success_but_reduce + options%eta_very_successful) / 2
      call update_trust_region_radius(rho,options,status,work)
-     if ( abs(work%Delta - 100.0_wp) > 1e-12 ) then
+     if ( .not. abs(work%Delta - 100.0_wp) < 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not stay the same: Delta = ', work%Delta
         fails = fails + 1
@@ -2573,7 +2573,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      rho = (options%eta_very_successful + options%eta_too_successful) / 2
      work%norm_S_d = 100.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta <= 100.0_wp ) then
+     if ( .not. work%Delta >= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not incease: delta = ', work%Delta
         fails = fails + 1
@@ -2584,7 +2584,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! check if rho stays the same because too successful...
      rho = options%eta_too_successful + 1.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( abs(work%Delta - 100.0_wp) > 1e-12 ) then
+     if ( .not. abs(work%Delta - 100.0_wp) < 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not stay the same: delta = ', work%Delta
         fails = fails + 1
@@ -2609,7 +2609,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! check if rho stays the same because too successful...
      rho = options%eta_too_successful + 1.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( abs(work%Delta - 100.0_wp) > 1e-12 ) then
+     if ( .not. abs(work%Delta - 100.0_wp) < 1e-12 ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not stay the same: delta = ', work%Delta
         fails = fails + 1
@@ -2618,7 +2618,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      rho = options%eta_success_but_reduce - 0.5_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta >= 100.0_wp ) then
+     if ( .not. work%Delta <= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         fails = fails + 1
@@ -2627,7 +2627,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      rho = options%eta_successful - 10.0_wp
      call update_trust_region_radius(rho,options,status,work)
-     if ( work%Delta >= 100.0_wp ) then
+     if ( .not. work%Delta <= 100.0_wp ) then
         write(*,*) 'Unexpected answer from update_trust_region_radius'
         write(*,*) 'Delta did not decrease as expected: delta = ', work%Delta
         fails = fails + 1
@@ -2698,7 +2698,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
      call mult_J(J,m,n,x,Jx,.True.)
-     if ( norm2( Jx - [16.0, 20.0 ] ) > 1e-12) then
+     if ( .not. norm2( Jx - [16.0, 20.0 ] ) < 1e-12) then
         write(*,*) 'error :: mult_J test failed'
         fails = fails + 1
      end if
@@ -2726,7 +2726,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      x = 1.0_wp
      J = [ 1.0 , 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 ]
      call mult_Jt(J,n,m,x,Jtx,.True.)
-     if ( norm2( Jtx - [10.0, 26.0 ] ) > 1e-12) then
+     if ( .not. norm2( Jtx - [10.0, 26.0 ] ) < 1e-12) then
         write(*,*) 'error :: mult_Jt test failed'
         fails = fails + 1
      end if
@@ -2794,7 +2794,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      do i = 1,n
         diff(i) = norm2(AtA(:,i) - AtA_expected(:,i))
      end do
-     if (norm2(diff) > 1e-10) then
+     if (.not. norm2(diff) < 1e-10) then
         write(*,*) 'error :: matmult_inner test failed'
         fails = fails + 1
      end if
@@ -2833,7 +2833,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      do i = 1,m
         diff(i) = norm2(AAt(:,i) - AAt_expected(:,i))
      end do
-     if (norm2(diff) > 1e-10) then
+     if (.not. norm2(diff) < 1e-10) then
         write(*,*) 'error :: matmult_outer test failed'
         fails = fails + 1
      end if
@@ -2871,7 +2871,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      do i = 1, n
         diff(i) = norm2(xxt(i,:) - xxt_exact(i,:))
      end do
-     if (norm2(diff) > 1e-12) then
+     if (.not. norm2(diff) < 1e-12) then
         write(*,*) 'error :: outer_product test failed'
         fails = fails +1
      end if
@@ -2943,7 +2943,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         call min_eig_symm(A,n,ew,ev,options,status, &
              work%calculate_step_ws%more_sorensen_ws%min_eig_symm_ws)
 
-        if ( (abs( ew + 6.0_wp ) > tol ).or.(status%status .ne. 0) ) then
+        if ( .not. (abs( ew + 6.0_wp ) < tol ).or.(status%status .ne. 0) ) then
            write(*,*) 'error :: min_eig_symm test failed -- wrong eig found'
            write(*,*) 'diff = ', abs( ew + 6.0_wp ), 'tol = ', tol
            fails = fails +1
@@ -2958,7 +2958,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
               errnorm = errnorm + (avec(row) - ew * ev(row))**2
            end do
            errnorm = sqrt(errnorm)
-           if (errnorm > tol) then
+           if (.not. errnorm < tol) then
               write(*,*) 'error :: min_eig_symm test failed -- not an eigenvector'
               write(*,*) 'diff = ', errnorm, 'tol = ', tol
               fails = fails +1
@@ -3031,7 +3031,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      if ( status%status .ne. 0 ) then
         write(*,*) 'error :: max_eig test failed, status = ', status%status
         fails = fails + 1
-     elseif ( (abs( ew - 10.0_wp) > tol) ) then
+     elseif ( .not. (abs( ew - 10.0_wp) < tol) ) then
         write(*,*) 'error :: max_eig test failed, incorrect answer'
         write(*,*) 'expected 10.0, got ', ew
         fails = fails + 1
@@ -3075,7 +3075,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
               diff(i) = diff(i) + (tmpA(2) - ew * tmpB(2))**2
               diff(i) = sqrt(diff(i))
            end do
-           if (norm2(diff) > 1e-10) then
+           if (.not. norm2(diff) < 1e-10) then
               write(*,*) 'error :: hard case of max_eig test failed - wrong vectors returned'
               write(*,*) 'diff = ', diff
               fails = fails + 1
@@ -3149,12 +3149,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      AplusSigma = 0.0_wp
      sigma = 5.0_wp
      call shift_matrix(A,sigma,AplusSigma,n)
-     if ( ( (AplusSigma(1,1)-6.0_wp) > 1e-12) .or. &
-          ((AplusSigma(2,2) - 6.0_wp) > 1e-12) ) then
+     if ( .not. ( (AplusSigma(1,1)-6.0_wp) < 1e-12) .and. &
+          (.not. (AplusSigma(2,2) - 6.0_wp) < 1e-12) ) then
         write(*,*) 'Error: incorrect return from shift_matrix'
         fails = fails + 1
-     elseif ( ( (AplusSigma(1,2)-1.0_wp) > 1e-12) .or. &
-          ((AplusSigma(2,1) - 1.0_wp) > 1e-12) ) then
+     elseif ( .not. ( (AplusSigma(1,2)-1.0_wp) < 1e-12) .and. &
+          (.not.(AplusSigma(2,1) - 1.0_wp) < 1e-12) ) then
         write(*,*) 'Error: incorrect return from shift_matrix'
         fails = fails + 1
      end if
