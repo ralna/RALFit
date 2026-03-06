@@ -13,7 +13,7 @@ The package is written in modern Fortran, and it provides a number of interfaces
 
 ## Installation
 
-## Requirements
+### Requirements
 
 RALFit has been tested on Linux, although it should work on other platforms. It requires
 
