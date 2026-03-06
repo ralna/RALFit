@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'RalNLLS'
-description = 'RALFit a nonlinear least square solver'
+description = 'RALFit a nonlinear least squares solver'
 version = '@PROJECT_VERSION@'
 dependencies = ['numpy']
 

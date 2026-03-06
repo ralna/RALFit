@@ -1,7 +1,7 @@
 ! Copyright (c) 2016, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
 ! Copyright (C) 2020 Numerical Algorithms Group (NAG). All rights reserved.
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 
 ! ral_nlls - RALFit a nonlinear least squares solver

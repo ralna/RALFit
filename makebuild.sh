@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2020, The Science and Technology Facilities Council (STFC). All rights reserved.
 
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 

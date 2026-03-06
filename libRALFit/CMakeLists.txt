@@ -105,6 +105,8 @@ elseif(CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_Fortran_FLAGS_DEBUG "-g -O0")
     set(CMAKE_LDFLAGS_DEBUG "-g")
   endif()
+else()
+    message(FATAL_ERROR "Unsupported build type: \"${CMAKE_BUILD_TYPE}\" (use \"Debug\" or \"Release\")")
 endif()
 
 string(TOLOWER "${ASAN}" ASAN)
