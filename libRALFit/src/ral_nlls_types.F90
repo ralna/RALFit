@@ -1,4 +1,4 @@
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 ! ral_nlls_types :: Globally defines the types used
 !
 ! Working precision (wp) for reals(Kind=wp)

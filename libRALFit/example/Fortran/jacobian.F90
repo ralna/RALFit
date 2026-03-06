@@ -1,6 +1,6 @@
 ! Copyright (c) 2017, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 ! This example showcases how to call the Finite Difference machinery,
 ! illustrates the usage of jacobian_setup, jacobian_calc and

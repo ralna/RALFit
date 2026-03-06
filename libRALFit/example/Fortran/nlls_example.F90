@@ -1,6 +1,6 @@
 ! Copyright (c) 2019, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 ! examples/Fortran/nlls_example.f90 (double precision type)
 !
 ! Attempts to fit the model y_i = x_1 e^(x_2 t_i)

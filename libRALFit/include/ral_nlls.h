@@ -1,6 +1,6 @@
 /* COPYRIGHT (c) 2015 Science and Technology Facilities Council (STFC)
  * All rights reserved
- * Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
  */
 #ifdef __cplusplus
 extern "C" {

@@ -1,6 +1,6 @@
 ! Copyright (c) 2015, The Science and Technology Facilities Council (STFC)
 ! All rights reserved.
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "preprocessor.FPP"
 

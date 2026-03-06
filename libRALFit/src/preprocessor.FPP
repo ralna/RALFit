@@ -1,4 +1,4 @@
-! Copyright (C) 2024 Advanced Micro Devices, Inc. All rights reserved.
+! Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved.
 
 #define CONCAT_(a) a
 #define CONCAT(a, b) CONCAT_(a)CONCAT_(b)

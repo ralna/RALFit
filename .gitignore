@@ -4,6 +4,8 @@
 *.gcna
 *.gcda
 *.a
+AQUI*
+.cline*
 build/*
 galahad/*
 libRALFit/build*
