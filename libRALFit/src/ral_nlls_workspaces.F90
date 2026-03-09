@@ -634,6 +634,7 @@ module MODULE_PREC(ral_nlls_workspaces)
       logical :: allocated = .false.
       real(wp), allocatable :: tau(:), temp(:), ATu(:)
       real(wp), allocatable :: R(:,:), SM(:,:), DCT_A(:,:)
+      complex(wp), allocatable :: dct_work(:)
   end type LLS_rand_work
 
   type, public :: solve_LLS_work ! workspace for subroutine solve_LLS
@@ -1366,7 +1367,8 @@ contains
 
     inform%status = 0
     allocate(w%tau(min(options%sketch_size, n)), w%temp(m), w%R(n,n),  &
-             w%SM(options%sketch_size, n), w%ATu(n), w%DCT_A(m,n), stat=inform%alloc_status)
+             w%SM(options%sketch_size, n), w%ATu(n), w%DCT_A(m,n), &
+             w%dct_work(m), stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = "setup_workspace_LLS_rand"
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1387,6 +1389,7 @@ contains
     if(allocated(w%SM)) deallocate(w%SM, stat=ierr_dummy)
     if(allocated(w%ATu)) deallocate(w%ATu, stat=ierr_dummy)
     if(allocated(w%DCT_A)) deallocate(w%DCT_A, stat=ierr_dummy)
+    if(allocated(w%dct_work)) deallocate(w%dct_work, stat=ierr_dummy)
 
     w%allocated = .false.
   end subroutine remove_workspace_LLS_rand

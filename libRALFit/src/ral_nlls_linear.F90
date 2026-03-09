@@ -45,16 +45,19 @@ contains
     type(NLLS_options), intent(in) :: options 
     logical, intent(in) :: pd
 
+    ! if A is positive definite, we need to use Cholesky solver
+    ! as routines rely on its test for positive-definiteness
+    if (pd) then
+      call solve_posv(A, b, n, inform)
+      return
+    end if
+
     select case (options%lls_solver)
       case (1)  ! LAPACK
-        if (pd) then
-          call solve_posv(A,b,n,inform)
+        if (n == m) then
+          call solve_gesv(A,b,n,inform,w)
         else
-          if (n == m) then
-            call solve_gesv(A,b,n,inform,w)
-          else
-            call solve_gels(A,b,n,m,inform,w,options)
-          end if
+          call solve_gels(A,b,n,m,inform,w,options)
         end if
       case (2)  ! use LSQR
         if (.not. w%lsqr_ws%allocated) then
@@ -181,6 +184,14 @@ contains
   w%v = 0.0_wp
   w%z = 0.0_wp
   w%x = 0.0_wp
+  w%ATu = 0.0_wp
+
+  if (present(init_guess)) then
+    if (init_guess) then
+      ! update `u` for LSQR to be b - A x_0, so that we can start LSQR with this initial guess
+      call PREC(gemv)('N', m, n, -1.0_wp, A, m, w%x, 1, 1.0_wp, w%u, 1)
+    end if
+  end if
 
   action = 0
 
@@ -256,7 +267,6 @@ contains
 
     call estimate_norm(A, m, n, norm_a, 15, w%lsqr_ws)
 
-    ! first, we run LSQR without preconditioning to 
     w%lsqr_ws%x = 0.0_wp
 
     ! solve using LSQR
@@ -402,7 +412,8 @@ contains
     end do
 
     ! apply discrete cosine transform to each column
-    call dct(w%DCT_A, n, m)
+    call dct(w%DCT_A, n, m, w%dct_work)
+    call dct1d(w%temp_1, m, w%dct_work)
 
     ! and normalise DCT
     w%DCT_A = w%DCT_A / sqrt(2.0_wp * real(m, wp))

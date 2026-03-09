@@ -68,17 +68,23 @@
     ! This requires that x0 be available before the first call 
     ! to LSQR and after the final call. 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#include "preprocessor.FPP"
 
 module lsqr_reverse_double
 
    implicit none
+
+#ifdef SINGLE_PRECISION
+ integer, parameter :: wp = selected_real_kind(6) ! c_float
+#else
+ integer, parameter :: wp = selected_real_kind(15) ! c_double
+#endif
 
    private
    public :: lsqr_keep, lsqr_options, lsqr_inform
    public :: lsqr, lsqr_free
 
    integer(4),  parameter :: ip = kind( 0 )
-   integer(4),  parameter :: wp = kind( 0.0d+0 )
    integer, parameter :: long = selected_int_kind(18)
    real(wp),    parameter :: zero = 0.0_wp, one = 1.0_wp
 
@@ -615,7 +621,7 @@ contains
 
     keep%beta   = dnrm2 (m, u, 1)
 
-    call dscal (m, (one/keep%beta), u, 1)  ! u_1 = u / beta
+    call PREC(scal)(m, (one/keep%beta), u, 1)  ! u_1 = u / beta
 
     ! User must compute v = A^T * u (precon = 0 or 2),
     ! or v = P^{-1} A^T *u (precon = 1)
@@ -644,7 +650,7 @@ contains
        return
     end if
 
-    call dscal (n, (one/keep%alpha), v, 1)
+    call PREC(scal)(n, (one/keep%alpha), v, 1)
 
     ! w_1 = v_1
     keep%w = v
@@ -675,7 +681,7 @@ contains
        !     beta*u =    A*v  - alpha*u,
        !    alpha*v = (A)'*u  -  beta*v.
        !----------------------------------------------------------------
-       call dscal (m,(- keep%alpha), u, 1)  ! - alpha*u_j
+       call PREC(scal)(m,(- keep%alpha), u, 1)  ! - alpha*u_j
 
        ! Compute u = u + A*v
        action = 2
@@ -688,7 +694,7 @@ contains
        keep%beta   = dnrm2 (m, u, 1)
 
        if (keep%beta > zero) then
-          call dscal (m, (one/keep%beta), u, 1) ! u = u / beta
+          call PREC(scal)(m, (one/keep%beta), u, 1) ! u = u / beta
           if (keep%localVecs > 0) then
              ! Check whether to store v_j for local reorthog'n of v_{j+1}
              if (abs(keep%orthog_choice).eq.1 .or.       &
@@ -696,7 +702,7 @@ contains
                 call localVEnqueue(n, v, keep)
           end if  
 
-          call dscal (n, (-keep%beta), v, 1) ! v = -beta *v_j
+          call PREC(scal)(n, (-keep%beta), v, 1) ! v = -beta *v_j
 
           ! Compute v = v + A'*u
           action = 1
@@ -712,7 +718,7 @@ contains
              call localVOrtho(n, v, keep, inform%time_RO)
 
           keep%alpha  = dnrm2 (n, v, 1)
-          if (keep%alpha > zero) call dscal (n, (one/keep%alpha), v, 1)
+          if (keep%alpha > zero) call PREC(scal)(n, (one/keep%alpha), v, 1)
 
        end if
 
@@ -844,7 +850,7 @@ contains
        return
     end if
 
-    call dscal (n, (one/keep%alpha), v, 1)
+    call PREC(scal)(n, (one/keep%alpha), v, 1)
 
     !----------------------------------------------------------------
     ! user to compute z_1 = P^{-T} v_1
@@ -885,7 +891,7 @@ contains
        !     beta*u =    A*z  - alpha*u,
        !    alpha*v = P^{-1} A^T*u  -  beta*v.
        !----------------------------------------------------------------
-       call dscal (m,(-keep%alpha), u, 1)  ! -alpha*u_j
+       call PREC(scal)(m,(-keep%alpha), u, 1)  ! -alpha*u_j
 
        ! Compute u = u + A*z
        action = 2
@@ -898,7 +904,7 @@ contains
        keep%beta   = dnrm2 (m, u, 1)
 
        if (keep%beta > zero) then
-          call dscal (m, (one/keep%beta), u, 1) ! u = u / beta
+          call PREC(scal)(m, (one/keep%beta), u, 1) ! u = u / beta
           if (keep%localVecs > 0) then
              ! Check whether to store v_j for local reorthog'n of v_{j+1}
              if (abs(keep%orthog_choice).eq.1 .or.     &
@@ -906,7 +912,7 @@ contains
                 call localVEnqueue(n, v, keep)
           end if 
 
-          call dscal (n, (-keep%beta), v, 1) ! v = -beta *v_j
+          call PREC(scal)(n, (-keep%beta), v, 1) ! v = -beta *v_j
 
           ! Compute v = v + P^{-1} A^T*u
           action = 1
@@ -923,7 +929,7 @@ contains
              call localVOrtho(n, v, keep, inform%time_RO)
 
           keep%alpha  = dnrm2 (n, v, 1)
-          if (keep%alpha > zero) call dscal (n, (one/keep%alpha), v, 1)
+          if (keep%alpha > zero) call PREC(scal)(n, (one/keep%alpha), v, 1)
 
        end if
 
@@ -1074,8 +1080,8 @@ contains
        return
     end if
 
-    call dscal (n, (one/keep%alpha), v, 1)
-    call dscal (n, (one/keep%alpha), z, 1)
+    call PREC(scal)(n, (one/keep%alpha), v, 1)
+    call PREC(scal)(n, (one/keep%alpha), z, 1)
 
     ! d_1 = z_1
     keep%w = z
@@ -1106,7 +1112,7 @@ contains
        !     beta*u =    A*z  - alpha*u,
        !    alpha*v = (A)'*u  -  beta*v.
        !----------------------------------------------------------------
-       call dscal (m,(- keep%alpha), u, 1)  ! - alpha*u_j
+       call PREC(scal)(m,(- keep%alpha), u, 1)  ! - alpha*u_j
        ! Compute u = u + A*z
        action = 2
        keep%branch = 2
@@ -1118,7 +1124,7 @@ contains
        keep%beta   = dnrm2 (m, u, 1)
 
        if (keep%beta > zero) then
-          call dscal (m, (one/keep%beta), u, 1) ! u = u / beta
+          call PREC(scal)(m, (one/keep%beta), u, 1) ! u = u / beta
           if (keep%localVecs > 0) then
              ! Check whether to store v_j for local reorthog'n of v_{j+1}
              if (abs(keep%orthog_choice).eq.1 .or.    &
@@ -1126,7 +1132,7 @@ contains
                 call localVEnqueue(n, v, keep)
           end if 
 
-          call dscal (n, (-keep%beta), v, 1) ! v = -beta *v_j
+          call PREC(scal)(n, (-keep%beta), v, 1) ! v = -beta *v_j
 
           ! Compute v = v + (A)'*u
           action = 1
@@ -1154,8 +1160,8 @@ contains
 
           keep%alpha  = sqrt( ddot(n, v, 1, z, 1))
           if (keep%alpha > zero) then
-            call dscal (n, (one/keep%alpha), v, 1)
-            call dscal (n, (one/keep%alpha), z, 1)
+            call PREC(scal)(n, (one/keep%alpha), v, 1)
+            call PREC(scal)(n, (one/keep%alpha), z, 1)
           end if
        end if
 
@@ -1350,16 +1356,16 @@ contains
         ! selective reorthogonalisation
         do j = 1, limit
           d = ddot(n,v,1,keep%localV(1:n,j),1)
-          if (d .gt. keep%orthog_tol) call daxpy(n,-d,keep%localV(1:n,j),1,v,1)
+          if (d .gt. keep%orthog_tol) call PREC(axpy)(n,-d,keep%localV(1:n,j),1,v,1)
         end do
       else
         do j = 1, limit
           d = ddot(n,v,1,keep%localV(1:n,j),1)
-          call daxpy(n,-d,keep%localV(1:n,j),1,v,1)
+          call PREC(axpy)(n,-d,keep%localV(1:n,j),1,v,1)
           if (keep%orthog_choice .lt. 0) then
             ! second application of MGS
             d = ddot(n,v,1,keep%localV(1:n,j),1)
-            call daxpy(n,-d,keep%localV(1:n,j),1,v,1)
+            call PREC(axpy)(n,-d,keep%localV(1:n,j),1,v,1)
           end if
         end do
       end if
