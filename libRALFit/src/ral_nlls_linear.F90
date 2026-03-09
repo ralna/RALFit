@@ -12,7 +12,7 @@ module MODULE_PREC(ral_nlls_linear)
                                               NLLS_ERROR_FROM_EXTERNAL, NLLS_ERROR_BAD_LLS_SOLVER, &
                                               NLLS_ERROR_BAD_SKETCH_METHOD, NLLS_ERROR_BAD_SKETCH_SIZE
   use MODULE_PREC(lsqr_reverse), only: lsqr, lsqr_options, lsqr_inform, lsqr_keep, lsqr_free
-  use MODULE_PREC(dct_module), only: dct 
+  use MODULE_PREC(dct_module), only: dct, dct1d 
 
   implicit none
 
@@ -158,20 +158,26 @@ contains
 
   end subroutine solve_posv
 
-  subroutine solve_lsqr(A, b, n, m, inform, w, options)
+  subroutine solve_lsqr(A, b, n, m, inform, w, options, precon, init_guess)
   ! non-preconditioned LSQR iterative solver for large sparse systems
   ! Implementation by Jennifer Scott, using the Papez-Tichy stopping criterion
   ! This is a reverse communication implementation, so we need
-  ! a wrapper to handle the arithmetic ourselves
+  ! a wrapper to handle the matrix products ourselves 
+  ! Optional arguments:
+  !   precon: if present, a preconditioner to apply in the matrix products
+  !   init_guess: if true, assume w%x has been initialised with an initial guess
+  ! currently, we assume the preconditioner is upper-triangular of size n x n
   integer, intent(in) :: m, n
   real(wp), intent(inout), contiguous :: A(:, :), b(:)
-  type(NLLS_inform) :: inform
+  type(NLLS_inform), intent(inout) :: inform
   type(LLS_lsqr_work), intent(inout) :: w
   type(NLLS_options), intent(in) :: options
-  type(lsqr_options) :: lsqr_opt
+  real(wp), intent(in), optional, contiguous :: precon(:,:)
+  logical, intent(in), optional :: init_guess
 
-  integer :: action
+  integer :: action, use_precon
   real(wp) :: norm_a
+  type(lsqr_options) :: lsqr_opt
 
   lsqr_opt%stop_test = 2
   lsqr_opt%itnlim = 5 * n
@@ -183,30 +189,67 @@ contains
   w%u = b
   w%v = 0.0_wp
   w%z = 0.0_wp
-  w%x = 0.0_wp
   w%ATu = 0.0_wp
 
   if (present(init_guess)) then
     if (init_guess) then
       ! update `u` for LSQR to be b - A x_0, so that we can start LSQR with this initial guess
       call PREC(gemv)('N', m, n, -1.0_wp, A, m, w%x, 1, 1.0_wp, w%u, 1)
+    else
+      w%x = 0.0_wp
     end if
+  else
+    w%x = 0.0_wp
   end if
 
   action = 0
+  if (present(precon)) then
+    use_precon = 1
+  else
+    use_precon = 0
+  end if
 
   ! first call to lsqr initializes the algorithm and returns the first action
-  call lsqr(0, action, m, n, w%u, w%v, w%z, w%x, w%keep, lsqr_opt, w%inform, anorm=norm_a)
-  
-  do while (action /= 0)
-    select case (action)
-      case (1)  ! compute v = v + A^T u
-        call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%u, 1, 1.0_wp, w%v, 1)
-      case (2)  ! compute u = u + A v
-        call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%v, 1, 1.0_wp, w%u, 1)
+  call lsqr(use_precon, action, m, n, w%u, w%v, w%z, w%x, w%keep, lsqr_opt, w%inform, anorm=norm_a)
+ 
+  if (use_precon == 0) then
+    do while (action /= 0)
+      select case (action)
+        case (1)  ! compute v = v + A^T u
+          call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%u, 1, 1.0_wp, w%v, 1)
+        case (2)  ! compute u = u + A v
+          call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%v, 1, 1.0_wp, w%u, 1)
+        end select
+      call lsqr(0, action, m, n, w%u, w%v, w%z, w%x, w%keep, lsqr_opt, w%inform, anorm=norm_a)
+    end do
+  else
+    do while (action /= 0)
+      select case (action)
+        case (1)  ! compute v = v + P^{-1} A^T u
+          ! we don't want to explicitly invert R (for numerical stability), so we do this in two steps:
+          ! first compute ATu = A^T u, then let t = R^{-1} ATu (i.e. solve R t = ATu)
+          call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%u, 1, 0.0_wp, w%ATu, 1)
+          call PREC(trtrs)('U', 'N', 'N', n, 1, precon, n, w%ATu, n, inform%external_return)
+          if (inform%external_return /= 0) then
+            inform%status = NLLS_ERROR_FROM_EXTERNAL
+            inform%external_name = 'lapack_?trtrs'
+            return
+          end if
+          w%v = w%v + w%ATu 
+        case (2)  ! compute u = u + Az
+          call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%z, 1, 1.0_wp, w%u, 1)
+        case (3)  ! compute z = P^{-T} v (or equivalently, solve R^T z = v)
+          w%z = w%v
+          call PREC(trtrs)('U', 'T', 'N', n, 1, precon, n, w%z, n, inform%external_return)
+          if (inform%external_return /= 0) then
+            inform%status = NLLS_ERROR_FROM_EXTERNAL
+            inform%external_name = 'lapack_?trtrs'
+            return
+          end if
       end select
-    call lsqr(0, action, m, n, w%u, w%v, w%z, w%x, w%keep, lsqr_opt, w%inform, anorm=norm_a)
-  end do
+      call lsqr(1, action, m, n, w%u, w%v, w%z, w%x, w%keep, lsqr_opt, w%inform, anorm=norm_a)
+    end do
+  end if
 
   if (w%inform%flag /= 0) then
     inform%status = NLLS_ERROR_FROM_EXTERNAL
@@ -233,87 +276,56 @@ contains
     type(NLLS_options), Intent(In) :: options
     type(lsqr_options) :: lsqr_opt
 
-    integer :: i, lwork, action
+    integer :: i, lwork, action, tsize
     real(wp) :: norm_a
 
     lwork = size(w%work)
     lsqr_opt%stop_test = 2
 
-    w%rand_ws%tau = 0.0_wp
+    w%rand_ws%temp_1 = 0.0_wp
     w%rand_ws%R = 0.0_wp
     w%rand_ws%SM = 0.0_wp
-    w%rand_ws%ATu = 0.0_wp
+    w%rand_ws%Sb = 0.0_wp
     w%rand_ws%DCT_A = 0.0_wp
 
-    ! get sketch matrix SM
-    call sketch(A, m, n, sketch_size, w%rand_ws%SM, options, w%rand_ws, inform)
+    ! get sketch matrix SM and Sb
+    call sketch(A, b, m, n, sketch_size, w%rand_ws%SM, w%rand_ws%Sb, &
+                options, w%rand_ws, inform)
     if (inform%status /= 0) then
       return
     end if
 
     ! now take QR decomposition of SM
-    call PREC(geqrf)(sketch_size, n, w%rand_ws%SM, sketch_size, w%rand_ws%tau, w%work, lwork, inform%external_return)
+    call PREC(geqrf)(sketch_size, n, w%rand_ws%SM, sketch_size, w%rand_ws%temp_1, w%work, lwork, inform%external_return)
     if (inform%external_return /= 0) then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
       inform%external_name = 'lapack_?geqrf'
       return
     end if
 
-    ! todo: initial guess!
-    ! extract R from QR decomposition
+    ! extract R from the output of geqrf (the upper triangle of the output matrix)
     do i = 1, n
       w%rand_ws%R(i, i:n) = w%rand_ws%SM(i, i:n)
     end do
 
-    call estimate_norm(A, m, n, norm_a, 15, w%lsqr_ws)
-
-    w%lsqr_ws%x = 0.0_wp
-
-    ! solve using LSQR
-    ! first call to lsqr initializes the algorithm and returns the first action
-    w%lsqr_ws%u = b
-    w%lsqr_ws%v = 0.0_wp
-    w%lsqr_ws%z = 0.0_wp
-    action = 0
-    call lsqr(1, action, m, n, w%lsqr_ws%u, w%lsqr_ws%v, w%lsqr_ws%z, &
-              w%lsqr_ws%x, w%lsqr_ws%keep, lsqr_opt, w%lsqr_ws%inform, &
-              anorm=norm_a)
-    do while (action /= 0)
-      select case (action)
-        case (1)  ! compute v = v + P^{-1} A^T u
-          ! we don't want to explicitly invert R (for numerical stability), so we do this in two steps:
-          ! first compute ATu = A^T u, then let t = R^{-1} ATu (i.e. solve R t = ATu)
-          call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%lsqr_ws%u, 1, 0.0_wp, w%rand_ws%ATu, 1)
-          call PREC(trtrs)('U', 'N', 'N', n, 1, w%rand_ws%R, n, w%rand_ws%ATu, n, inform%external_return)
-          if (inform%external_return /= 0) then
-            inform%status = NLLS_ERROR_FROM_EXTERNAL
-            inform%external_name = 'lapack_?trtrs'
-            return
-          end if
-          w%lsqr_ws%v = w%lsqr_ws%v + w%rand_ws%ATu 
-        case (2)  ! compute u = u + Az
-          call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%lsqr_ws%z, 1, 1.0_wp, w%lsqr_ws%u, 1)
-        case (3)  ! compute z = P^{-T} v (or equivalently, solve R^T z = v)
-          w%lsqr_ws%z = w%lsqr_ws%v
-          call PREC(trtrs)('U', 'T', 'N', n, 1, w%rand_ws%R, n, w%lsqr_ws%z, n, inform%external_return)
-          if (inform%external_return /= 0) then
-            inform%status = NLLS_ERROR_FROM_EXTERNAL
-            inform%external_name = 'lapack_?trtrs'
-            return
-          end if
-      end select
-      call lsqr(1, action, m, n, w%lsqr_ws%u, w%lsqr_ws%v, w%lsqr_ws%z, &
-                w%lsqr_ws%x, w%lsqr_ws%keep, lsqr_opt, w%lsqr_ws%inform, &
-                anorm=norm_a)
-    end do
-    if (w%lsqr_ws%inform%flag /= 0) then
+    ! calculate initial guess from sketch-and-solve: x_0 = R^{-1} Q^T Sb
+    call PREC(ormqr)('L', 'T', sketch_size, 1, n, w%rand_ws%SM, sketch_size, w%rand_ws%temp_1, &
+              w%rand_ws%Sb, sketch_size, w%work, lwork, inform%external_return)
+    if (inform%external_return /= 0) then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
-      inform%external_return = w%lsqr_ws%inform%flag
-      inform%external_name = 'lsqr'
+      inform%external_name = 'lapack_?ormqr'
       return
     end if
+    call PREC(trtrs)('U', 'N', 'N', n, 1, w%rand_ws%R, n, w%rand_ws%Sb, n, inform%external_return)
+    if (inform%external_return /= 0) then
+      inform%status = NLLS_ERROR_FROM_EXTERNAL
+      inform%external_name = 'lapack_?trtrs'
+      return
+    end if
+    w%lsqr_ws%x(1:n) = w%rand_ws%Sb(1:n)
 
-    b(1:n) = w%lsqr_ws%x(1:n) 
+    ! now use this initial guess in LSQR to solve the original system, using R as a preconditioner 
+    call solve_lsqr(A, b, n, m, inform, w%lsqr_ws, options, precon=w%rand_ws%R, init_guess=.true.)
 
   end subroutine blendenpik
 
@@ -341,11 +353,13 @@ contains
 
   end subroutine estimate_norm
 
-  subroutine sketch(A, m, n, sketch_size, SA, options, w, inform)
-    ! Given a matrix A, return a "sketch" SA of size `sketch_size x n`.
+  subroutine sketch(A, b, m, n, sketch_size, SA, Sb, options, w, inform)
+    ! Given a matrix A, return a "sketch" SA of size `sketch_size x n`,
+    ! as well as the corresponding sketch Sb of b.
     real(wp), intent(in), contiguous :: A(:,:)
+    real(wp), intent(inout), contiguous :: b(:)
     integer, intent(in) :: m, n, sketch_size
-    real(wp), intent(out), contiguous :: SA(:,:)
+    real(wp), intent(out), contiguous :: SA(:,:), Sb(:)
     type(NLLS_options), intent(in) :: options
     type(LLS_rand_work), intent(inout) :: w
     type(NLLS_inform), intent(inout) :: inform
@@ -357,45 +371,49 @@ contains
 
     select case (options%sketch_method)
       case (1)  ! random sampling of rows
-        call select_random_rows(A, n, sketch_size, SA, w)
+        call select_random_rows(A, b, n, sketch_size, SA, Sb, w)
       case (2)  ! random projection using DCT
-        call dct_sketch(A, m, n, sketch_size, SA, w)
+        call dct_sketch(A, b, m, n, sketch_size, SA, Sb, w)
       case default
         inform%status = NLLS_ERROR_BAD_SKETCH_METHOD
     end select
 
   end subroutine sketch
 
-  subroutine select_random_rows(A, n, s, SA, w)
+  subroutine select_random_rows(A, b, n, s, SA, Sb, w)
     ! Select `s` random rows of A to form SA
     real(wp), intent(in), contiguous :: A(:,:)
+    real(wp), intent(inout), contiguous :: b(:)
     integer, intent(in) :: n, s
-    real(wp), intent(out) :: SA(:,:)
+    real(wp), intent(out) :: SA(:,:), Sb(:)
     type(LLS_rand_work), intent(inout) :: w
 
     integer :: i, idx
 
-    call random_number(w%temp)
+    call random_number(w%temp_2)
 
     ! to select `s` random rows, we generate `m` random numbers in [0,1),
     ! and take the indices of the smallest `s` numbers
     do i = 1, s
-      idx = minloc(w%temp, dim=1)
-      w%temp(idx) = 1.0_wp
+      idx = minloc(w%temp_2, dim=1)
+      w%temp_2(idx) = 1.0_wp
       SA(i, :) = A(idx, :)
+      Sb(i) = b(idx)
     end do
+
   end subroutine select_random_rows
 
-  subroutine dct_sketch(A, m, n, s, SA, w)
+  subroutine dct_sketch(A, b, m, n, s, SA, Sb, w)
     ! Create a sketch of A by taking a random subsample of rows
     ! applying random sign flips and a DCT to reduce coherence
     ! (i.e. the probability that the sketch is rank deficient)
     real(wp), intent(in), contiguous :: A(:,:)
-    integer, intent(in) :: m, n, s
-    real(wp), intent(inout) :: SA(:,:)
+    real(wp), intent(inout), contiguous :: b(:)
+    integer, intent(in) :: m, n, s 
+    real(wp), intent(inout) :: SA(:,:), Sb(:)
     type(LLS_rand_work), intent(inout) :: w
 
-    integer :: i
+    integer :: i 
     real(wp) :: rand_no
 
     w%DCT_A = 0.0_wp
@@ -406,8 +424,10 @@ contains
       call random_number(rand_no)
       if (rand_no < 0.5_wp) then
         w%DCT_A(i, :) = -A(i, :)
+        w%temp_1(i) = -b(i)
       else
         w%DCT_A(i, :) = A(i, :)
+        w%temp_1(i) = b(i)
       end if
     end do
 
@@ -417,9 +437,11 @@ contains
 
     ! and normalise DCT
     w%DCT_A = w%DCT_A / sqrt(2.0_wp * real(m, wp))
+    w%temp_1 = w%temp_1 / sqrt(2.0_wp * real(m, wp))
 
     ! and finaly select `s` random rows of DCT_A to form SA
-    call select_random_rows(w%DCT_A, n, s, SA, w)
+    ! and the corresponding entries of b to form Sb 
+    call select_random_rows(w%DCT_A, w%temp_1, n, s, SA, Sb, w)
 
   end subroutine dct_sketch
 

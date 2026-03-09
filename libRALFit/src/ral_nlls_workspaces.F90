@@ -623,7 +623,7 @@ module MODULE_PREC(ral_nlls_workspaces)
   type, public :: LLS_lsqr_work
       logical :: allocated = .false.
       ! variables for LSQR
-      real(wp), allocatable :: u(:), v(:), z(:), x(:)
+      real(wp), allocatable :: u(:), v(:), z(:), x(:), ATu(:)
 
       ! LSQR reverse communication objects
       type(lsqr_keep) :: keep
@@ -632,7 +632,7 @@ module MODULE_PREC(ral_nlls_workspaces)
 
   type, public :: LLS_rand_work
       logical :: allocated = .false.
-      real(wp), allocatable :: tau(:), temp(:), ATu(:)
+      real(wp), allocatable :: temp_1(:), temp_2(:), Sb(:)
       real(wp), allocatable :: R(:,:), SM(:,:), DCT_A(:,:)
       complex(wp), allocatable :: dct_work(:)
   end type LLS_rand_work
@@ -1335,7 +1335,7 @@ contains
     type( nlls_inform ), intent(inout) :: inform
 
     inform%status = 0
-    allocate(w%u(m), w%v(n), w%z(n), w%x(n), stat=inform%alloc_status)
+    allocate(w%u(m), w%v(n), w%z(n), w%x(n), w%ATu(n), stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = "setup_workspace_LLS_lsqr"
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1354,6 +1354,7 @@ contains
     if(allocated(w%v)) deallocate(w%v, stat=ierr_dummy)
     if(allocated(w%z)) deallocate(w%z, stat=ierr_dummy)
     if(allocated(w%x)) deallocate(w%x, stat=ierr_dummy)
+    if(allocated(w%ATu)) deallocate(w%ATu, stat=ierr_dummy)
 
     w%allocated = .false.
   end subroutine remove_workspace_LLS_lsqr
@@ -1366,8 +1367,8 @@ contains
     type( nlls_inform ), intent(inout) :: inform
 
     inform%status = 0
-    allocate(w%tau(min(options%sketch_size, n)), w%temp(m), w%R(n,n),  &
-             w%SM(options%sketch_size, n), w%ATu(n), w%DCT_A(m,n), &
+    allocate(w%temp_1(m), w%temp_2(m), w%Sb(options%sketch_size), w%R(n,n), &
+             w%SM(options%sketch_size, n), w%DCT_A(m,n), &
              w%dct_work(m), stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = "setup_workspace_LLS_rand"
@@ -1383,11 +1384,10 @@ contains
     type( LLS_rand_work ), intent(out) :: w
     Integer :: ierr_dummy
 
-    if(allocated(w%tau)) deallocate(w%tau, stat=ierr_dummy)
-    if(allocated(w%temp)) deallocate(w%temp, stat=ierr_dummy)
+    if(allocated(w%temp_1)) deallocate(w%temp_1, stat=ierr_dummy)
+    if(allocated(w%temp_2)) deallocate(w%temp_2, stat=ierr_dummy)
     if(allocated(w%R)) deallocate(w%R, stat=ierr_dummy)
     if(allocated(w%SM)) deallocate(w%SM, stat=ierr_dummy)
-    if(allocated(w%ATu)) deallocate(w%ATu, stat=ierr_dummy)
     if(allocated(w%DCT_A)) deallocate(w%DCT_A, stat=ierr_dummy)
     if(allocated(w%dct_work)) deallocate(w%dct_work, stat=ierr_dummy)
 

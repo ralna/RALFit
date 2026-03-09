@@ -21,6 +21,10 @@ module MODULE_PREC(dct_module)
     module procedure dct_fftz
   end interface dct
 
+  interface dct1d
+    module procedure dct_fftz_1d
+  end interface dct1d
+
   !interface fftw_plan_dft_1d
   !  module subroutine fftw_plan_dft_1d(plan, n, in, out, sign, flags) bind(C)
   !    use iso_c_binding, only: c_int, c_float, c_double
