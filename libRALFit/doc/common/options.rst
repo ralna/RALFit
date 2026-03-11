@@ -86,6 +86,10 @@
 
 .. |lls_solver| replace:: specifies which linear least squares solver to use internally.
 
+.. |sketch_size| replace:: if using randomised solver (``lls_solver = 3``), specifies the size of the sketch to use. 
+
+.. |sketch_method| replace:: if using randomised solver (``lls_solver = 3``), specifies the method to use to perform the sketch.
+
 .. |more_sorensen_maxits| replace:: if ``nlls_method = 3``, specifies the maximum number of iterations allowed in the More-Sorensen method.
 
 .. |more_sorensen_shift| replace:: if ``nlls_method = 3``, specifies the shift to be used in the More-Sorensen method. 

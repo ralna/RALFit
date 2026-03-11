@@ -42,6 +42,10 @@ Possible values are:
       -  Weights vector must be sufficiently positive
     * - -21
       -  Unsupported LLS solver (``lls_solver``) specified in options. 
+    * - -22
+      -  Bad sketch size (``sketch_size``) specified in options for randomised method.
+    * - -23
+      -  Unsupported value of ``sketch_method`` specified in options for randomised method.
     * - -101
       -  Unsupported model in dogleg (``nlls_method=1``).
     * - -201

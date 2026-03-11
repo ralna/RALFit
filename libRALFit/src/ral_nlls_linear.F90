@@ -65,26 +65,16 @@ contains
           return
         end if
         call solve_lsqr(A, b, n, m, inform, w%lsqr_ws, options)
-        ! with LAPACK fallback...
-        if (inform%status /= 0) then
-          if (options%allow_fallback_method) then
-            inform%status = 0
-            call solve_gels(A,b,n,m,inform,w,options)
-          else
-            return
-          end if
-        end if
-      case (3)  ! Randomised method (Blendenpik)
+      case (3)  ! Randomised method (sketch-and-precondition)
         if (.not. w%lsqr_ws%allocated .or. .not. w%rand_ws%allocated) then
           inform%status = NLLS_ERROR_WORKSPACE_ERROR
           return
         end if
-        call blendenpik(A, b, n, m, options%sketch_size, inform, w, options)
-        ! if Blendenpik fails, fall back to LAPACK
+        call solve_rand(A, b, n, m, options%sketch_size, inform, w, options)
       case default
         inform%status = NLLS_ERROR_BAD_LLS_SOLVER
     end select
-    ! if LSQR or Blendenpik fails, fallback to LAPACK GELS
+    ! if LSQR or randomised fails, fallback to LAPACK GELS
     if (inform%status /= 0 .and. options%lls_solver > 1 .and. options%allow_fallback_method) then
       inform%status = 0
       call solve_gels(A,b,n,m,inform,w,options)
@@ -263,12 +253,15 @@ contains
 
   end subroutine solve_lsqr
 
-  subroutine blendenpik(A, b, n, m, sketch_size, inform, w, options)
-  ! Blendenpik (sketch-and-precondition) randomised solver
-  ! Source:
+  subroutine solve_rand(A, b, n, m, sketch_size, inform, w, options)
+  ! Sketch-and-precondition randomised solver with sketch-and-solve initialisation
+  ! Sources:
   !   P. Avron, P. Maymounkov, S. Toledo, 
   !   "Blendenpik: Supercharging LAPACK's Least-Squares Solver"
   !   URL: https://pdos.csail.mit.edu/~petar/papers/blendenpik-v1.pdf
+  !   Meier, M., Nakatsukasa, Y., Townsend, A., Webb, M.
+  !   "Are sketch-and-precondition linear solvers numerically stable?"
+  !   URL: https://arxiv.org/abs/2302.07202
     real(wp), intent(inout), contiguous :: A(:,:), b(:)
     integer, intent(in) :: sketch_size, m, n
     type(NLLS_inform), INTENT(INOUT) :: inform
@@ -327,7 +320,7 @@ contains
     ! now use this initial guess in LSQR to solve the original system, using R as a preconditioner 
     call solve_lsqr(A, b, n, m, inform, w%lsqr_ws, options, precon=w%rand_ws%R, init_guess=.true.)
 
-  end subroutine blendenpik
+  end subroutine solve_rand 
 
   subroutine estimate_norm(A, m, n, norm_a, num_iters, w)
   ! power method to estimate spectral norm of A

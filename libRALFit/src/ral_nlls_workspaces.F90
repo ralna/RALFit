@@ -291,11 +291,11 @@ module MODULE_PREC(ral_nlls_workspaces)
 !  which linear least squares solver should we use?
 !      1 LAPACK solver
 !      2 LSQR (iterative)
-!      3 Randomised solver (Blendenpik)
+!      3 Randomised solver (sketch-and-precondition)
 
      INTEGER :: lls_solver = 1
 
-!  If using randomised linear solver (Blendenpik), what sketch size?
+!  If using randomised linear solver, what sketch size?
 !  this must be manually set by the user as it depends on `m`
 
      INTEGER :: sketch_size = 0

@@ -2582,7 +2582,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       end if
       call mult_J(J,n,m,d,Jd,.True.)
       normerror = norm2(Jd - f)
-      if ( .not. normerror < 1.0e-11_wp ) then
+      if ( .not. normerror < 1.0e-12_wp ) then
            ! wrong answer, as data chosen to fit
            write(*,*) 'solve_LLS randomised test failed: wrong solution returned'
            write(*,*) '||Jd - f|| = ', normerror
