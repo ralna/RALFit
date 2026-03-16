@@ -3586,6 +3586,7 @@ lp:  do i = 1, options%more_sorensen_maxits
           call PREC(gemm)('T','N',n, n, m, 1.0_wp, J, m, J, m, 0.0_wp, A, n)
        End If
      end subroutine matmult_inner
+
      subroutine matmult_outer(J,n,m,A)
        Implicit None
        integer, intent(in) :: n,m
