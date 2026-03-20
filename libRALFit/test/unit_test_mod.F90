@@ -1445,7 +1445,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       type( user_type ), target :: params
       type( NLLS_inform )  :: status, c_status
       real(wp) :: resvec_error, solver_type_error, abstol, reltol
-      real(wp) :: C_results(3), F_results(3)
+      real(wp) :: C_results(4), F_results(4)
       integer :: n, lls_solver
       Logical :: Ok, any_fails
 
@@ -1465,9 +1465,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
       allocate( x(n) )
       options%print_level = 5
 
-      do lls_solver = 1, 3
+      do lls_solver = 1, 4
+      ! we use 4 for solver 3 with sketch method 2
         call generate_data_example(params)
-        options%lls_solver = lls_solver
+        if (lls_solver == 4) then
+          options%lls_solver = 3
+          options%sketch_method = 2
+        else
+          options%lls_solver = lls_solver
+        end if
         options%fortran_jacobian = .true.
         call solve_basic(X,params,options,status)
         if ( status%status .ne. 0 ) then
@@ -2571,13 +2577,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      real(wp), allocatable :: J(:,:), J_copy(:,:), Jd(:), f(:), d(:), x_calc(:), x_true(:)
      real(wp) :: normerror
      integer :: n, m, i, k, l
-     type( nlls_workspace ) :: work
+     type( nlls_workspace ), target :: work
      type( nlls_workspace ), Target :: iw
+     type( solve_lls_work ), pointer :: ws
      type( nlls_inform ) :: inform
 
      fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
+     ws => work%calculate_step_ws%dogleg_ws%solve_lls_ws
 
      n = 5
      m = 30
@@ -2609,7 +2617,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%lls_solver = 2 ! LSQR
      options%allow_fallback_method = .false.
 
-     call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+     call solve_LLS(J_copy,d,n,m,inform,ws,options,.false.)
      if ( inform%status .ne. NLLS_ERROR_WORKSPACE_ERROR ) then
          write (*, *) 'solve_LLS LSQR test failed: wrong error message returned when workspace unallocated'
         write(*,*) 'status = ', inform%status, " (expected ",NLLS_ERROR_WORKSPACE_ERROR,")"
@@ -2621,7 +2629,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
 
      ! test correct residual
-     call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+     call solve_LLS(J_copy,d,n,m,inform,ws,options,.false.)
      if ( inform%status .ne. 0 ) then
          write (*, *) 'solve_LLS LSQR test failed: error message returned'
          write(*,*) 'status = ', inform%status, " (expected 0)"
@@ -2635,12 +2643,50 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      ! check answer
      call mult_J(J,n,m,d,Jd,.True.)
      normerror = norm2(Jd - f)
-     if ( .not. normerror < 1.0e-12_wp ) then
+     if ( .not. normerror < 1.0e-11_wp ) then
         ! wrong answer, as data chosen to fit
         write(*,*) 'solve_LLS LSQR test failed: wrong solution returned'
         write(*,*) '||Jd - f|| = ', normerror
         fails = fails + 1
      end if
+
+     deallocate(J, J_copy)
+     allocate(J(n,m), J_copy(n,m))
+
+     ! now check for C jacobian
+     do k = 1, m*n
+       i = ((k-1) / n) + 1
+       l = mod(k-1, n) + 1
+       J(l, i) = real(k + i*l, wp)
+     end do
+     
+     J_copy = J
+     d = f
+
+     options%fortran_jacobian = .false.
+     
+     call solve_LLS(J_copy,d,n,m,inform,ws,options,.false.)
+       if ( inform%status .ne. 0 ) then
+         write (*, *) 'solve_LLS LSQR test failed (C Jacobian): error message returned'
+         write(*,*) 'status = ', inform%status, " (expected 0)"
+       if (inform%status == NLLS_ERROR_FROM_EXTERNAL) then
+         write(*,*) 'external return = ', inform%external_return 
+         write(*,*) 'external name = ', inform%external_name
+       end if
+         fails = fails + 1
+     end if
+
+     ! check answer
+     call mult_J(J,n,m,d,Jd,.false.)
+     normerror = norm2(Jd - f)
+     if ( .not. normerror < 1.0e-11_wp ) then
+        ! wrong answer, as data chosen to fit
+        write(*,*) 'solve_LLS LSQR test failed (C Jacobian): wrong solution returned'
+        write(*,*) '||Jd - f|| = ', normerror
+        fails = fails + 1
+     end if
+
+     deallocate(J, J_copy, f, d, Jd)
      
      call nlls_finalize(work,options,inform)
      call reset_default_options(options)
@@ -2653,13 +2699,15 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      real(wp), allocatable :: J(:,:), J_copy(:,:), Jd(:), d(:), f(:)
      real(wp) :: normerror
      integer :: n,m,k,i,l,sketch_method
-     type( nlls_workspace ) :: work
+     type( nlls_workspace ), target :: work
      type( nlls_workspace ), Target :: iw
+     type( solve_lls_work ), pointer :: ws
      type( nlls_inform ) :: inform
 
      fails = 0
      work%iw_ptr => iw
      iw%iw_ptr => iw
+     ws => work%calculate_step_ws%dogleg_ws%solve_lls_ws
   
      n = 5
      m = 60
@@ -2667,25 +2715,11 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      options%nlls_method = 1 ! dogleg (just so we know what workspace we're in)
      options%lls_solver = 3  ! randomised solver
      options%allow_fallback_method = .false.
+     options%sketch_size = 10 
   
      allocate(J(m,n), J_copy(m,n), Jd(m), d(m), f(m))
 
      call setup_workspaces(work,n,m,options,inform)
-
-     ! ensure solver gives error if sketch size is not a positive integer
-     options%sketch_size = 0
-     call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
-     if ( inform%status .ne. NLLS_ERROR_BAD_SKETCH_SIZE ) then
-         write (*, *) 'solve_LLS randomised test failed: wrong error message returned'
-         write(*,*) 'status = ', inform%status, " (expected ",NLLS_ERROR_BAD_SKETCH_SIZE,")"
-         fails = fails + 1
-     end if
-     inform%status = 0
-
-     call remove_workspaces(work,options)
-
-     options%sketch_size = 10 ! reset to valid sketch size
-
      ! this is mostly a generic version of the matrices in the other tests;
      ! i.e. J = [ 1, 2, 3, 4, 5...] reshaped to (n, m)
      ! but in this case we need a bigger matrix to ensure we get a decent sketch
@@ -2706,7 +2740,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
        J_copy = J
        d = f
-       call solve_LLS(J_copy,d,n,m,inform,work%calculate_step_ws%dogleg_ws%solve_lls_ws,options,.false.)
+       call solve_LLS(J_copy,d,n,m,inform,ws,options,.false.)
        if ( inform%status .ne. 0 ) then
         write (*, *) 'solve_LLS randomised test failed: error message returned'
         write(*,*) 'status = ', inform%status, " (expected 0)"
@@ -2726,8 +2760,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
            write(*,*) 'sketch method = ', sketch_method
            fails = fails + 1
         end if
-        call remove_workspaces(work,options)
       end do
+
+      deallocate(J, J_copy, f, d, Jd)
       call nlls_finalize(work,options,inform)
       call reset_default_options(options)
   

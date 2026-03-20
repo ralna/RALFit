@@ -165,7 +165,8 @@ contains
   real(wp), intent(in), optional, contiguous :: precon(:,:)
   logical, intent(in), optional :: init_guess
 
-  integer :: action, use_precon
+  integer :: action, use_precon, rows, cols
+  character(len=1) :: trans, no_trans
   real(wp) :: norm_a
   type(lsqr_options) :: lsqr_opt
 
@@ -174,7 +175,19 @@ contains
 
   ! stopping criterion requires an estimate of the spectral norm of A, 
   ! which we can get from a few iterations of the power method
-  call estimate_norm(A, m, n, norm_a, 15, w)
+  call estimate_norm(A, m, n, norm_a, 15, w, options%fortran_jacobian)
+
+  if (options%fortran_jacobian) then
+    rows = m
+    cols = n
+    trans = 'T'
+    no_trans = 'N'
+  else
+    rows = n
+    cols = m
+    trans = 'N'
+    no_trans = 'T'
+  end if
   
   w%u = b
   w%v = 0.0_wp
@@ -184,7 +197,7 @@ contains
   if (present(init_guess)) then
     if (init_guess) then
       ! update `u` for LSQR to be b - A x_0, so that we can start LSQR with this initial guess
-      call PREC(gemv)('N', m, n, -1.0_wp, A, m, w%x, 1, 1.0_wp, w%u, 1)
+      call PREC(gemv)(no_trans, rows, cols, -1.0_wp, A, rows, w%x, 1, 1.0_wp, w%u, 1)
     else
       w%x = 0.0_wp
     end if
@@ -206,9 +219,9 @@ contains
     do while (action /= 0)
       select case (action)
         case (1)  ! compute v = v + A^T u
-          call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%u, 1, 1.0_wp, w%v, 1)
+          call PREC(gemv)(trans, rows, cols, 1.0_wp, A, rows, w%u, 1, 1.0_wp, w%v, 1)
         case (2)  ! compute u = u + A v
-          call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%v, 1, 1.0_wp, w%u, 1)
+          call PREC(gemv)(no_trans, rows, cols, 1.0_wp, A, rows, w%v, 1, 1.0_wp, w%u, 1)
         end select
       call lsqr(0, action, m, n, w%u, w%v, w%z, w%x, w%keep, lsqr_opt, w%inform, anorm=norm_a)
     end do
@@ -218,7 +231,7 @@ contains
         case (1)  ! compute v = v + P^{-1} A^T u
           ! we don't want to explicitly invert R (for numerical stability), so we do this in two steps:
           ! first compute ATu = A^T u, then let t = R^{-1} ATu (i.e. solve R t = ATu)
-          call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%u, 1, 0.0_wp, w%ATu, 1)
+          call PREC(gemv)(trans, rows, cols, 1.0_wp, A, rows, w%u, 1, 0.0_wp, w%ATu, 1)
           call PREC(trtrs)('U', 'N', 'N', n, 1, precon, n, w%ATu, n, inform%external_return)
           if (inform%external_return /= 0) then
             inform%status = NLLS_ERROR_FROM_EXTERNAL
@@ -227,7 +240,7 @@ contains
           end if
           w%v = w%v + w%ATu 
         case (2)  ! compute u = u + Az
-          call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%z, 1, 1.0_wp, w%u, 1)
+          call PREC(gemv)(no_trans, rows, cols, 1.0_wp, A, rows, w%z, 1, 1.0_wp, w%u, 1)
         case (3)  ! compute z = P^{-T} v (or equivalently, solve R^T z = v)
           w%z = w%v
           call PREC(trtrs)('U', 'T', 'N', n, 1, precon, n, w%z, n, inform%external_return)
@@ -269,7 +282,7 @@ contains
     type(NLLS_options), Intent(In) :: options
     type(lsqr_options) :: lsqr_opt
 
-    integer :: i, lwork, action, tsize
+    integer :: i, lwork, action, tsize, s
     real(wp) :: norm_a
 
     lwork = size(w%work)
@@ -281,15 +294,24 @@ contains
     w%rand_ws%Sb = 0.0_wp
     w%rand_ws%DCT_A = 0.0_wp
 
+    if (sketch_size == -1) then  ! default
+      s = 4 * n
+    else if (sketch_size <= n .or. sketch_size > m) then
+      write(*,*) "Sketch size must be between n and m; setting default of 4n"
+      s = 4 * n
+    else
+      s = sketch_size
+    end if
+
     ! get sketch matrix SM and Sb
-    call sketch(A, b, m, n, sketch_size, w%rand_ws%SM, w%rand_ws%Sb, &
+    call sketch(A, b, m, n, s, w%rand_ws%SM, w%rand_ws%Sb, &
                 options, w%rand_ws, inform)
     if (inform%status /= 0) then
       return
     end if
 
     ! now take QR decomposition of SM
-    call PREC(geqrf)(sketch_size, n, w%rand_ws%SM, sketch_size, w%rand_ws%temp_1, w%work, lwork, inform%external_return)
+    call PREC(geqrf)(s, n, w%rand_ws%SM, s, w%rand_ws%temp_1, w%work, lwork, inform%external_return)
     if (inform%external_return /= 0) then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
       inform%external_name = 'lapack_?geqrf'
@@ -302,8 +324,8 @@ contains
     end do
 
     ! calculate initial guess from sketch-and-solve: x_0 = R^{-1} Q^T Sb
-    call PREC(ormqr)('L', 'T', sketch_size, 1, n, w%rand_ws%SM, sketch_size, w%rand_ws%temp_1, &
-              w%rand_ws%Sb, sketch_size, w%work, lwork, inform%external_return)
+    call PREC(ormqr)('L', 'T', s, 1, n, w%rand_ws%SM, s, w%rand_ws%temp_1, &
+              w%rand_ws%Sb, s, w%work, lwork, inform%external_return)
     if (inform%external_return /= 0) then
       inform%status = NLLS_ERROR_FROM_EXTERNAL
       inform%external_name = 'lapack_?ormqr'
@@ -322,12 +344,13 @@ contains
 
   end subroutine solve_rand 
 
-  subroutine estimate_norm(A, m, n, norm_a, num_iters, w)
+  subroutine estimate_norm(A, m, n, norm_a, num_iters, w, fortran_jacobian)
   ! power method to estimate spectral norm of A
     real(wp), intent(in), contiguous :: A(:,:)
     integer, intent(in) :: m, n, num_iters
     real(wp), intent(out) :: norm_a
     type(LLS_lsqr_work), intent(inout) :: w
+    logical, intent(in) :: fortran_jacobian
 
     integer :: i
 
@@ -336,11 +359,19 @@ contains
 
     ! each iteration of the power method, we multiply by A^T A and renormalize
     ! this is done in two steps to be better-conditioned
-    do i = 1, num_iters
-      w%v = w%v / norm2(w%v)
-      call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%v, 1, 0.0_wp, w%u, 1)
-      call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%u, 1, 0.0_wp, w%v, 1)
-    end do
+    if (fortran_jacobian) then
+      do i = 1, num_iters
+        w%v = w%v / norm2(w%v)
+        call PREC(gemv)('N', m, n, 1.0_wp, A, m, w%v, 1, 0.0_wp, w%u, 1)
+        call PREC(gemv)('T', m, n, 1.0_wp, A, m, w%u, 1, 0.0_wp, w%v, 1)
+      end do
+    else
+      do i = 1, num_iters
+        w%v = w%v / norm2(w%v)
+        call PREC(gemv)('T', n, m, 1.0_wp, A, n, w%v, 1, 0.0_wp, w%u, 1)
+        call PREC(gemv)('N', n, m, 1.0_wp, A, n, w%u, 1, 0.0_wp, w%v, 1)
+      end do
+    end if
 
     norm_a = sqrt(norm2(w%v))
 
@@ -356,11 +387,6 @@ contains
     type(NLLS_options), intent(in) :: options
     type(LLS_rand_work), intent(inout) :: w
     type(NLLS_inform), intent(inout) :: inform
-
-    if (sketch_size <= 0 .or. sketch_size > m) then
-      inform%status = NLLS_ERROR_BAD_SKETCH_SIZE
-      return
-    end if
 
     select case (options%sketch_method)
       case (1)  ! random sampling of rows

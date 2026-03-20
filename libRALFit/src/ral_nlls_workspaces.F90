@@ -298,7 +298,7 @@ module MODULE_PREC(ral_nlls_workspaces)
 !  If using randomised linear solver, what sketch size?
 !  this must be manually set by the user as it depends on `m`
 
-     INTEGER :: sketch_size = 0
+     INTEGER :: sketch_size = -1
 
 !  If using randomised solver, which sketching method should we use?
 !     1 Uniform subsample 
@@ -1366,9 +1366,17 @@ contains
     type( nlls_options ), intent(in) :: options
     type( nlls_inform ), intent(inout) :: inform
 
+    integer :: s
+
+    if (options%sketch_size <= n .or. options%sketch_size > m) then
+      s = 4 * n
+    else
+      s = options%sketch_size
+    end if
+
     inform%status = 0
-    allocate(w%temp_1(m), w%temp_2(m), w%Sb(options%sketch_size), w%R(n,n), &
-             w%SM(options%sketch_size, n), w%DCT_A(m,n), &
+    allocate(w%temp_1(m), w%temp_2(m), w%Sb(s), w%R(n,n), &
+             w%SM(s, n), w%DCT_A(m,n), &
              w%dct_work(m), stat=inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = "setup_workspace_LLS_rand"
