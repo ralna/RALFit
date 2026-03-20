@@ -1435,6 +1435,143 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
          fails = fails + 1
       end if
     end subroutine c_fortran_tests
+    
+    subroutine linear_solve_tests(options, fails, tol_type)
+      Implicit None
+      type( NLLS_options ), intent(inout) :: options
+      integer, intent(inout) :: fails
+      Character(len=*), intent(in) :: tol_type
+      real(wp), allocatable :: x(:)
+      type( user_type ), target :: params
+      type( NLLS_inform )  :: status, c_status
+      real(wp) :: resvec_error, solver_type_error, abstol, reltol
+      real(wp) :: C_results(3), F_results(3)
+      integer :: n, lls_solver
+      Logical :: Ok, any_fails
+
+      Continue
+
+      abstol = 2.0e-8_wp
+      reltol = -1.0_wp
+
+      any_fails = .false.
+
+      if (trim(tol_type) == 'both') then
+        reltol = 1.0e-8_wp
+      end if
+
+      n = 2
+
+      allocate( x(n) )
+      options%print_level = 5
+
+      do lls_solver = 1, 3
+        call generate_data_example(params)
+        options%lls_solver = lls_solver
+        options%fortran_jacobian = .true.
+        call solve_basic(X,params,options,status)
+        if ( status%status .ne. 0 ) then
+           write(*,*) 'nlls_solve failed to converge:'
+           write(*,*) status%error_message
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'LLS_SOLVER = ', options%lls_solver
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+           write(*,*) 'inner_method = ', options%inner_method
+           write(*,*) 'info%status = ', status%status
+           write(*,*) 'scale? ', options%scale
+           fails = fails + 1
+           any_fails = .true.
+        else
+          F_results(lls_solver) = norm2(status%resvec(1:status%iter+1))
+        end if
+
+        ! run the same test with a c jacobian
+        options%fortran_jacobian = .false.
+        call solve_basic_c(X,params,options,c_status)
+        if ( c_status%status .ne. 0 ) then
+           write(*,*) 'nlls_solve (c jac) failed to converge:'
+           write(*,*) c_status%error_message
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'LLS_SOLVER = ', options%lls_solver
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+           write(*,*) 'inner_method = ', options%inner_method
+           write(*,*) 'info%status = ', c_status%status
+           write(*,*) 'scale? ', options%scale
+           fails = fails + 1
+           any_fails = .true.
+         else
+          C_results(lls_solver) = norm2(c_status%resvec(1:c_status%iter+1))
+        end if
+
+        ! check that the results are consistent with
+        ! both c and fortran jacobians
+        if ( c_status%iter == status%iter ) then
+           resvec_error = norm2(c_status%resvec(1:c_status%iter+1) - &
+                status%resvec(1:status%iter+1))
+           if (.not. resvec_error < abstol) then
+              write(*,*) 'Warning: fortran and c resvec differ!'
+              write(*,*) 'Different resvecs in 2-norm for'
+              write(*,*) 'NLLS_METHOD = ', options%nlls_method
+              write(*,*) 'LLS_SOLVER = ', options%lls_solver
+              write(*,*) 'MODEL = ', options%model
+              write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+              write(*,*) 'inner_method = ', options%inner_method
+              ! Report all entries and show how much they differ in L2 and relative L2
+              ! Ok will inform is at least reltol is met
+              Call check_resvec(c_status%resvec(1:c_status%iter+1), &
+                 status%resvec(1:status%iter+1), atol=abstol, reltol=reltol, prn=.true., Ok=Ok)
+              fails = fails + merge(0,1,Ok)
+           end if
+        else
+           write(*,*) 'error: fortran and c jacobians'
+           write(*,*) 'took different numbers of iterations: F iters=', status%iter, "C iters=", c_status%iter
+           write(*,*) 'NLLS_METHOD = ', options%nlls_method
+           write(*,*) 'LLS_SOLVER = ', options%lls_solver
+           write(*,*) 'MODEL = ', options%model
+           write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+           write(*,*) 'inner_method = ', options%inner_method
+           fails = fails + 1
+        end if
+      end do
+      if (.not. any_fails) then
+        do lls_solver = 1, 2
+          do n = lls_solver + 1, 3
+            solver_type_error = abs(C_results(lls_solver) - C_results(n))
+            if (.not. solver_type_error < abstol) then
+              write(*,*) 'Warning: different linear solvers give different results'
+              write(*,*) 'Different resvecs in 2-norm for C Jacobian in'
+              write(*,*) 'NLLS_METHOD = ', options%nlls_method
+              write(*,*) 'MODEL = ', options%model
+              write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+              write(*,*) 'inner_method = ', options%inner_method
+              write(*,*) 'LLS_SOLVER 1 = ', lls_solver, " residual ", C_results(lls_solver)
+              write(*,*) 'LLS_SOLVER 2 = ', n, " residual ", C_results(n)
+              fails = fails + 1
+            end if
+          end do
+        end do
+
+        do lls_solver = 1, 2
+          do n = lls_solver + 1, 3
+            solver_type_error = abs(F_results(lls_solver) - F_results(n))
+            if (.not. solver_type_error < abstol) then
+              write(*,*) 'Warning: different linear solvers give different results'
+              write(*,*) 'Different resvecs in 2-norm for F Jacobian in'
+              write(*,*) 'NLLS_METHOD = ', options%nlls_method
+              write(*,*) 'MODEL = ', options%model
+              write(*,*) 'TR_UPDATE = ', options%tr_update_strategy
+              write(*,*) 'inner_method = ', options%inner_method
+              write(*,*) 'LLS_SOLVER 1 = ', lls_solver, " residual ", F_results(lls_solver)
+              write(*,*) 'LLS_SOLVER 2 = ', n, " residual ", F_results(n)
+              fails = fails + 1
+            end if
+          end do
+        end do
+      end if
+
+    end subroutine linear_solve_tests 
 
      subroutine dogleg_tests(options,fails)
 

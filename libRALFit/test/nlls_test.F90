@@ -172,6 +172,37 @@ program nlls_test
         end do
      end do
 
+      ! Test linear solvers are consistent 
+      do tr_update = 1,2
+        do nlls_method = 1,4
+          call reset_default_options(options)
+            options%print_options = .True.
+            options%allow_fallback_method = .false.
+            options%nlls_method = nlls_method
+            options%tr_update_strategy = tr_update
+            options%model = 1 
+            options%exact_second_derivatives = .true.
+            options%output_progress_vectors = .true.
+            call print_line(options%out)
+            write(options%out,*) "Testing linear solver consistency"
+            write(options%out,*) "tr_update_strategy        = ", options%tr_update_strategy
+            write(options%out,*) "nlls_method               = ", options%nlls_method
+            write(options%out,*) "model                     = ", options%model
+            write(options%out,*) "Tolerance type for resvec = ", tol_type
+            call print_line(options%out)
+            if (nlls_method == 4) then
+               do inner_method = 1,3
+                  ! check the tests with c and fortran jacobians
+                  ! pass individually, and give consistent results.
+                  options%inner_method = inner_method
+                  call linear_solve_tests(options,no_errors_main, tol_type)
+               end do
+            else
+               call linear_solve_tests(options,no_errors_main, tol_type)
+            end if
+        end do
+      end do
+
 
      ! dogleg, no fallback
      call reset_default_options(options)
