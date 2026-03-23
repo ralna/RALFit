@@ -14,6 +14,7 @@ set(source_files
     nag_export_mod.F90
     ral_nlls_fd.F90
     ral_nlls_internal.F90
+    ral_nlls_linear.F90
     ral_nlls.F90
     ral_nlls_ciface.F90
     CACHE INTERNAL "source_files" FORCE)
@@ -92,6 +93,8 @@ function(generate_ral_nlls_modules precision obj_list)
     "NAG_EXPORT_MOD_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
   add_dependencies("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
   add_dependencies("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
+  add_dependencies("RAL_NLLS_INTERNAL_${precision}" "RAL_NLLS_LINEAR_${precision}")
+  add_dependencies("RAL_NLLS_LINEAR_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
 
   # Replicate tree to be compatible with Ninja
   target_link_libraries("RAL_NLLS_DTRS_${precision}" "RAL_NLLS_TYPES_${precision}"
@@ -113,6 +116,8 @@ function(generate_ral_nlls_modules precision obj_list)
     "NAG_EXPORT_MOD_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
   target_link_libraries("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
   target_link_libraries("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
+  target_link_libraries("RAL_NLLS_INTERNAL_${precision}" "RAL_NLLS_LINEAR_${precision}")
+  target_link_libraries("RAL_NLLS_LINEAR_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
 endfunction()
 
 # Post ################
