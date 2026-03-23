@@ -47,7 +47,7 @@ contains
           call solve_posv(A,b,n,inform)
         else
           if (n == m) then
-            call solve_gesv(A,b,n,inform)
+            call solve_gesv(A,b,n,inform,w)
           else
             if (.not. w%allocated) then
               inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -94,17 +94,15 @@ contains
 
   end subroutine solve_gels
 
-  subroutine solve_gesv(A,b,n,inform)
+  subroutine solve_gesv(A,b,n,inform,w)
 !   Wrapper around LAPACK's ?gesv
     implicit none
     real(wp), intent(inout), contiguous :: A(:,:), b(:)
     INTEGER, INTENT(IN) :: n
     type(NLLS_inform), INTENT(INOUT) :: inform
+    type(solve_LLS_work), intent(inout) :: w
 
-    ! NB: we never actually use ipiv in the library
-    integer, dimension(n) :: ipiv
-
-    call PREC(gesv)(n, 1, A, n, ipiv, b, n, inform%external_return)
+    call PREC(gesv)(n, 1, A, n, w%ipiv, b, n, inform%external_return)
     if (inform%external_return /= 0 ) then
        inform%status = NLLS_ERROR_FROM_EXTERNAL
        inform%external_name = 'lapack_?gesv'

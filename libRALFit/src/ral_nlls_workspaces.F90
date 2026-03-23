@@ -602,6 +602,7 @@ module MODULE_PREC(ral_nlls_workspaces)
   type, public :: solve_LLS_work ! workspace for subroutine solve_LLS
      logical :: allocated = .false.
      real(wp), allocatable :: temp(:), work(:), Jlls(:,:)
+     integer, allocatable :: ipiv(:)
   end type solve_LLS_work
 
   type, public :: min_eig_symm_work ! workspace for subroutine min_eig_work
@@ -1254,7 +1255,7 @@ contains
 
     inform%status = 0
     lwork = max(1, min(m,n) + max(min(m,n), 1)*4)
-    allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(m,n), stat = inform%alloc_status)
+    allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(m,n), w%ipiv(n), stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_solve_LLS(w,options)
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1273,6 +1274,7 @@ contains
     if(allocated( w%temp )) deallocate( w%temp, stat=ierr_dummy )
     if(allocated( w%work )) deallocate( w%work, stat=ierr_dummy )
     if(allocated( w%Jlls )) deallocate( w%Jlls, stat=ierr_dummy )
+    if(allocated( w%ipiv )) deallocate( w%ipiv, stat=ierr_dummy )
 
     w%allocated = .false.
   end subroutine remove_workspace_solve_LLS
