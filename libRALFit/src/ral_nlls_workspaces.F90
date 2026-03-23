@@ -12,6 +12,7 @@ module MODULE_PREC(ral_nlls_workspaces)
   Use MODULE_PREC(ral_nlls_types), Only: wp, np, lp, params_base_type,         &
                                          eval_f_type, eval_j_type,             &
                                          eval_hf_type, eval_hp_type
+  use MODULE_PREC(lsqr_reverse), Only: lsqr_options, lsqr_inform, lsqr_keep, lsqr_free
 
   implicit none
 
@@ -48,6 +49,9 @@ module MODULE_PREC(ral_nlls_workspaces)
   Integer, Parameter, Public :: NLLS_ERROR_BAD_BOX_BOUNDS           =  -18
   Integer, Parameter, Public :: NLLS_ERROR_BAD_JACOBIAN             =  -19
   Integer, Parameter, Public :: NLLS_ERROR_BAD_WEIGHTS              =  -20
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_LLS_SOLVER           =  -21
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_SKETCH_SIZE          =  -22
+  Integer, Parameter, Public :: NLLS_ERROR_BAD_SKETCH_METHOD        =  -23
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -142,11 +146,6 @@ module MODULE_PREC(ral_nlls_workspaces)
 !   allow the algorithm to use a different subproblem solver if one fails
 
      LOGICAL :: allow_fallback_method = .true.
-
-
-!  which linear least squares solver should we use?
-
-     INTEGER :: lls_solver = 1
 
 !   overall convergence tolerances. The iteration will terminate when the
 !   norm of the gradient of the objective function is smaller than
@@ -266,7 +265,7 @@ module MODULE_PREC(ral_nlls_workspaces)
      ! use eigendecomposition in subproblem solve?
      LOGICAL :: use_ews_subproblem = .TRUE.
 
-     ! This forces to call min_eig_symm without previously calling minus_solve_spd_nocopy
+     ! This forces to call min_eig_symm without previously calling solve_LLS 
      ! This option is used for code coverage and can be hidden from user.
      Logical :: force_min_eig_symm = .FALSE.
 
@@ -284,6 +283,29 @@ module MODULE_PREC(ral_nlls_workspaces)
 
      logical :: setup_workspaces = .true.
      logical :: remove_workspaces = .true.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! L I N E A R  S O L V E R  C O N T R O L S !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!  which linear least squares solver should we use?
+!      1 LAPACK solver
+!      2 LSQR (iterative)
+!      3 Randomised solver (sketch-and-precondition)
+
+     INTEGER :: lls_solver = 1
+
+!  If using randomised linear solver, what sketch size?
+!  this must be manually set by the user as it depends on `m`
+
+     INTEGER :: sketch_size = -1
+
+!  If using randomised solver, which sketching method should we use?
+!     1 Uniform subsample 
+!     2 Subsample with DCT row mixing
+! 
+     INTEGER :: sketch_method = 1
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! M O R E - S O R E N S E N   C O N T R O L S !!!
@@ -593,20 +615,34 @@ module MODULE_PREC(ral_nlls_workspaces)
      real(wp), allocatable :: nullevs(:,:)
   end type max_eig_work
 
-  type, public :: minus_solve_general_work ! workspace for subroutine minus_solve_general
-     logical :: allocated = .false.
-     real(wp), allocatable :: A(:,:)
-     integer, allocatable :: ipiv(:)
-  end type minus_solve_general_work
-
   type, public :: evaluate_model_work ! workspace for subroutine evaluate_model
      logical :: allocated = .false.
      real(wp), allocatable :: Jd(:), dH(:), Hd(:), dHd(:)
   end type evaluate_model_work
 
+  type, public :: LLS_lsqr_work
+      logical :: allocated = .false.
+      ! variables for LSQR
+      real(wp), allocatable :: u(:), v(:), z(:), x(:), ATu(:)
+
+      ! LSQR reverse communication objects
+      type(lsqr_keep) :: keep
+      type(lsqr_inform) :: inform
+  end type LLS_lsqr_work
+
+  type, public :: LLS_rand_work
+      logical :: allocated = .false.
+      real(wp), allocatable :: temp_1(:), temp_2(:), Sb(:)
+      real(wp), allocatable :: R(:,:), SM(:,:), DCT_A(:,:)
+      complex(wp), allocatable :: dct_work(:)
+  end type LLS_rand_work
+
   type, public :: solve_LLS_work ! workspace for subroutine solve_LLS
      logical :: allocated = .false.
-     real(wp), allocatable :: temp(:), work(:), Jlls(:)
+     real(wp), allocatable :: temp(:), work(:), Jlls(:,:)
+     integer, allocatable :: ipiv(:)
+     type(LLS_lsqr_work) :: lsqr_ws
+     type(LLS_rand_work) :: rand_ws
   end type solve_LLS_work
 
   type, public :: min_eig_symm_work ! workspace for subroutine min_eig_work
@@ -649,13 +685,15 @@ module MODULE_PREC(ral_nlls_workspaces)
   type, public :: regularization_solver_work ! workspace for subroutine regularization_solver
      logical :: allocated = .false.
      real(wp), allocatable :: AplusSigma(:,:),LtL(:,:)
+     type( solve_LLS_work ) :: lls_ws
   end type regularization_solver_work
 
   type, public :: more_sorensen_work ! workspace for subroutine more_sorensen
      logical :: allocated = .false.
      real(wp), allocatable :: LtL(:,:), AplusSigma(:,:)
      real(wp), allocatable :: q(:), y1(:)
-     type( min_eig_symm_work ) :: min_eig_symm_ws
+     type(min_eig_symm_work) :: min_eig_symm_ws
+     type(solve_LLS_work) :: lls_ws
      real(wp), allocatable :: norm_work(:)
   end type more_sorensen_work
 
@@ -663,8 +701,7 @@ module MODULE_PREC(ral_nlls_workspaces)
      logical :: allocated = .false.
      type( max_eig_work ) :: max_eig_ws
      type( evaluate_model_work ) :: evaluate_model_ws
-     type( minus_solve_general_work ) :: minus_solve_general_ws
-     !       type( minus_solve_spd_work ) :: minus_solve_spd_ws
+     type( solve_LLS_work ) :: solve_LLS_ws
      REAL(wp), allocatable :: LtL(:,:), B(:,:), p0(:), p1(:)
      REAL(wp), allocatable :: M0(:,:), M1(:,:), y(:), gtg(:,:), q(:)
      REAL(wp), allocatable :: M0_small(:,:), M1_small(:,:)
@@ -734,6 +771,7 @@ module MODULE_PREC(ral_nlls_workspaces)
   Public :: params_base_type
   Public :: eval_f_type, eval_j_type, eval_hf_type, eval_hp_type
   public :: setup_workspaces, remove_workspaces
+  public :: setup_workspace_solve_LLS, remove_workspace_solve_LLS
   public :: setup_workspace_dogleg, setup_workspace_AINT_tr
   public :: setup_workspace_more_sorensen, setup_workspace_solve_galahad
   public :: setup_workspace_regularization_solver
@@ -1258,7 +1296,13 @@ contains
 
     inform%status = 0
     lwork = max(1, min(m,n) + max(min(m,n), 1)*4)
-    allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(n*m), stat = inform%alloc_status)
+    allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(m,n), w%ipiv(n), stat = inform%alloc_status)
+    if (options%LLS_solver /= 1) then
+      call setup_workspace_LLS_lsqr(w%lsqr_ws, n, m, inform)
+    end if
+    if (options%LLS_solver == 3) then
+      call setup_workspace_LLS_rand(w%rand_ws, n, m, options, inform)
+    end if
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_solve_LLS(w,options)
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1277,9 +1321,86 @@ contains
     if(allocated( w%temp )) deallocate( w%temp, stat=ierr_dummy )
     if(allocated( w%work )) deallocate( w%work, stat=ierr_dummy )
     if(allocated( w%Jlls )) deallocate( w%Jlls, stat=ierr_dummy )
+    if(allocated( w%ipiv )) deallocate( w%ipiv, stat=ierr_dummy )
+    call remove_workspace_LLS_lsqr(w%lsqr_ws)
+    call remove_workspace_LLS_rand(w%rand_ws)
 
     w%allocated = .false.
   end subroutine remove_workspace_solve_LLS
+
+  subroutine setup_workspace_LLS_lsqr(w, n, m, inform)
+    implicit none
+    type( LLS_lsqr_work ), intent(out) :: w
+    integer, intent(in) :: n, m
+    type( nlls_inform ), intent(inout) :: inform
+
+    inform%status = 0
+    allocate(w%u(m), w%v(n), w%z(n), w%x(n), w%ATu(n), stat=inform%alloc_status)
+    If (inform%alloc_status /= 0) Then
+      inform%bad_alloc = "setup_workspace_LLS_lsqr"
+      inform%status = NLLS_ERROR_ALLOCATION
+      return 
+    End If
+
+    w%allocated = .true.
+  end subroutine setup_workspace_LLS_lsqr
+
+  subroutine remove_workspace_LLS_lsqr(w)
+    implicit none
+    type( LLS_lsqr_work ), intent(out) :: w
+    Integer :: ierr_dummy
+
+    if(allocated(w%u)) deallocate(w%u, stat=ierr_dummy)
+    if(allocated(w%v)) deallocate(w%v, stat=ierr_dummy)
+    if(allocated(w%z)) deallocate(w%z, stat=ierr_dummy)
+    if(allocated(w%x)) deallocate(w%x, stat=ierr_dummy)
+    if(allocated(w%ATu)) deallocate(w%ATu, stat=ierr_dummy)
+
+    w%allocated = .false.
+  end subroutine remove_workspace_LLS_lsqr
+
+  subroutine setup_workspace_LLS_rand(w, n, m, options, inform)
+    implicit none
+    type( LLS_rand_work ), intent(out) :: w
+    integer, intent(in) :: n, m
+    type( nlls_options ), intent(in) :: options
+    type( nlls_inform ), intent(inout) :: inform
+
+    integer :: s
+
+    if (options%sketch_size <= n .or. options%sketch_size > m) then
+      s = 4 * n
+    else
+      s = options%sketch_size
+    end if
+
+    inform%status = 0
+    allocate(w%temp_1(m), w%temp_2(m), w%Sb(s), w%R(n,n), &
+             w%SM(s, n), w%DCT_A(m,n), &
+             w%dct_work(m), stat=inform%alloc_status)
+    If (inform%alloc_status /= 0) Then
+      inform%bad_alloc = "setup_workspace_LLS_rand"
+      inform%status = NLLS_ERROR_ALLOCATION
+      return 
+    End If
+
+    w%allocated = .true.
+  end subroutine setup_workspace_LLS_rand
+
+  subroutine remove_workspace_LLS_rand(w)
+    implicit none
+    type( LLS_rand_work ), intent(out) :: w
+    Integer :: ierr_dummy
+
+    if(allocated(w%temp_1)) deallocate(w%temp_1, stat=ierr_dummy)
+    if(allocated(w%temp_2)) deallocate(w%temp_2, stat=ierr_dummy)
+    if(allocated(w%R)) deallocate(w%R, stat=ierr_dummy)
+    if(allocated(w%SM)) deallocate(w%SM, stat=ierr_dummy)
+    if(allocated(w%DCT_A)) deallocate(w%DCT_A, stat=ierr_dummy)
+    if(allocated(w%dct_work)) deallocate(w%dct_work, stat=ierr_dummy)
+
+    w%allocated = .false.
+  end subroutine remove_workspace_LLS_rand
 
   subroutine setup_workspace_evaluate_model(n,m,w,options,inform)
     implicit none
@@ -1337,7 +1458,7 @@ contains
     if (inform%status /= 0) goto 100
     ! setup space for the solve routine
     if ((options%model .ne. 1)) then
-       call setup_workspace_minus_solve_general(n,m,w%minus_solve_general_ws,options,inform)
+       call setup_workspace_solve_LLS(n,m,w%solve_LLS_ws,options,inform)
        if (inform%status /= 0 ) goto 100
     end if
 
@@ -1376,7 +1497,7 @@ contains
     call remove_workspace_evaluate_model(w%evaluate_model_ws,options)
     ! setup space for the solve routine
     if (options%model .ne. 1) then
-       call remove_workspace_minus_solve_general(w%minus_solve_general_ws,options)
+       call remove_workspace_solve_LLS(w%solve_LLS_ws,options)
     end if
 
     w%allocated = .false.
@@ -1559,36 +1680,6 @@ contains
 
     w%allocated = .false.
   end subroutine remove_workspace_max_eig
-
-  subroutine setup_workspace_minus_solve_general(n, m, w, options, inform)
-    implicit none
-    integer, intent(in) :: n, m
-    type( minus_solve_general_work ), INTENT( INOUT) :: w
-    type( nlls_options ), intent(in) :: options
-    type( nlls_inform), intent(inout) :: inform
-
-    inform%status = 0
-    allocate( w%A(n,n),w%ipiv(n),stat=inform%alloc_status)
-    If (inform%alloc_status /= 0) Then
-      Call remove_workspace_minus_solve_general(w,options)
-      inform%status = NLLS_ERROR_ALLOCATION
-      inform%bad_alloc = "setup_workspace_minus_solve_general"
-    Else
-      w%allocated = .true.
-    End If
-  end subroutine setup_workspace_minus_solve_general
-
-  subroutine remove_workspace_minus_solve_general(w, options)
-    implicit none
-    type( minus_solve_general_work ), INTENT( INOUT) :: w
-    type( nlls_options ), intent(in) :: options
-    Integer :: ierr_dummy
-
-    if(allocated( w%A )) deallocate( w%A, stat=ierr_dummy )
-    if(allocated( w%ipiv )) deallocate( w%ipiv, stat=ierr_dummy )
-
-    w%allocated = .false.
-  end subroutine remove_workspace_minus_solve_general
 
   subroutine setup_workspace_solve_galahad(n,m,w,options,inform)
     implicit none
