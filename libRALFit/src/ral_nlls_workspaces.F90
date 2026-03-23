@@ -13,6 +13,7 @@ module MODULE_PREC(ral_nlls_workspaces)
                                          eval_f_type, eval_j_type,             &
                                          eval_hf_type, eval_hp_type
   use MODULE_PREC(lsqr_reverse), Only: lsqr_options, lsqr_inform, lsqr_keep, lsqr_free
+  use MODULE_PREC(ral_nlls_matrix), Only: dense_matrix
 
   implicit none
 
@@ -52,6 +53,7 @@ module MODULE_PREC(ral_nlls_workspaces)
   Integer, Parameter, Public :: NLLS_ERROR_BAD_LLS_SOLVER           =  -21
   Integer, Parameter, Public :: NLLS_ERROR_BAD_SKETCH_SIZE          =  -22
   Integer, Parameter, Public :: NLLS_ERROR_BAD_SKETCH_METHOD        =  -23
+  Integer, Parameter, Public :: NLLS_ERROR_SPARSE_UNSUPPORTED       =  -24
 
   ! dogleg errors
   Integer, Parameter, Public :: NLLS_ERROR_DOGLEG_MODEL             = -101
@@ -633,14 +635,16 @@ module MODULE_PREC(ral_nlls_workspaces)
   type, public :: LLS_rand_work
       logical :: allocated = .false.
       real(wp), allocatable :: temp_1(:), temp_2(:), Sb(:)
-      real(wp), allocatable :: R(:,:), SM(:,:), DCT_A(:,:)
+      real(wp), allocatable :: R(:,:), SM(:,:) 
+      type(dense_matrix) :: DCT_A
       complex(wp), allocatable :: dct_work(:)
   end type LLS_rand_work
 
   type, public :: solve_LLS_work ! workspace for subroutine solve_LLS
      logical :: allocated = .false.
-     real(wp), allocatable :: temp(:), work(:), Jlls(:,:)
+     real(wp), allocatable :: temp(:), work(:)
      integer, allocatable :: ipiv(:)
+     type(dense_matrix) :: Jlls
      type(LLS_lsqr_work) :: lsqr_ws
      type(LLS_rand_work) :: rand_ws
   end type solve_LLS_work
@@ -720,6 +724,8 @@ module MODULE_PREC(ral_nlls_workspaces)
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:), xxt(:,:)
      real(wp), allocatable :: v(:), scale(:), extra_scale(:)
+     ! todo: replace J with `jacobian` (which would be a breaking change)
+     type ( dense_matrix ) :: jacobian 
      real(wp) :: reg_order = 2.0_wp ! reg. by + 1/p || \sigma || ** p
      type( AINT_tr_work ) :: AINT_tr_ws
      type( dogleg_work ) :: dogleg_ws
@@ -759,8 +765,6 @@ module MODULE_PREC(ral_nlls_workspaces)
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
      real(wp), allocatable :: Wf(:)
-     ! todo: replace J with `jacobian` (which would be a breaking change)
-     type ( dense_matrix ) :: jacobian 
      type ( calculate_step_work ) :: calculate_step_ws
      type ( box_type ) :: box_ws
      real(wp) :: tr_nu = 2.0_wp
@@ -952,15 +956,6 @@ contains
        End If
     end if
 
-    if (.not. workspace%jacobian%allocated) then
-      call init_dense_matrix(workspace%jacobian, n, m, inform)
-      If (inform%alloc_status /= 0) Then
-        inform%bad_alloc = 'setup_workspaces'
-        inform%status = NLLS_ERROR_ALLOCATION
-        goto 100
-      End If
-    end if
-
     call setup_workspace_calculate_step(n,m,workspace%calculate_step_ws, &
          options, inform, workspace%tenJ, workspace%iw_ptr)
     if (inform%status/=0) goto 100
@@ -1003,8 +998,6 @@ contains
     if(allocated(workspace%d)) deallocate(workspace%d, stat=ierr_dummy )
     if(allocated(workspace%g)) deallocate(workspace%g, stat=ierr_dummy )
     if(allocated(workspace%Xnew)) deallocate(workspace%Xnew, stat=ierr_dummy )
-
-    if (workspace%jacobian%allocated) call free_dense_matrix(workspace%jacobian, stat=ierr_dummy)
 
     call remove_workspace_calculate_step(workspace%calculate_step_ws,&
          options,workspace%tenJ, workspace%iw_ptr)
@@ -1195,6 +1188,9 @@ contains
        end if
     end if
 
+    call w%jacobian%init_matrix(n, m, options%fortran_jacobian, inform%alloc_status)
+    if (inform%alloc_status /= 0) goto 100
+
     if (options%scale > 0) then
        call setup_workspace_generate_scaling(n,m,w%generate_scaling_ws,options,inform)
        if (inform%status /= 0) goto 100
@@ -1248,6 +1244,8 @@ contains
        end if
     end if
     if (options%scale > 0) call remove_workspace_generate_scaling(w%generate_scaling_ws,options)
+
+    if (w%jacobian%allocated) call w%jacobian%free_matrix(stat=ierr_dummy)
 
     w%allocated = .false.
   end subroutine remove_workspace_calculate_step
@@ -1310,7 +1308,8 @@ contains
 
     inform%status = 0
     lwork = max(1, min(m,n) + max(min(m,n), 1)*4)
-    allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(m,n), w%ipiv(n), stat = inform%alloc_status)
+    allocate( w%temp(max(m,n)),w%work(lwork), w%ipiv(n), stat = inform%alloc_status)
+    call w%Jlls%init_matrix(n, m, options%fortran_jacobian, inform%alloc_status)
     if (options%LLS_solver /= 1) then
       call setup_workspace_LLS_lsqr(w%lsqr_ws, n, m, inform)
     end if
@@ -1334,8 +1333,8 @@ contains
 
     if(allocated( w%temp )) deallocate( w%temp, stat=ierr_dummy )
     if(allocated( w%work )) deallocate( w%work, stat=ierr_dummy )
-    if(allocated( w%Jlls )) deallocate( w%Jlls, stat=ierr_dummy )
     if(allocated( w%ipiv )) deallocate( w%ipiv, stat=ierr_dummy )
+    call w%Jlls%free_matrix(stat=ierr_dummy)
     call remove_workspace_LLS_lsqr(w%lsqr_ws)
     call remove_workspace_LLS_rand(w%rand_ws)
 
@@ -1390,8 +1389,8 @@ contains
 
     inform%status = 0
     allocate(w%temp_1(m), w%temp_2(m), w%Sb(s), w%R(n,n), &
-             w%SM(s, n), w%DCT_A(m,n), &
-             w%dct_work(m), stat=inform%alloc_status)
+             w%SM(s, n), w%dct_work(m), stat=inform%alloc_status)
+    call w%DCT_A%init_matrix(n, m, .true., inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       inform%bad_alloc = "setup_workspace_LLS_rand"
       inform%status = NLLS_ERROR_ALLOCATION
@@ -1410,8 +1409,9 @@ contains
     if(allocated(w%temp_2)) deallocate(w%temp_2, stat=ierr_dummy)
     if(allocated(w%R)) deallocate(w%R, stat=ierr_dummy)
     if(allocated(w%SM)) deallocate(w%SM, stat=ierr_dummy)
-    if(allocated(w%DCT_A)) deallocate(w%DCT_A, stat=ierr_dummy)
     if(allocated(w%dct_work)) deallocate(w%dct_work, stat=ierr_dummy)
+
+    call w%DCT_A%free_matrix(stat=ierr_dummy)
 
     w%allocated = .false.
   end subroutine remove_workspace_LLS_rand

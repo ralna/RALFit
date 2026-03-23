@@ -15,6 +15,7 @@ module MODULE_PREC(ral_nlls_internal)
   Use MODULE_PREC(ral_nlls_bounds)
   Use MODULE_PREC(ral_nlls_types), Only: PREC(nrm2), PREC(dot)
   use MODULE_PREC(ral_nlls_linear), only: solve_LLS
+  use MODULE_PREC(ral_nlls_matrix), only: matrix
 
   implicit none
 
@@ -1461,9 +1462,15 @@ lp: do while (.not. success)
                 end if
                 subproblem_method = 2 ! try aint next
 
-                call dogleg(J,f,hf,g,n,m,Delta,d,norm_S_d, &
+                ! todo; we eventually want to replace J with the matrix structure,
+                ! but that is a breaking change. in the meantime, we need to keep
+                ! moving this `lacpy` call outwards until it comes right after the
+                ! call to eval_J in nlls_iterate
+                call PREC(lacpy)('A', m, n, J, m, w%jacobian%data, m)
+                call dogleg(w%jacobian,f,hf,g,n,m,Delta,d,norm_S_d, &
                      options,inform,w%dogleg_ws)
                 if (inform%status == 0) subproblem_success = .true.
+                call PREC(lacpy)('A', m, n, w%jacobian%data, m, J, m)
 
              case (2) ! The AINT method
                 If (buildmsg(5,.False.,options)) Then
@@ -1767,7 +1774,8 @@ lp: do while (.not. success)
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in), contiguous :: J(:), hf(:), f(:), g(:)
+     class( matrix ), intent(in) :: J
+     REAL(wp), intent(in), contiguous :: hf(:), f(:), g(:)
      REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out), contiguous :: d(:)
@@ -1790,7 +1798,7 @@ lp: do while (.not. success)
      End If
 
      ! Jg = J * g
-     call mult_J(J,n,m,g,w%Jg,options%Fortran_Jacobian)
+     call J%mult_mv('N', g, w%Jg, 1.0_wp, 0.0_wp)
 
     !alpha = norm2(g)**2 / norm2( w%Jg )**2
      nrmg = PREC(nrm2)(n, g, 1) ! g(1:n)
@@ -1803,7 +1811,7 @@ lp: do while (.not. success)
      select case (options%model)
      case (1)
         ! linear model...
-        call PREC(lacpy)('A', m, n, J, m, w%solve_LLS_ws%Jlls, m)
+        call J%copy_matrix(w%solve_LLS_ws%Jlls%data)
         w%solve_LLS_ws%temp(1:m) = f(1:m)
         call solve_LLS(w%solve_LLS_ws%Jlls,w%solve_LLS_ws%temp,n,m,inform,w%solve_LLS_ws,options,.false.)
         if ( inform%status /= 0 ) goto 100

@@ -46,6 +46,8 @@ Possible values are:
       -  Bad sketch size (``sketch_size``) specified in options for randomised method.
     * - -23
       -  Unsupported value of ``sketch_method`` specified in options for randomised method.
+    * - -24
+      -  A routine that was called does not support sparse matrices.
     * - -101
       -  Unsupported model in dogleg (``nlls_method=1``).
     * - -201

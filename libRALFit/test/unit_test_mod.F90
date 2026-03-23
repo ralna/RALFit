@@ -12,6 +12,7 @@ module MODULE_PREC(unit_test_mod)
   use MODULE_PREC(ral_nlls_internal)
   use MODULE_PREC(ral_nlls_linear)
   use MODULE_PREC(ral_nlls_workspaces)
+  use MODULE_PREC(ral_nlls_matrix)
   implicit none
 
   type, extends( params_base_type ) :: user_type
@@ -1584,7 +1585,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        type( nlls_options ), intent(inout) :: options
        integer, intent(out) :: fails
 
-       real(wp), allocatable :: J(:), hf(:), f(:), g(:), d(:)
+       type(dense_matrix) :: J
+       real(wp), allocatable :: hf(:), f(:), g(:), d(:)
        real(wp) :: Delta, normd
        type( nlls_inform ) :: inform
        type( nlls_workspace ) :: w
@@ -1606,13 +1608,14 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        options%model = 5
        n = 2
        m = 3
-       allocate(J(m*n), hf(n*n), f(m), g(n), d(n))
+       allocate(hf(n*n), f(m), g(n), d(n))
+       call J%init_matrix(n, m, .true., inform%alloc_status)
        call setup_workspaces(w,n,m,options,inform)
        Delta = 10.0_wp
 
        ! first, hit the 'method not supported' error
        options%model = 27
-       J = 1.0_wp
+       J%data = 1.0_wp
        hf = 0.0_wp
        f = 1.0_wp
        g = 1.0_wp
@@ -1624,7 +1627,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        inform%status = 0
 
        options%model = 1
-       J  = 0.1_wp * (/ 2.0_wp, 3.0_wp, 4.0_wp, 5.0_wp, 6.0_wp, 7.0_wp /)
+       J%data(1, 1) = 0.2_wp
+       J%data(2, 2) = 0.3_wp
+       J%data(3, 1) = 0.4_wp
+       J%data(1, 2) = 0.5_wp
+       J%data(2, 1) = 0.6_wp
+       J%data(3, 2) = 0.7_wp
        f = 1.0_wp
        hf = 0.0_wp
        g  = 1.0_wp
