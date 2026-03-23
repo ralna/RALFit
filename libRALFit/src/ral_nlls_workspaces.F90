@@ -759,6 +759,8 @@ module MODULE_PREC(ral_nlls_workspaces)
      real(wp), allocatable :: ysharpSks(:), Sks(:)
      real(wp), allocatable :: resvec(:), gradvec(:)
      real(wp), allocatable :: Wf(:)
+     ! todo: replace J with `jacobian` (which would be a breaking change)
+     type ( dense_matrix ) :: jacobian 
      type ( calculate_step_work ) :: calculate_step_ws
      type ( box_type ) :: box_ws
      real(wp) :: tr_nu = 2.0_wp
@@ -949,6 +951,16 @@ contains
          goto 100
        End If
     end if
+
+    if (.not. workspace%jacobian%allocated) then
+      call init_dense_matrix(workspace%jacobian, n, m, inform)
+      If (inform%alloc_status /= 0) Then
+        inform%bad_alloc = 'setup_workspaces'
+        inform%status = NLLS_ERROR_ALLOCATION
+        goto 100
+      End If
+    end if
+
     call setup_workspace_calculate_step(n,m,workspace%calculate_step_ws, &
          options, inform, workspace%tenJ, workspace%iw_ptr)
     if (inform%status/=0) goto 100
@@ -991,6 +1003,8 @@ contains
     if(allocated(workspace%d)) deallocate(workspace%d, stat=ierr_dummy )
     if(allocated(workspace%g)) deallocate(workspace%g, stat=ierr_dummy )
     if(allocated(workspace%Xnew)) deallocate(workspace%Xnew, stat=ierr_dummy )
+
+    if (workspace%jacobian%allocated) call free_dense_matrix(workspace%jacobian, stat=ierr_dummy)
 
     call remove_workspace_calculate_step(workspace%calculate_step_ws,&
          options,workspace%tenJ, workspace%iw_ptr)
