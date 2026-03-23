@@ -1803,7 +1803,7 @@ lp: do while (.not. success)
      select case (options%model)
      case (1)
         ! linear model...
-        w%solve_LLS_ws%Jlls = reshape(J, [n,m])
+        call PREC(lacpy)('A', m, n, J, m, w%solve_LLS_ws%Jlls, m)
         w%solve_LLS_ws%temp(1:m) = f(1:m)
         call solve_LLS(w%solve_LLS_ws%Jlls,w%solve_LLS_ws%temp,n,m,inform,w%solve_LLS_ws,options,.false.)
         if ( inform%status /= 0 ) goto 100

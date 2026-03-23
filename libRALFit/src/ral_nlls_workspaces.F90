@@ -1254,7 +1254,7 @@ contains
 
     inform%status = 0
     lwork = max(1, min(m,n) + max(min(m,n), 1)*4)
-    allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(n,m), stat = inform%alloc_status)
+    allocate( w%temp(max(m,n)),w%work(lwork),w%Jlls(m,n), stat = inform%alloc_status)
     If (inform%alloc_status /= 0) Then
       Call remove_workspace_solve_LLS(w,options)
       inform%status = NLLS_ERROR_ALLOCATION
