@@ -23,6 +23,7 @@ module MODULE_PREC(ral_nlls_matrix)
       procedure(copy_mat_iface), deferred   :: copy_matrix  ! generalisation of *lacpy
       procedure(copy_row_iface), deferred   :: copy_row     ! copy a row of a matrix to a vector
       procedure(mult_inner_iface), deferred :: mult_inner   ! compute A^T * A and store in out_A
+      procedure(scale_iface), deferred      :: scale        ! scale matrix by a weight vector
   end type matrix
 
   abstract interface
@@ -70,6 +71,11 @@ module MODULE_PREC(ral_nlls_matrix)
       real(wp), intent(out) :: out_ATA(:,:)
     end subroutine mult_inner_iface
 
+    subroutine scale_iface(A, weights)
+      import :: matrix, wp
+      class(matrix), intent(inout) :: A
+      real(wp), intent(in) :: weights(:)
+    end subroutine scale_iface
   end interface
 
   type, extends(matrix) :: dense_matrix
@@ -82,6 +88,7 @@ module MODULE_PREC(ral_nlls_matrix)
       procedure :: copy_matrix => copy_matrix_dense
       procedure :: copy_row => copy_row_dense
       procedure :: mult_inner => mult_inner_dense
+      procedure :: scale => scale_dense
   end type dense_matrix
 
   private
@@ -190,5 +197,24 @@ contains
     End If
 
   end subroutine mult_inner_dense
+
+  subroutine scale_dense(A, weights)
+    class(dense_matrix), intent(inout) :: A
+    real(wp), intent(in) :: weights(:)
+
+    integer :: i
+
+    if (A%fortran_order) then
+      ! Scale each row by the weights
+      do i = 1, A%n
+        A%data(:, i) = weights(:) * A%data(:, i)
+      end do
+    else
+      ! Scale each column by the corresponding weight
+      do i = 1, A%m
+        A%data(i, :) = weights(i) * A%data(i, :)
+      end do
+    end if
+  end subroutine scale_dense
 
 end module MODULE_PREC(ral_nlls_matrix)

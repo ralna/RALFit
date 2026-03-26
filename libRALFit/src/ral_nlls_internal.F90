@@ -317,6 +317,11 @@ TYPE( nlls_inform ), INTENT( INOUT ) :: inform
          inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
+       ! todo; we eventually want to replace J with the matrix structure,
+       ! but that is a breaking change. in the mean time, the region
+       ! where the matrix type is used is bracketed by ?lacpy calls
+       ! to transfer the data in and out of the type
+       call PREC(lacpy)('A', m, n, W%J, m, w%jacobian%data, m)
 
        select type (params)
           type is (params_internal_type)
@@ -334,7 +339,7 @@ TYPE( nlls_inform ), INTENT( INOUT ) :: inform
        end select
 
        if ( present(weights) ) then
-          call scale_J_by_weights(w%J,n,m,weights,options)
+          call scale_J_by_weights(w%jacobian%data,n,m,weights,options)
        end if
 
        if (options%relative_tr_radius == 1) then
@@ -353,11 +358,10 @@ TYPE( nlls_inform ), INTENT( INOUT ) :: inform
           w%Delta = options%initial_radius
        end if
        ! Avoid NaN if F(x0)=0.0 is solution
-       w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp)
+       w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp) 
 
        !    g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g,options%Fortran_Jacobian)
-       w%g(:) = -w%g(:)
+       call w%jacobian%mult_mv('T', w%f, w%g, -1.0_wp, 0.0_wp)
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
        w%normJFold = w%normJF
@@ -573,11 +577,6 @@ lp: do while (.not. success)
        !    d                                      !
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-       ! todo; we eventually want to replace J with the matrix structure,
-       ! but that is a breaking change. in the meantime, we need to keep
-       ! moving this `lacpy` call outwards until it comes right after the
-       ! call to eval_J in nlls_iterate
-       call PREC(lacpy)('A', m, n, W%J, m, w%jacobian%data, m)
        call calculate_step(w%jacobian,w%f,w%hf,w%g,&
             X,md,md_gn,&
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, &
@@ -585,7 +584,6 @@ lp: do while (.not. success)
             w%Xnew,w%d,w%norm_2_d,w%norm_S_d, &
             options,inform,&
             w%calculate_step_ws, w%tenJ, w%iw_ptr)
-       call PREC(lacpy)('A', m, n, w%jacobian%data, m, w%J, m)
        if (inform%status /= 0) then
           if ( (w%use_second_derivatives) .and. &
                (options%model == 3) ) then
@@ -702,24 +700,23 @@ lp: do while (.not. success)
              ! save the value of g_mixed, which is needed for
              ! call to rank_one_update
              ! g_mixed = -J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
-             w%g_mixed(:) = -w%g_mixed(:)
+             call w%jacobian%mult_mv('T', w%fnew, w%g_mixed, -1.0_wp, 0.0_wp)
            end if
 
            ! evaluate J and hf at the new point
            call eval_J(eval_J_status, n, m, w%Xnew(1:n), w%J, params)
+           call PREC(lacpy)('A', m, n, W%J, m, w%jacobian%data, m)
            inform%g_eval = inform%g_eval + 1
            If (eval_J_status /= 0) Then
              ! trigger reset_gradients
            Else
              if ( present(weights) ) then
                ! set J -> WJ
-               call scale_J_by_weights(w%J,n,m,weights,options)
+               call w%jacobian%scale(weights)
              end if
 
              ! g = -J^Tf
-             call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
-             w%g(:) = -w%g(:)
+             call w%jacobian%mult_mv('T', w%fnew, w%g, -1.0_wp, 0.0_wp)
              if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
              normJFnew = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
 
@@ -864,13 +861,13 @@ lp: do while (.not. success)
           ! gradient is not available
           ! Note: if evalJ fails we recover by taking a PG step
           if (.not. options%exact_second_derivatives) then
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
-             w%g_mixed(:) = -w%g_mixed(:)
+            call w%jacobian%mult_mv('T', w%fnew, w%g_mixed, -1.0_wp, 0.0_wp)
           end if
 
           ! iparams_set(x=w%new f=w%fnew) already set in the previous call
           ! evaluate J
           call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+          call PREC(lacpy)('A', m, n, w%J, m, w%jacobian%data, m)
           inform%g_eval = inform%g_eval + 1
           If (inform%external_return /= 0) Then
 !           Recover: force to take a PG step
@@ -878,11 +875,10 @@ lp: do while (.not. success)
          End If
          if ( present(weights) ) then
             ! set J -> WJ
-            call scale_J_by_weights(w%J,n,m,weights,options)
+            call w%jacobian%scale(weights)
          end if
          ! g = -J^Tf
-         call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
-         w%g(:) = -w%g(:)
+         call w%jacobian%mult_mv('T', w%fnew, w%g, -1.0_wp, 0.0_wp)
          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
          normJFnew = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
          if ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
