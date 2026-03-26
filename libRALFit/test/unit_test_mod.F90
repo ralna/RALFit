@@ -1815,9 +1815,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( nlls_options), intent(inout) :: options
      integer, intent(out) :: fails
 
-     REAL(wp), allocatable :: J(:), A(:,:), hf(:), f(:), v(:), X(:), d(:)
+     type(dense_matrix) :: J
+     REAL(wp), allocatable :: A(:,:), hf(:), f(:), v(:), X(:), d(:)
      real(wp) :: Delta, normd
-     integer  :: n, m
+     integer  :: n, m, stat_dummy
      TYPE( nlls_inform ) :: inform
      type( nlls_workspace ) :: w
      type( nlls_workspace), Target :: iw
@@ -1830,9 +1831,12 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      n = 2
      m = 3
 
-     allocate(J(n*m), A(n,n), f(m), v(n), X(n), hf(n*n),d(n))
+     call J%init_matrix(n, m, .true., stat_dummy)
+     allocate(A(n,n), f(m), v(n), X(n), hf(n*n),d(n))
 
-     J = [ 1.0, 1.0, 2.0, 2.0, 3.0, 4.0 ]
+     J%data(1, :) = [1.0, 1.0]
+     J%data(2, :) = [2.0, 2.0]
+     J%data(3, :) = [3.0, 4.0]
      A = reshape([6.0, 13.0, 13.0, 29.0],[2, 2])
      f = [2.0, 3.0, 4.0]
      v = [13.0, 29.0]
@@ -1856,6 +1860,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         write(*,*) '(aint_tr)'
         fails = fails + 1
      end if
+
+     deallocate(A, f, v, X, hf, d)
+     call J%free_matrix()
      call reset_default_options(options)
 
    end subroutine aint_tr_tests
@@ -2098,6 +2105,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
               fails = fails + 1
               status%status = 0
            end if
+           call remove_workspaces(work, options)
         end do
      end do
 
@@ -2110,7 +2118,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
 
-     real(wp), allocatable :: f(:), J(:), hf(:), X(:), Xnew(:), d(:)
+     type(dense_matrix) :: J
+     real(wp), allocatable :: f(:),  hf(:), X(:), Xnew(:), d(:)
      real(wp) :: md, md_gn
      integer :: m, n
      type( nlls_inform ) :: status
@@ -2125,9 +2134,10 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      n = 2
      m = 4
 
-     allocate(f(m), J(n*m), hf(n*n), X(n), Xnew(n), d(n))
+     call J%init_matrix(n, m, .true., status%alloc_status)
+     allocate(f(m), hf(n*n), X(n), Xnew(n), d(n))
      f = one
-     J = one
+     J%data = one
      hf = one
      X = one
      Xnew = one
@@ -2139,7 +2149,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
 
-
+     deallocate(f, hf, X, Xnew, d)
+     call J%free_matrix()
      call reset_default_options(options)
 
    end subroutine evaluate_model_tests
@@ -2235,7 +2246,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
 
-     real(wp), allocatable :: J(:), f(:), X(:), d(:)
+     type(dense_matrix) :: J
+     real(wp), allocatable :: f(:), X(:), d(:)
      real(wp) :: Delta, md
      integer :: n, m, num_successful_steps
      type( params_base_type ) :: params
@@ -2253,8 +2265,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      n = 3
      m = 5
-     allocate(J(n*m),f(m),X(n),d(n))
-     J = one
+     allocate(f(m),X(n),d(n))
+     call J%init_matrix(n, m, .true., status%alloc_status)
+     J%data = one
      f = one
      X = one
 
@@ -2269,7 +2282,8 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
 
-
+     deallocate(f, X, d)
+     call J%free_matrix()
      call reset_default_options(options)
 
    end subroutine solve_newton_tensor_tests
@@ -2442,6 +2456,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      deallocate(J,JT,f,Jd,d)
      allocate(J(m,n), f(m), d(n))
 
+     call remove_workspaces(work, options)
      call setup_workspaces(work,n,m,options,status)
 
      J(:,:) = 1.0_wp
@@ -2744,6 +2759,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      do sketch_method = 1, 2
        options%sketch_method = sketch_method
+       call remove_workspaces(work, options)
        call setup_workspaces(work,n,m,options,inform)
 
        J_copy = J
@@ -3122,19 +3138,20 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
      type( nlls_options ), intent(inout) :: options
      integer, intent(out) :: fails
 
-     real(wp), allocatable :: A(:,:), AtA(:,:), AtA_expected(:,:), diff(:)
+     type(dense_matrix) :: A
+     real(wp), allocatable :: AtA(:,:), AtA_expected(:,:), diff(:)
      integer :: n, m, i
 
      fails = 0
 
-
      n = 2
      m = 3
-     allocate(A(m,n), AtA(n,n), AtA_expected(n,n), diff(n))
-     A = 0.0_wp
-     A(1,1) = 1.0_wp; A(2,1) = 2.0_wp; A(3,1) = 3.0_wp
-     A(1,2) = 2.0_wp; A(2,2) = 4.0_wp; A(3,2) = 6.0_wp
-     call matmult_inner(A,n,m,AtA)
+     call A%init_matrix(n, m, .true., i)
+     allocate(AtA(n,n), AtA_expected(n,n), diff(n))
+     A%data = 0.0_wp
+     A%data(1,1) = 1.0_wp; A%data(2,1) = 2.0_wp; A%data(3,1) = 3.0_wp
+     A%data(1,2) = 2.0_wp; A%data(2,2) = 4.0_wp; A%data(3,2) = 6.0_wp
+     call A%mult_inner(AtA)
      AtA_expected(1,1)= 14.0_wp
      AtA_expected(2,1)= 28.0_wp
      AtA_expected(1,2)= 28.0_wp
@@ -3148,6 +3165,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
         fails = fails + 1
      end if
 
+     deallocate(AtA, Ata_expected, diff)
      call reset_default_options(options)
 
    end subroutine matmult_inner_tests

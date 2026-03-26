@@ -17,11 +17,12 @@ module MODULE_PREC(ral_nlls_matrix)
     integer :: m
     logical :: allocated
     contains
-      procedure(init_iface), deferred      :: init_matrix  ! initialise new matrix
-      procedure(free_iface), deferred      :: free_matrix  ! free memory held by matrix
-      procedure(mult_mv_iface), deferred   :: mult_mv      ! generalisation of *gemv
-      procedure(copy_mat_iface), deferred  :: copy_matrix  ! generalisation of *lacpy
-      procedure(copy_row_iface), deferred  :: copy_row     ! copy a row of a matrix to a vector
+      procedure(init_iface), deferred       :: init_matrix  ! initialise new matrix
+      procedure(free_iface), deferred       :: free_matrix  ! free memory held by matrix
+      procedure(mult_mv_iface), deferred    :: mult_mv      ! generalisation of *gemv
+      procedure(copy_mat_iface), deferred   :: copy_matrix  ! generalisation of *lacpy
+      procedure(copy_row_iface), deferred   :: copy_row     ! copy a row of a matrix to a vector
+      procedure(mult_inner_iface), deferred :: mult_inner   ! compute A^T * A and store in out_A
   end type matrix
 
   abstract interface
@@ -63,6 +64,12 @@ module MODULE_PREC(ral_nlls_matrix)
       real(wp), intent(in) :: alpha
     end subroutine copy_row_iface
 
+    subroutine mult_inner_iface(A, out_ATA)
+      import :: matrix, wp
+      class(matrix), intent(in) :: A
+      real(wp), intent(out) :: out_ATA(:,:)
+    end subroutine mult_inner_iface
+
   end interface
 
   type, extends(matrix) :: dense_matrix
@@ -74,6 +81,7 @@ module MODULE_PREC(ral_nlls_matrix)
       procedure :: mult_mv => mult_mv_dense
       procedure :: copy_matrix => copy_matrix_dense
       procedure :: copy_row => copy_row_dense
+      procedure :: mult_inner => mult_inner_dense
   end type dense_matrix
 
   private
@@ -163,5 +171,24 @@ contains
       dest = alpha * src%data(:, row)
     end if
   end subroutine copy_row_dense
+
+  ! todo: we want A^T A to be a matrix type, but this will have a lot of knock-on
+  ! effects in the internals (e.g. would need to abstract More-Sorensen etc.)
+  subroutine mult_inner_dense(A, out_ATA)
+    ! Compute A^T * A and store in out_A
+    class(dense_matrix), intent(in) :: A
+    real(wp), intent(out) :: out_ATA(:,:)
+    ! Takes an m x n matrix J and forms the
+    ! n x n matrix A given by
+    ! A = J' * J
+
+    If (A%fortran_order) then
+      call PREC(gemm)('T','N',A%n, A%n, A%m, 1.0_wp, A%data, A%m, A%data, A%m, 0.0_wp, out_ATA, A%n)
+    else
+      ! c format
+      call PREC(gemm)('N','T',A%n, A%n, A%m, 1.0_wp, A%data, A%n, A%data, A%n, 0.0_wp, out_ATA, A%n)
+    End If
+
+  end subroutine mult_inner_dense
 
 end module MODULE_PREC(ral_nlls_matrix)

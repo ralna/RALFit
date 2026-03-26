@@ -724,8 +724,6 @@ module MODULE_PREC(ral_nlls_workspaces)
      logical :: allocated = .false.
      real(wp), allocatable :: A(:,:), xxt(:,:)
      real(wp), allocatable :: v(:), scale(:), extra_scale(:)
-     ! todo: replace J with `jacobian` (which would be a breaking change)
-     type ( dense_matrix ) :: jacobian 
      real(wp) :: reg_order = 2.0_wp ! reg. by + 1/p || \sigma || ** p
      type( AINT_tr_work ) :: AINT_tr_ws
      type( dogleg_work ) :: dogleg_ws
@@ -758,6 +756,8 @@ module MODULE_PREC(ral_nlls_workspaces)
      real(wp) :: hybrid_tol = 1.0_wp
      real(wp), allocatable :: fNewton(:), JNewton(:), XNewton(:)
      real(wp), allocatable :: J(:)
+     ! todo: we eventually want to entirely replace J with this jacobian
+     type(dense_matrix)    :: jacobian
      real(wp), allocatable :: f(:), fnew(:)
      real(wp), allocatable :: hf(:), hf_temp(:)
      real(wp), allocatable :: d(:), g(:), Xnew(:)
@@ -956,6 +956,13 @@ contains
        End If
     end if
 
+    call workspace%jacobian%init_matrix(n, m, options%fortran_jacobian, inform%alloc_status)
+    If (inform%alloc_status /= 0) Then
+      inform%bad_alloc = 'setup_workspaces'
+      inform%status = NLLS_ERROR_ALLOCATION
+      goto 100
+    end if
+
     call setup_workspace_calculate_step(n,m,workspace%calculate_step_ws, &
          options, inform, workspace%tenJ, workspace%iw_ptr)
     if (inform%status/=0) goto 100
@@ -998,6 +1005,8 @@ contains
     if(allocated(workspace%d)) deallocate(workspace%d, stat=ierr_dummy )
     if(allocated(workspace%g)) deallocate(workspace%g, stat=ierr_dummy )
     if(allocated(workspace%Xnew)) deallocate(workspace%Xnew, stat=ierr_dummy )
+
+    call workspace%jacobian%free_matrix(stat=ierr_dummy)
 
     call remove_workspace_calculate_step(workspace%calculate_step_ws,&
          options,workspace%tenJ, workspace%iw_ptr)
@@ -1188,9 +1197,6 @@ contains
        end if
     end if
 
-    call w%jacobian%init_matrix(n, m, options%fortran_jacobian, inform%alloc_status)
-    if (inform%alloc_status /= 0) goto 100
-
     if (options%scale > 0) then
        call setup_workspace_generate_scaling(n,m,w%generate_scaling_ws,options,inform)
        if (inform%status /= 0) goto 100
@@ -1244,8 +1250,6 @@ contains
        end if
     end if
     if (options%scale > 0) call remove_workspace_generate_scaling(w%generate_scaling_ws,options)
-
-    if (w%jacobian%allocated) call w%jacobian%free_matrix(stat=ierr_dummy)
 
     w%allocated = .false.
   end subroutine remove_workspace_calculate_step

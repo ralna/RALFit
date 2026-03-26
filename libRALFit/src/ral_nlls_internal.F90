@@ -15,7 +15,7 @@ module MODULE_PREC(ral_nlls_internal)
   Use MODULE_PREC(ral_nlls_bounds)
   Use MODULE_PREC(ral_nlls_types), Only: PREC(nrm2), PREC(dot)
   use MODULE_PREC(ral_nlls_linear), only: solve_LLS
-  use MODULE_PREC(ral_nlls_matrix), only: matrix
+  use MODULE_PREC(ral_nlls_matrix), only: matrix, dense_matrix
 
   implicit none
 
@@ -23,7 +23,7 @@ module MODULE_PREC(ral_nlls_internal)
 
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: solve_galahad, findbeta, mult_j
-    public :: mult_jt, matmult_inner
+    public :: mult_jt 
     public :: matmult_outer, outer_product, min_eig_symm, max_eig, all_eig_symm
     public :: remove_workspaces, setup_workspaces
     public :: calculate_step, evaluate_model
@@ -172,7 +172,7 @@ contains
     implicit none
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( nlls_options ), INTENT( IN ) :: options
     type( NLLS_workspace ), TARGET, INTENT( INOUT ) :: w
     procedure( eval_f_type ) :: eval_F
@@ -573,13 +573,19 @@ lp: do while (.not. success)
        !    d                                      !
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-       call calculate_step(w%J,w%f,w%hf,w%g,&
+       ! todo; we eventually want to replace J with the matrix structure,
+       ! but that is a breaking change. in the meantime, we need to keep
+       ! moving this `lacpy` call outwards until it comes right after the
+       ! call to eval_J in nlls_iterate
+       call PREC(lacpy)('A', m, n, W%J, m, w%jacobian%data, m)
+       call calculate_step(w%jacobian,w%f,w%hf,w%g,&
             X,md,md_gn,&
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, &
             num_successful_steps, &
             w%Xnew,w%d,w%norm_2_d,w%norm_S_d, &
             options,inform,&
             w%calculate_step_ws, w%tenJ, w%iw_ptr)
+       call PREC(lacpy)('A', m, n, w%jacobian%data, m, w%J, m)
        if (inform%status /= 0) then
           if ( (w%use_second_derivatives) .and. &
                (options%model == 3) ) then
@@ -1285,7 +1291,8 @@ lp: do while (.not. success)
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-    REAL(wp), intent(in), Contiguous :: J(:), f(:), hf(:)
+    type(dense_matrix) :: J
+    REAL(wp), intent(in), Contiguous :: f(:), hf(:)
     REAL(wp), intent(inout), Contiguous :: g(:)
     REAL(wp), intent(inout) :: Delta
     REAL(wp), intent(in), Contiguous :: X(:)
@@ -1347,7 +1354,7 @@ lp: do while (.not. success)
        w%extra_scale = 0.0_wp
 
        ! Set A = J^T J
-       call matmult_inner(J,n,m,w%A,options)
+       call J%mult_inner(w%A)
        ! add any second order information...
        ! so A = J^T J + HF
        ! C <- A + B (aliasing)
@@ -1398,7 +1405,7 @@ lp: do while (.not. success)
           if ( (options%scale .ne. 0) ) then
 !             call apply_scaling(J,n,m,w%extra_scale,w%A,w%v, &
 !                  w%apply_scaling_ws,options,inform)
-             call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,&
+             call generate_scaling(J%data,w%A,n,m,w%scale,w%extra_scale,&
                   w%generate_scaling_ws,options,inform)
              if (inform%status /= 0) Go To 100
              scaling_used = .true.
@@ -1462,15 +1469,9 @@ lp: do while (.not. success)
                 end if
                 subproblem_method = 2 ! try aint next
 
-                ! todo; we eventually want to replace J with the matrix structure,
-                ! but that is a breaking change. in the meantime, we need to keep
-                ! moving this `lacpy` call outwards until it comes right after the
-                ! call to eval_J in nlls_iterate
-                call PREC(lacpy)('A', m, n, J, m, w%jacobian%data, m)
-                call dogleg(w%jacobian,f,hf,g,n,m,Delta,d,norm_S_d, &
+                call dogleg(J,f,hf,g,n,m,Delta,d,norm_S_d, &
                      options,inform,w%dogleg_ws)
                 if (inform%status == 0) subproblem_success = .true.
-                call PREC(lacpy)('A', m, n, w%jacobian%data, m, J, m)
 
              case (2) ! The AINT method
                 If (buildmsg(5,.False.,options)) Then
@@ -1865,7 +1866,8 @@ lp: do while (.not. success)
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in), contiguous :: J(:), A(:,:), hf(:), f(:), v(:), X(:)
+     class(matrix), intent(in) :: J
+     REAL(wp), intent(in), contiguous :: A(:,:), hf(:), f(:), v(:), X(:)
      REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out), contiguous :: d(:)
@@ -3006,7 +3008,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        Implicit None
        real(wp), intent(in), contiguous :: f(:) ! f(x_k)
        real(wp), intent(in), contiguous :: d(:) ! direction in which we move
-       real(wp), intent(in), contiguous :: J(:) ! J(x_k) (by columns)
+       class(matrix), intent(in)        :: J
        real(wp), intent(in), contiguous :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
        real(wp), intent(in), contiguous :: X(:) ! original step
        real(wp), intent(in), contiguous :: Xnew(:) ! updated step
@@ -3030,7 +3032,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        End If
 
        !Jd = J*d
-       call mult_J(J,n,m,d,w%Jd,options%Fortran_Jacobian)
+       call J%mult_mv('N', d, w%Jd, 1.0_wp, 0.0_wp)
 
        !md_gn = 0.5_wp * norm2(f(1:m) + w%Jd(1:m))**2
        md_gn = 0.0_wp
@@ -3570,31 +3572,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        norm_A_x = sqrt(norm_A_x)
      end subroutine matrix_norm
 
-     subroutine matmult_inner(J,n,m,A,options)
-       Implicit None
-       integer, intent(in) :: n,m
-       real(wp), intent(in) :: J(*)
-       real(wp), intent(out) :: A(n,n)
-       type( nlls_options ), intent(in), optional :: options
-
-       ! Takes an m x n matrix J and forms the
-       ! n x n matrix A given by
-       ! A = J' * J
-
-       ! Avoid short-circuit evaluation
-!      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
-       if ( present(options) ) Then
-         If (.not. options%Fortran_Jacobian) then
-           ! c format
-           call PREC(gemm)('N','T',n, n, m, 1.0_wp, J, n, J, n, 0.0_wp, A, n)
-         Else
-           call PREC(gemm)('T','N',n, n, m, 1.0_wp, J, m, J, m, 0.0_wp, A, n)
-         End If
-       Else
-          call PREC(gemm)('T','N',n, n, m, 1.0_wp, J, m, J, m, 0.0_wp, A, n)
-       End If
-     end subroutine matmult_inner
-
      subroutine matmult_outer(J,n,m,A)
        Implicit None
        integer, intent(in) :: n,m
@@ -3849,7 +3826,8 @@ lp:  do i = 1, options%more_sorensen_maxits
                                     w, tenJ, inner_workspace)
        Implicit None
        integer, intent(in)   :: n,m
-       real(wp), intent(in), contiguous :: f(:), J(:)
+       type(dense_matrix) :: J
+       real(wp), intent(in), contiguous :: f(:)
        real(wp) , intent(in), contiguous :: X(:)
        real(wp) , intent(in) :: Delta
        integer, intent(in) :: num_successful_steps
@@ -3897,7 +3875,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        ! save to params
        w%tparams%f(1:m) = f(1:m)
        w%tparams%Delta = Delta
-       w%tparams%J(1:n*m) = J(1:n*m)
+       call PREC(lacpy)('A', m, n, J%data, m, w%tparams%J(1:n*m), m)
        w%tparams%X(1:n) = X(1:n)
        w%tparams%eval_HF => eval_HF
        w%tparams%parent_params => params
