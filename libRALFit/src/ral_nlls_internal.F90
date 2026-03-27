@@ -14,6 +14,8 @@ module MODULE_PREC(ral_nlls_internal)
   Use MODULE_PREC(ral_nlls_printing)
   Use MODULE_PREC(ral_nlls_bounds)
   Use MODULE_PREC(ral_nlls_types), Only: PREC(nrm2), PREC(dot)
+  use MODULE_PREC(ral_nlls_linear), only: solve_LLS
+  use MODULE_PREC(ral_nlls_matrix), only: matrix, dense_matrix
 
   implicit none
 
@@ -21,14 +23,13 @@ module MODULE_PREC(ral_nlls_internal)
 
     public :: nlls_solve, nlls_iterate, nlls_finalize, nlls_strerror
     public :: solve_galahad, findbeta, mult_j
-    public :: mult_jt, matmult_inner
-    public :: minus_solve_spd, minus_solve_spd_nocopy, minus_solve_general
+    public :: mult_jt 
     public :: matmult_outer, outer_product, min_eig_symm, max_eig, all_eig_symm
     public :: remove_workspaces, setup_workspaces
     public :: calculate_step, evaluate_model
     public :: update_trust_region_radius, apply_second_order_info, rank_one_update
     public :: test_convergence, calculate_rho
-    public :: solve_LLS, shift_matrix
+    public :: shift_matrix
     public :: dogleg, more_sorensen, generate_scaling, solve_newton_tensor, aint_tr
     public :: switch_to_quasi_newton, evaltensor_J
     public :: setup_iparams_type, free_iparams_type
@@ -171,7 +172,7 @@ contains
     implicit none
     INTEGER, INTENT( IN ) :: n, m
     REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
-    TYPE( nlls_inform ), INTENT( INOUT ) :: inform
+TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( nlls_options ), INTENT( IN ) :: options
     type( NLLS_workspace ), TARGET, INTENT( INOUT ) :: w
     procedure( eval_f_type ) :: eval_F
@@ -316,6 +317,11 @@ contains
          inform%status = NLLS_ERROR_INITIAL_GUESS
          goto 100
        End If
+       ! todo; we eventually want to replace J with the matrix structure,
+       ! but that is a breaking change. in the mean time, the region
+       ! where the matrix type is used is bracketed by ?lacpy calls
+       ! to transfer the data in and out of the type
+       call PREC(lacpy)('A', m, n, W%J, m, w%jacobian%data, m)
 
        select type (params)
           type is (params_internal_type)
@@ -333,7 +339,7 @@ contains
        end select
 
        if ( present(weights) ) then
-          call scale_J_by_weights(w%J,n,m,weights,options)
+          call scale_J_by_weights(w%jacobian%data,n,m,weights,options)
        end if
 
        if (options%relative_tr_radius == 1) then
@@ -352,11 +358,10 @@ contains
           w%Delta = options%initial_radius
        end if
        ! Avoid NaN if F(x0)=0.0 is solution
-       w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp)
+       w%normF0 = merge(1.0_wp, w%normF, w%normF==0.0_wp) 
 
        !    g = -J^Tf
-       call mult_Jt(w%J,n,m,w%f,w%g,options%Fortran_Jacobian)
-       w%g(:) = -w%g(:)
+       call w%jacobian%mult_mv('T', w%f, w%g, -1.0_wp, 0.0_wp)
        if (options%regularization > 0) call update_regularized_gradient(w%g,X,normX,options)
        w%normJF = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
        w%normJFold = w%normJF
@@ -572,7 +577,7 @@ lp: do while (.not. success)
        !    d                                      !
        ! that the model thinks we should take next !
        !+++++++++++++++++++++++++++++++++++++++++++!
-       call calculate_step(w%J,w%f,w%hf,w%g,&
+       call calculate_step(w%jacobian,w%f,w%hf,w%g,&
             X,md,md_gn,&
             n,m,w%use_second_derivatives,w%Delta,eval_HF, params, &
             num_successful_steps, &
@@ -695,24 +700,23 @@ lp: do while (.not. success)
              ! save the value of g_mixed, which is needed for
              ! call to rank_one_update
              ! g_mixed = -J_k^T r_{k+1}
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
-             w%g_mixed(:) = -w%g_mixed(:)
+             call w%jacobian%mult_mv('T', w%fnew, w%g_mixed, -1.0_wp, 0.0_wp)
            end if
 
            ! evaluate J and hf at the new point
            call eval_J(eval_J_status, n, m, w%Xnew(1:n), w%J, params)
+           call PREC(lacpy)('A', m, n, W%J, m, w%jacobian%data, m)
            inform%g_eval = inform%g_eval + 1
            If (eval_J_status /= 0) Then
              ! trigger reset_gradients
            Else
              if ( present(weights) ) then
                ! set J -> WJ
-               call scale_J_by_weights(w%J,n,m,weights,options)
+               call w%jacobian%scale(weights)
              end if
 
              ! g = -J^Tf
-             call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
-             w%g(:) = -w%g(:)
+             call w%jacobian%mult_mv('T', w%fnew, w%g, -1.0_wp, 0.0_wp)
              if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
              normJFnew = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
 
@@ -857,13 +861,13 @@ lp: do while (.not. success)
           ! gradient is not available
           ! Note: if evalJ fails we recover by taking a PG step
           if (.not. options%exact_second_derivatives) then
-             call mult_Jt(w%J,n,m,w%fnew,w%g_mixed,options%Fortran_Jacobian)
-             w%g_mixed(:) = -w%g_mixed(:)
+            call w%jacobian%mult_mv('T', w%fnew, w%g_mixed, -1.0_wp, 0.0_wp)
           end if
 
           ! iparams_set(x=w%new f=w%fnew) already set in the previous call
           ! evaluate J
           call eval_J(inform%external_return, n, m, w%Xnew(1:n), w%J, params)
+          call PREC(lacpy)('A', m, n, w%J, m, w%jacobian%data, m)
           inform%g_eval = inform%g_eval + 1
           If (inform%external_return /= 0) Then
 !           Recover: force to take a PG step
@@ -871,11 +875,10 @@ lp: do while (.not. success)
          End If
          if ( present(weights) ) then
             ! set J -> WJ
-            call scale_J_by_weights(w%J,n,m,weights,options)
+            call w%jacobian%scale(weights)
          end if
          ! g = -J^Tf
-         call mult_Jt(w%J,n,m,w%fnew,w%g,options%Fortran_Jacobian)
-         w%g(:) = -w%g(:)
+         call w%jacobian%mult_mv('T', w%fnew, w%g, -1.0_wp, 0.0_wp)
          if ( options%regularization > 0 ) call update_regularized_gradient(w%g,w%Xnew,normX,options)
          normJFnew = PREC(nrm2)(n, w%g, 1) ! w%g(1:n)
          if ( (log(1.0_wp+normJFnew)>100.0_wp) .or. (normJFnew/=normJFnew) ) then
@@ -1284,7 +1287,8 @@ lp: do while (.not. success)
 ! calculate_step, find the next step in the optimization
 ! -------------------------------------------------------
 
-    REAL(wp), intent(in), Contiguous :: J(:), f(:), hf(:)
+    type(dense_matrix) :: J
+    REAL(wp), intent(in), Contiguous :: f(:), hf(:)
     REAL(wp), intent(inout), Contiguous :: g(:)
     REAL(wp), intent(inout) :: Delta
     REAL(wp), intent(in), Contiguous :: X(:)
@@ -1346,7 +1350,7 @@ lp: do while (.not. success)
        w%extra_scale = 0.0_wp
 
        ! Set A = J^T J
-       call matmult_inner(J,n,m,w%A,options)
+       call J%mult_inner(w%A)
        ! add any second order information...
        ! so A = J^T J + HF
        ! C <- A + B (aliasing)
@@ -1397,7 +1401,7 @@ lp: do while (.not. success)
           if ( (options%scale .ne. 0) ) then
 !             call apply_scaling(J,n,m,w%extra_scale,w%A,w%v, &
 !                  w%apply_scaling_ws,options,inform)
-             call generate_scaling(J,w%A,n,m,w%scale,w%extra_scale,&
+             call generate_scaling(J%data,w%A,n,m,w%scale,w%extra_scale,&
                   w%generate_scaling_ws,options,inform)
              if (inform%status /= 0) Go To 100
              scaling_used = .true.
@@ -1767,7 +1771,8 @@ lp: do while (.not. success)
 ! dogleg, implement Powell's dogleg method
 ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in), contiguous :: J(:), hf(:), f(:), g(:)
+     class( matrix ), intent(in) :: J
+     REAL(wp), intent(in), contiguous :: hf(:), f(:), g(:)
      REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out), contiguous :: d(:)
@@ -1790,7 +1795,7 @@ lp: do while (.not. success)
      End If
 
      ! Jg = J * g
-     call mult_J(J,n,m,g,w%Jg,options%Fortran_Jacobian)
+     call J%mult_mv('N', g, w%Jg, 1.0_wp, 0.0_wp)
 
     !alpha = norm2(g)**2 / norm2( w%Jg )**2
      nrmg = PREC(nrm2)(n, g, 1) ! g(1:n)
@@ -1803,8 +1808,11 @@ lp: do while (.not. success)
      select case (options%model)
      case (1)
         ! linear model...
-        call solve_LLS(J,f,n,m,w%d_gn,inform,w%solve_LLS_ws,options%Fortran_Jacobian)
+        call J%copy_matrix(w%solve_LLS_ws%Jlls%data)
+        w%solve_LLS_ws%temp(1:m) = f(1:m)
+        call solve_LLS(w%solve_LLS_ws%Jlls,w%solve_LLS_ws%temp,n,m,inform,w%solve_LLS_ws,options,.false.)
         if ( inform%status /= 0 ) goto 100
+        w%d_gn = -w%solve_LLS_ws%temp(1:n)
      case default
         inform%status = NLLS_ERROR_DOGLEG_MODEL
         goto 100
@@ -1854,7 +1862,8 @@ lp: do while (.not. success)
      ! the method of ADACHI, IWATA, NAKATSUKASA and TAKEDA
      ! -----------------------------------------
      Implicit None
-     REAL(wp), intent(in), contiguous :: J(:), A(:,:), hf(:), f(:), v(:), X(:)
+     class(matrix), intent(in) :: J
+     REAL(wp), intent(in), contiguous :: A(:,:), hf(:), f(:), v(:), X(:)
      REAL(wp), intent(in) :: Delta
      integer, intent(in)  :: n, m
      real(wp), intent(out), contiguous :: d(:)
@@ -1867,6 +1876,9 @@ lp: do while (.not. success)
      real(wp) :: obj_p0, obj_p1, obj_p0_gn, obj_p1_gn
      REAL(wp) :: norm_p0, tau, lam, eta
      Character(Len=80) :: rec(1)
+     logical :: pd  ! whether A is positive-definite
+
+     pd = (options%model == 1)
 
      If ( .not. w%allocated ) Then
        inform%status = NLLS_ERROR_WORKSPACE_ERROR
@@ -1892,15 +1904,11 @@ lp: do while (.not. success)
         w%B(i,i) = 1.0_wp
      end do
 
-     select case (options%model)
-     case (1)
-        call minus_solve_spd(A,v,w%LtL,w%p0,n,inform)
-        if (inform%status /= 0) goto 100
-     case default
-        ! note: v is mult by -1 in minus_solve_general
-        call minus_solve_general(A,v,w%p0,n,inform,w%minus_solve_general_ws)
-        if (inform%status /= 0) goto 100
-     end select
+     w%LtL(:, :) = A(:, :)
+     w%p0(:) = -v(:)
+     call solve_LLS(w%LtL,w%p0,n,n,inform,w%solve_LLS_ws,options,pd)
+     if (inform%status /= 0) goto 100
+
 
      call matrix_norm(w%p0,w%B,norm_p0)
 
@@ -1957,19 +1965,9 @@ lp: do while (.not. success)
         call matmult_outer( w%By_hardcase, size_hard2, n, w%M1_small)
         w%M0_small(:,:) = A(:,:) + lam*w%B(:,:) + w%M1_small
         ! solve Hq + g = 0 for q
-        select case (options%model)
-        case (1)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%M0_small,v,w%LtL,w%q,n,inform)
-           if (inform%status /= 0) goto 100
-        case default
-          ! note: v is mult by -1 in minus_solve_general
-          call minus_solve_general(w%M0_small,v,w%q,n,inform,w%minus_solve_general_ws)
-          if (inform%status /= 0) goto 100
-        end select
-        ! note -- a copy of the matrix is taken on entry to the solve routines
-        ! (I think..) and inside...fix
-
+        w%q(:) = -v(:)
+        call solve_LLS(w%M0_small, w%q, n, n, inform, w%solve_LLS_ws, options, pd)
+        if (inform%status /= 0) goto 100
 
         ! find max eta st ||q + eta v(:,1)||_B = Delta
         call findbeta(w%q,w%y_hardcase(:,1),Delta,eta,inform)
@@ -1982,25 +1980,15 @@ lp: do while (.not. success)
         w%p1(:) = w%q(:) + eta * w%y_hardcase(:,1)
 
      else
-       ! Solve (A+lam*w%B)x=-v:
-       ! 1. we can use w%B to actually store A + lam * w%B
-       ! 2. b=v is then inverted inside of `minus_solve_spd` or `minus_solve_general`
+       ! Solve (A+lam*B)x=-v:
+       ! 1. we can use w%B to actually store A + lam * B
         w%B(:,:) = A(:,:)
         Do i = 1, n
           w%B(i,i) = w%B(i,i) + lam
+          w%p1(i) = -v(i)
         End Do
-        select case (options%model)
-        case (1)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%B,v,w%LtL,w%p1,n,inform)
-           if (inform%status /= 0) goto 100
-        case default
-           ! note: v is mult by -1 in minus_solve_general
-           call minus_solve_general(w%B,v,w%p1,n,inform,w%minus_solve_general_ws)
-           if (inform%status /= 0) goto 100
-        end select
-        ! note -- a copy of the matrix is taken on entry to the solve routines
-        ! and inside...fix
+        call solve_LLS(w%B, w%p1, n, n, inform, w%solve_LLS_ws, options, pd)
+        if (inform%status /= 0) goto 100
      end if
 
      ! get obj_p1: the value of the model at p1
@@ -2087,6 +2075,13 @@ lp: do while (.not. success)
      integer :: i, no_restarts
      Character(Len=80) :: rec(2)
 
+     ! reset error calls from previous method
+     ! else a previous method failure will force
+     ! min_eig_symm no matter what
+     inform%status = 0
+     inform%external_return = 0
+     inform%external_name = ''
+
      ! The code finds
      !  d = arg min_p   v^T p + 0.5 * p^T A p
      !       s.t. ||p|| \leq Delta
@@ -2105,11 +2100,12 @@ lp: do while (.not. success)
      w%AplusSigma(1:n,1:n) = A(1:n,1:n)
 
      If (options%force_min_eig_symm) Then
-       ! Skip minus_solve_spd_nocopy and jump directly to min_eig_symm
+       ! Skip solve and jump directly to min_eig_symm
        inform%status = 1
      Else
-       ! note: v is mult by -1 in minus_solve_spd_nocopy
-       call minus_solve_spd_nocopy(w%AplusSigma,v,d,n,inform)
+       ! solve (A+sigma)d = -v
+       d(1:n) = -v(1:n)
+       call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
      End If
      if (inform%status == 0) then
         ! A is symmetric positive definite....
@@ -2119,6 +2115,10 @@ lp: do while (.not. success)
           Call Printmsg(5,.False.,options,1,rec)
         End If
      else
+        If (buildmsg(5,.False.,options)) Then
+          Write(rec(1), Fmt=6010) inform%external_return
+          Call Printmsg(5,.False.,options,1,rec)
+        End If
         ! reset the error calls -- handled in the code....
         inform%status = 0
         inform%external_return = 0
@@ -2126,10 +2126,6 @@ lp: do while (.not. success)
         call min_eig_symm(A,n,sigma,w%y1,options,inform,w%min_eig_symm_ws)
         if (inform%status /= 0) goto 100
         sigma = -(sigma - local_ms_shift)
-        If (buildmsg(5,.False.,options)) Then
-          Write(rec(1), Fmt=6010)
-          Call Printmsg(5,.False.,options,1,rec)
-        End If
         ! find a shift that makes (A + sigma I) positive definite,
         ! and solve (A + sigma I) (-v) = d
         call check_shift_and_solve(n,A,w%AplusSigma,v,sigma,d,options,inform,w)
@@ -2255,8 +2251,9 @@ lp:  do i = 1, options%more_sorensen_maxits
           End If
            sigma = sigma + sigma_shift
            call shift_matrix(A,sigma,w%AplusSigma,n)
-           ! note: v is mult by -1 in minus_solve_spd_nocopy
-           call minus_solve_spd_nocopy(w%AplusSigma,v,d,n,inform)
+           ! solve (A + sigma)d = -v 
+           d(1:n) = -v(1:n) 
+           call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
         end if
         if (inform%status /= 0) goto 100
 
@@ -2279,7 +2276,7 @@ lp:  do i = 1, options%more_sorensen_maxits
 5040 FORMAT('Leaving More-Sorensen')
 ! print_level >= 3
 6000 FORMAT('A is symmetric positive definite')
-6010 FORMAT('Trying a shift of sigma = ',ES12.4)
+6010 FORMAT('A is not symmetric PD: non-PD principal minor ',i4)
 6020 FORMAT('A + sigma I is symmetric positive definite')
 6030 FORMAT('We''re within the trust region radius initially')
 6035 FORMAT('We''re within the trust region radius')
@@ -2387,8 +2384,10 @@ lp:  do i = 1, options%more_sorensen_maxits
         ! d = -A\v
         if (.not. factorization_done) then
            call shift_matrix(A,sigma,w%AplusSigma,n)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%AplusSigma,v,w%LtL,d,n,inform)
+           ! solve (A + sigma)d = -v
+           w%LtL(1:n,1:n) = w%AplusSigma(1:n,1:n)
+           d(1:n) = -v(1:n)
+           call solve_LLS(w%LtL,d,n,n,inform,w%lls_ws,options,.true.) 
         else
            factorization_done = .false.
         end if
@@ -2435,10 +2434,6 @@ lp:  do i = 1, options%more_sorensen_maxits
              Call printmsg(5,.False.,options,1,rec)
            End If
            location_of_breakdown = inform%external_return
-           ! reset the error calls -- handled in the code....
-           inform%status = 0
-           inform%external_return = 0
-           inform%external_name = REPEAT( ' ', 80 )
            region = 1 ! N
            region_char = 'N'
            sigma_l = sigma
@@ -2447,6 +2442,10 @@ lp:  do i = 1, options%more_sorensen_maxits
              Call printmsg(5,.False.,options,1,rec)
            End If
         end if
+        ! reset the error calls -- handled in the code....
+        inform%status = 0
+        inform%external_return = 0
+        inform%external_name = REPEAT( ' ', 80 )
 
         if (region .ne. 1 ) then ! in F
            w%q(:) = d ! w%q = R'\d
@@ -2491,7 +2490,8 @@ lp:  do i = 1, options%more_sorensen_maxits
                 Call printmsg(5,.False.,options,1,rec)
               End If
            end if
-        else  ! not in F
+         else if (location_of_breakdown > 0) then
+           ! not in F 
            ! find an alpha and y1 such that
            !  (A + sigmaI + alpha e_k e_k^T)v = 0
 !!$           write(*,*) 'location of breakdown = ', location_of_breakdown
@@ -2518,6 +2518,11 @@ lp:  do i = 1, options%more_sorensen_maxits
            end do
            nrmy1 = PREC(nrm2)(n,w%y1,1) ! w%y1(1:n)
            sigma_l = max(sigma_l, sigma + indef_delta/nrmy1)
+        else
+            ! `dposv` found internal error (this is a developer error!) 
+            inform%status = NLLS_ERROR_FROM_EXTERNAL
+            inform%external_return = location_of_breakdown
+            goto 100
         end if
 
         ! check for termination
@@ -2558,8 +2563,10 @@ lp:  do i = 1, options%more_sorensen_maxits
             End If
         elseif (region == 3) then
            call shift_matrix(A,sigma + sigma_shift,w%AplusSigma,n)
-           ! note: v is mult by -1 in minus_solve_spd
-           call minus_solve_spd(w%AplusSigma,v,w%LtL,d,n,inform)
+           ! solve (A + sigma)d = -v
+           d(1:n) = -v(1:n)
+           call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.) 
+
            if (inform%status == 0) then
               region = 2
               sigma = sigma + sigma_shift
@@ -2591,6 +2598,10 @@ lp:  do i = 1, options%more_sorensen_maxits
           Write(rec(1), Fmt=5010) i, region_char, nd, sigma_l, sigma, sigma_u
           Call printmsg(5,.False.,options,1,rec)
         End If
+        ! reset the error calls -- handled in the code....
+        inform%status = 0
+        inform%external_return = 0
+        inform%external_name = REPEAT( ' ', 80 )
 
      end do
 
@@ -2722,14 +2733,17 @@ lp:  do i = 1, options%more_sorensen_maxits
      no_shifts = 0
      successful_shift = .false.
      do while( .not. successful_shift )
+        If (buildmsg(5,.False.,options)) Then
+          Write(rec(1), Fmt=99999) sigma
+          Call Printmsg(5,.False.,options,1,rec)
+        end if
         call shift_matrix(A,sigma,w%AplusSigma,n)
-        ! note: v is mult by -1 in minus_solve_spd_nocopy
-        call minus_solve_spd_nocopy(w%AplusSigma,v,d,n,inform)
-        if ( inform%status /= 0 ) then
-           ! reset the error calls -- handled in the code....
-           inform%status = 0
-           inform%external_return = 0
-           inform%external_name = REPEAT( ' ', 80 )
+        ! solve (A + sigma)d = -v 
+        d(:) = -v(:)
+        call solve_LLS(w%AplusSigma,d,n,n,inform,w%lls_ws,options,.true.)
+        if ( inform%status == 0 ) then
+            successful_shift = .true.
+        else
            no_shifts = no_shifts + 1
            If ( no_shifts >= 10 ) Then
              inform%status = NLLS_ERROR_MS_TOO_MANY_SHIFTS
@@ -2737,15 +2751,18 @@ lp:  do i = 1, options%more_sorensen_maxits
            End If
            sigma =  sigma + (10.0_wp**no_shifts) * options%more_sorensen_shift
            If (buildmsg(5,.False.,options)) Then
-             Write(rec(1), Fmt=99999) sigma
+             Write(rec(1), Fmt=99998) inform%external_return
              Call Printmsg(5,.False.,options,1,rec)
-           End If
-        else
-           successful_shift = .true.
+           end if
+           ! reset the error calls -- handled in the code....
+           inform%status = 0
+           inform%external_return = 0
+           inform%external_name = REPEAT( ' ', 80 )
         end if
      end do
 
 100   continue
+99998 FORMAT('A + sigma I has non-positive principal minor', i4)
 99999 FORMAT('Trying a shift of sigma = ',ES12.4)
    end subroutine check_shift_and_solve
 
@@ -2887,7 +2904,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      ! regularization_solver
      ! Solve the regularized subproblem using
      ! a home-rolled algorithm
-     ! Note: inform%status is set by minus_solve_spd
+     ! Note: inform%status is set by solve_LLS 
      !--------------------------------------------
 
      Implicit None
@@ -2908,8 +2925,10 @@ lp:  do i = 1, options%more_sorensen_maxits
 
      if ( reg_order == 2.0_wp ) then
         call shift_matrix(A,reg_param,w%AplusSigma,n)
-        ! note: v is mult by -1 in minus_solve_spd
-        call minus_solve_spd(w%AplusSigma,v,w%LtL,d,n,inform)
+        ! solve (A+sigma)d = -v
+        w%LtL(1:n, 1:n) = w%AplusSigma(1:n,1:n)
+        d(1:n) = -v(1:n)
+        call solve_LLS(w%LtL,d,n,n,inform,w%lls_ws,options,.true.)
         ! informa%status is passed along, this routine exits here
      else
 !      Feature not yet implemented, this should have been caught in
@@ -2923,54 +2942,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        normd = 1.0e10_wp
      End If
    end subroutine regularization_solver
-
-   SUBROUTINE solve_LLS(J,f,n,m,d_gn,inform,w,Fortran_Jacobian)
-!  -----------------------------------------------------------------
-!  solve_LLS, a subroutine to solve a linear least squares problem
-!  -----------------------------------------------------------------
-
-       Implicit None
-       REAL(wp), DIMENSION(:), INTENT(IN) :: J
-       REAL(wp), DIMENSION(:), INTENT(IN) :: f
-       INTEGER, INTENT(IN) :: n, m
-       REAL(wp), DIMENSION(:), INTENT(OUT) :: d_gn
-       type(NLLS_inform), INTENT(INOUT) :: inform
-       logical, Intent(In) :: Fortran_Jacobian
-
-       integer, Parameter :: nrhs = 1
-       integer :: lwork, lda, ldb
-       type( solve_LLS_work ), Intent(inout) :: w
-
-       If (.not. w%allocated) Then
-         inform%status = NLLS_ERROR_WORKSPACE_ERROR
-         goto 100
-       End If
-
-       w%temp(1:m) = f(1:m)
-       lwork = size(w%work)
-
-       w%Jlls(:) = J(:)
-       If (Fortran_Jacobian) Then
-          lda = m
-          ldb = max(m,n)
-          call PREC(gels)('N', m, n, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
-               inform%external_return)
-       else
-          lda = n
-          ldb = max(m,n)
-          call PREC(gels)('T', n, m, nrhs, w%Jlls, lda, w%temp, ldb, w%work, lwork, &
-               inform%external_return)
-       end If
-       if (inform%external_return .ne. 0 ) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?gels'
-          Go To 100
-       end if
-
-       d_gn = -w%temp(1:n)
-
-100   continue
-     END SUBROUTINE solve_LLS
 
      SUBROUTINE findbeta(a, b, Delta, beta, inform)
 
@@ -3033,7 +3004,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        Implicit None
        real(wp), intent(in), contiguous :: f(:) ! f(x_k)
        real(wp), intent(in), contiguous :: d(:) ! direction in which we move
-       real(wp), intent(in), contiguous :: J(:) ! J(x_k) (by columns)
+       class(matrix), intent(in)        :: J
        real(wp), intent(in), contiguous :: hf(:)! (approx to) \sum_{i=1}^m f_i(x_k) \nabla^2 f_i(x_k)
        real(wp), intent(in), contiguous :: X(:) ! original step
        real(wp), intent(in), contiguous :: Xnew(:) ! updated step
@@ -3057,7 +3028,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        End If
 
        !Jd = J*d
-       call mult_J(J,n,m,d,w%Jd,options%Fortran_Jacobian)
+       call J%mult_mv('N', d, w%Jd, 1.0_wp, 0.0_wp)
 
        !md_gn = 0.5_wp * norm2(f(1:m) + w%Jd(1:m))**2
        md_gn = 0.0_wp
@@ -3579,76 +3550,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        Jij = J(ii + (jj-1)*m)
      end subroutine get_element_of_matrix
 
-     subroutine minus_solve_spd(A,b,LtL,x,n,inform)
-       Implicit None
-       REAL(wp), intent(in), contiguous :: A(:,:)
-       REAL(wp), intent(in), contiguous :: b(:)
-       REAL(wp), intent(out), contiguous :: LtL(:,:)
-       REAL(wp), intent(out), contiguous :: x(:)
-       integer, intent(in) :: n
-       type( nlls_inform), intent(inout) :: inform
-       inform%status = 0
-       ! Wrapper for the lapack subroutine ?posv
-       ! Given A and b, solves
-       !       A x = -b
-       LtL(1:n,1:n) = A(1:n,1:n)
-       x(1:n) = -b(1:n)
-       call PREC(posv)('L', n, 1, LtL, n, x, n, inform%external_return)
-       if (inform%external_return .ne. 0) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?posv'
-       end if
-     end subroutine minus_solve_spd
-
-     subroutine minus_solve_spd_nocopy(A,b,x,n,inform)
-       Implicit None
-       REAL(wp), intent(inout), contiguous :: A(:,:)
-       REAL(wp), intent(in), contiguous :: b(:)
-       REAL(wp), intent(out), contiguous :: x(:)
-       integer, intent(in) :: n
-       type( nlls_inform), intent(inout) :: inform
-       inform%status = 0
-       ! Wrapper for the lapack subroutine ?posv
-       ! NOTE: A will be destroyed
-       ! Given A and b, solves
-       !       A x = -b
-       x(1:n) = -b(1:n)
-       call PREC(posv)('L', n, 1, A, n, x, n, inform%external_return)
-       if (inform%external_return .ne. 0) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?posv'
-       end if
-     end subroutine minus_solve_spd_nocopy
-
-     subroutine minus_solve_general(A,b,x,n,inform,w)
-       Implicit None
-       REAL(wp), intent(in), contiguous :: A(:,:)
-       REAL(wp), intent(in), contiguous :: b(:)
-       REAL(wp), intent(out), contiguous :: x(:)
-       integer, intent(in) :: n
-       type( nlls_inform ), intent(inout) :: inform
-       type( minus_solve_general_work ),Intent(inout) :: w
-       ! Wrapper for the lapack subroutine ?gesv
-       ! NOTE: A would be destroyed
-       ! Given A and b, solves
-       !       A x = -b
-
-       If (.not. w%allocated) Then
-         inform%status = NLLS_ERROR_WORKSPACE_ERROR
-         goto 100
-       End If
-
-       w%A(1:n,1:n) = A(1:n,1:n)
-       x(1:n) = -b(1:n)
-       call PREC(gesv)( n, 1, w%A, n, w%ipiv, x, n, inform%external_return)
-       if (inform%external_return .ne. 0 ) then
-          inform%status = NLLS_ERROR_FROM_EXTERNAL
-          inform%external_name = 'lapack_?gesv'
-       end if
-
-100    continue
-     end subroutine minus_solve_general
-
      subroutine matrix_norm(x,A,norm_A_x)
        Implicit None
        REAL(wp), intent(in) :: A(:,:), x(:)
@@ -3667,30 +3568,6 @@ lp:  do i = 1, options%more_sorensen_maxits
        norm_A_x = sqrt(norm_A_x)
      end subroutine matrix_norm
 
-     subroutine matmult_inner(J,n,m,A,options)
-       Implicit None
-       integer, intent(in) :: n,m
-       real(wp), intent(in) :: J(*)
-       real(wp), intent(out) :: A(n,n)
-       type( nlls_options ), intent(in), optional :: options
-
-       ! Takes an m x n matrix J and forms the
-       ! n x n matrix A given by
-       ! A = J' * J
-
-       ! Avoid short-circuit evaluation
-!      if ( present(options) .and. (.not. options%Fortran_Jacobian) ) then
-       if ( present(options) ) Then
-         If (.not. options%Fortran_Jacobian) then
-           ! c format
-           call PREC(gemm)('N','T',n, n, m, 1.0_wp, J, n, J, n, 0.0_wp, A, n)
-         Else
-           call PREC(gemm)('T','N',n, n, m, 1.0_wp, J, m, J, m, 0.0_wp, A, n)
-         End If
-       Else
-          call PREC(gemm)('T','N',n, n, m, 1.0_wp, J, m, J, m, 0.0_wp, A, n)
-       End If
-     end subroutine matmult_inner
      subroutine matmult_outer(J,n,m,A)
        Implicit None
        integer, intent(in) :: n,m
@@ -3945,7 +3822,8 @@ lp:  do i = 1, options%more_sorensen_maxits
                                     w, tenJ, inner_workspace)
        Implicit None
        integer, intent(in)   :: n,m
-       real(wp), intent(in), contiguous :: f(:), J(:)
+       type(dense_matrix) :: J
+       real(wp), intent(in), contiguous :: f(:)
        real(wp) , intent(in), contiguous :: X(:)
        real(wp) , intent(in) :: Delta
        integer, intent(in) :: num_successful_steps
@@ -3993,7 +3871,7 @@ lp:  do i = 1, options%more_sorensen_maxits
        ! save to params
        w%tparams%f(1:m) = f(1:m)
        w%tparams%Delta = Delta
-       w%tparams%J(1:n*m) = J(1:n*m)
+       call PREC(lacpy)('A', m, n, J%data, m, w%tparams%J(1:n*m), m)
        w%tparams%X(1:n) = X(1:n)
        w%tparams%eval_HF => eval_HF
        w%tparams%parent_params => params
@@ -4338,8 +4216,6 @@ lp:    do i = 1, w%tensor_options%maxit
          inform%status = NLLS_ERROR_PRINT_LEVEL
        ElseIf (opt%box_linesearch_type<1 .Or. opt%box_linesearch_type>2) Then
          inform%status = NLLS_ERROR_UNSUPPORTED_LINESEARCH
-!      ElseIf
-!        ...
        End If
 
      End Subroutine check_options
