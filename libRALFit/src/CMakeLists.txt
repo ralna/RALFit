@@ -15,8 +15,11 @@ set(source_files
     ral_nlls_fd.F90
     ral_nlls_internal.F90
     ral_nlls.F90
-    ral_nlls_ciface.F90
     CACHE INTERNAL "source_files" FORCE)
+# C interface (not built with NAG, see NAG_FORTRAN_ONLY)
+if(NOT NAG_FORTRAN_ONLY)
+  list(APPEND source_files ral_nlls_ciface.F90)
+endif()
 
 # Suppress warnings ############
 if (SUPPRESS_INTERNAL_WONTFIX)
@@ -91,7 +94,9 @@ function(generate_ral_nlls_modules precision obj_list)
     "RAL_NLLS_BOUNDS_${precision}" "RAL_NLLS_FD_${precision}"
     "NAG_EXPORT_MOD_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
   add_dependencies("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
-  add_dependencies("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
+  if(NOT NAG_FORTRAN_ONLY)
+    add_dependencies("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
+  endif()
 
   # Replicate tree to be compatible with Ninja
   target_link_libraries("RAL_NLLS_DTRS_${precision}" "RAL_NLLS_TYPES_${precision}"
@@ -112,7 +117,9 @@ function(generate_ral_nlls_modules precision obj_list)
     "RAL_NLLS_BOUNDS_${precision}" "RAL_NLLS_FD_${precision}"
     "NAG_EXPORT_MOD_${precision}" "RAL_NLLS_WORKSPACES_${precision}")
   target_link_libraries("RAL_NLLS_${precision}" "RAL_NLLS_INTERNAL_${precision}")
-  target_link_libraries("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
+  if(NOT NAG_FORTRAN_ONLY)
+    target_link_libraries("RAL_NLLS_CIFACE_${precision}" "RAL_NLLS_${precision}")
+  endif()
 endfunction()
 
 # Post ################

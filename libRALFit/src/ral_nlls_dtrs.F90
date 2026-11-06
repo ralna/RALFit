@@ -719,7 +719,7 @@
 !      |                                               |
 !       -----------------------------------------------
 
-      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp, PREC(dot)
+      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp, PREC(dot), PREC(nrm2)
       USE MODULE_PREC(RAL_NLLS_SYMBOLS)
       USE MODULE_PREC(RAL_NLLS_ROOTS), ONLY: ROOTS_cubic
 
@@ -883,26 +883,6 @@
 
         TYPE ( DTRS_history_type ), DIMENSION( history_max ) :: history
       END TYPE
-
-!  interface to BLAS: two norm
-
-     INTERFACE NRM2
-
-       FUNCTION SNRM2( n, X, incx )
-       import :: lp
-       REAL(KIND=lp) :: SNRM2
-       INTEGER, INTENT( IN ) :: n, incx
-       REAL(KIND=lp), INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
-       END FUNCTION SNRM2
-
-       FUNCTION DNRM2( n, X, incx )
-       import :: np
-       REAL(KIND=np):: DNRM2
-       INTEGER, INTENT( IN ) :: n, incx
-       REAL(KIND=np), INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
-       END FUNCTION DNRM2
-
-     END INTERFACE
 
     CONTAINS
 
@@ -1693,7 +1673,7 @@
        n = SIZE( X )
 
        IF ( n > 0 ) THEN
-         TWO_NORM = NRM2( n, X, 1 )
+         TWO_NORM = PREC(nrm2)( n, X, 1 )
        ELSE
          TWO_NORM = zero
        END IF
@@ -1735,7 +1715,7 @@
 !      |                                            |
 !       --------------------------------------------
 
-      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp, PREC(dot)
+      USE MODULE_PREC(RAL_NLLS_TYPES), ONLY: lp, np, wp, PREC(dot), PREC(nrm2)
       USE MODULE_PREC(RAL_NLLS_SYMBOLS)
       USE MODULE_PREC(RAL_NLLS_ROOTS)
 
@@ -1907,26 +1887,6 @@
 
         TYPE ( DRQS_history_type ), DIMENSION( history_max ) :: history
       END TYPE
-
-!  interface to BLAS: two norm
-
-     INTERFACE NRM2
-
-       FUNCTION SNRM2( n, X, incx )
-       import :: lp
-       REAL(KIND=lp) :: SNRM2
-       INTEGER, INTENT( IN ) :: n, incx
-       REAL(KIND=lp), INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
-       END FUNCTION SNRM2
-
-       FUNCTION DNRM2( n, X, incx )
-       import :: np
-       REAL(KIND=np):: DNRM2
-       INTEGER, INTENT( IN ) :: n, incx
-       REAL(KIND=np), INTENT( IN ), DIMENSION( incx * ( n - 1 ) + 1 ) :: X
-       END FUNCTION DNRM2
-
-     END INTERFACE
 
     CONTAINS
 
@@ -3305,7 +3265,7 @@
        n = SIZE( X )
 
        IF ( n > 0 ) THEN
-         TWO_NORM = NRM2( n, X, 1 )
+         TWO_NORM = PREC(nrm2)( n, X, 1 )
        ELSE
          TWO_NORM = zero
        END IF

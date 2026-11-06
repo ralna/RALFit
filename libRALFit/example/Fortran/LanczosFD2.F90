@@ -117,7 +117,7 @@ program lanczos_fd2
    integer :: m,n
    real(wp), allocatable, target :: x(:)
 
-   type(params_type) :: params
+   type(params_type), target :: params ! must be target: jacobian_setup keeps a pointer to it
    real(wp) :: tic, toc
 
    real(wp), parameter, Dimension(6) :: x_exp = (/ 8.6811579049232354E-002, &

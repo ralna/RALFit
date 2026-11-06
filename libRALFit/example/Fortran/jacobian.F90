@@ -80,7 +80,7 @@ program jacobian
 
    integer :: m, n
    real(wp), allocatable :: x(:), fx(:), j(:), j_exp(:)
-   type(params_type) :: params
+   type(params_type), target :: params ! must be target: jacobian_setup keeps a pointer to it
    real(wp) :: tic, toc, nrm2, tol, fd_step
    Type(jacobian_handle) :: handle
    logical :: ok, oki
