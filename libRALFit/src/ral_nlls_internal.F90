@@ -61,7 +61,7 @@ contains
     implicit none
 
     INTEGER, INTENT( IN ) :: n, m
-    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
+    REAL( wp ), DIMENSION( n ), TARGET, INTENT( INOUT ) :: X
     TYPE( NLLS_inform ), TARGET, INTENT( OUT ) :: inform
     TYPE( NLLS_options ), TARGET, INTENT( IN ) :: options
     procedure( eval_f_type ) :: eval_F
@@ -170,7 +170,7 @@ contains
     Use MODULE_PREC(ral_nlls_fd), Only: eval_hp_wrap, check_jacobian
     implicit none
     INTEGER, INTENT( IN ) :: n, m
-    REAL( wp ), DIMENSION( n ), INTENT( INOUT ) :: X
+    REAL( wp ), DIMENSION( n ), TARGET, INTENT( INOUT ) :: X
     TYPE( nlls_inform ), INTENT( INOUT ) :: inform
     TYPE( nlls_options ), INTENT( IN ) :: options
     type( NLLS_workspace ), TARGET, INTENT( INOUT ) :: w
@@ -3504,7 +3504,7 @@ lp:  do i = 1, options%more_sorensen_maxits
      Recursive subroutine reset_gradients(n,m,X,options,inform,params,w,eval_J,weights)
        Implicit None
        integer, intent(in) :: n, m
-       real(wp), intent(in), contiguous :: X(:)
+       real(wp), intent(in), contiguous, target :: X(:)
        type( nlls_options ), intent(in) :: options
        type( nlls_inform ), intent(inout) :: inform
        class( params_base_type ), intent(inout) :: params
@@ -4365,7 +4365,7 @@ lp:    do i = 1, w%tensor_options%maxit
       Procedure (eval_j_type)          :: eval_j
       Integer, Intent (Inout)          :: lstype
       Class (params_base_type), Intent (Inout) :: params
-      Type (nlls_workspace), Intent (Inout) :: w
+      Type (nlls_workspace), Target, Intent (Inout) :: w
       Type (nlls_options), Intent (In) :: options
       Type (nlls_inform), Intent (Inout) :: inform
       Real (Kind=wp), Intent (In), Dimension (m), Optional :: weights
@@ -4684,7 +4684,7 @@ lp:    do i = 1, w%tensor_options%maxit
         Class (params_base_type), Intent (InOut) :: params
         Type (nlls_inform), Intent (Inout) :: inform
         Type (nlls_options), Intent (In) :: options
-        Type (nlls_workspace), Intent(InOut) :: w
+        Type (nlls_workspace), Target, Intent(InOut) :: w
         Real (Kind=wp), Intent (In), Dimension (m), Optional :: weights
         Procedure (eval_f_type)        :: eval_f
         Procedure (eval_j_type)        :: eval_j
@@ -4801,7 +4801,7 @@ lp:    do i = 1, w%tensor_options%maxit
         Procedure (eval_j_type)        :: eval_j
         Class(params_base_type), Intent(InOut) :: params
         Type(nlls_options), Intent(In) :: options
-        Type(nlls_workspace), Intent(InOut) :: w
+        Type(nlls_workspace), Target, Intent(InOut) :: w
         Type(nlls_inform), Intent(InOut) :: inform
         Real(Kind=wp), Intent(In), Dimension(m), Optional :: weights
         Real(Kind=wp) :: alpha

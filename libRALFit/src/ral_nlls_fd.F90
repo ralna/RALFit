@@ -56,6 +56,9 @@ module MODULE_PREC(ral_nlls_fd)
       Type(nlls_inform) :: inform
       Type(NLLS_options) :: options
       Type(box_type) :: box
+      ! default (empty) user params, used when none are passed to jacobian_setup
+      Type(params_base_type) :: no_params
+      Logical :: has_params = .False.
    End Type jacobian_handle
 
 Contains
@@ -85,20 +88,21 @@ Contains
       status = -1023
    end subroutine ral_nlls_eval_hf_dummy
 
+   ! Note: a pointer to params is stored in handle, so the actual argument must have
+   ! the TARGET attribute and remain valid until jacobian_free is called
    Subroutine jacobian_setup(status, handle, n, m, x, eval_f, params, lower, upper, f_storage)
       Use MODULE_PREC(ral_nlls_workspaces), Only : params_internal_type, wp, NLLS_options, &
          nlls_inform, setup_bounds_type, setup_iparams_type, NLLS_ERROR_ALLOCATION
       Implicit None
       Integer, Intent(out) :: status
-      Type(jacobian_handle), Intent(Inout) :: handle
+      Type(jacobian_handle), Target, Intent(Inout) :: handle
       Integer, Intent(in) :: n, m
       Real(Kind=wp), Dimension(n), Intent(In) :: x
       Procedure( eval_f_type ) :: eval_f
-      Class(params_base_type), Intent(inout), Optional :: params
+      Class(params_base_type), Target, Intent(inout), Optional :: params
       Real(Kind=wp), Dimension(n), Intent(in), Target, Optional :: lower, upper
       Logical, Optional, Intent(in) :: f_storage
 
-      Type(params_base_type) :: no_params
       Integer :: ierr_dummy
 
       Continue
@@ -124,11 +128,12 @@ Contains
       If (allocated(handle%box%g)) deallocate(handle%box%g, Stat=ierr_dummy)
 
       ! Note x is not passed to setup iparams, it is assigned along with f in jacobian_calc
+      handle%has_params = Present(params)
       If (Present(params)) Then
          Call setup_iparams_type(m, handle%iparams, params, eval_f,   &
             ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box)
       Else
-         Call setup_iparams_type(m, handle%iparams, no_params, eval_f,   &
+         Call setup_iparams_type(m, handle%iparams, handle%no_params, eval_f,   &
             ral_nlls_eval_j_dummy, ral_nlls_eval_hf_dummy, handle%inform, handle%options, handle%box)
       End If
 
@@ -140,7 +145,7 @@ Contains
       End If
 
       If (Present(f_storage)) Then
-         handle%iparams%options%Fortran_Jacobian = f_storage
+         handle%options%Fortran_Jacobian = f_storage
       End If
 
       handle%setup = .True.
@@ -158,6 +163,7 @@ Contains
       Continue
 
       handle%setup = .False.
+      handle%has_params = .False.
       Call free_iparams_type(handle%iparams)
       Call remove_workspace_bounds(handle%box)
       handle%eval_f => Null()
@@ -171,7 +177,7 @@ Contains
       use MODULE_PREC(ral_nlls_workspaces), only : wp, NLLS_ERROR_WORKSPACE_ERROR
       implicit none
       integer, intent(out) :: status
-      Type(jacobian_handle), Intent(Inout) :: handle
+      Type(jacobian_handle), Target, Intent(Inout) :: handle
       Real(Kind=wp), intent(inout), contiguous :: x(:)
       Real(Kind=wp), intent(in), contiguous :: f(:)
       Real(Kind=wp), dimension(*), intent(out) :: J
@@ -184,8 +190,15 @@ Contains
          return
       End If
 
+      ! iparams points into handle itself, those pointers may be left undefined once
+      ! jacobian_setup (or a previous jacobian_calc) returned, re-associate them here
+      handle%iparams%options => handle%options
+      handle%iparams%inform => handle%inform
+      handle%iparams%box => handle%box
+      If (.Not. handle%has_params) handle%iparams%user%params => handle%no_params
+
       If (present(fd_step)) Then
-         handle%iparams%options%fd_step = fd_step
+         handle%options%fd_step = fd_step
       End If
 
       Call fd_jacobian(status, handle%n, handle%m, x(1:handle%n), f(1:handle%m), J, handle%iparams)
@@ -554,7 +567,13 @@ Contains
             else
                idx = (jcon-1) * n + ivar
             end if
-            J(idx) = merge(( iparams%f_pert(jcon) - f(jcon) ) / this_perturbation, 0.0_wp, okgap)
+            ! Note: don't use merge() here, it evaluates both arguments and f_pert(:) is
+            ! not defined when okgap = .False.
+            if (okgap) then
+               J(idx) = ( iparams%f_pert(jcon) - f(jcon) ) / this_perturbation
+            else
+               J(idx) = 0.0_wp
+            end if
             if (J(idx) /= J(idx)) then
                ! Estimate is rubbish
                status = -2031

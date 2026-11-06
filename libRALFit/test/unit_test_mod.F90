@@ -445,6 +445,7 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
        class( params_base_type ), intent(inout) :: params
        integer :: i
        Continue
+       status = 0
 
        select type(params)
        type is(user_type)
@@ -3129,8 +3130,9 @@ SUBROUTINE eval_F( status, n_dummy, m, X, f, params)
 
      fails = 0
      n = 2
-      ! Set by generate_data_example m = 67
+      ! m is set by generate_data_example (m = 67)
      call generate_data_example(params)
+     m = params%m
 
      ! let's check the workspace errors
      ! first, let's do the main workspace...

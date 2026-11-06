@@ -40,6 +40,24 @@ set_property(CACHE ASAN PROPERTY STRINGS "Off" "On" "Debug")
 # Option to build the Python interface of RALFit
 option(BUILD_PYTHON "Build RalNLLS Python wheel (default On)" On)
 
+# NAG Fortran compiler: special Debug build only used to check the Fortran code.
+# -C=undefined changes the ABI and ISO_C_BINDING can then only be used in all-Fortran
+# programs (see nagfor(1)), so the C interface, C tests, C examples and Python are not
+# built. The build type and Python options are overridden.
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "NAG")
+  set(NAG_FORTRAN_ONLY On)
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(WARNING "NAG Fortran compiler: overriding CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} with Debug")
+  endif()
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+  if(BUILD_PYTHON)
+    message(WARNING "NAG Fortran compiler: overriding BUILD_PYTHON=${BUILD_PYTHON} with Off")
+  endif()
+  set(BUILD_PYTHON Off CACHE BOOL "Build RalNLLS Python wheel (default On)" FORCE)
+else()
+  set(NAG_FORTRAN_ONLY Off)
+endif()
+
 
 set(CMAKE_VERBOSE_MAKEFILE On)
 
@@ -196,9 +214,11 @@ add_subdirectory(src)
 
 # Tests and examples
 add_subdirectory(test)
-add_subdirectory(example/C)
 add_subdirectory(example/Fortran)
-add_subdirectory(example/Python)
+if(NOT NAG_FORTRAN_ONLY)
+  add_subdirectory(example/C)
+  add_subdirectory(example/Python)
+endif()
 
 if(TestCoverage) # Only enabled for GNU compiler
   include(CodeCoverage)
@@ -215,6 +235,9 @@ message(STATUS "  Compiler (C):             CC=${CMAKE_C_COMPILER_ID}")
 message(STATUS "  Build Type:               CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 message(STATUS "  Address SANitizer:        ASAN=${ASAN} (On/Off/Debug: only on for debug builds)")
 message(STATUS "  Build Python (wheel):     BUILD_PYTHON=${BUILD_PYTHON}")
+if (NAG_FORTRAN_ONLY)
+message(STATUS "  NAG Fortran only build:   C interface, C tests/examples and Python are not built")
+endif()
 if (SINGLE_PRECISION)
 message(STATUS "  Floating point precision: SINGLE_PRECISION=${SINGLE_PRECISION} (Single precision)")
 else()
